@@ -44,8 +44,9 @@ const NO_HITS_TEXT: Record<StopReason, string> = {
 const CONTINUABLE = new Set<StopReason | undefined>(["limit", "time"]);
 
 const ACTIVE_TEXT: Partial<Record<JobView["status"], string>> = {
-  queued: "Seeds show up here once the search has run.",
-  running: "Seeds show up here once the search ends.",
+  queued: "Seeds show up here once the search starts.",
+  starting: "Seeds show up here once the search starts.",
+  running: "Seeds show up here as soon as they're found.",
 };
 
 const WITNESS_LABELS: Record<WitnessSection, string> = {
@@ -248,11 +249,12 @@ function SearchFurther({ startSeed, further }: { startSeed: number; further: Job
 function SearchSummary({ job, search, onCopy, further }: JobResultsProps & { search: SearchOutput }) {
   const { hits, stopped, next_seed: nextSeed } = search;
   const canContinue = CONTINUABLE.has(stopped) && nextSeed !== null && job.status === "done";
+  const emptyText = ACTIVE_TEXT[job.status] ?? (stopped ? NO_HITS_TEXT[stopped] : "No seed matched.");
   return (
     <div className="results">
       <ScanSummary search={search} />
       {hits.length === 0 ? (
-        <p className="muted">{stopped ? NO_HITS_TEXT[stopped] : "No seed matched."}</p>
+        <p className="muted">{emptyText}</p>
       ) : (
         <HitList hits={hits} showOption={(job.config.criteria?.length ?? 0) > 1} onCopy={onCopy} />
       )}
@@ -266,9 +268,10 @@ export default function JobResults(props: JobResultsProps) {
   const parsed = useMemo(() => parseJobResult(job.result), [job.result]);
   const activeText = ACTIVE_TEXT[job.status];
 
+  if (parsed?.kind === "search") return <SearchSummary {...props} search={parsed.search} />;
   if (activeText) return <p className="hint">{activeText}</p>;
   if (parsed?.kind === "error") return <p className="notice notice--error">The search couldn't run: {parsed.error}</p>;
-  if (parsed?.kind === "search") return <SearchSummary {...props} search={parsed.search} />;
+  if (job.status === "cancelled") return <p className="muted">Stopped before any seeds were checked.</p>;
   if (job.status === "done" && job.error === null) return <p className="notice notice--error">This search's results couldn't be read.</p>;
   return null;
 }

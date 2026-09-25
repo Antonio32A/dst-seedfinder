@@ -1039,6 +1039,42 @@ details[open] > summary::before {
   color: var(--danger);
 }
 
+.job__status--queued,
+.job__status--starting {
+  color: var(--muted);
+}
+
+.live {
+  margin-top: 8px;
+  padding-left: 2ch;
+  border-left: 2px solid var(--accent);
+}
+
+.live__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 14px;
+}
+
+.live__headline {
+  font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.live__headline::before {
+  content: "> ";
+  color: var(--accent);
+}
+
+.live__details {
+  font-size: 0.85em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .results {
   margin-top: 8px;
 }

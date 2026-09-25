@@ -1,8 +1,10 @@
 "use client";
 
 import { loginUrl } from "@/lib/api-client";
-import { formatCredits } from "@/lib/credits";
+import { creditsPerSecond, formatCredits, MAX_DOLLARS_PER_HOUR, STARTING_FEE } from "@/lib/credits";
 import type { Account } from "@/lib/use-account";
+
+const CREDITS_HINT = `Credits reset daily at 00:00 UTC. A search costs ${STARTING_FEE} credits to start a server, then ${creditsPerSecond(MAX_DOLLARS_PER_HOUR)} credits a second on a $${MAX_DOLLARS_PER_HOUR}/h server, less on cheaper ones.`;
 
 export default function SiteHeader({ account }: { account: Account }) {
   const { user, loading } = account;
@@ -21,7 +23,7 @@ export default function SiteHeader({ account }: { account: Account }) {
           {user ? (
             <>
               <span className="account__name">{user.globalName ?? user.username}</span>
-              <span className="account__credits" title="Credits reset daily at 00:00 UTC. 1 credit ≈ 0.1 s of compute." tabIndex={0}>
+              <span className="account__credits" title={CREDITS_HINT} tabIndex={0}>
                 {formatCredits(user.credits)}/{formatCredits(user.dailyCredits)} credits
               </span>
               <button type="button" className="link-button" onClick={() => void account.logOut()}>

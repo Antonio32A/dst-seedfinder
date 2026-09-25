@@ -1,8 +1,11 @@
 import { unitsToCredits } from "@/lib/credits";
+import { ACTIVE_JOB_STATUSES, type ActiveJobStatus, type FinishedJobStatus, type JobStatus, type Machine } from "@/lib/job-events";
 import type { SeedfinderConfig } from "@/lib/seedfinder-config";
 import { DAILY_CREDIT_UNITS } from "./users";
 
-export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+export type { JobStatus };
+
+export const ACTIVE_STATUS_SQL = ACTIVE_JOB_STATUSES.map((status) => `'${status}'`).join(", ");
 
 export interface JobRow {
   id: string;
@@ -16,7 +19,10 @@ export interface JobRow {
   updated_at: number;
   result: string | null;
   error: string | null;
-  runpod_id: string | null;
+  instance_id: string | null;
+  machine: string | null;
+  started_at: number | null;
+  finished_at: number | null;
 }
 
 export interface JobView {
@@ -28,17 +34,27 @@ export interface JobView {
   cost: number | null;
   createdAt: string;
   updatedAt: string;
+  startedAt: string | null;
+  machine: Machine | null;
   result: unknown;
   error: string | null;
 }
 
 export interface JobSettlement {
-  status: Extract<JobStatus, "done" | "failed" | "cancelled">;
+  status: FinishedJobStatus;
   costUnits: number;
   result: string | null;
   error: string | null;
-  runpodId?: string;
 }
+
+export interface ActiveJobUpdate {
+  status: ActiveJobStatus;
+  instanceId?: string;
+  machine?: Machine;
+  startedAt?: number;
+}
+
+const isoOrNull = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
 
 export function toJobView(row: JobRow): JobView {
   return {
@@ -50,9 +66,34 @@ export function toJobView(row: JobRow): JobView {
     cost: row.cost === null ? null : unitsToCredits(row.cost),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
+    startedAt: isoOrNull(row.started_at),
+    machine: row.machine === null ? null : (JSON.parse(row.machine) as Machine),
     result: row.result === null ? null : JSON.parse(row.result),
     error: row.error,
   };
+}
+
+export async function loadJob(db: D1Database, id: string): Promise<JobRow | null> {
+  return db.prepare("SELECT * FROM jobs WHERE id = ?").bind(id).first<JobRow>();
+}
+
+/** Records a search moving between its active statuses. A no-op once the search is settled. */
+export async function updateActiveJob(db: D1Database, id: string, update: ActiveJobUpdate): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE jobs SET status = ?, instance_id = COALESCE(?, instance_id), machine = COALESCE(?, machine),
+         started_at = COALESCE(?, started_at), updated_at = ?
+       WHERE id = ? AND cost IS NULL`,
+    )
+    .bind(
+      update.status,
+      update.instanceId ?? null,
+      update.machine ? JSON.stringify(update.machine) : null,
+      update.startedAt ?? null,
+      Date.now(),
+      id,
+    )
+    .run();
 }
 
 /**
@@ -65,6 +106,7 @@ export async function settleJob(
   job: Pick<JobRow, "id" | "user_id" | "max_cost">,
   settlement: JobSettlement,
 ): Promise<void> {
+  const now = Date.now();
   await db.batch([
     db
       .prepare(
@@ -73,17 +115,8 @@ export async function settleJob(
       .bind(DAILY_CREDIT_UNITS, job.max_cost - settlement.costUnits, job.user_id, job.id),
     db
       .prepare(
-        `UPDATE jobs SET status = ?, cost = ?, result = ?, error = ?, runpod_id = COALESCE(runpod_id, ?), updated_at = ?
-         WHERE id = ? AND cost IS NULL`,
+        "UPDATE jobs SET status = ?, cost = ?, result = ?, error = ?, updated_at = ?, finished_at = ? WHERE id = ? AND cost IS NULL",
       )
-      .bind(
-        settlement.status,
-        settlement.costUnits,
-        settlement.result,
-        settlement.error,
-        settlement.runpodId ?? null,
-        Date.now(),
-        job.id,
-      ),
+      .bind(settlement.status, settlement.costUnits, settlement.result, settlement.error, now, now, job.id),
   ]);
 }

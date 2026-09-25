@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import {
-  creditsToSeconds,
   formatCredits,
   isValidMaxCost,
   MAX_COST_OPTIONS,
+  MAX_DOLLARS_PER_HOUR,
   MAX_MAX_COST,
   MIN_MAX_COST,
   roundCredits,
+  STARTING_FEE,
+  timeLimitSeconds,
 } from "@/lib/credits";
 import { clamp } from "@/lib/state-helpers";
 import SegmentedControl from "./SegmentedControl";
+
+const SECONDS = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 
 interface MaxCostFieldProps {
   value: number;
@@ -62,7 +66,9 @@ export default function MaxCostField({ value, wanted, onChange }: MaxCostFieldPr
         </label>
       </div>
       <p className="hint">
-        Up to {creditsToSeconds(value)} s of compute. Stops at {wanted} seeds or when the credits run out. Unused credits are refunded.
+        {STARTING_FEE} credits to start a server, then up to {SECONDS.format(timeLimitSeconds(value, MAX_DOLLARS_PER_HOUR))} s of search on a $
+        {MAX_DOLLARS_PER_HOUR}/h server, longer on cheaper ones. Stops at {wanted} seeds or when the credits run out. Unused
+        credits are refunded.
       </p>
     </div>
   );

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { createJob, loginUrl } from "@/lib/api-client";
+import { ApiError, createJob, loginUrl, type JobView, type SessionUser } from "@/lib/api-client";
 import { creditsToUnits, formatCredits } from "@/lib/credits";
+import { isActiveStatus } from "@/lib/job-events";
 import { WANTED_OPTIONS, type Issue } from "@/lib/search-state";
 import {
   PLATFORM_LABELS,
@@ -40,6 +41,36 @@ function blockingProblem(issues: Issue[], config: SeedfinderConfig, credits: num
   return undefined;
 }
 
+interface SearchActionProps {
+  user: SessionUser | null;
+  activeJob: JobView | undefined;
+  submitting: boolean;
+  blocked: boolean;
+  onSubmit: () => void;
+}
+
+function SearchAction({ user, activeJob, submitting, blocked, onSubmit }: SearchActionProps) {
+  if (!user) {
+    return (
+      <a className="button" href={loginUrl()}>
+        Log in with Discord to search
+      </a>
+    );
+  }
+  if (activeJob) {
+    return (
+      <a className="button" href={`#job-${activeJob.id}`}>
+        Watch your search
+      </a>
+    );
+  }
+  return (
+    <button type="button" disabled={submitting || blocked} onClick={onSubmit}>
+      {submitting ? "Starting…" : "Find seeds"}
+    </button>
+  );
+}
+
 export default function SearchPanel({
   config,
   issues,
@@ -54,8 +85,9 @@ export default function SearchPanel({
 }: SearchPanelProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const { user } = account;
-  const problem = blockingProblem(issues, config, user?.credits, maxCost);
+  const { user, jobs } = account;
+  const activeJob = jobs.find((job) => isActiveStatus(job.status));
+  const problem = activeJob ? undefined : blockingProblem(issues, config, user?.credits, maxCost);
 
   const submit = async () => {
     const checked = validateJobRequest({ config, wanted, maxCost });
@@ -67,9 +99,10 @@ export default function SearchPanel({
     setError("");
     try {
       await createJob(checked.value);
-      onNotify("Search started. See “Your searches” below.");
+      onNotify("Search started. Follow it under “Your searches”.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Something went wrong. Try again.");
+      if (caught instanceof ApiError && caught.status === 409) onNotify("You already have a search going. It's under “Your searches”.");
+      else setError(caught instanceof Error ? caught.message : "Something went wrong. Try again.");
     } finally {
       setSubmitting(false);
       await account.refresh();
@@ -107,17 +140,15 @@ export default function SearchPanel({
       />
       <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange} />
       <div className="search__actions">
-        {user ? (
-          <button type="button" disabled={submitting || problem !== undefined} onClick={() => void submit()}>
-            {submitting ? "Starting…" : "Find seeds"}
-          </button>
-        ) : (
-          <a className="button" href={loginUrl()}>
-            Log in with Discord to search
-          </a>
-        )}
+        <SearchAction user={user} activeJob={activeJob} submitting={submitting} blocked={problem !== undefined} onSubmit={() => void submit()} />
         <span className="search__cost">
-          Reserves <strong>{formatCredits(maxCost)}</strong> credits{user ? ` (you have ${formatCredits(user.credits)})` : ""}.
+          {activeJob ? (
+            "You can run one search at a time."
+          ) : (
+            <>
+              Reserves <strong>{formatCredits(maxCost)}</strong> credits{user ? ` (you have ${formatCredits(user.credits)})` : ""}.
+            </>
+          )}
         </span>
       </div>
       {!user && <p className="hint">Your settings are kept while you log in.</p>}

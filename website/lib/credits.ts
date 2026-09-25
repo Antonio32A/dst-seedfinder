@@ -1,12 +1,14 @@
-const MS_PER_CREDIT = 100;
 const UNITS_PER_CREDIT = 100;
-const MS_PER_UNIT = MS_PER_CREDIT / UNITS_PER_CREDIT;
+const CREDITS_PER_DOLLAR_HOUR_SECOND = 40;
 
+export const MAX_DOLLARS_PER_HOUR = 0.25;
 export const DAILY_CREDITS = 1000;
 export const DEFAULT_MAX_COST = 100;
-export const MIN_MAX_COST = 1;
+export const MIN_MAX_COST = 20;
 export const MAX_MAX_COST = 1000;
 export const MAX_COST_OPTIONS = [50, 100, 250, 500, 1000];
+export const STARTING_FEE = 10;
+export const MAX_SEARCH_SECONDS = 600;
 
 /** Credits (a decimal with at most 2 places) as the integer hundredths D1 stores. */
 export function creditsToUnits(credits: number): number {
@@ -23,9 +25,22 @@ export function roundCredits(credits: number): number {
   return unitsToCredits(creditsToUnits(credits));
 }
 
-/** The compute time a number of credits buys, in seconds. */
-export function creditsToSeconds(credits: number): number {
-  return (creditsToUnits(credits) * MS_PER_UNIT) / 1000;
+/** Credits one second of search costs on a machine at this price ($/h): 10 at `MAX_DOLLARS_PER_HOUR`. */
+export function creditsPerSecond(dollarsPerHour: number): number {
+  return CREDITS_PER_DOLLAR_HOUR_SECOND * dollarsPerHour;
+}
+
+/** The search time a number of credits buys on a machine at this price ($/h), in seconds. */
+export function creditsToSeconds(credits: number, dollarsPerHour: number = MAX_DOLLARS_PER_HOUR): number {
+  return credits / creditsPerSecond(dollarsPerHour);
+}
+
+/**
+ * A search's time limit on a machine at this price ($/h), in seconds: what its max cost buys after the starting fee,
+ * but never more than `MAX_SEARCH_SECONDS`.
+ */
+export function timeLimitSeconds(maxCost: number, dollarsPerHour: number): number {
+  return Math.min(MAX_SEARCH_SECONDS, creditsToSeconds(maxCost - STARTING_FEE, dollarsPerHour));
 }
 
 /** Whether a number has no more than 2 decimal places (tolerating binary float noise). */
@@ -51,10 +66,21 @@ export function formatCredits(credits: number): string {
 }
 
 /**
- * What a finished search really costs, in hundredths: its compute time at 1 unit per ms, capped at the reservation.
- * A missing or nonsensical execution time charges the full reservation.
+ * What a finished search costs, in hundredths: its search time at the machine's price, rounded up and capped at the
+ * reservation. A negative or non-finite time charges the full reservation.
  */
-export function settledCostUnits(reservedUnits: number, executionMs: unknown): number {
-  const valid = typeof executionMs === "number" && Number.isFinite(executionMs) && executionMs >= 0;
-  return valid ? Math.min(reservedUnits, Math.ceil(executionMs / MS_PER_UNIT)) : reservedUnits;
+export function searchCostUnits(reservedUnits: number, searchMs: number, dollarsPerHour: number): number {
+  const valid = Number.isFinite(searchMs) && searchMs >= 0;
+  const units = (searchMs / 1000) * creditsPerSecond(dollarsPerHour) * UNITS_PER_CREDIT;
+  return valid ? Math.min(reservedUnits, Math.max(0, Math.ceil(units - 1e-9))) : reservedUnits;
+}
+
+/**
+ * What a search is charged, in hundredths: the starting fee when an instance was rented for it, plus its search time
+ * (`searchMs`, null when it never started), capped at the reservation.
+ */
+export function chargeUnits(reservedUnits: number, feeCharged: boolean, searchMs: number | null, dollarsPerHour: number): number {
+  const fee = feeCharged ? creditsToUnits(STARTING_FEE) : 0;
+  const search = searchMs === null ? 0 : searchCostUnits(reservedUnits, searchMs, dollarsPerHour);
+  return Math.min(reservedUnits, fee + search);
 }

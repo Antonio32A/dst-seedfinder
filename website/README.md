@@ -11,14 +11,21 @@ Wrangler needs Node 22 or newer.
    - `npx wrangler secret put DISCORD_CLIENT_ID`
    - `npx wrangler secret put DISCORD_CLIENT_SECRET`
    - optional: `DISCORD_REDIRECT_URI` (defaults to `<origin>/api/auth/callback`)
-   - optional: `RUNPOD_ENDPOINT_ID`, `RUNPOD_API_KEY` and `RUNPOD_WEBHOOK_SECRET` (any long random string). Until all
-     three are set, searches are refused.
-   - optional: `PUBLIC_ORIGIN` (defaults to the origin of the request that starts the search), the public origin
-     RunPod calls back on. Each job is sent with `webhook: <origin>/api/runpod/webhook?job=<id>&token=<RUNPOD_WEBHOOK_SECRET>`,
-     which settles the job and refunds the unused part of its max cost.
-3. `npm run deploy`. The first deploy creates the `dst-seedfinder` D1 database and binds it.
-4. `npx wrangler d1 migrations apply dst-seedfinder --remote`
-5. Add `<origin>/api/auth/callback` as a redirect in the Discord application's OAuth2 settings.
+   - `VAST_API_KEY` (a vast.ai API key), `GHCR_USER` and `GHCR_PULL_TOKEN` (a GitHub user and a token with
+     `read:packages`, used as the instances' `image_login`). Until all three are set, searches are refused with 503.
+   - optional: `PUBLIC_ORIGIN`, the origin runners call back on (defaults to the origin of the request that starts
+     the search). Put it in `vars` instead if you prefer.
+3. Set the vars in `wrangler.jsonc`: `RUNNER_IMAGE` (`<RUNNER_REPOSITORY>:<git sha>`, pushed by `../runner/build.sh --push`;
+   empty refuses searches) and `MAX_INSTANCES` (live instances at once, default 10).
+4. `npm run build && npm run deploy`. The first deploy creates the `dst-seedfinder` D1 database and binds it. The
+   `JobRoom` and `Dispatcher` Durable Objects (SQLite-backed) and the `*/5 * * * *` sweeper cron come with it.
+5. `npx wrangler d1 migrations apply dst-seedfinder --remote`
+6. Add `<origin>/api/auth/callback` as a redirect in the Discord application's OAuth2 settings.
+
+### Testing
+
+vast.ai instances have to reach the Worker, so searches are tested on the deployed Worker with real instances. Watch
+`npx wrangler tail dst-seedfinder` for the JobRoom and the sweeper, and the vast.ai console for its instances.
 
 ## Local development
 
@@ -49,25 +56,53 @@ JITI_ALIAS='{"@/":"'"$PWD"'/"}' ./node_modules/.bin/jiti .scratch/verify-spec.ts
 
 ## Credits
 
-Every user gets 1000 credits a day (reset at 00:00 UTC). 1 credit is 100 ms of compute, and D1 stores credits as
-integer hundredths (`users.credit_units`, `jobs.max_cost`, `jobs.cost`, 1 unit = 1 ms). A search reserves its max
-cost (1 to 1000 credits, default 100) up front and is charged its RunPod execution time when the webhook settles it.
+Every user gets 1000 credits a day (reset at 00:00 UTC). D1 stores credits as integer hundredths
+(`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1000 credits, default 100)
+up front, atomically with the "one active search per user" check (a partial unique index on `jobs.user_id` over the
+active statuses).
 
-## RunPod
+Credits follow the machine's price: `credits = 40 × seconds × $/h`, so 1000 credits buy 100 s on a $0.25/h machine
+(`MAX_DOLLARS_PER_HOUR`, the most an offer may cost) and 400 s on a $0.10/h one. On top of that there is a starting
+fee of 10 credits (`STARTING_FEE`), part of the max cost, charged once a machine has been rented for the search (also
+when it is cancelled while starting), but not when no machine could be found or none would boot. The runner's
+`--time-limit` is `(maxCost − 10) ÷ (40 × $/h)`, worked out for each offer tried and capped at 10 minutes
+(`MAX_SEARCH_SECONDS`), so 100 credits buy 9 s at $0.25/h. A search is charged the fee plus its search time, from the
+runner's first config GET to its final POST (or the cancel, the deadline, or its last POST when contact is lost),
+rounded up to a hundredth and capped at the max cost; queueing and booting are free apart from the fee. The rest is
+refunded when the search settles.
 
-`POST /api/jobs` sends RunPod `/run` this body:
+## Searches on vast.ai
 
-```json
-{
-  "input": { "config": { "version": 1, "criteria": [] }, "limit": 25, "time_limit": 10, "start_seed": 0 },
-  "policy": { "executionTimeout": 20000 },
-  "webhook": "https://<origin>/api/runpod/webhook?job=<job id>&token=<RUNPOD_WEBHOOK_SECRET>"
-}
-```
+The contract is `../.scratch/spec/runner-v1.md`. Each search gets its own `JobRoom` Durable Object (keyed by job id)
+that owns the whole lifecycle, and a singleton `Dispatcher` caps live instances at `MAX_INSTANCES` with a FIFO queue.
 
-`limit`, `time_limit` and `start_seed` map to the binary's `--limit`, `--time-limit` (seconds, `maxCost` × 0.1) and
-`--start-seed` (a uint32, the request's optional `startSeed`, default 0; the scan wraps around). The handler's
-`output` is stored as the job's result (an output over 1 MB fails the job instead, so settling never hits D1's row
-limit). RunPod calls the webhook when the job ends, and the site charges the job's `executionTime` (capped at its max
-cost) and refunds the rest. `POST /api/jobs` refuses bodies over 512 KiB and requests a browser marks as cross-origin
-(`Sec-Fetch-Site`), as does `POST /api/auth/logout`.
+- `queued`: waiting for a Dispatcher slot; the room is told its 1-based queue position. At 200 waiting searches,
+  `POST /api/jobs` answers 503 before reserving anything.
+- `starting`: before each of up to 3 attempts the room searches `/bundles/` again; `lib/server/offers.ts`
+  (`pickOffers`, the replaceable offer algorithm) ranks the offers by cores × GHz ÷ $/h (at least 200 MB of RAM per
+  core) and the room rents the best one it hasn't tried, giving it 3 minutes to fetch its config. Only a definite
+  refusal of an offer (vast.ai 4xx) or a boot timeout uses up an attempt; vast.ai hiccups (429, 5xx, timeouts) are
+  retried every 20 s. Nothing boots within 3 attempts or 10 minutes → `failed`, charged 0.
+- `running`: from the runner's first `GET /api/runner/<id>`. The runner POSTs its output every second with `X-Offset`
+  (256 KiB at most per POST; a gap is 409 with the expected `X-Offset`) and the final chunk with `X-Exit`. The room
+  parses the lines (progress, the first `wanted` hits, the `done` line, config errors; lines over 64 KiB are dropped)
+  and stores the finder's `--json` job object as the result. Exit 0/1 is `done` only after a `done` line. No POST for
+  60 s, no end by the time limit + 10 s, or more than 16 MiB of output → `failed`, charged the time so far, hits kept.
+- `POST /api/jobs/<id>/cancel` destroys the instance and charges the fee (once rented) and the time since the config
+  GET.
+
+Every end settles D1 once (`settleJob`), destroys every instance labelled with the search (including ones a failed
+create may have rented) and only then frees the slot. Browsers follow a search on
+`GET /api/jobs/<id>/events` (server-sent `data: <JobEvent JSON>` messages, `lib/job-events.ts`), which replays the
+status, the latest progress and every hit on connect and closes after `end`. The runner token is 32 random bytes per
+attempt; the room keeps only its SHA-256.
+
+The custom Worker entry `worker/index.ts` re-exports vinext's fetch handler (`vinext/server/fetch-handler`) next to
+the two Durable Object classes and the `scheduled` handler. The cron (`lib/server/sweeper.ts`) destroys
+`dst-seedfinder:*` instances whose search is over or unknown, stops and settles searches that are stuck whatever their
+room says (running 10 minutes past their time limit, or queued/starting for 30 minutes), drops Dispatcher entries of
+searches that aren't active in D1 any more, and pokes rooms of searches that have gone quiet (settling them when their
+room is empty).
+
+`POST /api/jobs` refuses bodies over 512 KiB and requests a browser marks as cross-origin (`Sec-Fetch-Site`), as do
+`POST /api/jobs/<id>/cancel` and `POST /api/auth/logout`.
