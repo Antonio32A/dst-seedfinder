@@ -1,0 +1,565 @@
+{
+ "source": "../harness/out/out_1M.txt",
+ "worlds": 1000000,
+ "pieces": {
+  "BathbombedHotspring": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 1,
+   "count_histogram": {
+    "1": 1000000
+   }
+  },
+  "Beefalo Farm": {
+   "worlds": 195780,
+   "share": 0.19578,
+   "max": 1,
+   "count_histogram": {
+    "1": 195780
+   }
+  },
+  "CaveEntrance": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 10,
+   "count_histogram": {
+    "10": 1000000
+   }
+  },
+  "CookingBoon": {
+   "worlds": 347302,
+   "share": 0.347302,
+   "max": 5,
+   "count_histogram": {
+    "1": 283684,
+    "2": 56226,
+    "3": 6801,
+    "4": 555,
+    "5": 36
+   }
+  },
+  "Dev Graveyard": {
+   "worlds": 55919,
+   "share": 0.055919,
+   "max": 1,
+   "count_histogram": {
+    "1": 55919
+   }
+  },
+  "FarmingBoon": {
+   "worlds": 346633,
+   "share": 0.346633,
+   "max": 6,
+   "count_histogram": {
+    "1": 283318,
+    "2": 55915,
+    "3": 6823,
+    "4": 551,
+    "5": 25,
+    "6": 1
+   }
+  },
+  "Fire Hounds": {
+   "worlds": 98009,
+   "share": 0.098009,
+   "max": 1,
+   "count_histogram": {
+    "1": 98009
+   }
+  },
+  "FishingBoon": {
+   "worlds": 347396,
+   "share": 0.347396,
+   "max": 7,
+   "count_histogram": {
+    "1": 283695,
+    "2": 56323,
+    "3": 6822,
+    "4": 522,
+    "5": 31,
+    "6": 2,
+    "7": 1
+   }
+  },
+  "GrassBoon": {
+   "worlds": 347226,
+   "share": 0.347226,
+   "max": 6,
+   "count_histogram": {
+    "1": 283660,
+    "2": 56215,
+    "3": 6801,
+    "4": 525,
+    "5": 23,
+    "6": 2
+   }
+  },
+  "Ice Hounds": {
+   "worlds": 98336,
+   "share": 0.098336,
+   "max": 1,
+   "count_histogram": {
+    "1": 98336
+   }
+  },
+  "Level2GrassBoon": {
+   "worlds": 347102,
+   "share": 0.347102,
+   "max": 5,
+   "count_histogram": {
+    "1": 283639,
+    "2": 55946,
+    "3": 6903,
+    "4": 584,
+    "5": 30
+   }
+  },
+  "Level2RockBoon": {
+   "worlds": 347407,
+   "share": 0.347407,
+   "max": 6,
+   "count_histogram": {
+    "1": 283853,
+    "2": 56164,
+    "3": 6822,
+    "4": 541,
+    "5": 25,
+    "6": 2
+   }
+  },
+  "Level2TwigsBoon": {
+   "worlds": 347508,
+   "share": 0.347508,
+   "max": 7,
+   "count_histogram": {
+    "1": 283915,
+    "2": 56336,
+    "3": 6691,
+    "4": 547,
+    "5": 17,
+    "6": 1,
+    "7": 1
+   }
+  },
+  "Level2WoodBoon": {
+   "worlds": 347610,
+   "share": 0.34761,
+   "max": 5,
+   "count_histogram": {
+    "1": 283997,
+    "2": 56200,
+    "3": 6841,
+    "4": 543,
+    "5": 29
+   }
+  },
+  "Level4Boon": {
+   "worlds": 53174,
+   "share": 0.053174,
+   "max": 3,
+   "count_histogram": {
+    "1": 51858,
+    "2": 1290,
+    "3": 26
+   }
+  },
+  "MiscBoon": {
+   "worlds": 347605,
+   "share": 0.347605,
+   "max": 5,
+   "count_histogram": {
+    "1": 283737,
+    "2": 56508,
+    "3": 6793,
+    "4": 545,
+    "5": 22
+   }
+  },
+  "MoonAltarRockGlass": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 1,
+   "count_histogram": {
+    "1": 1000000
+   }
+  },
+  "MoonAltarRockIdol": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 1,
+   "count_histogram": {
+    "1": 1000000
+   }
+  },
+  "MoonAltarRockSeed": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 1,
+   "count_histogram": {
+    "1": 1000000
+   }
+  },
+  "MoonFissures": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 1,
+   "count_histogram": {
+    "1": 1000000
+   }
+  },
+  "MooseNest": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 9,
+   "count_histogram": {
+    "9": 1000000
+   }
+  },
+  "ResurrectionStone": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 2,
+   "count_histogram": {
+    "2": 1000000
+   }
+  },
+  "RockBoon": {
+   "worlds": 347267,
+   "share": 0.347267,
+   "max": 6,
+   "count_histogram": {
+    "1": 283795,
+    "2": 56087,
+    "3": 6849,
+    "4": 501,
+    "5": 34,
+    "6": 1
+   }
+  },
+  "Rotted Base": {
+   "worlds": 196258,
+   "share": 0.196258,
+   "max": 1,
+   "count_histogram": {
+    "1": 196258
+   }
+  },
+  "Sleeping Spider": {
+   "worlds": 196249,
+   "share": 0.196249,
+   "max": 1,
+   "count_histogram": {
+    "1": 196249
+   }
+  },
+  "TwigsBoon": {
+   "worlds": 347719,
+   "share": 0.347719,
+   "max": 5,
+   "count_histogram": {
+    "1": 284052,
+    "2": 56272,
+    "3": 6848,
+    "4": 515,
+    "5": 32
+   }
+  },
+  "WeaponBoon": {
+   "worlds": 347407,
+   "share": 0.347407,
+   "max": 5,
+   "count_histogram": {
+    "1": 283646,
+    "2": 56346,
+    "3": 6839,
+    "4": 549,
+    "5": 27
+   }
+  },
+  "WoodBoon": {
+   "worlds": 347081,
+   "share": 0.347081,
+   "max": 6,
+   "count_histogram": {
+    "1": 283471,
+    "2": 56127,
+    "3": 6928,
+    "4": 528,
+    "5": 26,
+    "6": 1
+   }
+  },
+  "WormholeGrass": {
+   "worlds": 1000000,
+   "share": 1.0,
+   "max": 8,
+   "count_histogram": {
+    "8": 1000000
+   }
+  },
+  "grass_spots": {
+   "worlds": 23673,
+   "share": 0.023673,
+   "max": 1,
+   "count_histogram": {
+    "1": 23673
+   }
+  },
+  "hound_rocks": {
+   "worlds": 104763,
+   "share": 0.104763,
+   "max": 1,
+   "count_histogram": {
+    "1": 104763
+   }
+  },
+  "leif_forest": {
+   "worlds": 52636,
+   "share": 0.052636,
+   "max": 1,
+   "count_histogram": {
+    "1": 52636
+   }
+  },
+  "pigguard_berries": {
+   "worlds": 35169,
+   "share": 0.035169,
+   "max": 1,
+   "count_histogram": {
+    "1": 35169
+   }
+  },
+  "pigguard_berries_easy": {
+   "worlds": 34887,
+   "share": 0.034887,
+   "max": 1,
+   "count_histogram": {
+    "1": 34887
+   }
+  },
+  "pigguard_grass": {
+   "worlds": 52204,
+   "share": 0.052204,
+   "max": 1,
+   "count_histogram": {
+    "1": 52204
+   }
+  },
+  "pigguard_grass_easy": {
+   "worlds": 52137,
+   "share": 0.052137,
+   "max": 1,
+   "count_histogram": {
+    "1": 52137
+   }
+  },
+  "skeleton_camper": {
+   "worlds": 35865,
+   "share": 0.035865,
+   "max": 1,
+   "count_histogram": {
+    "1": 35865
+   }
+  },
+  "skeleton_construction": {
+   "worlds": 7900,
+   "share": 0.0079,
+   "max": 1,
+   "count_histogram": {
+    "1": 7900
+   }
+  },
+  "skeleton_dapper": {
+   "worlds": 312,
+   "share": 0.000312,
+   "max": 1,
+   "count_histogram": {
+    "1": 312
+   }
+  },
+  "skeleton_entomologist": {
+   "worlds": 23612,
+   "share": 0.023612,
+   "max": 1,
+   "count_histogram": {
+    "1": 23612
+   }
+  },
+  "skeleton_farmer": {
+   "worlds": 23820,
+   "share": 0.02382,
+   "max": 1,
+   "count_histogram": {
+    "1": 23820
+   }
+  },
+  "skeleton_fisher": {
+   "worlds": 7859,
+   "share": 0.007859,
+   "max": 1,
+   "count_histogram": {
+    "1": 7859
+   }
+  },
+  "skeleton_graverobber": {
+   "worlds": 7965,
+   "share": 0.007965,
+   "max": 1,
+   "count_histogram": {
+    "1": 7965
+   }
+  },
+  "skeleton_hunter": {
+   "worlds": 35481,
+   "share": 0.035481,
+   "max": 1,
+   "count_histogram": {
+    "1": 35481
+   }
+  },
+  "skeleton_hunter_swamp": {
+   "worlds": 71945,
+   "share": 0.071945,
+   "max": 1,
+   "count_histogram": {
+    "1": 71945
+   }
+  },
+  "skeleton_lumberjack": {
+   "worlds": 35379,
+   "share": 0.035379,
+   "max": 1,
+   "count_histogram": {
+    "1": 35379
+   }
+  },
+  "skeleton_miner": {
+   "worlds": 71233,
+   "share": 0.071233,
+   "max": 1,
+   "count_histogram": {
+    "1": 71233
+   }
+  },
+  "skeleton_miner_dirt": {
+   "worlds": 71417,
+   "share": 0.071417,
+   "max": 1,
+   "count_histogram": {
+    "1": 71417
+   }
+  },
+  "skeleton_night_hunter": {
+   "worlds": 7745,
+   "share": 0.007745,
+   "max": 1,
+   "count_histogram": {
+    "1": 7745
+   }
+  },
+  "skeleton_rain_coat": {
+   "worlds": 7915,
+   "share": 0.007915,
+   "max": 1,
+   "count_histogram": {
+    "1": 7915
+   }
+  },
+  "skeleton_researchlab1": {
+   "worlds": 388,
+   "share": 0.000388,
+   "max": 1,
+   "count_histogram": {
+    "1": 388
+   }
+  },
+  "skeleton_researchlab2": {
+   "worlds": 369,
+   "share": 0.000369,
+   "max": 1,
+   "count_histogram": {
+    "1": 369
+   }
+  },
+  "skeleton_researchlab3": {
+   "worlds": 334,
+   "share": 0.000334,
+   "max": 1,
+   "count_histogram": {
+    "1": 334
+   }
+  },
+  "skeleton_summer": {
+   "worlds": 8053,
+   "share": 0.008053,
+   "max": 1,
+   "count_histogram": {
+    "1": 8053
+   }
+  },
+  "skeleton_trapper": {
+   "worlds": 35672,
+   "share": 0.035672,
+   "max": 1,
+   "count_histogram": {
+    "1": 35672
+   }
+  },
+  "skeleton_warrior": {
+   "worlds": 7980,
+   "share": 0.00798,
+   "max": 1,
+   "count_histogram": {
+    "1": 7980
+   }
+  },
+  "skeleton_wizard_fire": {
+   "worlds": 7849,
+   "share": 0.007849,
+   "max": 1,
+   "count_histogram": {
+    "1": 7849
+   }
+  },
+  "skeleton_wizard_ice": {
+   "worlds": 7787,
+   "share": 0.007787,
+   "max": 1,
+   "count_histogram": {
+    "1": 7787
+   }
+  },
+  "spider_forest": {
+   "worlds": 51920,
+   "share": 0.05192,
+   "max": 1,
+   "count_histogram": {
+    "1": 51920
+   }
+  },
+  "tallbird_rocks": {
+   "worlds": 105153,
+   "share": 0.105153,
+   "max": 1,
+   "count_histogram": {
+    "1": 105153
+   }
+  },
+  "tenticle_reeds": {
+   "worlds": 104852,
+   "share": 0.104852,
+   "max": 1,
+   "count_histogram": {
+    "1": 104852
+   }
+  },
+  "wasphive_grass_easy": {
+   "worlds": 34775,
+   "share": 0.034775,
+   "max": 1,
+   "count_histogram": {
+    "1": 34775
+   }
+  }
+ }
+}

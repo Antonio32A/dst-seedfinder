@@ -10,7 +10,7 @@ import ../data/picks.bend as PK
 import ../data/rooms.bend as RM
 
 # The room closures of ConvertGround / PopulateVoronoi (data/closures.bend category 1, bodies in
-# .scratch/port/gen/out/closures.json) and forest_map.lua's pickspawnprefab.
+# scripts/gen/out/closures.json) and forest_map.lua's pickspawnprefab.
 
 def draw_pair(got: U32 & R.Rng, +offset: U32) -> U32 & R.Rng:
   (+v, rng) = got

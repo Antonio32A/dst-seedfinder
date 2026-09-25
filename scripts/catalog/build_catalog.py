@@ -19,6 +19,7 @@ import zipfile
 HERE = os.path.dirname(os.path.realpath(__file__))
 SCRATCH = os.path.join(os.path.dirname(os.path.dirname(HERE)), ".scratch")
 WORK = os.path.join(SCRATCH, "catalog")
+INPUTS = os.path.join(HERE, "inputs")
 SCRIPTS = os.path.join(SCRATCH, "game-scripts")
 GAME_DIR = os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together")
 
@@ -57,15 +58,36 @@ def real_world_sources():
         }
 
 
+def collect_inputs():
+    """Snapshots every input that lives outside the repository into inputs/: the world summaries of every source,
+    the static extraction and the level statistics."""
+    os.makedirs(INPUTS, exist_ok=True)
+    real = list(real_world_sources())
+    emulator = [("emulator", p, load_json(p)) for p in sorted(glob.glob(os.path.join(WORK, "worlds/*.json")))]
+    with open(os.path.join(INPUTS, "worlds.jsonl"), "w") as f:
+        for label, path, w in real + emulator:
+            f.write(json.dumps({"source": label, "path": os.path.relpath(path, SCRATCH), "summary": w}, sort_keys=True) + "\n")
+    for name in ["static.json", "level_table_stats.json", "level_world_stats.json"]:
+        path = os.path.join(WORK, "build", name)
+        if os.path.exists(path):
+            with open(path) as src, open(os.path.join(INPUTS, name), "w") as dst:
+                dst.write(src.read())
+
+
+def world_records():
+    with open(os.path.join(INPUTS, "worlds.jsonl")) as f:
+        for line in f:
+            r = json.loads(line)
+            yield r["source"], r["path"], r["summary"]
+
+
 def load_worlds():
     """One entry per seed. Real-game sources win over the emulator; disagreements are reported."""
     by_seed = {}
     disagreements = []
     per_source = collections.Counter()
     failed = []
-    real = list(real_world_sources())
-    emulator = [("emulator", p, load_json(p)) for p in sorted(glob.glob(os.path.join(WORK, "worlds/*.json")))]
-    for label, path, w in real + emulator:
+    for label, path, w in world_records():
         if w.get("status") != "ok" or not w.get("entity_counts"):
             failed.append({"seed": w.get("seed"), "source": label, "status": w.get("status")})
             continue
@@ -541,7 +563,7 @@ def setpiece_entry(static, name, info, layout_reach, emp_setpieces, ss_names):
 
 
 def optional_json(name):
-    path = os.path.join(WORK, "build", name)
+    path = os.path.join(INPUTS, name)
     return load_json(path) if os.path.exists(path) else None
 
 
@@ -794,8 +816,12 @@ def game_build():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(HERE, "catalog.json"))
-    ap.add_argument("--static", default=os.path.join(WORK, "build/static.json"))
+    ap.add_argument("--static", default=os.path.join(INPUTS, "static.json"))
+    ap.add_argument("--collect", action="store_true", help="only refresh inputs/ from .scratch")
     args = ap.parse_args()
+    if args.collect:
+        collect_inputs()
+        return
 
     static = load_json(args.static)
     worlds, per_source, disagreements, failed = load_worlds()

@@ -7,7 +7,7 @@ bit-identical to the game (build 747465) on Windows and Linux servers. Only the 
 | Folder | Contents |
 |---|---|
 | `seedfinder/` | The Bend sources. `seedfinder/README.md` documents the CLI, the search config and the code layout. |
-| `scripts/` | Build and proof scripts, the data generators (`gen/`), the prefab catalog (`catalog/`), the Lua harness the generators run under (`harness/`). |
+| `scripts/` | Build and proof scripts, the data generators (`gen/`), the prefab catalog (`catalog/`), the Lua harness the generators run under (`harness/`), and the tools that dump real worlds from the game (`groundtruth/`). |
 | `website/` | The web UI (`website/README.md`). |
 
 # Requirements
@@ -84,6 +84,18 @@ from the Linux install. `DST_WINDOWS_EXE` optionally points at the Windows serve
 Perlin table.
 
 `scripts/catalog/catalog.json` is the prefab catalog behind `seedfinder/data/catalog.bend`, `world_catalog.bend` and
-the website's prefab lists. `scripts/catalog/build_catalog.py` rebuilds it from a static extraction of the game scripts
-plus prefab statistics from generated worlds. Those statistics come from the validation emulator, which is not part of
-this repository, so a full `scripts/catalog/regen.sh` only works where that emulator is set up.
+the website's prefab lists. `python3 scripts/catalog/build_catalog.py` rebuilds it from the game install plus the
+snapshot in `scripts/catalog/inputs/`: the static extraction of the game scripts, level-table statistics and per-world
+prefab summaries. Refreshing that snapshot (`scripts/catalog/regen.sh`) needs the validation emulator, which is not
+part of this repository.
+
+# Dumping real worlds
+
+`scripts/groundtruth/` generates worlds on the real dedicated server and dumps them, to validate the port after a game
+update or to feed `seedfinder world find --worlds` / `world eval`:
+
+```sh
+ln -s "$PWD/scripts/groundtruth/groundtruth-worldgen" "<DST install>/mods/"   # once
+scripts/groundtruth/run_worldgen.sh fresh 1-10          # one server launch per seed -> .scratch/groundtruth/data/worlds/<seed>.json
+python3 scripts/groundtruth/world_dump.py --platform linux .scratch/groundtruth/data/worlds/1.json 1.dstw
+```

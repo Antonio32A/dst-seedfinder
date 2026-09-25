@@ -54,7 +54,7 @@ def usage() -> IO(Unit):
   IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] | seedfinder setpiece show FROM [TO] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--worlds DIR] | seedfinder world show FROM [TO] [--config filters.json] | seedfinder gen SEED [TO] [--platform windows|linux] [--times]")
 
 def trace_moved() -> IO(Unit):
-  IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] (.scratch/port/tools/build.sh trace)")
+  IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] (scripts/build.sh trace)")
 
 def setpiece(+args: List<&2, String>) -> IO(Unit):
   +mode = A.word(args, 0n)
