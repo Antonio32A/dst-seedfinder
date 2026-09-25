@@ -1,0 +1,7 @@
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
+# DISCORD_REDIRECT_URI=http://localhost:3000/api/auth/callback
+# RUNPOD_ENDPOINT_ID=
+# RUNPOD_API_KEY=
+# RUNPOD_WEBHOOK_SECRET=
+# PUBLIC_ORIGIN=https://your-tunnel.example.com
