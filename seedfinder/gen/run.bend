@@ -2,7 +2,6 @@ import Base
 import ../rng/pcg.bend as R
 import ../trace/canon.bend as CN
 import ../worldsim/grid.bend as GR
-import ../worldsim/layout/kk.bend as KK
 import ../ocean/ents.bend as OE
 import ./generate.bend as GE
 import ./job.bend as GJ
@@ -99,22 +98,24 @@ def stage_of(+at: GJ.Where) -> U32:
     case GJ.Where{+stage, _}:
       stage
 
-def decided(final: Bool, job: GJ.Job, +at: GJ.Where, +since: Nat, +seed: U32, +windows: Bool, +ms: Nat) -> Stepped:
+def decided(final: Bool, job: GJ.Job, +at: GJ.Where, +since: Nat, +seed: U32, +windows: Bool, +native: Bool, +ms: Nat) -> IO(Stepped):
   match final:
     case True{}:
-      Stopped{summary(job, seed, windows, ms)}
+      IO.pure(Stepped, Stopped{summary(job, seed, windows, ms)})
     case False{}:
-      Going{Drive{GJ.advance(KK.run_fuel(), job), at, since}}
+      do IO<Stepped>:
+        next : GJ.Job <- GJ.advance_io(native, job)
+        return Going{Drive{next, at, since}}
 
-def stepped(got: GJ.Job & GJ.Where, +times: Bool, +seed: U32, +windows: Bool, +prev: GJ.Where, +since: Nat, +now: Nat, +start: Nat) -> IO(Stepped):
+def stepped(got: GJ.Job & GJ.Where, +times: Bool, +seed: U32, +windows: Bool, +native: Bool, +prev: GJ.Where, +since: Nat, +now: Nat, +start: Nat) -> IO(Stepped):
   (job, +at) = got
   +moved = Bool.not(same(prev, at))
   +final = GJ.settled(stage_of(at))
   do IO<Stepped>:
     print_if(times && moved && (stage_of(prev) < 9 : U32), stage_line(seed, prev, Nat.sub(now, since)))
-    return decided(final, job, at, Bool.pick(Nat, moved, now, since), seed, windows, Nat.sub(now, start))
+    decided(final, job, at, Bool.pick(Nat, moved, now, since), seed, windows, native, Nat.sub(now, start))
 
-def drive(fuel: Nat, st: Stepped, +times: Bool, +seed: U32, +windows: Bool, +start: Nat) -> IO(Unit):
+def drive(fuel: Nat, st: Stepped, +times: Bool, +seed: U32, +windows: Bool, +native: Bool, +start: Nat) -> IO(Unit):
   match fuel:
     case 0n:
       IO.print("gen: out of fuel")
@@ -125,20 +126,20 @@ def drive(fuel: Nat, st: Stepped, +times: Bool, +seed: U32, +windows: Bool, +sta
         case Going{Drive{job, +at, +since}}:
           do IO<Unit>:
             +now : Nat <- IO.now()
-            next : Stepped <- stepped(GJ.stage(job), times, seed, windows, at, since, now, start)
-            drive(f, next, times, seed, windows, start)
+            next : Stepped <- stepped(GJ.stage(job), times, seed, windows, native, at, since, now, start)
+            drive(f, next, times, seed, windows, native, start)
 
-# Generates one seed and prints its lines.
-def seed(+seed: U32, +windows: Bool, +times: Bool) -> IO(Unit):
+# Generates one seed and prints its lines (KK passes from LO.solve: native or kk.bend).
+def seed(+seed: U32, +windows: Bool, +times: Bool, +native: Bool) -> IO(Unit):
   do IO<Unit>:
     +start : Nat <- IO.now()
-    drive(8192n, Going{Drive{GJ.start(seed, windows), GJ.Where{9, 0}, start}}, times, seed, windows, start)
+    drive(8192n, Going{Drive{GJ.start(seed, windows), GJ.Where{9, 0}, start}}, times, seed, windows, native, start)
 
-def seeds(n: Nat, +from: U32, +windows: Bool, +times: Bool) -> IO(Unit):
+def seeds(n: Nat, +from: U32, +windows: Bool, +times: Bool, +native: Bool) -> IO(Unit):
   match n:
     case 0n:
       IO.pure(Unit, Unit{})
     case 1n+p:
       do IO<Unit>:
-        seed(from, windows, times)
-        seeds(p, (from + 1 : U32), windows, times)
+        seed(from, windows, times, native)
+        seeds(p, (from + 1 : U32), windows, times, native)

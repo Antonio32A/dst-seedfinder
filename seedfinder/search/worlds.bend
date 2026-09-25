@@ -293,7 +293,7 @@ def hunt(fuel: Nat, h: Hunt, +ctx: Ctx) -> IO(Unit):
 # world find --worlds DIR for a config with parts B-E (spec search-v1.md section 8 output).
 def run(+q: A.Query, +config: CF.Config, +dir: String) -> IO(Unit):
   match q:
-    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _}:
+    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         hunt(Nat.add(Nat.add(total, Nat.div(total, chunk_size())), 4n), Hunt{start, total, 0n, 0, Nil{}, 0, 0, Nil{}},

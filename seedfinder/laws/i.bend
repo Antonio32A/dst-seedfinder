@@ -64,3 +64,17 @@ law gen_threads_cpu_list:
 
 def gen_threads_cpu_list():
   {==}
+
+# The default thread count respects the cgroup CPU quota: cpu.max "1360000 100000" (13.6 cores) caps 64 CPUs at 14.
+law gen_threads_quota:
+  {STH.capped(64, STH.quota_cores(["1360000", "100000"])) == 14 : U32}
+
+def gen_threads_quota():
+  {==}
+
+# cpu.max "max 100000" is no quota: the online CPUs stay.
+law gen_threads_no_quota:
+  {STH.capped(64, STH.quota_cores(["max", "100000"])) == 64 : U32}
+
+def gen_threads_no_quota():
+  {==}

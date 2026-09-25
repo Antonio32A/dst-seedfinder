@@ -20,11 +20,11 @@ settings are supported (forest, preset SURVIVAL_TOGETHER, every world generation
 scripts/build.sh                               # bend main.bend -o .scratch/build/seedfinder; needs clang 14+
 .scratch/build/seedfinder --threads 22 -- setpiece find [FROM] [TO] [filters...]
 .scratch/build/seedfinder setpiece show FROM [TO]
-.scratch/build/seedfinder --threads 22 -- world find [--start-seed S] [--limit N] [--time-limit T] [--json] [--config filters.json] [--platform windows|linux]
+.scratch/build/seedfinder --threads 22 -- world find [--start-seed S] [--limit N] [--time-limit T] [--json] [--config filters.json] [--platform windows|linux] [--kk native|bend]
 .scratch/build/seedfinder world show FROM [TO] [--config filters.json]
 .scratch/build/seedfinder --threads 16 -- world find FROM TO --config filters.json --worlds DUMPS [--json] [--limit N]
 .scratch/build/seedfinder --threads 16 -- world eval --config filters.json --world DUMP.dstw [--fast]
-.scratch/build/seedfinder --threads 1 gen SEED [TO] [--platform windows|linux] [--times]
+.scratch/build/seedfinder --threads 1 gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]
 scripts/build.sh trace                         # debug binary: bend trace.bend -o .scratch/build/seedfinder_trace
 .scratch/build/seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
 ```
@@ -92,18 +92,23 @@ multi-threaded runs fail with `bend: reservation failed`.
   returns after ~0.52 s. Progress lines go to stderr; stdout is buffered until exit.
 - A config with parts B-E (counts, distances, tiles, routes) is searched on worlds generated in memory
   (`search/generated.bend`), on the config's platform (or `--platform`). Part A still rejects seeds first, at the
-  level-table speed; only its candidates are generated. Candidates are generated one per worker thread
-  (`--threads`, default the CPU count) in fuel-bounded rounds of about 0.5-2 s: every round advances each
-  candidate's worldgen by the same budget, so a slow seed (the layout's heavy tail: a few seeds take minutes) holds
-  only its own thread. A finished world is decided at once (the first entry whose parts A-E hold; a seed whose
-  worldgen gives up after 5 attempts never matches), and decided seeds are released in scan order, so every hit
-  line is printed once it and all earlier seeds are decided. With `--time-limit` the clock is checked between
-  rounds: the round in flight at the deadline and every candidate not yet finished are dropped, and `scanned` /
-  `next_seed` stop before the first undecided seed, so `--start-seed next_seed` continues without gaps. Expect up to
-  one round (~2 s) past the limit, and nothing decided in a limit shorter than one world (~5-15 s per candidate).
-  Speed (`counts.json`, Windows seeds 1..64, every seed generated, output identical at every thread count): 1 thread
-  0.18 seeds/s (~5.6 s per world), 8 threads 0.58 seeds/s, 16 threads 0.96 seeds/s (machine load ~10-25 from other
-  work, so the multi-thread numbers are pessimistic). Peak RSS 114 MB at 1 thread, 706 MB at 16.
+  level-table speed; only its candidates are generated, two per worker thread at once (`--threads`; the default
+  is the CPU count capped by the cgroup CPU quota). The layout (Kamada-Kawai, most of a world's time) is native C
+  (`native/`, `--kk bend` for the Bend port): each KK pass runs as its own computation on the runtime's IO helper
+  threads, while rounds of the rest of worldgen (storygen, Voronoi, tiles, land, ocean) and the filters run on the
+  worker threads for the other seeds; a round takes the passes finished by then and never waits for one, so a slow
+  pass (the layout's heavy tail) holds only its own seed. A finished world is decided at once (the first entry whose
+  parts A-E hold; a seed whose worldgen gives up after 5 attempts never matches), and decided seeds are released in
+  scan order, so every hit line is printed once it and all earlier seeds are decided, and the hits never depend on
+  threads, engine or timing. Each round runs one CPU stage per seed, split across the threads by the stages'
+  estimated cost; the oldest seeds (one per thread) run on to their next KK pass, since they hold back the release of
+  later hits. Slots: 8 per thread, a quarter of them in the first 8 s. With `--time-limit` the clock is checked
+  between rounds (a round takes ~0.1-1 s): every candidate not yet finished is dropped, and `scanned` / `next_seed`
+  stop before the first undecided seed, so `--start-seed next_seed` continues without gaps.
+  Speed (14 threads, 13.6-core VM, output identical to the pre-native build): `counts.json` Windows seeds 1..256
+  8.9 seeds/s (was 0.45); a config with 1.4% hits (Windows, beefalo >= 40, chess pieces >= 10), seeds 1..1024
+  10.8 seeds/s, first hit (seed 132) 20 s (was 250 s). Peak RSS ~1.6 GB. A KK pass is ~50 ms native (~2.5 s in
+  kk.bend); the rest of a world is ~0.3-0.5 s of one thread.
 - `world find FROM [TO]` is a range mode for tests: FROM..TO inclusive (TO < FROM wraps; no TO means the whole
   space), with the same limit, time limit and output. FROM can't be combined with `--start-seed`.
 - `world show` only validates the config. With no `--config`, everything matches.
@@ -121,8 +126,8 @@ multi-threaded runs fail with `bend: reservation failed`.
   attempt as worldgen_main retries it) of each seed and prints
   `gen seed=S platform=P a=A outcome=world|gaveup|crashed ctr=C ents=N tiles=H ms=T` (the RNG counter at the end
   of Generate, the savedata.ents count and the encoded tile map's FNV-1a digest); `--times` adds one
-  `stage seed=S a=A name=NAME ms=T` line per stage of every attempt. About 5-8 s per seed on one thread (KK is
-  ~95% of it).
+  `stage seed=S a=A name=NAME ms=T` line per stage of every attempt. About 0.3-0.6 s per seed on one thread with the
+  native KK (5-8 s with `--kk bend`, KK ~95% of it).
 - Example: `seedfinder --threads 22 -- world find --start-seed 123 --limit 10 --time-limit 30 --json --config .scratch/world/configs/example.json`
 
 ### JSON config
@@ -221,9 +226,10 @@ are the RNG stream and stock Lua 5.1 table orders, so the finder replays the RNG
 | `level/` | the level table: `prefix.bend` (prefab swaps, ChooseTasks), `setpieces.bend` (AddSetPeices), `choose.bend` (ChooseSetPieces), `summary.bend` (the `world show` JSON) |
 | `filters/` | `json.bend` (reader), `config.bend` (search config), `setpiece.bend` (`setpiece find` filters), `world.bend` (the world the filters read) and the part B-E evaluators (`evaluate.bend`, `metric.bend`, `walk.bend`, `routes.bend`, ...) |
 | `storygen/`, `worldsim/`, `populate/`, `ocean/`, `f64/`, `f32/`, `xint/`, `lua/`, `stl/` | the worldgen port: storygen, KK layout, Voronoi, tiles, land and ocean population, soft float, Lua and libstdc++ emulation |
-| `search/`, `cli/` | `setpiece`/`world` scans, rounds and output (`generated.bend`: the search on generated worlds, `order.bend`: scan order, `threads.bend`: the runtime's thread count; `worlds.bend`: on world dumps); argument parsing and file reading |
+| `search/`, `cli/` | `setpiece`/`world` scans, rounds and output (`generated.bend`: the search on generated worlds, `order.bend`: scan order, `threads.bend`: the runtime's thread count (capped by the cgroup CPU quota); `worlds.bend`: on world dumps); argument parsing and file reading |
+| `native/` | the KK layout in C (the one part not in Bend), a foreign IO effect reached through `gen/layout.bend`'s `solve`; `worldsim/layout/kk.bend` is its reference |
 | `data/` | generated tables (`catalog.bend`, `world_catalog.bend`), never edited by hand: `scripts/gen/regen.sh` rewrites them |
-| `gen/` | the end-to-end generator: `generate.bend` (stage functions of forest_map.Generate), `job.bend` (the resumable per-seed job state machine, `advance(fuel, job)`, with the ocean stage and its retries), `graph.bend`/`tags.bend`/`world.bend` (the Boost graph, ApplyPoisonTag, the tile world), `savedata.bend`/`centi.bend` (the filters' world of a generated world, positions rounded as the savedata dump prints them), `run.bend` (`seedfinder gen`), `trace.bend` (trace stage `gen`) |
+| `gen/` | the end-to-end generator: `generate.bend` (stage functions of forest_map.Generate), `job.bend` (the resumable per-seed job state machine: `step`, `layout`/`laid` at the KK passes; the ocean stage and its retries), `layout.bend` (a KK pass and its engines: `solve`, native C or kk.bend), `graph.bend`/`tags.bend`/`world.bend` (the Boost graph, ApplyPoisonTag, the tile world), `savedata.bend`/`centi.bend` (the filters' world of a generated world, positions rounded as the savedata dump prints them), `run.bend` (`seedfinder gen`), `trace.bend` (trace stage `gen`) |
 | `trace/`, `trace.bend` | `seedfinder_trace trace` (the debug binary), the canonical dumps the worldgen port is checked with |
 | `LAWS.bend`, `PROOF.bend`, `laws/` | golden-value laws with their proofs (`LAWS.bend`: root, `laws/*.bend`: each port lane); `PROOF.bend` imports them all |
 

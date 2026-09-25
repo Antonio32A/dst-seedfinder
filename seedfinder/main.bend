@@ -14,13 +14,13 @@ import ./gen/run.bend as GN
 #   seedfinder setpiece show FROM [TO]
 #     set pieces of seeds FROM..TO, one JSON line each
 #   seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json]
-#                         [--platform windows|linux] [--worlds DIR]
+#                         [--platform windows|linux] [--worlds DIR] [--kk native|bend]
 #     parallel scan from S (or FROM, default 0) up to TO or once around the 2^32 seeds, stopping at N hits
 #     (1..100, default 100) or when the time limit is up (.scratch/spec/search-v1.md section 8); parts B-E are
 #     decided on worlds generated in memory (or on DIR/<seed>.dstw dumps with --worlds)
 #   seedfinder world show FROM [TO] [--config filters.json]
 #     level table of seeds FROM..TO, one JSON line each (the config is only validated)
-#   seedfinder gen SEED [TO] [--platform windows|linux] [--times]
+#   seedfinder gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]
 #     forest worldgen of seeds SEED..TO, one line per seed (`--times`: one line per stage of every attempt)
 #   the worldgen trace stages are in the debug binary built from trace.bend (seedfinder_trace trace ...)
 
@@ -48,10 +48,12 @@ def gen(+args: List<&2, String>) -> IO(Unit):
   +from = A.arg_u32(args, 0n, 0)
   +to = A.arg_u32(args, 1n, from)
   +windows = Bool.not(String.eq(Maybe.default(&2, String, A.flag_value(args, "--platform"), "windows"), "linux"))
-  GN.seeds(Nat.add(U32.to_nat((to - from : U32)), 1n), from, windows, CF.is_member(args, "--times"))
+  do IO<Unit>:
+    +native : Bool <- IO.pass(Bool, A.kk_flag(A.flag_value(args, "--kk")))
+    GN.seeds(Nat.add(U32.to_nat((to - from : U32)), 1n), from, windows, CF.is_member(args, "--times"), native)
 
 def usage() -> IO(Unit):
-  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] | seedfinder setpiece show FROM [TO] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--worlds DIR] | seedfinder world show FROM [TO] [--config filters.json] | seedfinder gen SEED [TO] [--platform windows|linux] [--times]")
+  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] | seedfinder setpiece show FROM [TO] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] | seedfinder gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]")
 
 def trace_moved() -> IO(Unit):
   IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] (scripts/build.sh trace)")

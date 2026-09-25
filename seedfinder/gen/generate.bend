@@ -6,8 +6,6 @@ import ../level/choose.bend as CH
 import ../storygen/graph.bend as GG
 import ../storygen/story.bend as GY
 import ../worldsim/layout/space.bend as KS
-import ../worldsim/layout/kk.bend as KK
-import ../worldsim/layout/rounds.bend as KR
 import ../worldsim/voronoi/diagram.bend as VD
 import ../worldsim/voronoi/builder.bend as VB
 import ../worldsim/voronoi/polygon.bend as VG
@@ -87,33 +85,6 @@ def first_rng(+c: Seed) -> R.Rng:
 def first_story(+c: Seed, +rng: R.Rng) -> GG.St:
   GY.build(level_of(c), rng)
 
-# A pass's KK job on the graph k: vertices first.. are new, `left` runs follow the first.
-def layout_job(ws: Array<U32>, +first: U32, +k: GK.Klei, +left: U32) -> KK.Job:
-  KK.pass_job(ws, first, GK.count_of(k), GK.arcs(k), left)
-
-def first_job(+k: GK.Klei, +left: U32) -> KK.Job:
-  layout_job(KS.new_workspace(), 0, k, left)
-
-# The job and whether it has runs to go.
-def live(job: KK.Job) -> KK.Job & Bool:
-  match job:
-    case KK.Job{ws, +n, +phase, +p, +delta, +clock, +ok}:
-      (KK.Job{ws, n, phase, p, delta, clock, ok}, U32.is_eq(KR.live_at(phase, clock), 1))
-
-def positioned(got: Array<U32> & List<&2, KS.Vec>, +n: U32, +phase: KK.Phase, +p: U32, +delta: FR.F64, +clock: KK.Clock, +ok: Bool) -> KK.Job & List<&2, KS.Vec>:
-  (ws, +ps) = got
-  (KK.Job{ws, n, phase, p, delta, clock, ok}, ps)
-
-def job_positions(job: KK.Job) -> KK.Job & List<&2, KS.Vec>:
-  match job:
-    case KK.Job{ws, +n, +phase, +p, +delta, +clock, +ok}:
-      positioned(KK.positions(ws, n), n, phase, p, delta, clock, ok)
-
-def job_workspace(job: KK.Job) -> Array<U32>:
-  match job:
-    case KK.Job{ws, _, _, _, _, _, _}:
-      ws
-
 def centroid_of(+p: VG.Poly) -> VG.P32:
   match p:
     case VG.Poly{_, +cx, +cy, _, _}:
@@ -173,9 +144,6 @@ def with_sites(+s: GG.St, +k: GK.Klei, +sites: List<&2, VG.SiteIn>) -> GG.St:
 # Story:AddRegionsToMainland to WorldGen_Commit, once VoronoiPass(100)'s sites are known.
 def second_story(+c: Seed, +s: GG.St, +k: GK.Klei, +sites: List<&2, VG.SiteIn>) -> GG.St:
   GY.finish(with_sites(s, k, sites), level_of(c))
-
-def second_job(ws: Array<U32>, +first: GK.Klei, +k: GK.Klei, +left: U32) -> KK.Job:
-  layout_job(ws, GK.count_of(first), k, left)
 
 def point_count(l: List<&2, VG.P32>, +acc: U32) -> U32:
   match l:

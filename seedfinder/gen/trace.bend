@@ -5,7 +5,6 @@ import ../trace/canon.bend as CN
 import ../storygen/graph.bend as GG
 import ../storygen/trace.bend as GX
 import ../worldsim/layout/space.bend as KS
-import ../worldsim/layout/kk.bend as KK
 import ../worldsim/voronoi/polygon.bend as VG
 import ../worldsim/voronoi/records.bend as VN
 import ../worldsim/commit.bend as CM
@@ -311,10 +310,10 @@ def entered(job: GJ.Job, +st: Tr) -> GJ.Job & List<&2, String>:
   match job:
     case GJ.JStart{+c, +a, +rng}:
       (GJ.JStart{c, a, rng}, Nil{})
-    case GJ.JFirst{+c, +a, +s, +k, kk}:
-      (GJ.JFirst{c, a, s, k, kk}, graph_lines(s, k, a, 1))
-    case GJ.JSecond{+c, +a, +s, +k, +first, kk}:
-      (GJ.JSecond{c, a, s, k, first, kk}, first_lines(st, s, k, a, first))
+    case GJ.JFirst{+c, +a, +s, +k}:
+      (GJ.JFirst{c, a, s, k}, graph_lines(s, k, a, 1))
+    case GJ.JSecond{+c, +a, +s, +k, +first}:
+      (GJ.JSecond{c, a, s, k, first}, first_lines(st, s, k, a, first))
     case GJ.JCommit{+c, +a, +s, +k, +second}:
       (GJ.JCommit{c, a, s, k, second}, second_lines(st, c, s, k, a, second))
     case GJ.JTiles{+c, +a, +s, +k, +size, +sites}:
@@ -370,7 +369,7 @@ def moved_final(final: Bool, job: GJ.Job) -> Step:
     case True{}:
       Stop{}
     case False{}:
-      Go{GJ.advance(KK.run_fuel(), job)}
+      Go{GJ.advance(job)}
 
 def visited(got: GJ.Job & Tr, +stage: U32) -> Tr & Step:
   (job, +st) = got

@@ -22,7 +22,7 @@ def word(+args: List<&2, String>, i: Nat) -> String:
   Maybe.default(&2, String, List.get(&2, String, args, i), "")
 
 def value_flags() -> List<&2, String>:
-  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform"]
+  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--kk"]
 
 def flag_value(args: List<&2, String>, +flag: String) -> Maybe<&2, String>:
   match args:
@@ -140,10 +140,19 @@ def platform_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
       Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "windows"), Done{1},
         Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "linux"), Done{2}, Fail{(2, "search: --platform must be windows or linux, got \"" ++ text ++ "\"")}))
 
+# The --kk flag: the KK engine, native (the C KK, the default) or bend (kk.bend, for validation).
+def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:
+  match m:
+    case None{}:
+      Done{True{}}
+    case Some{+text}:
+      Bool.pick(Result<&1, &1, U32 & String, Bool>, String.eq(text, "native"), Done{True{}},
+        Bool.pick(Result<&1, &1, U32 & String, Bool>, String.eq(text, "bend"), Done{False{}}, Fail{(2, "--kk must be native or bend, got \"" ++ text ++ "\"")}))
+
 # A world find query; `platform` overrides the config's platform (platform_flag), `worlds` is the --worlds folder of
-# pre-generated world dumps (<seed>.dstw).
+# pre-generated world dumps (<seed>.dstw), `native` the KK engine (kk_flag).
 type Query is Data:
-  Query{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Maybe<&2, String>, platform: U32, worlds: Maybe<&2, String>}
+  Query{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Maybe<&2, String>, platform: U32, worlds: Maybe<&2, String>, native: Bool}
 
 def at_most_two(+given: List<&2, String>) -> Result<&1, &1, U32 & String, Unit>:
   Bool.pick(Result<&1, &1, U32 & String, Unit>, Nat.is_le(List.length(&2, String, given), 2n), Done{Unit{}},
@@ -159,14 +168,15 @@ def query_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Query>:
     +limit : U32 <- limit_in_range(asked)
     +time_ms : Nat <- time_limit(flag_value(args, "--time-limit"))
     +platform : U32 <- platform_flag(flag_value(args, "--platform"))
-    return Query{start, total, limit, time_ms, CF.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds")}
+    +native : Bool <- kk_flag(flag_value(args, "--kk"))
+    return Query{start, total, limit, time_ms, CF.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native}
 
 def query_config(+q: Query) -> Maybe<&2, String>:
   match q:
-    case Query{_, _, _, _, _, config, _, _}:
+    case Query{_, _, _, _, _, config, _, _, _}:
       config
 
 def query_json(+q: Query) -> Bool:
   match q:
-    case Query{_, _, _, _, +json, _, _, _}:
+    case Query{_, _, _, _, +json, _, _, _, _}:
       json

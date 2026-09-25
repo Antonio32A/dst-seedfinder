@@ -61,7 +61,7 @@ def round_len(+stop: U32, +size: Nat, +left: Nat) -> Nat:
 
 def report(+q: A.Query, +entries: List<&2, CF.Criteria>, +scan: Scan) -> IO(Unit):
   match q:
-    case A.Query{+start, +total, _, _, json, _, +platform, _}:
+    case A.Query{+start, +total, _, _, json, _, +platform, _, _}:
       match scan:
         case Scan{_, +left, _, +found, +hits, +code, _}:
           RP.print_report(json, U32.is_ne(platform, 2), entries, hits, start, RP.scanned_of(code, hits, start, total, left), found, code)
@@ -115,7 +115,7 @@ def world_rounds(
           match code:
             case 0:
               match q:
-                case A.Query{_, +total, +limit, +time_ms, _, _, _, _}:
+                case A.Query{_, +total, +limit, +time_ms, _, _, _, _, _}:
                   do IO<Unit>:
                     +now : Nat <- IO.now()
                     +after : Scan = advance(scan, count, got, limit, time_ms, Nat.sub(now, started), Nat.sub(now, ticked))
@@ -129,11 +129,11 @@ def world_rounds(
 
 def level_rounds(+q: A.Query, +config: CF.Config) -> IO(Unit):
   match q config:
-    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _} CF.Config{+windows, +entries, _, _}:
+    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} CF.Config{+windows, +entries, _, _}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         world_rounds(round_fuel(), (0, Nil{}), Scan{start, total, min_round(), 0, Nil{}, 0, 0n},
-          A.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}}, entries, CF.or_anything(entries), started, started)
+          A.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}}, entries, CF.or_anything(entries), started, started)
 
 def any_rules(laters: List<&2, RU.Later>) -> Bool:
   match laters:
@@ -158,7 +158,7 @@ def with_platform(+config: CF.Config, +platform: U32) -> CF.Config:
 # --worlds DIR over pre-generated world dumps. --platform overrides the config's platform.
 def run_query(+q: A.Query, loaded: Result<&1, &1, U32 & String, CF.Config>) -> IO(Unit):
   match q loaded:
-    case A.Query{_, _, _, _, +json, _, _, _} Fail{failure}:
+    case A.Query{_, _, _, _, +json, _, _, _, _} Fail{failure}:
       RP.fail_job(json, failure)
-    case A.Query{_, _, _, _, _, _, +platform, +worlds} Done{+config}:
+    case A.Query{_, _, _, _, _, _, +platform, +worlds, _} Done{+config}:
       with_worlds(worlds, q, with_platform(config, platform))

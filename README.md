@@ -15,7 +15,7 @@ bit-identical to the game (build 747465) on Windows and Linux servers. Only the 
 To build and run:
 - Linux x86-64.
 - [Bend](https://bend-lang.com) 2.0.27 or newer: `curl -fsSL https://bend-lang.com/install.sh | sh`.
-- clang 14 or newer (19 or newer plus the CUDA toolkit for GPU builds).
+- clang 14 or newer.
 - About 12 GB of free RAM to build the production binary, 40 GB for the debug (trace) binary.
 
 Only to regenerate the generated data in `seedfinder/data/` (it is committed, so a normal build does not need this):
@@ -37,7 +37,7 @@ Use `scripts/build.sh` rather than a plain `bend seedfinder/main.bend -o ...`. I
 makes worldgen about 15-20% faster with identical output. Under load the build sometimes fails with "machine stack
 overflowed"; a retry passes.
 
-## Another machine (e.g. a GPU server)
+## Another machine
 
 A binary built on a new distribution needs a recent glibc (2.38 on Fedora 42). The portable route is to emit the C
 source and compile it on the target:
@@ -48,9 +48,9 @@ scripts/build.sh seedfinder/main.bend .scratch/build/seedfinder.c
 CCC_OVERRIDE_OPTIONS='# +-mllvm +-inline-threshold=3000' clang -std=c11 -O3 seedfinder.c -lpthread -lm -o seedfinder
 ```
 
-The code has no GPU (`!`) calls yet, so the result runs on the CPU. Once it has them, build on the target with
-`bend seedfinder/main.bend -o seedfinder`. Bend detects the CUDA toolkit (`CUDA_HOME`, default `/usr/local/cuda`) and
-links `-lcuda -lnvrtc`; this needs clang 19 or newer.
+The seed finder runs on the CPU only. The worldgen layout (Kamada-Kawai, most of a world's time) is native C
+(`seedfinder/native/`), a foreign IO effect that bend compiles into the same binary; `--kk bend` switches `world find`
+and `gen` to the Bend reference port (`seedfinder/worldsim/layout/kk.bend`, same output, several times slower).
 
 # Running
 
@@ -64,11 +64,12 @@ links `-lcuda -lnvrtc`; this needs clang 19 or newer.
 
 - **Config format:** `seedfinder/README.md` describes it and has examples.
 - **Search speed:** the level table is scanned at millions of seeds per second. Every seed that passes it and has
-  count, distance, tile or route filters costs one full worldgen, about 3-6 s of one thread.
+  count, distance, tile or route filters costs one full worldgen, about 0.5 s of one thread (about 11 worlds/s
+  on 14 threads).
 - **Continuing a search:** `--time-limit` stops the search, and `--start-seed` with the printed `next_seed`
   continues it.
 - **Memory:** a multi-threaded run reserves about 3 GB of virtual memory per thread, so don't run it under a low
-  `ulimit -v`.
+  `ulimit -v`. Pass `--threads` in a container: the runtime's default is the host's CPU count, not the CPU quota.
 
 # Regenerating the data
 

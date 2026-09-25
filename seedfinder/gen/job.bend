@@ -2,7 +2,6 @@ import Base
 import ../rng/pcg.bend as R
 import ../storygen/graph.bend as GG
 import ../worldsim/layout/space.bend as KS
-import ../worldsim/layout/kk.bend as KK
 import ../worldsim/voronoi/polygon.bend as VG
 import ../worldsim/commit.bend as CM
 import ../worldsim/grid.bend as GR
@@ -17,10 +16,13 @@ import ../ocean/required.bend as OQR
 import ../ocean/ocean.bend as OO
 import ./graph.bend as GK
 import ./generate.bend as GE
+import ./layout.bend as LO
 
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
-# rounds: `advance` spends at most `fuel` KK phase steps (the heavy-tailed part), or does one bounded stage
-# transition. At land_done the ocean stage (M10's ocean/ocean.bend) decides whether the attempt is the world.
+# rounds: `step` does one bounded stage transition; at a KK pass the job waits for a layout engine (gen/layout.bend):
+# `layout` hands over the pass, `laid` resumes with its positions, `advance` runs the pass on this thread (trace) and
+# `advance_io` through LO.solve (gen). At land_done the ocean stage (M10's ocean/ocean.bend) decides whether the
+# attempt is the world.
 
 # What the ocean stage starts from at land_done (M10's OO.run input): the tile grid, the RNG, the land entities (newest
 # first), the finished story (required prefabs, topology) and the map size.
@@ -38,15 +40,15 @@ type Outcome is Data:
   GaveUp{}
 
 # The stages of attempt a (numbered as `stage` reports them):
-# 0 JStart: the attempt begins from rng. 1 JFirst / 2 JSecond: KK pass 1 / 2 running (s, k: the story and graph of
-# the pass). 3 JCommit: VoronoiPass(50) built, WorldGen_Commit next. 4 JTiles: the Commit passed CheckForValidCells
+# 0 JStart: the attempt begins from rng. 1 JFirst / 2 JSecond: waiting for KK pass 1 / 2 (s, k: the story and graph
+# of the pass). 3 JCommit: VoronoiPass(50) built, WorldGen_Commit next. 4 JTiles: the Commit passed CheckForValidCells
 # (its size and centred sites with the Commit centroids); ConvertToTileMap and the GetSiteArea check next. 5 JLand: the
 # check passed (the tile world of ConvertToTileMap, its site tile lists and point sites); the tile stages and the land
 # population next. 6 JOcean: land_done, the ocean stage next. 7 JWorld: the attempt is the world. 8 JDone: no world.
 type Job is Type:
   JStart{c: GE.Seed, a: U32, rng: R.Rng}
-  JFirst{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei, kk: KK.Job}
-  JSecond{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei, first: GE.Pass, kk: KK.Job}
+  JFirst{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei}
+  JSecond{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei, first: GE.Pass}
   JCommit{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei, second: GE.Pass}
   JTiles{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei, size: U32, sites: List<&2, VG.SiteIn>}
   JLand{c: GE.Seed, a: U32, s: GG.St, k: GK.Klei, w: U32, world: TW.World, lists: List<&2, List<&2, U32>>, sites: PT.Sites}
@@ -70,49 +72,40 @@ def retry_if(more: Bool, +c: GE.Seed, +a: U32, +rng: R.Rng) -> Job:
 def retry(+c: GE.Seed, +a: U32, +rng: R.Rng) -> Job:
   retry_if((a < GE.max_attempts() : U32), c, a, rng)
 
-def first_of(+c: GE.Seed, +a: U32, +s: GG.St) -> Job:
-  +k = GK.klei(s)
-  JFirst{c, a, s, k, GE.first_job(k, (GE.first_runs() - 1 : U32))}
-
 def started(crashed: Bool, +c: GE.Seed, +a: U32, +rng: R.Rng) -> Job:
   match crashed:
     case True{}:
       JDone{c, a, Crashed{}}
     case False{}:
-      first_of(c, a, GE.first_story(c, rng))
+      +s = GE.first_story(c, rng)
+      JFirst{c, a, s, GK.klei(s)}
 
-def second_of(got: KK.Job & List<&2, KS.Vec>, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei) -> Job:
-  (kk, +ps) = got
+# The KK pass the job waits for, if any.
+def layout(job: Job) -> Job & Maybe<&2, LO.Layout>:
+  match job:
+    case JFirst{+c, +a, +s, +k}:
+      (JFirst{c, a, s, k}, Some{LO.Layout{0, GK.count_of(k), GK.arcs(k), (GE.first_runs() - 1 : U32), Nil{}}})
+    case JSecond{+c, +a, +s, +k, +first}:
+      +prior = GE.pass_positions(first)
+      (JSecond{c, a, s, k, first}, Some{LO.Layout{U32.from_nat(List.length(&2, KS.Vec, prior)), GK.count_of(k), GK.arcs(k), (GE.second_runs() - 1 : U32), prior}})
+    case other:
+      (other, None{})
+
+def second_of(+c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei, +ps: List<&2, KS.Vec>) -> Job:
   +first = GE.pass_of(c, s, k, ps, Nil{})
   +s2 = GE.second_story(c, s, k, GE.pass_site_list(first))
-  +k2 = GK.klei(s2)
-  JSecond{c, a, s2, k2, first, GE.second_job(GE.job_workspace(kk), k, k2, (GE.second_runs() - 1 : U32))}
+  JSecond{c, a, s2, GK.klei(s2), first}
 
-def first_live(going: Bool, kk: KK.Job, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei) -> Job:
-  match going:
-    case True{}:
-      JFirst{c, a, s, k, kk}
-    case False{}:
-      second_of(GE.job_positions(kk), c, a, s, k)
-
-def first_step(got: KK.Job & Bool, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei) -> Job:
-  (kk, +going) = got
-  first_live(going, kk, c, a, s, k)
-
-def commit_of(got: KK.Job & List<&2, KS.Vec>, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei, +first: GE.Pass) -> Job:
-  (_, +ps) = got
-  JCommit{c, a, s, k, GE.pass_of(c, s, k, ps, GE.pass_polys(first))}
-
-def second_live(going: Bool, kk: KK.Job, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei, +first: GE.Pass) -> Job:
-  match going:
-    case True{}:
-      JSecond{c, a, s, k, first, kk}
-    case False{}:
-      commit_of(GE.job_positions(kk), c, a, s, k, first)
-
-def second_step(got: KK.Job & Bool, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei, +first: GE.Pass) -> Job:
-  (kk, +going) = got
-  second_live(going, kk, c, a, s, k, first)
+# The waiting job resumed with its pass's positions (VoronoiPass's BuildVoronoi, and after pass 1 the story up to
+# pass 2); any other job as it is.
+def laid(job: Job, +ps: List<&2, KS.Vec>) -> Job:
+  match job:
+    case JFirst{+c, +a, +s, +k}:
+      second_of(c, a, s, k, ps)
+    case JSecond{+c, +a, +s, +k, +first}:
+      JCommit{c, a, s, k, GE.pass_of(c, s, k, ps, GE.pass_polys(first))}
+    case other:
+      other
 
 def commit_checked(ok: Bool, +c: GE.Seed, +a: U32, +s: GG.St, +k: GK.Klei, +size: U32, +sites: List<&2, VG.SiteIn>) -> Job:
   match ok:
@@ -193,16 +186,11 @@ def ocean(+c: GE.Seed, +a: U32, landed: Landed) -> Job:
       +ctx = {OS.Ctx{GE.windows_of(c), GE.swaps_of(c), w, w, False{}} : OS.Ctx}
       oceaned(OO.run(ctx, OQR.required(s), sea_of(Landed{g, rng, ents, s, w})), c, a, w)
 
-# One step of the job: a stage transition, or up to `fuel` KK phase steps of the running pass. JWorld and JDone stay
-# as they are.
-def advance(fuel: Nat, job: Job) -> Job:
+# One stage transition. JFirst and JSecond wait (see layout), JWorld and JDone stay as they are.
+def step(job: Job) -> Job:
   match job:
     case JStart{+c, +a, +rng}:
       started(GE.crashed(c), c, a, rng)
-    case JFirst{+c, +a, +s, +k, kk}:
-      first_step(GE.live(KK.advance(fuel, kk)), c, a, s, k)
-    case JSecond{+c, +a, +s, +k, +first, kk}:
-      second_step(GE.live(KK.advance(fuel, kk)), c, a, s, k, first)
     case JCommit{+c, +a, +s, +k, +second}:
       commit(c, a, s, k, second)
     case JTiles{+c, +a, +s, +k, +size, +sites}:
@@ -211,10 +199,34 @@ def advance(fuel: Nat, job: Job) -> Job:
       land(c, a, s, k, w, world, lists, sites)
     case JOcean{+c, +a, landed}:
       ocean(c, a, landed)
-    case JWorld{+c, +a, world}:
-      JWorld{c, a, world}
-    case JDone{+c, +a, +o}:
-      JDone{c, a, o}
+    case other:
+      other
+
+def advanced(got: Job & Maybe<&2, LO.Layout>) -> Job:
+  (job, pass) = got
+  match pass:
+    case Some{+l}:
+      laid(job, LO.local(l))
+    case None{}:
+      step(job)
+
+# One step, a waiting job's whole KK pass on this thread (LO.local) included.
+def advance(job: Job) -> Job:
+  advanced(layout(job))
+
+def solved(got: Job & Maybe<&2, LO.Layout>, +native: Bool) -> IO(Job):
+  (job, pass) = got
+  match pass:
+    case Some{+l}:
+      do IO<Job>:
+        +ps : List<&2, KS.Vec> <- LO.solve(native, l)
+        return laid(job, ps)
+    case None{}:
+      IO.pure(Job, step(job))
+
+# One step, a waiting job's KK pass from LO.solve included.
+def advance_io(+native: Bool, job: Job) -> IO(Job):
+  solved(layout(job), native)
 
 # Where a job is: its stage number (see Job) and attempt.
 type Where is Data:
@@ -224,10 +236,10 @@ def stage(job: Job) -> Job & Where:
   match job:
     case JStart{+c, +a, +rng}:
       (JStart{c, a, rng}, Where{0, a})
-    case JFirst{+c, +a, +s, +k, kk}:
-      (JFirst{c, a, s, k, kk}, Where{1, a})
-    case JSecond{+c, +a, +s, +k, +first, kk}:
-      (JSecond{c, a, s, k, first, kk}, Where{2, a})
+    case JFirst{+c, +a, +s, +k}:
+      (JFirst{c, a, s, k}, Where{1, a})
+    case JSecond{+c, +a, +s, +k, +first}:
+      (JSecond{c, a, s, k, first}, Where{2, a})
     case JCommit{+c, +a, +s, +k, +second}:
       (JCommit{c, a, s, k, second}, Where{3, a})
     case JTiles{+c, +a, +s, +k, +size, +sites}:
