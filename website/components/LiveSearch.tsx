@@ -3,6 +3,7 @@
 import { Fragment, useMemo } from "react";
 import { formatDuration, timeLimitSeconds } from "@/lib/credits";
 import type { JobProgress, JobStatus, Machine } from "@/lib/job-events";
+import type { JobView } from "@/lib/api-client";
 import type { LiveJob } from "@/lib/use-job-stream";
 import JobResults, { type JobResultsProps } from "./JobResults";
 
@@ -68,7 +69,8 @@ const LIVE_TEXT: Record<JobStatus, (live: LiveJob, maxCost: number) => LiveText>
   cancelled: finishing,
 };
 
-interface LiveSearchProps extends JobResultsProps {
+interface LiveSearchProps extends Omit<JobResultsProps, "job"> {
+  job: JobView;
   live: LiveJob;
   stopping: boolean;
   onStop: () => void;

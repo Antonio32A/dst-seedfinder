@@ -5,6 +5,7 @@ import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/api-clien
 import { creditsToUnits, formatCredits } from "@/lib/credits";
 import { isActiveStatus, MAX_ACTIVE_SEARCHES } from "@/lib/job-events";
 import { SEED_SPACE } from "@/lib/job-result";
+import { CORES_PER_THREAD, MEMORY_PER_THREAD_MB, type LocalSearchRequest, type SearchTarget } from "@/lib/local-search";
 import { WANTED_OPTIONS, type Issue } from "@/lib/search-state";
 import {
   DEFAULT_START_SEED,
@@ -17,21 +18,42 @@ import type { Account } from "@/lib/use-account";
 import { validateJobRequest } from "@/lib/validate-config";
 import MaxCostField from "./MaxCostField";
 import SegmentedControl from "./SegmentedControl";
+import Stepper from "./Stepper";
+
+/** What the page knows about searching in this browser. `supported` is `null` until the page has checked. */
+export interface BrowserSearchOptions {
+  supported: boolean | null;
+  cores: number;
+  threads: number;
+  onThreadsChange: (threads: number) => void;
+  running: boolean;
+  onStart: (request: LocalSearchRequest) => void;
+}
 
 interface SearchPanelProps {
   config: SeedfinderConfig;
   issues: Issue[];
   platform: Platform;
   onPlatformChange: (platform: Platform) => void;
+  target: SearchTarget;
+  onTargetChange: (target: SearchTarget) => void;
   wanted: number;
   onWantedChange: (wanted: number) => void;
   maxCost: number;
   onMaxCostChange: (maxCost: number) => void;
+  browser: BrowserSearchOptions;
   account: Account;
   onNotify: (text: string) => void;
 }
 
 const START_SEED_PROBLEM = `The start seed has to be a whole number from 0 to ${SEED_SPACE - 1}.`;
+const UNSUPPORTED = "This browser can't run the seedfinder: it needs WebAssembly threads.";
+const MEMORY = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
+
+const TARGET_HINTS: Record<SearchTarget, string> = {
+  cloud: "A rented server with 64+ cores searches for you. Fast, but it costs credits and needs a Discord login.",
+  browser: "Your computer searches, for free and without logging in. Slower than a server, and it stops if you close this tab.",
+};
 
 function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number, startSeed: number | null): string | undefined {
   if (issues.some((issue) => issue.severity === "error")) return "Fix the errors above first.";
@@ -42,15 +64,16 @@ function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: 
   return undefined;
 }
 
-interface SearchActionProps {
+interface CloudActionProps {
   user: SessionUser | null;
   atLimit: boolean;
   submitting: boolean;
   blocked: boolean;
+  maxCost: number;
   onSubmit: () => void;
 }
 
-function SearchAction({ user, atLimit, submitting, blocked, onSubmit }: SearchActionProps) {
+function CloudButton({ user, atLimit, submitting, blocked, onSubmit }: CloudActionProps) {
   if (!user) {
     return (
       <a className="button" href={loginUrl()}>
@@ -72,15 +95,83 @@ function SearchAction({ user, atLimit, submitting, blocked, onSubmit }: SearchAc
   );
 }
 
+function CloudAction(props: CloudActionProps) {
+  const { user, atLimit, maxCost } = props;
+  return (
+    <>
+      <CloudButton {...props} />
+      <span className="search__cost">
+        {atLimit ? (
+          `You can run up to ${MAX_ACTIVE_SEARCHES} searches at once.`
+        ) : (
+          <>
+            Reserves <strong>{formatCredits(maxCost)}</strong> credits{user ? ` (you have ${formatCredits(user.credits)})` : ""}.
+          </>
+        )}
+      </span>
+    </>
+  );
+}
+
+function ThreadsField({ browser }: { browser: BrowserSearchOptions }) {
+  const { cores, threads, onThreadsChange } = browser;
+  return (
+    <div>
+      <div className="threads">
+        <span className="seg__legend">CPU threads</span>
+        <Stepper label="CPU threads" value={threads} min={1} max={cores} onChange={onThreadsChange} />
+      </div>
+      <p className="hint">
+        Your computer has {cores} logical {cores === 1 ? "core" : "cores"}. Each thread keeps about {CORES_PER_THREAD} of them busy and uses about{" "}
+        {MEMORY_PER_THREAD_MB} MB of memory, so {threads} {threads === 1 ? "thread needs" : "threads need"} about{" "}
+        {MEMORY.format((threads * MEMORY_PER_THREAD_MB) / 1024)} GB.
+      </p>
+    </div>
+  );
+}
+
+interface BrowserActionProps {
+  browser: BrowserSearchOptions;
+  blocked: boolean;
+  wanted: number;
+  onStart: () => void;
+}
+
+function BrowserAction({ browser, blocked, wanted, onStart }: BrowserActionProps) {
+  if (browser.running) {
+    return (
+      <>
+        <a className="button" href="#browser-search">
+          Watch your search
+        </a>
+        <span className="search__cost">A browser search is already running.</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <button type="button" disabled={blocked || browser.supported !== true} onClick={onStart}>
+        Find seeds
+      </button>
+      <span className="search__cost">
+        <strong>Free</strong>, runs until it finds {wanted} {wanted === 1 ? "seed" : "seeds"} or you stop it.
+      </span>
+    </>
+  );
+}
+
 export default function SearchPanel({
   config,
   issues,
   platform,
   onPlatformChange,
+  target,
+  onTargetChange,
   wanted,
   onWantedChange,
   maxCost,
   onMaxCostChange,
+  browser,
   account,
   onNotify,
 }: SearchPanelProps) {
@@ -88,21 +179,25 @@ export default function SearchPanel({
   const [error, setError] = useState("");
   const [startSeedDraft, setStartSeedDraft] = useState("");
   const { user, jobs } = account;
+  const inBrowser = target === "browser";
   const startSeedText = startSeedDraft.trim() || String(DEFAULT_START_SEED);
   const startSeed = /^\d+$/.test(startSeedText) && Number(startSeedText) < SEED_SPACE ? Number(startSeedText) : null;
-  const atLimit = jobs.filter((job) => isActiveStatus(job.status)).length >= MAX_ACTIVE_SEARCHES;
-  const problem = atLimit ? undefined : blockingProblem(issues, user?.credits, maxCost, startSeed);
+  const atLimit = !inBrowser && jobs.filter((job) => isActiveStatus(job.status)).length >= MAX_ACTIVE_SEARCHES;
+  const problem = atLimit ? undefined : blockingProblem(issues, inBrowser ? undefined : user?.credits, maxCost, startSeed);
+
+  const checkedRequest = () => {
+    const checked = validateJobRequest({ config, wanted, maxCost, startSeed });
+    if (!checked.ok) setError(`This search can't be sent: ${checked.error}`);
+    return checked.ok ? checked.value : null;
+  };
 
   const submit = async () => {
-    const checked = validateJobRequest({ config, wanted, maxCost, startSeed });
-    if (!checked.ok) {
-      setError(`This search can't be sent: ${checked.error}`);
-      return;
-    }
+    const request = checkedRequest();
+    if (request === null) return;
     setSubmitting(true);
     setError("");
     try {
-      await createJob(checked.value);
+      await createJob(request);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409) onNotify(`You already have ${MAX_ACTIVE_SEARCHES} searches going. They're under "Your searches".`);
       else setError(caught instanceof Error ? caught.message : "Something went wrong. Try again.");
@@ -112,10 +207,17 @@ export default function SearchPanel({
     }
   };
 
+  const startInBrowser = () => {
+    const request = checkedRequest();
+    if (request === null) return;
+    setError("");
+    browser.onStart({ config: request.config, wanted: request.wanted, startSeed: request.startSeed ?? DEFAULT_START_SEED, threads: browser.threads });
+  };
+
   return (
     <section className="section search" aria-labelledby="search">
       <h2 id="search" className="section-title">
-        Search
+        Find seeds
       </h2>
       {issues.length > 0 && (
         <ul className="issues">
@@ -126,6 +228,21 @@ export default function SearchPanel({
           ))}
         </ul>
       )}
+      <div>
+        <SegmentedControl
+          legend="Search with"
+          options={[
+            { value: "cloud", label: "Cloud server" },
+            { value: "browser", label: "Your browser (free)", disabled: browser.supported === false, title: browser.supported === false ? UNSUPPORTED : undefined },
+          ]}
+          value={target}
+          onChange={onTargetChange}
+        />
+        <p className="hint">
+          {TARGET_HINTS[target]}
+          {browser.supported === false && ` ${UNSUPPORTED}`}
+        </p>
+      </div>
       <div>
         <SegmentedControl
           legend="Platform"
@@ -141,7 +258,7 @@ export default function SearchPanel({
         value={wanted}
         onChange={onWantedChange}
       />
-      <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange} />
+      {inBrowser ? <ThreadsField browser={browser} /> : <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange} />}
       <div>
         <label className="start-seed">
           <span className="seg__legend">Start seed</span>
@@ -156,19 +273,21 @@ export default function SearchPanel({
         <p className="hint">Seeds are checked in order from this one, wrapping around after {SEED_SPACE - 1}.</p>
       </div>
       <div className="search__actions">
-        <SearchAction user={user} atLimit={atLimit} submitting={submitting} blocked={problem !== undefined} onSubmit={() => void submit()} />
-        <span className="search__cost">
-          {atLimit ? (
-            `You can run up to ${MAX_ACTIVE_SEARCHES} searches at once.`
-          ) : (
-            <>
-              Reserves <strong>{formatCredits(maxCost)}</strong> credits{user ? ` (you have ${formatCredits(user.credits)})` : ""}.
-            </>
-          )}
-        </span>
+        {inBrowser ? (
+          <BrowserAction browser={browser} blocked={problem !== undefined} wanted={wanted} onStart={startInBrowser} />
+        ) : (
+          <CloudAction
+            user={user}
+            atLimit={atLimit}
+            submitting={submitting}
+            blocked={problem !== undefined}
+            maxCost={maxCost}
+            onSubmit={() => void submit()}
+          />
+        )}
       </div>
-      {!user && <p className="hint">Your settings are kept while you log in.</p>}
-      {user && problem && <p className="notice notice--error">{problem}</p>}
+      {!inBrowser && !user && <p className="hint">Your settings are kept while you log in.</p>}
+      {(inBrowser || user) && problem && <p className="notice notice--error">{problem}</p>}
       {error && (
         <p className="notice notice--error" role="alert">
           {error}

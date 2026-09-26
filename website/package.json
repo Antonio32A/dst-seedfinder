@@ -25,7 +25,10 @@
   },
   "type": "module",
   "scripts": {
+    "wasm": "mkdir -p public/wasm && cp ../build/wasm/seedfinder.wasm ../build/wasm/seedfinder.mjs public/wasm/",
+    "predev": "npm run wasm --silent || echo 'No ../build/wasm yet, so browser search is off. Build it with ../scripts/build.sh wasm.'",
     "dev": "vinext dev",
+    "prebuild": "npm run wasm",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",

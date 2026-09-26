@@ -1000,7 +1000,8 @@ details[open] > summary::before {
 }
 
 .start-seed,
-.start-seed > span {
+.start-seed > span,
+.threads > .seg__legend {
   display: block;
 }
 

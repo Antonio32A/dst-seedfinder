@@ -16,3 +16,9 @@ export function isCrossOrigin(request: Request): boolean {
   const site = request.headers.get("Sec-Fetch-Site");
   return site !== null && site !== "same-origin";
 }
+
+/** Headers that make a page cross-origin isolated, which the browser search needs for WebAssembly threads. */
+export const CROSS_ORIGIN_ISOLATION = {
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "require-corp",
+};

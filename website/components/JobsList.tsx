@@ -39,7 +39,8 @@ interface StopRequest {
   status: JobStatus;
 }
 
-interface JobItemProps extends JobResultsProps {
+interface JobItemProps extends Omit<JobResultsProps, "job"> {
+  job: JobView;
   onEnded: (job: JobView) => void;
   onLost: () => void;
   stopping: boolean;
