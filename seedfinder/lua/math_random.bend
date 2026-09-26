@@ -1,5 +1,5 @@
 import Base
-import ../rng/pcg.bend as R
+import ../rng/pcg.bend as Pcg
 
 # DST's math.random on the PCG32 stream (research/rng.md §5, §10): r = fl(x / (2^32 - 1)) for the raw output x;
 # math.random(u) = floor(r * u) + 1 and math.random(m, n) = floor(r * (n - m + 1)) + m, with floor(r * k) computed
@@ -85,18 +85,18 @@ def floor_of(+s: Scaled) -> U32:
     case Scaled{+f, _}:
       f
 
-def upto_drawn(got: U32 & R.Rng, +u: U32) -> U32 & R.Rng:
+def upto_drawn(got: U32 & Pcg.Rng, +u: U32) -> U32 & Pcg.Rng:
   (x, s) = got
   ((floor_of(scale(x, u)) + 1 : U32), s)
 
 # math.random(u) for u >= 1: 1 .. u (u + 1 when the draw is 2^32 - 1).
-def random_upto(s: R.Rng, +u: U32) -> U32 & R.Rng:
-  upto_drawn(R.draw(s), u)
+def random_upto(s: Pcg.Rng, +u: U32) -> U32 & Pcg.Rng:
+  upto_drawn(Pcg.draw(s), u)
 
-def range_drawn(got: U32 & R.Rng, +m: U32, +n: U32) -> U32 & R.Rng:
+def range_drawn(got: U32 & Pcg.Rng, +m: U32, +n: U32) -> U32 & Pcg.Rng:
   (x, s) = got
   ((floor_of(scale(x, ((n - m : U32) + 1 : U32))) + m : U32), s)
 
 # math.random(m, n) for m <= n as int32 (m may be negative in two's complement; n - m + 1 < 2^31).
-def random_range(s: R.Rng, +m: U32, +n: U32) -> U32 & R.Rng:
-  range_drawn(R.draw(s), m, n)
+def random_range(s: Pcg.Rng, +m: U32, +n: U32) -> U32 & Pcg.Rng:
+  range_drawn(Pcg.draw(s), m, n)

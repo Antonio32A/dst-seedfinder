@@ -1,5 +1,5 @@
 import Base
-import ../cli/files.bend as FL
+import ../cli/files.bend as Files
 
 # The runtime's worker thread count, for sizing the parallel rounds (results never depend on it): the value of the
 # runtime's own `--threads N` flag in /proc/self/cmdline, else the online CPU count (the runtime's default) capped by
@@ -81,7 +81,7 @@ def flag_of(cmdline: Result<&1, &1, U32 & String, List<&2, U32>>) -> U32:
 
 def threads() -> IO(U32):
   do IO<U32>:
-    cmdline : Result<&1, &1, U32 & String, List<&2, U32>> <- FL.read_bytes("", "/proc/self/cmdline")
-    cpus : Result<&1, &1, U32 & String, String> <- FL.read_text("", "/sys/devices/system/cpu/online")
-    max : Result<&1, &1, U32 & String, String> <- FL.read_text("", "/sys/fs/cgroup/cpu.max")
+    cmdline : Result<&1, &1, U32 & String, List<&2, U32>> <- Files.read_bytes("", "/proc/self/cmdline")
+    cpus : Result<&1, &1, U32 & String, String> <- Files.read_text("", "/sys/devices/system/cpu/online")
+    max : Result<&1, &1, U32 & String, String> <- Files.read_text("", "/sys/fs/cgroup/cpu.max")
     return pick(flag_of(cmdline), capped(from_cpus(cpus), from_quota(max)))

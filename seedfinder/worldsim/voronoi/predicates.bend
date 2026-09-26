@@ -1,9 +1,9 @@
 import Base
-import ../../f64/word.bend as FW
-import ../../f64/repr.bend as FR
-import ../../f64/arith.bend as FA
-import ../../f64/cmp.bend as FC
-import ./ctypes.bend as VT
+import ../../f64/word.bend as F64Word
+import ../../f64/repr.bend as F64Repr
+import ../../f64/arith.bend as F64Arith
+import ../../f64/cmp.bend as F64Cmp
+import ./ctypes.bend as VoronoiTypes
 
 # Boost.Polygon 1.52 voronoi_predicates.hpp, first half, and the site / circle event types of
 # voronoi_structures.hpp: robust_cross_product, orientation_test, point_comparison_predicate,
@@ -20,7 +20,7 @@ type Pt is Data:
 
 # circle_event<double>: the centre and the x of its lowest point (lower_y is the centre's y).
 type Circle is Data:
-  Circle{x: FR.F64, y: FR.F64, lx: FR.F64}
+  Circle{x: F64Repr.F64, y: F64Repr.F64, lx: F64Repr.F64}
 
 def inverse_bit() -> U32:
   32
@@ -126,35 +126,35 @@ def same_site(+a: Site, +b: Site) -> Bool:
 def is_vertical(+s: Site) -> Bool:
   U32.is_eq(site_x0(s), site_x1(s))
 
-def fpt(+x: U32) -> FR.F64:
-  FR.from_i32(x)
+def fpt(+x: U32) -> F64Repr.F64:
+  F64Repr.from_i32(x)
 
 def lt(+a: U32, +b: U32) -> Bool:
-  VT.lt_i32(a, b)
+  VoronoiTypes.lt_i32(a, b)
 
 def le(+a: U32, +b: U32) -> Bool:
-  Bool.not(VT.lt_i32(b, a))
+  Bool.not(VoronoiTypes.lt_i32(b, a))
 
-def neg_f64(c: Bool, +x: FR.F64) -> FR.F64:
-  FR.pick(c, FR.neg(x), x)
+def neg_f64(c: Bool, +x: F64Repr.F64) -> F64Repr.F64:
+  F64Repr.pick(c, F64Repr.neg(x), x)
 
-def cross_mixed(both: Bool, +l: FW.W64, +r: FW.W64) -> FR.F64:
+def cross_mixed(both: Bool, +l: F64Word.W64, +r: F64Word.W64) -> F64Repr.F64:
   match both:
     case True{}:
-      +more = VT.lt_u64(r, l)
-      neg_f64(more, VT.u64_to_f64(VT.pick64(more, VT.sub64(l, r), VT.sub64(r, l))))
+      +more = VoronoiTypes.lt_u64(r, l)
+      neg_f64(more, VoronoiTypes.u64_to_f64(VoronoiTypes.pick64(more, VoronoiTypes.sub64(l, r), VoronoiTypes.sub64(r, l))))
     case False{}:
-      FR.neg(VT.u64_to_f64(VT.add64(l, r)))
+      F64Repr.neg(VoronoiTypes.u64_to_f64(VoronoiTypes.add64(l, r)))
 
-def cross_same(both: Bool, +l: FW.W64, +r: FW.W64) -> FR.F64:
+def cross_same(both: Bool, +l: F64Word.W64, +r: F64Word.W64) -> F64Repr.F64:
   match both:
     case True{}:
-      VT.u64_to_f64(VT.add64(l, r))
+      VoronoiTypes.u64_to_f64(VoronoiTypes.add64(l, r))
     case False{}:
-      +less = VT.lt_u64(l, r)
-      neg_f64(less, VT.u64_to_f64(VT.pick64(less, VT.sub64(r, l), VT.sub64(l, r))))
+      +less = VoronoiTypes.lt_u64(l, r)
+      neg_f64(less, VoronoiTypes.u64_to_f64(VoronoiTypes.pick64(less, VoronoiTypes.sub64(r, l), VoronoiTypes.sub64(l, r))))
 
-def cross_signed(first: Bool, +second: Bool, +l: FW.W64, +r: FW.W64) -> FR.F64:
+def cross_signed(first: Bool, +second: Bool, +l: F64Word.W64, +r: F64Word.W64) -> F64Repr.F64:
   match first:
     case True{}:
       cross_mixed(second, l, r)
@@ -162,26 +162,26 @@ def cross_signed(first: Bool, +second: Bool, +l: FW.W64, +r: FW.W64) -> FR.F64:
       cross_same(second, l, r)
 
 # robust_cross_product(a1, b1, a2, b2) = a1 * b2 - b1 * a2 on int64, as a double.
-def cross(+a1: FW.W64, +b1: FW.W64, +a2: FW.W64, +b2: FW.W64) -> FR.F64:
-  +l = VT.mul64(VT.abs64(a1), VT.abs64(b2))
-  +r = VT.mul64(VT.abs64(b1), VT.abs64(a2))
-  +first = Bool.xor(VT.is_neg64(a1), VT.is_neg64(b2))
-  cross_signed(first, Bool.xor(VT.is_neg64(a2), VT.is_neg64(b1)), l, r)
+def cross(+a1: F64Word.W64, +b1: F64Word.W64, +a2: F64Word.W64, +b2: F64Word.W64) -> F64Repr.F64:
+  +l = VoronoiTypes.mul64(VoronoiTypes.abs64(a1), VoronoiTypes.abs64(b2))
+  +r = VoronoiTypes.mul64(VoronoiTypes.abs64(b1), VoronoiTypes.abs64(a2))
+  +first = Bool.xor(VoronoiTypes.is_neg64(a1), VoronoiTypes.is_neg64(b2))
+  cross_signed(first, Bool.xor(VoronoiTypes.is_neg64(a2), VoronoiTypes.is_neg64(b1)), l, r)
 
 # orientation_test::eval(value).
-def orientation_of(+v: FR.F64) -> U32:
-  FW.pick(FC.eq(v, FR.zero()), 0, FW.pick(FC.lt(v, FR.zero()), right(), left()))
+def orientation_of(+v: F64Repr.F64) -> U32:
+  F64Word.pick(F64Cmp.eq(v, F64Repr.zero()), 0, F64Word.pick(F64Cmp.lt(v, F64Repr.zero()), right(), left()))
 
 # orientation_test::eval(dif_x1, dif_y1, dif_x2, dif_y2).
-def orientation4(+dx1: FW.W64, +dy1: FW.W64, +dx2: FW.W64, +dy2: FW.W64) -> U32:
+def orientation4(+dx1: F64Word.W64, +dy1: F64Word.W64, +dx2: F64Word.W64, +dy2: F64Word.W64) -> U32:
   orientation_of(cross(dx1, dy1, dx2, dy2))
 
 # orientation_test::eval(point1, point2, point3).
 def orientation(+p1: Pt, +p2: Pt, +p3: Pt) -> U32:
-  +dx1 = VT.dif32(pt_x(p1), pt_x(p2))
-  +dx2 = VT.dif32(pt_x(p2), pt_x(p3))
-  +dy1 = VT.dif32(pt_y(p1), pt_y(p2))
-  +dy2 = VT.dif32(pt_y(p2), pt_y(p3))
+  +dx1 = VoronoiTypes.dif32(pt_x(p1), pt_x(p2))
+  +dx2 = VoronoiTypes.dif32(pt_x(p2), pt_x(p3))
+  +dy1 = VoronoiTypes.dif32(pt_y(p1), pt_y(p2))
+  +dy2 = VoronoiTypes.dif32(pt_y(p2), pt_y(p3))
   orientation_of(cross(dx1, dy1, dx2, dy2))
 
 # point_comparison_predicate.
@@ -207,17 +207,17 @@ def same_x_less(point: Bool, +l: Site, +r: Site) -> Bool:
 def site_less(+l: Site, +r: Site) -> Bool:
   Bool.pick(Bool, U32.is_eq(site_x0(l), site_x0(r)), same_x_less(is_point(l), l, r), lt(site_x0(l), site_x0(r)))
 
-def circle_x(c: Circle) -> FR.F64:
+def circle_x(c: Circle) -> F64Repr.F64:
   match c:
     case Circle{+x, _, _}:
       x
 
-def circle_y(c: Circle) -> FR.F64:
+def circle_y(c: Circle) -> F64Repr.F64:
   match c:
     case Circle{_, +y, _}:
       y
 
-def circle_lx(c: Circle) -> FR.F64:
+def circle_lx(c: Circle) -> F64Repr.F64:
   match c:
     case Circle{_, _, +lx}:
       lx
@@ -227,39 +227,39 @@ def ulp_less(+x: Cmp, +y: Cmp) -> Bool:
 
 # event_comparison_predicate(site, circle), 64 ulps.
 def site_before_circle(+s: Site, +c: Circle) -> Bool:
-  ulp_less(FC.ulp_cmp(fpt(site_x0(s)), circle_lx(c), 64), FC.ulp_cmp(fpt(site_y0(s)), circle_y(c), 64))
+  ulp_less(F64Cmp.ulp_cmp(fpt(site_x0(s)), circle_lx(c), 64), F64Cmp.ulp_cmp(fpt(site_y0(s)), circle_y(c), 64))
 
 # event_comparison_predicate(circle, circle), 128 ulps.
 def circle_less(+a: Circle, +b: Circle) -> Bool:
-  ulp_less(FC.ulp_cmp(circle_lx(a), circle_lx(b), 128), FC.ulp_cmp(circle_y(a), circle_y(b), 128))
+  ulp_less(F64Cmp.ulp_cmp(circle_lx(a), circle_lx(b), 128), F64Cmp.ulp_cmp(circle_y(a), circle_y(b), 128))
 
-def dist_point_arc(+s: Site, +p: Pt) -> FR.F64:
-  +dx = FA.sub(fpt(site_x0(s)), fpt(pt_x(p)))
-  +dy = FA.sub(fpt(site_y0(s)), fpt(pt_y(p)))
-  FA.div(FA.add(FA.mul(dx, dx), FA.mul(dy, dy)), FA.mul(FR.two(), dx))
+def dist_point_arc(+s: Site, +p: Pt) -> F64Repr.F64:
+  +dx = F64Arith.sub(fpt(site_x0(s)), fpt(pt_x(p)))
+  +dy = F64Arith.sub(fpt(site_y0(s)), fpt(pt_y(p)))
+  F64Arith.div(F64Arith.add(F64Arith.mul(dx, dx), F64Arith.mul(dy, dy)), F64Arith.mul(F64Repr.two(), dx))
 
-def segment_k(nonneg: Bool, +a1: FR.F64, +b1: FR.F64, +k: FR.F64) -> FR.F64:
+def segment_k(nonneg: Bool, +a1: F64Repr.F64, +b1: F64Repr.F64, +k: F64Repr.F64) -> F64Repr.F64:
   match nonneg:
     case True{}:
-      FA.div(FR.one(), FA.add(b1, k))
+      F64Arith.div(F64Repr.one(), F64Arith.add(b1, k))
     case False{}:
-      FA.div(FA.sub(k, b1), FA.mul(a1, a1))
+      F64Arith.div(F64Arith.sub(k, b1), F64Arith.mul(a1, a1))
 
-def dist_slanted_arc(+s0: Pt, +s1: Pt, +p: Pt) -> FR.F64:
-  +a1 = FA.sub(fpt(pt_x(s1)), fpt(pt_x(s0)))
-  +b1 = FA.sub(fpt(pt_y(s1)), fpt(pt_y(s0)))
-  +k = FA.sqrt(FA.add(FA.mul(a1, a1), FA.mul(b1, b1)))
-  +c = cross(VT.dif32(pt_x(s1), pt_x(s0)), VT.dif32(pt_y(s1), pt_y(s0)), VT.dif32(pt_x(p), pt_x(s0)), VT.dif32(pt_y(p), pt_y(s0)))
-  FA.mul(segment_k(Bool.not(FC.lt(b1, FR.zero())), a1, b1, k), c)
+def dist_slanted_arc(+s0: Pt, +s1: Pt, +p: Pt) -> F64Repr.F64:
+  +a1 = F64Arith.sub(fpt(pt_x(s1)), fpt(pt_x(s0)))
+  +b1 = F64Arith.sub(fpt(pt_y(s1)), fpt(pt_y(s0)))
+  +k = F64Arith.sqrt(F64Arith.add(F64Arith.mul(a1, a1), F64Arith.mul(b1, b1)))
+  +c = cross(VoronoiTypes.dif32(pt_x(s1), pt_x(s0)), VoronoiTypes.dif32(pt_y(s1), pt_y(s0)), VoronoiTypes.dif32(pt_x(p), pt_x(s0)), VoronoiTypes.dif32(pt_y(p), pt_y(s0)))
+  F64Arith.mul(segment_k(Bool.not(F64Cmp.lt(b1, F64Repr.zero())), a1, b1, k), c)
 
-def dist_segment_route(vertical: Bool, +s: Site, +p: Pt) -> FR.F64:
+def dist_segment_route(vertical: Bool, +s: Site, +p: Pt) -> F64Repr.F64:
   match vertical:
     case True{}:
-      FA.mul(FA.sub(fpt(site_x0(s)), fpt(pt_x(p))), FR.half())
+      F64Arith.mul(F64Arith.sub(fpt(site_x0(s)), fpt(pt_x(p))), F64Repr.half())
     case False{}:
       dist_slanted_arc(start(s), end(s), p)
 
-def dist_segment_arc(+s: Site, +p: Pt) -> FR.F64:
+def dist_segment_arc(+s: Site, +p: Pt) -> F64Repr.F64:
   dist_segment_route(is_vertical(s), s, p)
 
 def undefined() -> U32:
@@ -271,31 +271,31 @@ def more() -> U32:
 def less() -> U32:
   4294967295
 
-def fast_ps_exprs(+reverse: Bool, +dif_x: FR.F64, +dif_y: FR.F64, +a: FR.F64, +b: FR.F64) -> U32:
-  +left_expr = FA.mul(FA.mul(a, FA.add(dif_y, dif_x)), FA.sub(dif_y, dif_x))
-  +right_expr = FA.mul(FA.mul(FA.mul(FR.two(), b), dif_x), dif_y)
-  +c = FC.ulp_cmp(left_expr, right_expr, 4)
-  FW.pick(Bool.not(Cmp.is_eq(c)) && Bool.xor(Cmp.is_gt(c), reverse), FW.pick(reverse, less(), more()), undefined())
+def fast_ps_exprs(+reverse: Bool, +dif_x: F64Repr.F64, +dif_y: F64Repr.F64, +a: F64Repr.F64, +b: F64Repr.F64) -> U32:
+  +left_expr = F64Arith.mul(F64Arith.mul(a, F64Arith.add(dif_y, dif_x)), F64Arith.sub(dif_y, dif_x))
+  +right_expr = F64Arith.mul(F64Arith.mul(F64Arith.mul(F64Repr.two(), b), dif_x), dif_y)
+  +c = F64Cmp.ulp_cmp(left_expr, right_expr, 4)
+  F64Word.pick(Bool.not(Cmp.is_eq(c)) && Bool.xor(Cmp.is_gt(c), reverse), F64Word.pick(reverse, less(), more()), undefined())
 
 def fast_ps_left(+inverse: Bool, +reverse: Bool) -> U32:
-  FW.pick(inverse, FW.pick(reverse, undefined(), more()), FW.pick(reverse, less(), undefined()))
+  F64Word.pick(inverse, F64Word.pick(reverse, undefined(), more()), F64Word.pick(reverse, less(), undefined()))
 
-def fast_ps_slanted(+inverse: Bool, +reverse: Bool, +sp: Pt, +ss: Pt, +se: Pt, +np: Pt, +dif_x: FR.F64, +dif_y: FR.F64, +a: FR.F64, +b: FR.F64) -> U32:
-  +o = orientation4(VT.dif32(pt_x(se), pt_x(ss)), VT.dif32(pt_y(se), pt_y(ss)), VT.dif32(pt_x(np), pt_x(sp)), VT.dif32(pt_y(np), pt_y(sp)))
-  FW.pick(U32.is_eq(o, left()), fast_ps_left(inverse, reverse), fast_ps_exprs(reverse, dif_x, dif_y, a, b))
+def fast_ps_slanted(+inverse: Bool, +reverse: Bool, +sp: Pt, +ss: Pt, +se: Pt, +np: Pt, +dif_x: F64Repr.F64, +dif_y: F64Repr.F64, +a: F64Repr.F64, +b: F64Repr.F64) -> U32:
+  +o = orientation4(VoronoiTypes.dif32(pt_x(se), pt_x(ss)), VoronoiTypes.dif32(pt_y(se), pt_y(ss)), VoronoiTypes.dif32(pt_x(np), pt_x(sp)), VoronoiTypes.dif32(pt_y(np), pt_y(sp)))
+  F64Word.pick(U32.is_eq(o, left()), fast_ps_left(inverse, reverse), fast_ps_exprs(reverse, dif_x, dif_y, a, b))
 
 def fast_ps_vertical(+reverse: Bool, +sp: Pt, +np: Pt) -> U32:
-  FW.pick(lt(pt_y(np), pt_y(sp)) && Bool.not(reverse), more(), FW.pick(lt(pt_y(sp), pt_y(np)) && reverse, less(), undefined()))
+  F64Word.pick(lt(pt_y(np), pt_y(sp)) && Bool.not(reverse), more(), F64Word.pick(lt(pt_y(sp), pt_y(np)) && reverse, less(), undefined()))
 
 def fast_ps_right(vertical: Bool, +inverse: Bool, +reverse: Bool, +sp: Pt, +ss: Pt, +se: Pt, +np: Pt) -> U32:
   match vertical:
     case True{}:
       fast_ps_vertical(reverse, sp, np)
     case False{}:
-      +dif_x = FA.sub(fpt(pt_x(np)), fpt(pt_x(sp)))
-      +dif_y = FA.sub(fpt(pt_y(np)), fpt(pt_y(sp)))
-      +a = FA.sub(fpt(pt_x(se)), fpt(pt_x(ss)))
-      +b = FA.sub(fpt(pt_y(se)), fpt(pt_y(ss)))
+      +dif_x = F64Arith.sub(fpt(pt_x(np)), fpt(pt_x(sp)))
+      +dif_y = F64Arith.sub(fpt(pt_y(np)), fpt(pt_y(sp)))
+      +a = F64Arith.sub(fpt(pt_x(se)), fpt(pt_x(ss)))
+      +b = F64Arith.sub(fpt(pt_y(se)), fpt(pt_y(ss)))
       fast_ps_slanted(inverse, reverse, sp, ss, se, np, dif_x, dif_y, a, b)
 
 def fast_ps_route(on_right: Bool, +left_site: Site, +right_site: Site, +new_site: Site, +reverse: Bool) -> U32:
@@ -303,7 +303,7 @@ def fast_ps_route(on_right: Bool, +left_site: Site, +right_site: Site, +new_site
     case True{}:
       fast_ps_right(is_vertical(right_site), is_inverse(right_site), reverse, point0(left_site), start(right_site), end(right_site), point0(new_site))
     case False{}:
-      FW.pick(is_inverse(right_site), more(), less())
+      F64Word.pick(is_inverse(right_site), more(), less())
 
 # distance_predicate::fast_ps.
 def fast_ps(+left_site: Site, +right_site: Site, +new_site: Site, +reverse: Bool) -> U32:
@@ -313,7 +313,7 @@ def fast_ps(+left_site: Site, +right_site: Site, +new_site: Site, +reverse: Bool
 def ps_decided(fast: U32, +left_site: Site, +right_site: Site, +new_site: Site, +reverse: Bool) -> Bool:
   match fast:
     case 0:
-      Bool.xor(reverse, FC.lt(dist_point_arc(left_site, point0(new_site)), dist_segment_arc(right_site, point0(new_site))))
+      Bool.xor(reverse, F64Cmp.lt(dist_point_arc(left_site, point0(new_site)), dist_segment_arc(right_site, point0(new_site))))
     case _:
       U32.is_eq(fast, less())
 
@@ -322,10 +322,10 @@ def ps(+left_site: Site, +right_site: Site, +new_site: Site, +reverse: Bool) -> 
   ps_decided(fast_ps(left_site, right_site, new_site, reverse), left_site, right_site, new_site, reverse)
 
 def pp_by_distance(+left_site: Site, +right_site: Site, +np: Pt) -> Bool:
-  FC.lt(dist_point_arc(left_site, np), dist_point_arc(right_site, np))
+  F64Cmp.lt(dist_point_arc(left_site, np), dist_point_arc(right_site, np))
 
 def pp_same_x(+lp: Pt, +rp: Pt, +np: Pt) -> Bool:
-  VT.lt_u64(VT.add64(VT.add64(VT.widen(pt_y(lp)), VT.widen(pt_y(rp))), FW.W64{2147483648, 0}), VT.add64(VT.add64(VT.widen(pt_y(np)), VT.widen(pt_y(np))), FW.W64{2147483648, 0}))
+  VoronoiTypes.lt_u64(VoronoiTypes.add64(VoronoiTypes.add64(VoronoiTypes.widen(pt_y(lp)), VoronoiTypes.widen(pt_y(rp))), F64Word.W64{2147483648, 0}), VoronoiTypes.add64(VoronoiTypes.add64(VoronoiTypes.widen(pt_y(np)), VoronoiTypes.widen(pt_y(np))), F64Word.W64{2147483648, 0}))
 
 def pp_right_higher(stop: Bool, +left_site: Site, +right_site: Site, +np: Pt) -> Bool:
   match stop:
@@ -367,7 +367,7 @@ def ss_route(same: Bool, +left_site: Site, +right_site: Site, +new_site: Site) -
     case True{}:
       U32.is_eq(orientation(point0(left_site), point1(left_site), point0(new_site)), left())
     case False{}:
-      FC.lt(dist_segment_arc(left_site, point0(new_site)), dist_segment_arc(right_site, point0(new_site)))
+      F64Cmp.lt(dist_segment_arc(left_site, point0(new_site)), dist_segment_arc(right_site, point0(new_site)))
 
 # distance_predicate::ss.
 def ss(+left_site: Site, +right_site: Site, +new_site: Site) -> Bool:

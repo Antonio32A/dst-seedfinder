@@ -1,5 +1,5 @@
 import Base
-import ../f64/repr.bend as FR
+import ../f64/repr.bend as F64Repr
 
 # Natural numbers of any size as little-endian lists of 16-bit limbs (each in a U32), without high zero limbs, so
 # zero is Nil. Every product of two limbs plus two carries fits in a U32.
@@ -239,7 +239,7 @@ def double_exponent(+ah: U32) -> U32:
   Bool.pick(U32, U32.is_zero(e), 1, e)
 
 # The exact value of |d| times 2^1074 for a finite double d, a natural number.
-def of_double(d: FR.F64) -> List<&2, U32>:
+def of_double(d: F64Repr.F64) -> List<&2, U32>:
   match d:
-    case FR.F64{+ah, +al}:
+    case F64Repr.F64{+ah, +al}:
       shl(double_mantissa(ah, al), U32.to_nat((double_exponent(ah) - 1 : U32)))

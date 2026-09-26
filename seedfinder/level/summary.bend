@@ -1,7 +1,7 @@
 import Base
-import ../data/world_catalog.bend as K
-import ./prefix.bend as P
-import ./choose.bend as CH
+import ../data/world_catalog.bend as WorldCatalog
+import ./prefix.bend as LevelPrefix
+import ./choose.bend as LevelChoose
 
 # A World as plain data: level.set_pieces keys in pairs() order, each as key | task mask << 6.
 type Summary is Data:
@@ -23,7 +23,7 @@ def list_node(got: Array<U32> & U32, entries: List<&2, U32>) -> Listing:
     case 0:
       Listing{table, entries}
     case _:
-      list_mask(table[(CH.mask_slot() + (node .&. 63) : U32)], (node .&. 63 : U32), entries)
+      list_mask(table[(LevelChoose.mask_slot() + (node .&. 63) : U32)], (node .&. 63 : U32), entries)
 
 def list_step(st: Listing, +position: U32) -> Listing:
   match st:
@@ -42,13 +42,13 @@ def listed(st: Listing) -> List<&2, U32>:
     case Listing{_, entries}:
       List.reverse(&2, U32, entries)
 
-def summary_of(w: CH.World) -> Summary:
+def summary_of(w: LevelChoose.World) -> Summary:
   match w:
-    case CH.World{+swaps, +lo, _, _, table, +size, +codes, +tasks, +count, crashed}:
+    case LevelChoose.World{+swaps, +lo, _, _, table, +size, +codes, +tasks, +count, crashed}:
       Summary{swaps, lo, listed(list_loop(U32.to_nat(size), Listing{table, Nil{}}, 0)), codes, tasks, count, crashed}
 
 def summary(+seed: U32) -> Summary:
-  summary_of(CH.world(seed))
+  summary_of(LevelChoose.world(seed))
 
 def quoted(+s: String) -> String:
   "\"" ++ s ++ "\""
@@ -60,7 +60,7 @@ def piece_names(entries: List<&2, U32>, +task: U32) -> List<&2, String>:
     case Con{+entry, rest}:
       +tail = piece_names(rest, task)
       +placed = U32.is_eq((((entry >> 6n) >> U32.to_nat(task)) .&. 1 : U32), 1)
-      Bool.pick(List<&2, String>, placed, quoted(K.key_name((entry .&. 63 : U32))) <> tail, tail)
+      Bool.pick(List<&2, String>, placed, quoted(WorldCatalog.key_name((entry .&. 63 : U32))) <> tail, tail)
 
 def special_names(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, String>:
   match n:
@@ -68,13 +68,13 @@ def special_names(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List
       Nil{}
     case 1n+p:
       +tail = special_names(p, codes, tasks, task, (k + 1 : U32))
-      Bool.pick(List<&2, String>, U32.is_eq(P.field5(tasks, k), task), quoted(K.special_name(P.field5(codes, k))) <> tail, tail)
+      Bool.pick(List<&2, String>, U32.is_eq(LevelPrefix.field5(tasks, k), task), quoted(WorldCatalog.special_name(LevelPrefix.field5(codes, k))) <> tail, tail)
 
 def task_json(+s: Summary, +c: U32) -> String:
   match s:
     case Summary{_, +lo, +entries, +codes, +tasks, +count, _}:
-      +task = P.chosen_task(lo, c)
-      "{\"task\":" ++ quoted(K.task_name(task)) ++ ",\"set_pieces\":[" ++ String.join(piece_names(entries, task), ",")
+      +task = LevelPrefix.chosen_task(lo, c)
+      "{\"task\":" ++ quoted(WorldCatalog.task_name(task)) ++ ",\"set_pieces\":[" ++ String.join(piece_names(entries, task), ",")
         ++ "],\"random_set_pieces\":[" ++ String.join(special_names(U32.to_nat(count), codes, tasks, task, 0), ",") ++ "]}"
 
 def tasks_json(n: Nat, +s: Summary, +c: U32) -> List<&2, String>:

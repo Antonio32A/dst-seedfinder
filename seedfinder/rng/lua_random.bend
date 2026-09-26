@@ -1,5 +1,5 @@
 import Base
-import ./pcg.bend as R
+import ./pcg.bend as Pcg
 
 # Lua math.random on the PCG32 stream: r = output / (2^32 - 1), so r can be exactly 1.0.
 def largest_output() -> U32:
@@ -15,10 +15,10 @@ def scale(+x: U32, +n: U32) -> U32:
   (hi + Bool.to_u32(((x * n : U32) >= (largest_output() - hi) : U32)) : U32)
 
 # math.random(n) - 1, as a 0-based index.
-def roll(s: R.Rng, +n: U32) -> U32 & R.Rng:
+def roll(s: Pcg.Rng, +n: U32) -> U32 & Pcg.Rng:
   match s:
-    case R.Rng{+hi, +lo}:
-      (scale(R.output(hi, lo), n), R.affine(hi, lo, R.multiplier_hi(), R.multiplier_lo(), R.increment_hi(), R.increment_lo()))
+    case Pcg.Rng{+hi, +lo}:
+      (scale(Pcg.output(hi, lo), n), Pcg.affine(hi, lo, Pcg.multiplier_hi(), Pcg.multiplier_lo(), Pcg.increment_hi(), Pcg.increment_lo()))
 
 # math.random() < 0.98
 def is_below_rare_cutoff(+x: U32) -> Bool:

@@ -1,9 +1,9 @@
 import Base
-import ../level/summary.bend as W
-import ../filters/config.bend as CF
+import ../level/summary.bend as LevelSummary
+import ../filters/config.bend as Config
 
 def world_line(+seed: U32) -> String:
-  U32.show(seed) ++ " " ++ W.summary_json(W.summary(seed))
+  U32.show(seed) ++ " " ++ LevelSummary.summary_json(LevelSummary.summary(seed))
 
 def world_print_seeds(n: Nat, +seed: U32) -> IO(Unit):
   match n:
@@ -30,24 +30,24 @@ def position_json(+start: U32, +scanned: Nat, +code: U32) -> String:
   +following = Bool.pick(String, U32.is_eq(code, 2) || Nat.is_eq(scanned, seed_space()), "null", U32.show(next))
   "\"scanned\":" ++ Nat.show(scanned) ++ ",\"last_scanned\":" ++ last ++ ",\"next_seed\":" ++ following
 
-def entry_json(entries: List<&2, CF.Criteria>, +seed: U32) -> String:
+def entry_json(entries: List<&2, Config.Criteria>, +seed: U32) -> String:
   match entries:
     case Nil{}:
       "null"
     case _:
-      U32.show(CF.first_match(entries, seed))
+      U32.show(Config.first_match(entries, seed))
 
-def hit_fields(+entries: List<&2, CF.Criteria>, +seed: U32) -> String:
-  "\"entry\":" ++ entry_json(entries, seed) ++ ",\"level\":" ++ W.summary_json(W.summary(seed)) ++ ",\"results\":[]"
+def hit_fields(+entries: List<&2, Config.Criteria>, +seed: U32) -> String:
+  "\"entry\":" ++ entry_json(entries, seed) ++ ",\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
 
-def hits_json(+entries: List<&2, CF.Criteria>, hits: List<&2, U32>) -> List<&2, String>:
+def hits_json(+entries: List<&2, Config.Criteria>, hits: List<&2, U32>) -> List<&2, String>:
   match hits:
     case Nil{}:
       Nil{}
     case Con{+seed, rest}:
       ("{\"seed\":" ++ U32.show(seed) ++ "," ++ hit_fields(entries, seed) ++ "}") <> hits_json(entries, rest)
 
-def print_hit_lines(+entries: List<&2, CF.Criteria>, hits: List<&2, U32>) -> IO(Unit):
+def print_hit_lines(+entries: List<&2, Config.Criteria>, hits: List<&2, U32>) -> IO(Unit):
   match hits:
     case Nil{}:
       IO.pure(Unit, Unit{})
@@ -67,7 +67,7 @@ def platform_name(windows: Bool) -> String:
       "linux"
 
 def print_report(
-  json: Bool, windows: Bool, +entries: List<&2, CF.Criteria>, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
+  json: Bool, windows: Bool, +entries: List<&2, Config.Criteria>, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
 ) -> IO(Unit):
   match json:
     case True{}:

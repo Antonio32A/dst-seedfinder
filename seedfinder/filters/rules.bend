@@ -1,10 +1,10 @@
 import Base
-import ./json.bend as J
-import ../f64/repr.bend as FR
-import ../f64/arith.bend as FA
-import ../f64/cmp.bend as FC
-import ./parse.bend as PS
-import ../data/search_vocab.bend as V
+import ./json.bend as Json
+import ../f64/repr.bend as F64Repr
+import ../f64/arith.bend as F64Arith
+import ../f64/cmp.bend as F64Cmp
+import ./parse.bend as Parse
+import ../data/search_vocab.bend as SearchVocab
 
 # Parts B-E of a criteria entry (.scratch/spec/search-v1.md section 4). A prefab set is a list of distinct
 # data/search_vocab.bend prefab ids in first-occurrence order; a tile set is a list of vocabulary tile ids.
@@ -12,19 +12,19 @@ type Metric is Data:
   Metric{walk: Bool, wormholes: Bool}
 
 type Near is Data:
-  Near{prefabs: List<&2, U32>, within: FR.F64, metric: Metric}
+  Near{prefabs: List<&2, U32>, within: F64Repr.F64, metric: Metric}
 
 type Count is Data:
   Count{prefabs: List<&2, U32>, min: Maybe<&2, U32>, max: Maybe<&2, U32>, near: Maybe<&2, Near>}
 
 type Distance is Data:
-  Distance{from: List<&2, U32>, to: List<&2, U32>, min: Maybe<&2, FR.F64>, max: Maybe<&2, FR.F64>, metric: Metric}
+  Distance{from: List<&2, U32>, to: List<&2, U32>, min: Maybe<&2, F64Repr.F64>, max: Maybe<&2, F64Repr.F64>, metric: Metric}
 
 type Tiles is Data:
   Tiles{from: List<&2, U32>, to: List<&2, U32>, max: U32}
 
 type Route is Data:
-  Route{from: List<&2, U32>, visit: List<&2, List<&2, U32>>, to: Maybe<&2, List<&2, U32>>, max: FR.F64, fixed: Bool, metric: Metric}
+  Route{from: List<&2, U32>, visit: List<&2, List<&2, U32>>, to: Maybe<&2, List<&2, U32>>, max: F64Repr.F64, fixed: Bool, metric: Metric}
 
 # The counts, distances, tiles and routes rules of one criteria entry.
 type Later is Data:
@@ -40,109 +40,109 @@ def has_rules(+later: Later) -> Bool:
       Bool.not(List.is_empty(&2, Count, counts) && List.is_empty(&2, Distance, distances) && List.is_empty(&2, Tiles, tiles)
         && List.is_empty(&2, Route, routes))
 
-def listed_as_set(json: J.Json, +kind: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, J.Json>>:
+def listed_as_set(json: Json.Json, +kind: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
   match json:
-    case J.JStr{+name}:
-      Done{[J.JStr{name}]}
-    case J.JArr{items}:
+    case Json.JStr{+name}:
+      Done{[Json.JStr{name}]}
+    case Json.JArr{items}:
       Done{items}
     case _:
-      Fail{PS.failure(path ++ " must be a " ++ kind ++ " or a list of " ++ kind ++ "s")}
+      Fail{Parse.failure(path ++ " must be a " ++ kind ++ " or a list of " ++ kind ++ "s")}
 
 def group_hint(+name: String) -> String:
-  Bool.pick(String, PS.is_member(V.groups(), name), " (a catalog group name: list its prefab ids)", "")
+  Bool.pick(String, Parse.is_member(SearchVocab.groups(), name), " (a catalog group name: list its prefab ids)", "")
 
 def prefab_id(found: Maybe<&2, U32>, +name: String, +path: String) -> Result<&1, &1, U32 & String, U32>:
   match found:
     case None{}:
-      Fail{PS.failure("unknown prefab " ++ PS.quoted(name) ++ " in " ++ path ++ group_hint(name))}
+      Fail{Parse.failure("unknown prefab " ++ Parse.quoted(name) ++ " in " ++ path ++ group_hint(name))}
     case Some{id}:
       Done{id}
 
-def prefab_ids(items: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def prefab_ids(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, U32>>:
-        +name : String <- PS.string_of(item, PS.indexed(path, i))
-        id : U32 <- prefab_id(PS.index_of(V.prefabs(), name, 0), name, path)
+        +name : String <- Parse.string_of(item, Parse.indexed(path, i))
+        id : U32 <- prefab_id(Parse.index_of(SearchVocab.prefabs(), name, 0), name, path)
         others : List<&2, U32> <- prefab_ids(rest, path, (i + 1 : U32))
         return id <> others
 
 # A prefab set: an id or a list of 1..16 ids.
-def prefab_set(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def prefab_set(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   do Result<&1, &1, U32 & String, List<&2, U32>>:
-    +items : List<&2, J.Json> <- listed_as_set(json, "prefab id", path)
-    +listed : List<&2, J.Json> <- PS.nonempty_capped(items, 16, "prefab ids", path)
+    +items : List<&2, Json.Json> <- listed_as_set(json, "prefab id", path)
+    +listed : List<&2, Json.Json> <- Parse.nonempty_capped(items, 16, "prefab ids", path)
     +ids : List<&2, U32> <- prefab_ids(listed, path, 0)
-    return PS.distinct(ids)
+    return Parse.distinct(ids)
 
-def tile_names(tiles: List<&2, V.Tile>) -> List<&2, String>:
+def tile_names(tiles: List<&2, SearchVocab.Tile>) -> List<&2, String>:
   match tiles:
     case Nil{}:
       Nil{}
-    case Con{V.Tile{+name, _}, rest}:
+    case Con{SearchVocab.Tile{+name, _}, rest}:
       name <> tile_names(rest)
 
-def is_land_id(tiles: List<&2, V.Tile>, +id: U32) -> Bool:
+def is_land_id(tiles: List<&2, SearchVocab.Tile>, +id: U32) -> Bool:
   match tiles:
     case Nil{}:
       False{}
-    case Con{V.Tile{_, +land}, rest}:
+    case Con{SearchVocab.Tile{_, +land}, rest}:
       Bool.pick(Bool, U32.is_zero(id), land, is_land_id(rest, (id - 1 : U32)))
 
 def land_tile_id(+id: U32, +name: String, +path: String) -> Result<&1, &1, U32 & String, U32>:
-  Bool.pick(Result<&1, &1, U32 & String, U32>, is_land_id(V.tiles(), id), Done{id},
-    Fail{PS.failure("tile " ++ PS.quoted(name) ++ " in " ++ path ++ " is not a land tile")})
+  Bool.pick(Result<&1, &1, U32 & String, U32>, is_land_id(SearchVocab.tiles(), id), Done{id},
+    Fail{Parse.failure("tile " ++ Parse.quoted(name) ++ " in " ++ path ++ " is not a land tile")})
 
 def tile_id(found: Maybe<&2, U32>, +name: String, +path: String) -> Result<&1, &1, U32 & String, U32>:
   match found:
     case None{}:
-      Fail{PS.failure("unknown tile " ++ PS.quoted(name) ++ " in " ++ path)}
+      Fail{Parse.failure("unknown tile " ++ Parse.quoted(name) ++ " in " ++ path)}
     case Some{+id}:
       land_tile_id(id, name, path)
 
-def tile_ids(items: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def tile_ids(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, U32>>:
-        +name : String <- PS.string_of(item, PS.indexed(path, i))
-        id : U32 <- tile_id(PS.index_of(tile_names(V.tiles()), name, 0), name, path)
+        +name : String <- Parse.string_of(item, Parse.indexed(path, i))
+        id : U32 <- tile_id(Parse.index_of(tile_names(SearchVocab.tiles()), name, 0), name, path)
         others : List<&2, U32> <- tile_ids(rest, path, (i + 1 : U32))
         return id <> others
 
 # A tile set: a land tile name or a list of 1..16 of them.
-def tile_set(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def tile_set(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   do Result<&1, &1, U32 & String, List<&2, U32>>:
-    +items : List<&2, J.Json> <- listed_as_set(json, "tile name", path)
-    +listed : List<&2, J.Json> <- PS.nonempty_capped(items, 16, "tiles", path)
+    +items : List<&2, Json.Json> <- listed_as_set(json, "tile name", path)
+    +listed : List<&2, Json.Json> <- Parse.nonempty_capped(items, 16, "tiles", path)
     +ids : List<&2, U32> <- tile_ids(listed, path, 0)
-    return PS.distinct(ids)
+    return Parse.distinct(ids)
 
-def required_prefab_set(+fields: List<&2, J.Json>, +path: String, +key: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def required_prefab_set(+fields: List<&2, Json.Json>, +path: String, +key: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   do Result<&1, &1, U32 & String, List<&2, U32>>:
-    json : J.Json <- PS.required_field(fields, path, key)
+    json : Json.Json <- Parse.required_field(fields, path, key)
     prefab_set(json, path ++ "." ++ key)
 
-def metric_of(+fields: List<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, Metric>:
+def metric_of(+fields: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, Metric>:
   do Result<&1, &1, U32 & String, Metric>:
-    walk : Bool <- PS.binary_choice(PS.field(fields, "metric"), "straight", "walk", path ++ ".metric")
-    wormholes : Bool <- PS.optional_flag(PS.field(fields, "wormholes"), path ++ ".wormholes")
+    walk : Bool <- Parse.binary_choice(Parse.field(fields, "metric"), "straight", "walk", path ++ ".metric")
+    wormholes : Bool <- Parse.optional_flag(Parse.field(fields, "wormholes"), path ++ ".wormholes")
     return Metric{walk, wormholes}
 
-def near_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Near>:
+def near_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Near>:
   do Result<&1, &1, U32 & String, Near>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["prefab", "within", "metric", "wormholes"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["prefab", "within", "metric", "wormholes"], path)
     prefabs : List<&2, U32> <- required_prefab_set(fields, path, "prefab")
-    raw_within : J.Json <- PS.required_field(fields, path, "within")
-    within : FR.F64 <- PS.distance(raw_within, path ++ ".within")
+    raw_within : Json.Json <- Parse.required_field(fields, path, "within")
+    within : F64Repr.F64 <- Parse.distance(raw_within, path ++ ".within")
     metric : Metric <- metric_of(fields, path)
     return Near{prefabs, within, metric}
 
-def optional_near(m: Maybe<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, Maybe<&2, Near>>:
+def optional_near(m: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, Maybe<&2, Near>>:
   match m:
     case None{}:
       Done{None{}}
@@ -151,50 +151,50 @@ def optional_near(m: Maybe<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & S
         near : Near <- near_of(json, path)
         return Some{near}
 
-def count_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Count>:
+def count_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Count>:
   do Result<&1, &1, U32 & String, Count>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["prefab", "min", "max", "near"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["prefab", "min", "max", "near"], path)
     prefabs : List<&2, U32> <- required_prefab_set(fields, path, "prefab")
-    min : Maybe<&2, U32> <- PS.optional_integer(PS.field(fields, "min"), path ++ ".min")
-    max : Maybe<&2, U32> <- PS.optional_integer(PS.field(fields, "max"), path ++ ".max")
-    near : Maybe<&2, Near> <- optional_near(PS.field(fields, "near"), path ++ ".near")
+    min : Maybe<&2, U32> <- Parse.optional_integer(Parse.field(fields, "min"), path ++ ".min")
+    max : Maybe<&2, U32> <- Parse.optional_integer(Parse.field(fields, "max"), path ++ ".max")
+    near : Maybe<&2, Near> <- optional_near(Parse.field(fields, "near"), path ++ ".near")
     return Count{prefabs, min, max, near}
 
-def distance_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Distance>:
+def distance_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Distance>:
   do Result<&1, &1, U32 & String, Distance>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["from", "to", "min", "max", "metric", "wormholes"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["from", "to", "min", "max", "metric", "wormholes"], path)
     from : List<&2, U32> <- required_prefab_set(fields, path, "from")
     to : List<&2, U32> <- required_prefab_set(fields, path, "to")
-    min : Maybe<&2, FR.F64> <- PS.optional_distance(PS.field(fields, "min"), path ++ ".min")
-    max : Maybe<&2, FR.F64> <- PS.optional_distance(PS.field(fields, "max"), path ++ ".max")
+    min : Maybe<&2, F64Repr.F64> <- Parse.optional_distance(Parse.field(fields, "min"), path ++ ".min")
+    max : Maybe<&2, F64Repr.F64> <- Parse.optional_distance(Parse.field(fields, "max"), path ++ ".max")
     metric : Metric <- metric_of(fields, path)
     return Distance{from, to, min, max, metric}
 
-def required_tile_set(+fields: List<&2, J.Json>, +path: String, +key: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def required_tile_set(+fields: List<&2, Json.Json>, +path: String, +key: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   do Result<&1, &1, U32 & String, List<&2, U32>>:
-    json : J.Json <- PS.required_field(fields, path, key)
+    json : Json.Json <- Parse.required_field(fields, path, key)
     tile_set(json, path ++ "." ++ key)
 
-def tiles_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Tiles>:
+def tiles_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Tiles>:
   do Result<&1, &1, U32 & String, Tiles>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["from", "to", "max"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["from", "to", "max"], path)
     from : List<&2, U32> <- required_tile_set(fields, path, "from")
     to : List<&2, U32> <- required_tile_set(fields, path, "to")
-    raw_max : J.Json <- PS.required_field(fields, path, "max")
-    max : U32 <- PS.integer(raw_max, path ++ ".max")
+    raw_max : Json.Json <- Parse.required_field(fields, path, "max")
+    max : U32 <- Parse.integer(raw_max, path ++ ".max")
     return Tiles{from, to, max}
 
-def stop_sets(stops: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, List<&2, U32>>>:
+def stop_sets(stops: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, List<&2, U32>>>:
   match stops:
     case Nil{}:
       Done{Nil{}}
     case Con{stop, rest}:
       do Result<&1, &1, U32 & String, List<&2, List<&2, U32>>>:
-        ids : List<&2, U32> <- prefab_set(stop, PS.indexed(path ++ ".visit", i))
+        ids : List<&2, U32> <- prefab_set(stop, Parse.indexed(path ++ ".visit", i))
         others : List<&2, List<&2, U32>> <- stop_sets(rest, path, (i + 1 : U32))
         return ids <> others
 
-def optional_prefab_set(m: Maybe<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, Maybe<&2, List<&2, U32>>>:
+def optional_prefab_set(m: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, Maybe<&2, List<&2, U32>>>:
   match m:
     case None{}:
       Done{None{}}
@@ -214,14 +214,14 @@ def seen_stop(seen: List<&2, Seen>, +prefab: U32) -> Maybe<&2, U32>:
       Bool.pick(Maybe<&2, U32>, U32.is_eq(id, prefab), Some{stop}, seen_stop(rest, prefab))
 
 def prefab_name(+id: U32) -> String:
-  Maybe.default(&2, String, List.get(&2, String, V.prefabs(), U32.to_nat(id)), "")
+  Maybe.default(&2, String, List.get(&2, String, SearchVocab.prefabs(), U32.to_nat(id)), "")
 
 def unseen(found: Maybe<&2, U32>, +prefab: U32, +stop: U32, +path: String) -> Result<&1, &1, U32 & String, Unit>:
   match found:
     case None{}:
       Done{Unit{}}
     case Some{+earlier}:
-      Fail{PS.failure(path ++ ": " ++ PS.quoted(prefab_name(prefab)) ++ " is in both visit[" ++ U32.show(earlier) ++ "] and visit[" ++ U32.show(stop) ++ "]")}
+      Fail{Parse.failure(path ++ ": " ++ Parse.quoted(prefab_name(prefab)) ++ " is in both visit[" ++ U32.show(earlier) ++ "] and visit[" ++ U32.show(stop) ++ "]")}
 
 def mark_stop(ids: List<&2, U32>, +stop: U32, +path: String, +seen: List<&2, Seen>) -> Result<&1, &1, U32 & String, List<&2, Seen>>:
   match ids:
@@ -260,7 +260,7 @@ def endpoint_free(names: List<&2, String>, +path: String) -> Result<&1, &1, U32 
     case Nil{}:
       Done{Unit{}}
     case Con{+first, +rest}:
-      Fail{PS.failure(path ++ ": " ++ PS.quoted(least_name(rest, first)) ++ " is both a visit stop and the route's from/to")}
+      Fail{Parse.failure(path ++ ": " ++ Parse.quoted(least_name(rest, first)) ++ " is both a visit stop and the route's from/to")}
 
 def route_ends(+from: List<&2, U32>, to: Maybe<&2, List<&2, U32>>) -> List<&2, U32>:
   match to:
@@ -278,75 +278,75 @@ def disjoint_stops(+route: Route, +path: String) -> Result<&1, &1, U32 & String,
         ok : Unit <- endpoint_free(shared_names(route_ends(from, to), seen, Nil{}), path)
         return route
 
-def route_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Route>:
+def route_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Route>:
   do Result<&1, &1, U32 & String, Route>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["from", "visit", "to", "max", "metric", "wormholes", "order"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["from", "visit", "to", "max", "metric", "wormholes", "order"], path)
     from : List<&2, U32> <- required_prefab_set(fields, path, "from")
-    raw_visit : J.Json <- PS.required_field(fields, path, "visit")
-    stops : List<&2, J.Json> <- PS.items_of(raw_visit, path ++ ".visit")
-    listed : List<&2, J.Json> <- PS.nonempty_capped(stops, 6, "stops", path ++ ".visit")
+    raw_visit : Json.Json <- Parse.required_field(fields, path, "visit")
+    stops : List<&2, Json.Json> <- Parse.items_of(raw_visit, path ++ ".visit")
+    listed : List<&2, Json.Json> <- Parse.nonempty_capped(stops, 6, "stops", path ++ ".visit")
     visit : List<&2, List<&2, U32>> <- stop_sets(listed, path, 0)
-    to : Maybe<&2, List<&2, U32>> <- optional_prefab_set(PS.field(fields, "to"), path ++ ".to")
-    raw_max : J.Json <- PS.required_field(fields, path, "max")
-    max : FR.F64 <- PS.distance(raw_max, path ++ ".max")
-    fixed : Bool <- PS.binary_choice(PS.field(fields, "order"), "any", "fixed", path ++ ".order")
+    to : Maybe<&2, List<&2, U32>> <- optional_prefab_set(Parse.field(fields, "to"), path ++ ".to")
+    raw_max : Json.Json <- Parse.required_field(fields, path, "max")
+    max : F64Repr.F64 <- Parse.distance(raw_max, path ++ ".max")
+    fixed : Bool <- Parse.binary_choice(Parse.field(fields, "order"), "any", "fixed", path ++ ".order")
     metric : Metric <- metric_of(fields, path)
     disjoint_stops(Route{from, visit, to, max, fixed, metric}, path)
 
-def section_items(+fields: List<&2, J.Json>, +path: String, +section: String) -> Result<&1, &1, U32 & String, List<&2, J.Json>>:
-  do Result<&1, &1, U32 & String, List<&2, J.Json>>:
-    +items : List<&2, J.Json> <- PS.optional_items(PS.field(fields, section), path ++ "." ++ section)
-    PS.capped(items, 16, "rules", path ++ "." ++ section)
+def section_items(+fields: List<&2, Json.Json>, +path: String, +section: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
+  do Result<&1, &1, U32 & String, List<&2, Json.Json>>:
+    +items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, section), path ++ "." ++ section)
+    Parse.capped(items, 16, "rules", path ++ "." ++ section)
 
-def counts_of(items: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Count>>:
+def counts_of(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Count>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Count>>:
-        rule : Count <- count_of(item, PS.indexed(path, i))
+        rule : Count <- count_of(item, Parse.indexed(path, i))
         others : List<&2, Count> <- counts_of(rest, path, (i + 1 : U32))
         return rule <> others
 
-def distances_of(items: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Distance>>:
+def distances_of(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Distance>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Distance>>:
-        rule : Distance <- distance_of(item, PS.indexed(path, i))
+        rule : Distance <- distance_of(item, Parse.indexed(path, i))
         others : List<&2, Distance> <- distances_of(rest, path, (i + 1 : U32))
         return rule <> others
 
-def tiles_rules_of(items: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Tiles>>:
+def tiles_rules_of(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Tiles>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Tiles>>:
-        rule : Tiles <- tiles_of(item, PS.indexed(path, i))
+        rule : Tiles <- tiles_of(item, Parse.indexed(path, i))
         others : List<&2, Tiles> <- tiles_rules_of(rest, path, (i + 1 : U32))
         return rule <> others
 
-def routes_of(items: List<&2, J.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Route>>:
+def routes_of(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Route>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Route>>:
-        rule : Route <- route_of(item, PS.indexed(path, i))
+        rule : Route <- route_of(item, Parse.indexed(path, i))
         others : List<&2, Route> <- routes_of(rest, path, (i + 1 : U32))
         return rule <> others
 
 # Parses the counts, distances, tiles and routes sections of an entry's fields, in that order.
-def later_of(+fields: List<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, Later>:
+def later_of(+fields: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, Later>:
   do Result<&1, &1, U32 & String, Later>:
-    count_items : List<&2, J.Json> <- section_items(fields, path, "counts")
+    count_items : List<&2, Json.Json> <- section_items(fields, path, "counts")
     counts : List<&2, Count> <- counts_of(count_items, path ++ ".counts", 0)
-    distance_items : List<&2, J.Json> <- section_items(fields, path, "distances")
+    distance_items : List<&2, Json.Json> <- section_items(fields, path, "distances")
     distances : List<&2, Distance> <- distances_of(distance_items, path ++ ".distances", 0)
-    tile_items : List<&2, J.Json> <- section_items(fields, path, "tiles")
+    tile_items : List<&2, Json.Json> <- section_items(fields, path, "tiles")
     tiles : List<&2, Tiles> <- tiles_rules_of(tile_items, path ++ ".tiles", 0)
-    route_items : List<&2, J.Json> <- section_items(fields, path, "routes")
+    route_items : List<&2, Json.Json> <- section_items(fields, path, "routes")
     routes : List<&2, Route> <- routes_of(route_items, path ++ ".routes", 0)
     return Later{counts, distances, tiles, routes}

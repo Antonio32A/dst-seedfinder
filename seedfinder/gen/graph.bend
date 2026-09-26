@@ -1,7 +1,7 @@
 import Base
-import ../storygen/graph.bend as GG
-import ../worldsim/layout/hops.bend as KH
-import ../worldsim/tiles/table.bend as TB
+import ../storygen/graph.bend as StoryGraph
+import ../worldsim/layout/hops.bend as LayoutHops
+import ../worldsim/tiles/table.bend as TileTable
 
 # The C++ side of the story's WorldSim calls (boostmap.cpp). A Boost vertex is made when AddLink first names a node
 # (its second argument first); edges are undirected, kept in insertion order with AddLink's first argument as the
@@ -14,7 +14,7 @@ type Link is Data:
 # The graph after a prefix of the log: vertex count, the story node of each vertex, the edges, per story node its
 # vertex and its parent object (NONE when absent), and the graph of each object.
 type Klei is Data:
-  Klei{count: U32, vertices: List<&2, U32>, edges: List<&2, Link>, vertex_of: TB.Tree<U32>, parent_of: TB.Tree<U32>, graphs: List<&2, U32>}
+  Klei{count: U32, vertices: List<&2, U32>, edges: List<&2, Link>, vertex_of: TileTable.Tree<U32>, parent_of: TileTable.Tree<U32>, graphs: List<&2, U32>}
 
 def none() -> U32:
   4294967295
@@ -71,25 +71,25 @@ def parent_read(got: Array<U32> & U32, +node: U32, +n: U32, +objects: U32, +vert
   (a, +o) = got
   Fold{a[parent_slot(node)] <- o, n, objects, vertices, edges, graphs}
 
-def node_added(f: Fold, +s: GG.St, +node: U32) -> Fold:
+def node_added(f: Fold, +s: StoryGraph.St, +node: U32) -> Fold:
   match f:
     case Fold{a, +n, +objects, +vertices, +edges, +graphs}:
-      parent_read(a[graph_slot(GG.nf(s, node, GG.f_graph()))], node, n, objects, vertices, edges, graphs)
+      parent_read(a[graph_slot(StoryGraph.nf(s, node, StoryGraph.f_graph()))], node, n, objects, vertices, edges, graphs)
 
-def on_event(+ev: GG.Ev, f: Fold, +s: GG.St) -> Fold:
+def on_event(+ev: StoryGraph.Ev, f: Fold, +s: StoryGraph.St) -> Fold:
   match ev:
-    case GG.EGraph{+g, _}:
+    case StoryGraph.EGraph{+g, _}:
       new_object(f, g)
-    case GG.ENode{+node, _}:
+    case StoryGraph.ENode{+node, _}:
       node_added(f, s, node)
-    case GG.ELink{_, +from, +to, _}:
+    case StoryGraph.ELink{_, +from, +to, _}:
       link(f, from, to)
-    case GG.ECall{_, _}:
+    case StoryGraph.ECall{_, _}:
       f
-    case GG.ELua{_, _, _}:
+    case StoryGraph.ELua{_, _, _}:
       f
 
-def fold(evs: List<&2, GG.Ev>, f: Fold, +s: GG.St) -> Fold:
+def fold(evs: List<&2, StoryGraph.Ev>, f: Fold, +s: StoryGraph.St) -> Fold:
   match evs:
     case Nil{}:
       f
@@ -113,7 +113,7 @@ def slots(a: Array<U32>, +base: U32, +count: U32) -> Array<U32> & List<&2, U32>:
 
 def parents_done(got: Array<U32> & List<&2, U32>, +vs: List<&2, U32>, +n: U32, +vertices: List<&2, U32>, +edges: List<&2, Link>, +graphs: List<&2, U32>) -> Klei:
   (_, +ps) = got
-  Klei{n, List.reverse(&2, U32, vertices), List.reverse(&2, Link, edges), TB.from_list(~U32, vs, none()), TB.from_list(~U32, ps, none()),
+  Klei{n, List.reverse(&2, U32, vertices), List.reverse(&2, Link, edges), TileTable.from_list(~U32, vs, none()), TileTable.from_list(~U32, ps, none()),
     List.reverse(&2, U32, graphs)}
 
 def with_parents(got: Array<U32> & List<&2, U32>, +count: U32, +n: U32, +vertices: List<&2, U32>, +edges: List<&2, Link>, +graphs: List<&2, U32>) -> Klei:
@@ -126,9 +126,9 @@ def folded(f: Fold, +count: U32) -> Klei:
       with_parents(slots(a, 0, count), count, n, vertices, edges, graphs)
 
 # The Boost graph and the Klei objects after every WorldSim call the story state has logged.
-def klei(+s: GG.St) -> Klei:
+def klei(+s: StoryGraph.St) -> Klei:
   start = {Fold{[4294967295 : U32^14n], 0, 0, Nil{}, Nil{}, Nil{}} : Fold}
-  folded(fold(List.reverse(&2, GG.Ev, GG.log_of(s)), start, s), GG.get(s, GG.s_nodes()))
+  folded(fold(List.reverse(&2, StoryGraph.Ev, StoryGraph.log_of(s)), start, s), StoryGraph.get(s, StoryGraph.s_nodes()))
 
 def count_of(+k: Klei) -> U32:
   match k:
@@ -149,9 +149,9 @@ def edges_of(+k: Klei) -> List<&2, Link>:
 def vertex_of(+k: Klei, +n: U32) -> U32:
   match k:
     case Klei{_, _, _, +t, _, _}:
-      TB.at(~U32, t, n)
+      TileTable.at(~U32, t, n)
 
-def vertex_table(+k: Klei) -> TB.Tree<U32>:
+def vertex_table(+k: Klei) -> TileTable.Tree<U32>:
   match k:
     case Klei{_, _, _, +t, _, _}:
       t
@@ -160,22 +160,22 @@ def vertex_table(+k: Klei) -> TB.Tree<U32>:
 def parent_of(+k: Klei, +n: U32) -> U32:
   match k:
     case Klei{_, _, _, _, +t, _}:
-      TB.at(~U32, t, n)
+      TileTable.at(~U32, t, n)
 
 def graphs_of(+k: Klei) -> List<&2, U32>:
   match k:
     case Klei{_, _, _, _, _, +gs}:
       gs
 
-def arcs_of(es: List<&2, Link>) -> List<&2, KH.Arc>:
+def arcs_of(es: List<&2, Link>) -> List<&2, LayoutHops.Arc>:
   match es:
     case Nil{}:
       Nil{}
     case Con{Link{+s, +t}, rest}:
-      KH.Arc{s, t} <> KH.Arc{t, s} <> arcs_of(rest)
+      LayoutHops.Arc{s, t} <> LayoutHops.Arc{t, s} <> arcs_of(rest)
 
 # KK's input: every edge in both directions.
-def arcs(+k: Klei) -> List<&2, KH.Arc>:
+def arcs(+k: Klei) -> List<&2, LayoutHops.Arc>:
   arcs_of(edges_of(k))
 
 # boost::out_edges(v) targets: for each edge in insertion order, the other end if v is an end (twice for a loop).
@@ -199,15 +199,15 @@ def adjacency_loop(n: Nat, +es: List<&2, Link>, +v: U32) -> List<&2, List<&2, U3
 def adjacency(+count: U32, +es: List<&2, Link>) -> List<&2, List<&2, U32>>:
   adjacency_loop(U32.to_nat(count), es, 0)
 
-def kept(es: List<&2, Link>, +cut: TB.Tree<U32>) -> List<&2, Link>:
+def kept(es: List<&2, Link>, +cut: TileTable.Tree<U32>) -> List<&2, Link>:
   match es:
     case Nil{}:
       Nil{}
     case Con{Link{+s, +t}, rest}:
       +tail = kept(rest, cut)
-      +keep = U32.is_zero((TB.at(~U32, cut, s) .|. TB.at(~U32, cut, t) : U32))
+      +keep = U32.is_zero((TileTable.at(~U32, cut, s) .|. TileTable.at(~U32, cut, t) : U32))
       Bool.pick(List<&2, Link>, keep, Link{s, t} <> tail, tail)
 
 # The edges left after ClearNodeLinks of every vertex whose `cut` entry is non-zero.
-def cleared(+es: List<&2, Link>, +cut: TB.Tree<U32>) -> List<&2, Link>:
+def cleared(+es: List<&2, Link>, +cut: TileTable.Tree<U32>) -> List<&2, Link>:
   kept(es, cut)

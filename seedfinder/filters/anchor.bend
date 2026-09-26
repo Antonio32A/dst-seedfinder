@@ -1,9 +1,9 @@
 import Base
-import ../f64/repr.bend as FR
-import ../f64/arith.bend as FA
-import ../f64/cmp.bend as FC
-import ./walk.bend as WL
-import ./world.bend as WD
+import ../f64/repr.bend as F64Repr
+import ../f64/arith.bend as F64Arith
+import ../f64/cmp.bend as F64Cmp
+import ./walk.bend as Walk
+import ./world.bend as FilterWorld
 
 # Walk anchors (search-v1.md section 5): an instance on a land tile enters there with offset 0; any other instance
 # enters at the land tile whose centre is nearest (Euclidean, as world.py computes it in doubles; ties to the lowest
@@ -11,11 +11,11 @@ import ./world.bend as WD
 # integer squared distances (coordinates are hundredths), then breaks exact ties with world.py's doubles.
 
 type Anchor is Data:
-  Anchor{tile: U32, offset: FR.F64, length: WL.Length}
+  Anchor{tile: U32, offset: F64Repr.F64, length: Walk.Length}
 
 # An instance with its walk anchor (None when the world has no land tile).
 type Point is Data:
-  Point{inst: WD.Inst, anchor: Maybe<&2, Anchor>}
+  Point{inst: FilterWorld.Inst, anchor: Maybe<&2, Anchor>}
 
 def depth_for(n: Nat, +size: U32, +d: Nat) -> Nat:
   match n:
@@ -29,7 +29,7 @@ def depth_of(+size: U32) -> Nat:
   depth_for(24n, size, 0n)
 
 def land_bit(+tile: U32) -> U32:
-  Bool.to_u32(WD.is_land_tile(tile))
+  Bool.to_u32(FilterWorld.is_land_tile(tile))
 
 def written_pair(a: Array<U32>, +i: U32, +word: U32) -> Array<U32>:
   a[i] <- land_bit((word .&. 65535 : U32))
@@ -43,9 +43,9 @@ def land_cells(words: List<&2, U32>, +i: U32, a: Array<U32>) -> Array<U32>:
       land_cells(rest, (i + 2 : U32), written_pair(a, i, word))
 
 # A cell array with 1 on land tiles and 0 elsewhere (index ty*W + tx), of 2^depth cells.
-def land_array(+world: WD.World, +depth: Nat) -> Array<U32>:
+def land_array(+world: FilterWorld.World, +depth: Nat) -> Array<U32>:
   match world:
-    case WD.World{_, _, _, _, _, _, +tiles}:
+    case FilterWorld.World{_, _, _, _, _, _, +tiles}:
       land_cells(tiles, 0, [0 : U32^depth])
 
 def is_negative(+v: U32) -> Bool:
@@ -164,74 +164,74 @@ def ring_search(n: Nat, s: Scan, +p: Probe, +cx: U32, +cy: U32, +r: U32, +slack:
     case _ other:
       other
 
-def signed_double(+v: U32) -> FR.F64:
-  FR.from_i32(v)
+def signed_double(+v: U32) -> F64Repr.F64:
+  F64Repr.from_i32(v)
 
-def centre_double(+t: U32, +size: U32) -> FR.F64:
+def centre_double(+t: U32, +size: U32) -> F64Repr.F64:
   signed_double((t * 4 - size * 2 : U32))
 
-def centre_squared(+inst: WD.Inst, +w: U32, +h: U32, +index: U32) -> FR.F64:
+def centre_squared(+inst: FilterWorld.Inst, +w: U32, +h: U32, +index: U32) -> F64Repr.F64:
   match inst:
-    case WD.Inst{_, _, +x, +z, _, _, _}:
-      +dx = FA.sub(centre_double((index % w : U32), w), x)
-      +dz = FA.sub(centre_double((index / w : U32), h), z)
-      FA.add(FA.mul(dx, dx), FA.mul(dz, dz))
+    case FilterWorld.Inst{_, _, +x, +z, _, _, _}:
+      +dx = F64Arith.sub(centre_double((index % w : U32), w), x)
+      +dz = F64Arith.sub(centre_double((index / w : U32), h), z)
+      F64Arith.add(F64Arith.mul(dx, dx), F64Arith.mul(dz, dz))
 
 type Nearest is Data:
-  Nearest{squared: FR.F64, index: U32}
+  Nearest{squared: F64Repr.F64, index: U32}
 
-def nearest_tie(ties: List<&2, U32>, +inst: WD.Inst, +w: U32, +h: U32, +best: Nearest) -> Nearest:
+def nearest_tie(ties: List<&2, U32>, +inst: FilterWorld.Inst, +w: U32, +h: U32, +best: Nearest) -> Nearest:
   match ties best:
     case Nil{} _:
       best
     case Con{+index, rest} Nearest{+bs, +bi}:
       +s = centre_squared(inst, w, h, index)
-      +better = FC.lt(s, bs) || (FC.eq(s, bs) && (index < bi : U32))
+      +better = F64Cmp.lt(s, bs) || (F64Cmp.eq(s, bs) && (index < bi : U32))
       nearest_tie(rest, inst, w, h, Bool.pick(Nearest, better, Nearest{s, index}, Nearest{bs, bi}))
 
 def anchor_of_nearest(n: Nearest) -> Maybe<&2, Anchor>:
   match n:
     case Nearest{+s, +index}:
-      +offset = FA.sqrt(s)
-      Some{Anchor{index, offset, WL.of_double(offset)}}
+      +offset = F64Arith.sqrt(s)
+      Some{Anchor{index, offset, Walk.of_double(offset)}}
 
-def anchor_of_ring(+inst: WD.Inst, +w: U32, +h: U32, ring: Ring) -> Maybe<&2, Anchor>:
+def anchor_of_ring(+inst: FilterWorld.Inst, +w: U32, +h: U32, ring: Ring) -> Maybe<&2, Anchor>:
   match ring:
     case Ring{_, True{}, Con{+first, +rest}}:
       anchor_of_nearest(nearest_tie(rest, inst, w, h, Nearest{centre_squared(inst, w, h, first), first}))
     case _:
       None{}
 
-def with_anchor(s: Scan, +inst: WD.Inst, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
+def with_anchor(s: Scan, +inst: FilterWorld.Inst, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
   match s:
     case Scan{land, ring, _}:
       (land, anchor_of_ring(inst, w, h, ring))
 
-def slack_of(+inst: WD.Inst, +w: U32, +h: U32, +cx: U32, +cy: U32) -> U32:
+def slack_of(+inst: FilterWorld.Inst, +w: U32, +h: U32, +cx: U32, +cy: U32) -> U32:
   match inst:
-    case WD.Inst{_, _, _, _, +xk, +zk, _}:
+    case FilterWorld.Inst{_, _, _, _, +xk, +zk, _}:
       U32.max(magnitude((centre(cx, w) - xk : U32)), magnitude((centre(cy, h) - zk : U32)))
 
-def nearest_land(land: Array<U32>, +inst: WD.Inst, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
+def nearest_land(land: Array<U32>, +inst: FilterWorld.Inst, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
   match inst:
-    case WD.Inst{_, _, _, _, +xk, +zk, _}:
+    case FilterWorld.Inst{_, _, _, _, +xk, +zk, _}:
       +cx = clamped_coordinate(xk, w)
       +cy = clamped_coordinate(zk, h)
       +rings = U32.to_nat((U32.max(w, h) + 2 : U32))
       with_anchor(ring_search(rings, Scan{land, Ring{0n, False{}, Nil{}}, False{}}, Probe{xk, zk, w, h}, cx, cy, 0, slack_of(inst, w, h, cx, cy)), inst, w, h)
 
-def own_or_nearest(on_land: Bool, land: Array<U32>, +inst: WD.Inst, +index: U32, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
+def own_or_nearest(on_land: Bool, land: Array<U32>, +inst: FilterWorld.Inst, +index: U32, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
   match on_land:
     case True{}:
-      (land, Some{Anchor{index, FR.zero(), WL.zero()}})
+      (land, Some{Anchor{index, F64Repr.zero(), Walk.zero()}})
     case False{}:
       nearest_land(land, inst, w, h)
 
-def own_tile(got: Array<U32> & U32, +inst: WD.Inst, +index: U32, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
+def own_tile(got: Array<U32> & U32, +inst: FilterWorld.Inst, +index: U32, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
   (land, +cell) = got
   own_or_nearest(U32.is_eq(cell, 1), land, inst, index, w, h)
 
-def anchor_on(on_map: Bool, land: Array<U32>, +inst: WD.Inst, +index: U32, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
+def anchor_on(on_map: Bool, land: Array<U32>, +inst: FilterWorld.Inst, +index: U32, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
   match on_map:
     case True{}:
       own_tile(land[index], inst, index, w, h)
@@ -239,14 +239,14 @@ def anchor_on(on_map: Bool, land: Array<U32>, +inst: WD.Inst, +index: U32, +w: U
       nearest_land(land, inst, w, h)
 
 # The anchor of an instance (world.py walk_anchor), given the land array of its world.
-def anchor(land: Array<U32>, +inst: WD.Inst, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
+def anchor(land: Array<U32>, +inst: FilterWorld.Inst, +w: U32, +h: U32) -> Array<U32> & Maybe<&2, Anchor>:
   match inst:
-    case WD.Inst{_, _, _, _, +xk, +zk, _}:
+    case FilterWorld.Inst{_, _, _, _, +xk, +zk, _}:
       +tx = tile_coordinate(xk, w)
       +ty = tile_coordinate(zk, h)
       anchor_on((tx < w : U32) && (ty < h : U32), land, inst, (ty * w + tx : U32), w, h)
 
-def pointed(got: Array<U32> & Maybe<&2, Anchor>, +inst: WD.Inst) -> Array<U32> & Maybe<&2, Point>:
+def pointed(got: Array<U32> & Maybe<&2, Anchor>, +inst: FilterWorld.Inst) -> Array<U32> & Maybe<&2, Point>:
   (land, found) = got
   (land, Some{Point{inst, found}})
 
@@ -257,7 +257,7 @@ def pushed(pending: Maybe<&2, Point>, acc: List<&2, Point>) -> List<&2, Point>:
     case Some{point}:
       point <> acc
 
-def point_list(insts: List<&2, WD.Inst>, got: Array<U32> & Maybe<&2, Point>, +w: U32, +h: U32, acc: List<&2, Point>) -> Array<U32> & List<&2, Point>:
+def point_list(insts: List<&2, FilterWorld.Inst>, got: Array<U32> & Maybe<&2, Point>, +w: U32, +h: U32, acc: List<&2, Point>) -> Array<U32> & List<&2, Point>:
   match insts:
     case Nil{}:
       (land, pending) = got
@@ -267,5 +267,5 @@ def point_list(insts: List<&2, WD.Inst>, got: Array<U32> & Maybe<&2, Point>, +w:
       point_list(rest, pointed(anchor(land, inst, w, h), inst), w, h, pushed(pending, acc))
 
 # The instances with their anchors, given the land array of their world.
-def points(insts: List<&2, WD.Inst>, land: Array<U32>, +w: U32, +h: U32) -> Array<U32> & List<&2, Point>:
+def points(insts: List<&2, FilterWorld.Inst>, land: Array<U32>, +w: U32, +h: U32) -> Array<U32> & List<&2, Point>:
   point_list(insts, (land, None{}), w, h, Nil{})

@@ -1,6 +1,6 @@
 import Base
-import ../f64/repr.bend as FR
-import ../populate/entities.bend as PE
+import ../f64/repr.bend as F64Repr
+import ../populate/entities.bend as Entities
 
 # savedata.ents during the ocean phase as one list, newest first: each prefab's entries keep their insertion order
 # (a stable filter by prefab gives savedata.ents[prefab]), and a move to the end of a prefab's list is a remove and
@@ -8,13 +8,13 @@ import ../populate/entities.bend as PE
 
 # An entity: prefab string id, x and z as the Lua doubles, and the wormhole id and target (0 when unset).
 type Ent is Data:
-  Ent{prefab: U32, x: FR.F64, z: FR.F64, id: U32, target: U32}
+  Ent{prefab: U32, x: F64Repr.F64, z: F64Repr.F64, id: U32, target: U32}
 
-def of_land(ents: List<&2, PE.Ent>) -> List<&2, Ent>:
+def of_land(ents: List<&2, Entities.Ent>) -> List<&2, Ent>:
   match ents:
     case Nil{}:
       Nil{}
-    case Con{PE.Ent{+prefab, _, _, +x, +z, _, _, _}, rest}:
+    case Con{Entities.Ent{+prefab, _, _, +x, +z, _, _, _}, rest}:
       Ent{prefab, x, z, 0, 0} <> of_land(rest)
 
 def prefab_of(+e: Ent) -> U32:

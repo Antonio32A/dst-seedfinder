@@ -1,14 +1,14 @@
 import Base
-import ../filters/config.bend as CF
-import ../filters/rules.bend as RU
-import ../filters/world.bend as WD
-import ../filters/evaluate.bend as EV
-import ../level/summary.bend as W
-import ../cli/files.bend as FL
-import ./common.bend as SC
-import ./report.bend as RP
-import ../cli/args.bend as A
-import ../filters/par.bend as PX
+import ../filters/config.bend as Config
+import ../filters/rules.bend as Rules
+import ../filters/world.bend as FilterWorld
+import ../filters/evaluate.bend as Evaluate
+import ../level/summary.bend as LevelSummary
+import ../cli/files.bend as Files
+import ./common.bend as SearchCommon
+import ./report.bend as SearchReport
+import ../cli/args.bend as Args
+import ../filters/par.bend as Par
 
 # `world find --worlds DIR` for configs with parts B-E: the scan of search.py over pre-generated worlds. Part A
 # selects candidates chunk by chunk; each candidate's DIR/<seed>.dstw decides it (a missing dump counts as a world
@@ -17,7 +17,7 @@ import ../filters/par.bend as PX
 
 # The per-run constants: start seed, seeds in the scan, hit limit, time limit, output mode, config and folder.
 type Ctx is Data:
-  Ctx{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: CF.Config, dir: String, started: Nat}
+  Ctx{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Config.Config, dir: String, started: Nat}
 
 type Verdict is Data:
   Hit{fields: String}
@@ -32,35 +32,35 @@ type Hunt is Data:
 def chunk_size() -> Nat:
   65536n
 
-def outcomes_of(skip: Bool, +world: WD.World, +later: RU.Later) -> List<&2, EV.Outcome>:
+def outcomes_of(skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -> List<&2, Evaluate.Outcome>:
   match skip:
     case True{}:
       Nil{}
     case False{}:
-      EV.parallel_jobs(world, EV.jobs_of(later))
+      Evaluate.parallel_jobs(world, Evaluate.jobs_of(later))
 
-def entry_verdict(+seed: U32, +index: U32, +outcomes: List<&2, EV.Outcome>) -> Verdict:
-  Hit{"\"entry\":" ++ U32.show(index) ++ ",\"level\":" ++ W.summary_json(W.summary(seed)) ++ ",\"results\":" ++ EV.results_json(outcomes, True{})}
+def entry_verdict(+seed: U32, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
+  Hit{"\"entry\":" ++ U32.show(index) ++ ",\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
 
-def first_entry(criteria: List<&2, CF.Criteria>, laters: List<&2, RU.Later>, found: Bool, +world: WD.World, +seed: U32, +index: U32, +outcomes: List<&2, EV.Outcome>) -> Verdict:
+def first_entry(criteria: List<&2, Config.Criteria>, laters: List<&2, Rules.Later>, found: Bool, +world: FilterWorld.World, +seed: U32, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
   match criteria laters found:
     case _ _ True{}:
       entry_verdict(seed, (index - 1 : U32), outcomes)
     case Con{+c, cs} Con{+later, ls} False{}:
-      +level = CF.matches([c], seed)
+      +level = Config.matches([c], seed)
       +next = outcomes_of(Bool.not(level), world, later)
-      first_entry(cs, ls, level && EV.holds(next), world, seed, (index + 1 : U32), next)
+      first_entry(cs, ls, level && Evaluate.holds(next), world, seed, (index + 1 : U32), next)
     case _ _ _:
       Miss{}
 
 def platform_matches(+windows: Bool, +platform: U32) -> Bool:
   U32.is_zero(platform) || Bool.xor(windows, U32.is_eq(platform, 2))
 
-def world_verdict(loaded: Result<&1, &1, U32 & String, WD.Loaded>, +config: CF.Config, +seed: U32) -> Verdict:
+def world_verdict(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: Config.Config, +seed: U32) -> Verdict:
   match loaded config:
-    case Done{WD.Generated{+world, +platform}} CF.Config{+windows, +criteria, +laters, _, _}:
+    case Done{FilterWorld.Generated{+world, +platform}} Config.Config{+windows, +criteria, +laters, _, _}:
       Bool.pick(Verdict, platform_matches(windows, platform), first_entry(criteria, laters, False{}, world, seed, 0, Nil{}), Absent{})
-    case Done{WD.GaveUp{_}} _:
+    case Done{FilterWorld.GaveUp{_}} _:
       Miss{}
     case Fail{_} _:
       Absent{}
@@ -85,16 +85,16 @@ def read_batch(seeds: List<&2, U32>, +dir: String, +acc: List<&2, Read>) -> IO(L
       IO.pure(List<&2, Read>, List.reverse(&2, Read, acc))
     case Con{+seed, rest}:
       do IO<List<&2, Read>>:
-        bytes : Result<&1, &1, U32 & String, List<&2, U32>> <- FL.read_bytes("world: ", dump_path(dir, seed))
+        bytes : Result<&1, &1, U32 & String, List<&2, U32>> <- Files.read_bytes("world: ", dump_path(dir, seed))
         read_batch(rest, dir, Read{seed, maybe_bytes(bytes)} <> acc)
 
 type Judged is Data:
   Judged{seed: U32, verdict: Verdict}
 
-def judged(config: CF.Config, r: Read) -> Judged:
+def judged(config: Config.Config, r: Read) -> Judged:
   match r:
     case Read{+seed, Some{bytes}}:
-      Judged{seed, world_verdict(WD.of_bytes(bytes), config, seed)}
+      Judged{seed, world_verdict(FilterWorld.of_bytes(bytes), config, seed)}
     case Read{+seed, None{}}:
       Judged{seed, Absent{}}
 
@@ -195,7 +195,7 @@ def timed(+h: Hunt, +now: Nat, +ctx: Ctx) -> Hunt:
     case other:
       other
 
-def ctx_config(+ctx: Ctx) -> CF.Config:
+def ctx_config(+ctx: Ctx) -> Config.Config:
   match ctx:
     case Ctx{_, _, _, _, _, +config, _, _}:
       config
@@ -205,28 +205,28 @@ def ctx_dir(+ctx: Ctx) -> String:
     case Ctx{_, _, _, _, _, _, +dir, _}:
       dir
 
-def scan_leaf(n: Nat, +seed: U32, +criteria: List<&2, CF.Criteria>, +hits: List<&2, U32>) -> U32 & List<&2, U32>:
+def scan_leaf(n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +hits: List<&2, U32>) -> U32 & List<&2, U32>:
   match n:
     case 0n:
       (0, List.reverse(&2, U32, hits))
     case 1n+p:
-      scan_leaf(p, (seed + 1 : U32), criteria, Bool.pick(List<&2, U32>, CF.matches(criteria, seed), seed <> hits, hits))
+      scan_leaf(p, (seed + 1 : U32), criteria, Bool.pick(List<&2, U32>, Config.matches(criteria, seed), seed <> hits, hits))
 
-def scan_leaves(+depth: Nat, +lo: U32, +n: Nat, +criteria: List<&2, CF.Criteria>) -> U32 & List<&2, U32>:
+def scan_leaves(+depth: Nat, +lo: U32, +n: Nat, +criteria: List<&2, Config.Criteria>) -> U32 & List<&2, U32>:
   match depth:
     case 0n:
-      scan_leaf(n, lo, CF.local_criteria(criteria), Nil{})
+      scan_leaf(n, lo, Config.local_criteria(criteria), Nil{})
     case 1n+d:
       +half = Nat.div(n, 2n)
       a b = scan_leaves(d, lo, half, criteria) scan_leaves(d, (lo + U32.from_nat(half) : U32), Nat.sub(n, half), criteria)
-      SC.combine(a, b)
+      SearchCommon.combine(a, b)
 
-def chunk_candidates(+len: Nat, +lo: U32, +criteria: List<&2, CF.Criteria>) -> U32 & List<&2, U32>:
-  scan_leaves(SC.search_depth(), lo, len, criteria)
+def chunk_candidates(+len: Nat, +lo: U32, +criteria: List<&2, Config.Criteria>) -> U32 & List<&2, U32>:
+  scan_leaves(SearchCommon.search_depth(), lo, len, criteria)
 
-def criteria_of(+ctx: Ctx) -> List<&2, CF.Criteria>:
+def criteria_of(+ctx: Ctx) -> List<&2, Config.Criteria>:
   match ctx:
-    case Ctx{_, _, _, _, _, CF.Config{_, _, _, _, +scanned}, _, _}:
+    case Ctx{_, _, _, _, _, Config.Config{_, _, _, _, +scanned}, _, _}:
       scanned
 
 def candidates(got: U32 & List<&2, U32>) -> List<&2, U32>:
@@ -264,14 +264,14 @@ def platform_name(+windows: Bool) -> String:
 
 def report(+h: Hunt, +ctx: Ctx) -> IO(Unit):
   match h ctx:
-    case Hunt{_, _, +scanned, +found, +hits, +code, +missing, _} Ctx{+start, _, _, _, +json, CF.Config{+windows, _, _, _, _}, +dir, _}:
-      +position = RP.position_json(start, scanned, code)
+    case Hunt{_, _, +scanned, +found, +hits, +code, +missing, _} Ctx{+start, _, _, _, +json, Config.Config{+windows, _, _, _, _}, +dir, _}:
+      +position = SearchReport.position_json(start, scanned, code)
       do IO<Unit>:
         missing_note(missing, dir)
         IO.print(Bool.pick(String, json,
-          "{\"version\":1,\"platform\":\"" ++ platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits, ",") ++ "]," ++ position ++ ",\"stopped\":\"" ++ RP.stop_name(code) ++ "\"}",
-          "done {" ++ position ++ ",\"hits\":" ++ U32.show(found) ++ ",\"stopped\":\"" ++ RP.stop_name(code) ++ "\"}"))
-        RP.exit_status(found)
+          "{\"version\":1,\"platform\":\"" ++ platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits, ",") ++ "]," ++ position ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}",
+          "done {" ++ position ++ ",\"hits\":" ++ U32.show(found) ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}"))
+        SearchReport.exit_status(found)
 
 def hunt(fuel: Nat, h: Hunt, +ctx: Ctx) -> IO(Unit):
   match fuel h:
@@ -279,7 +279,7 @@ def hunt(fuel: Nat, h: Hunt, +ctx: Ctx) -> IO(Unit):
       +pending = {seed <> rest : List<&2, U32>}
       do IO<Unit>:
         reads : List<&2, Read> <- read_batch(List.take(&2, U32, pending, batch_size()), ctx_dir(ctx), Nil{})
-        +f : Folded = folded(PX.map(~Read, ~Judged, ~CF.Config, ~judged, ctx_config(ctx), reads), Hunt{next, left, scanned, found, hits, 0, missing, List.drop(&2, U32, pending, batch_size())}, ctx, Nil{})
+        +f : Folded = folded(Par.map(~Read, ~Judged, ~Config.Config, ~judged, ctx_config(ctx), reads), Hunt{next, left, scanned, found, hits, 0, missing, List.drop(&2, U32, pending, batch_size())}, ctx, Nil{})
         print_lines(json_of(ctx), folded_lines(f))
         +now : Nat <- IO.now()
         hunt(k, timed(folded_hunt(f), now, ctx), ctx)
@@ -291,9 +291,9 @@ def hunt(fuel: Nat, h: Hunt, +ctx: Ctx) -> IO(Unit):
       report(other, ctx)
 
 # world find --worlds DIR for a config with parts B-E (spec search-v1.md section 8 output).
-def run(+q: A.Query, +config: CF.Config, +dir: String) -> IO(Unit):
+def run(+q: Args.Query, +config: Config.Config, +dir: String) -> IO(Unit):
   match q:
-    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         hunt(Nat.add(Nat.add(total, Nat.div(total, chunk_size())), 4n), Hunt{start, total, 0n, 0, Nil{}, 0, 0, Nil{}},

@@ -33,15 +33,15 @@ def main():
     m.code('''
 # Lua 5.1 luaS_hash of string id.
 def hash(+id: U32) -> U32:
-  B.word(strings(id), 0)
+  Blob.word(strings(id), 0)
 
 # Byte length of string id.
 def length(+id: U32) -> U32:
-  B.at(strings(id), 2)
+  Blob.at(strings(id), 2)
 
 # The bytes of string id as a String (one Char per byte).
 def name(+id: U32) -> String:
-  B.text(B.drop(strings(id), 2))
+  Blob.text(Blob.drop(strings(id), 2))
 ''')
     m.emit()
     if sys.argv[1:] != ["-"]:

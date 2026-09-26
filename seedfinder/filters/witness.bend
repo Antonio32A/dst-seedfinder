@@ -1,16 +1,16 @@
 import Base
-import ./bignum.bend as BN
-import ../f64/repr.bend as FR
-import ../f64/arith.bend as FA
-import ../f64/cmp.bend as FC
-import ./walk.bend as WL
-import ./world.bend as WD
-import ../data/search_vocab.bend as V
+import ./bignum.bend as BigNum
+import ../f64/repr.bend as F64Repr
+import ../f64/arith.bend as F64Arith
+import ../f64/cmp.bend as F64Cmp
+import ./walk.bend as Walk
+import ./world.bend as FilterWorld
+import ../data/search_vocab.bend as SearchVocab
 
 # Witness JSON as .scratch/search/evaluate.py --json prints it (json.dumps with separators (",", ":")).
 
 def prefab_name(+id: U32) -> String:
-  Maybe.default(&2, String, List.get(&2, String, V.prefabs(), U32.to_nat(id)), "")
+  Maybe.default(&2, String, List.get(&2, String, SearchVocab.prefabs(), U32.to_nat(id)), "")
 
 def is_negative(+k: U32) -> Bool:
   (k >= 2147483648 : U32)
@@ -47,29 +47,29 @@ def thousandths_text(+n: Nat) -> String:
   Nat.show(Nat.div(n, 1000n)) ++ "." ++ fraction_text(three_digits(Nat.mod(n, 1000n)))
 
 def rounded_scaled(+scaled: List<&2, U32>) -> Nat:
-  +whole = BN.shr(scaled, 1074n)
-  +order = BN.compare(BN.low_bits(scaled, 1074n), BN.shl([1], 1073n))
-  +up = U32.is_eq(order, 2) || (U32.is_eq(order, 1) && U32.is_eq(BN.bit(whole, 0n), 1))
-  +n = BN.add(whole, Bool.pick(List<&2, U32>, up, [1], Nil{}))
-  Nat.add(U32.to_nat(BN.word(n, 0n)), Nat.mul(U32.to_nat(BN.word(n, 1n)), Nat.mul(65536n, 65536n)))
+  +whole = BigNum.shr(scaled, 1074n)
+  +order = BigNum.compare(BigNum.low_bits(scaled, 1074n), BigNum.shl([1], 1073n))
+  +up = U32.is_eq(order, 2) || (U32.is_eq(order, 1) && U32.is_eq(BigNum.bit(whole, 0n), 1))
+  +n = BigNum.add(whole, Bool.pick(List<&2, U32>, up, [1], Nil{}))
+  Nat.add(U32.to_nat(BigNum.word(n, 0n)), Nat.mul(U32.to_nat(BigNum.word(n, 1n)), Nat.mul(65536n, 65536n)))
 
 # round(d, 3) of a double d >= 0, as Python prints it.
-def double_text(+d: FR.F64) -> String:
-  thousandths_text(rounded_scaled(BN.mul_small(BN.of_double(d), 1000)))
+def double_text(+d: F64Repr.F64) -> String:
+  thousandths_text(rounded_scaled(BigNum.mul_small(BigNum.of_double(d), 1000)))
 
 # round(length, 3) of an exact walk length, as Python prints its double.
-def length_text(+l: WL.Length) -> String:
-  thousandths_text(WL.thousandths(l))
+def length_text(+l: Walk.Length) -> String:
+  thousandths_text(Walk.thousandths(l))
 
 # "prefab", "index", "x", "z" of an instance, without the braces.
-def instance_fields(+i: WD.Inst) -> String:
+def instance_fields(+i: FilterWorld.Inst) -> String:
   match i:
-    case WD.Inst{+prefab, +index, _, _, +xk, +zk, +flags}:
+    case FilterWorld.Inst{+prefab, +index, _, _, +xk, +zk, +flags}:
       "\"prefab\":\"" ++ prefab_name(prefab) ++ "\",\"index\":" ++ U32.show(index) ++ ",\"x\":"
         ++ coordinate(xk, U32.is_eq((flags .&. 1 : U32), 1)) ++ ",\"z\":" ++ coordinate(zk, U32.is_eq((flags .&. 2 : U32), 2))
 
 # {"prefab", "index", "x", "z"} of an instance.
-def instance(+i: WD.Inst) -> String:
+def instance(+i: FilterWorld.Inst) -> String:
   "{" ++ instance_fields(i) ++ "}"
 
 def signed_text(+v: U32) -> String:

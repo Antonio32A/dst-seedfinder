@@ -1,6 +1,6 @@
 import Base
-import ./walk.bend as WL
-import ./world.bend as WD
+import ./walk.bend as Walk
+import ./world.bend as FilterWorld
 
 # Multi-source Dijkstra over land tiles with exact walk lengths (metric.py WalkMetric.settle and single_source):
 # 8 neighbours (diagonals only between two land tiles), wormhole jumps, and per tile the first `needed` (1 or 2)
@@ -15,14 +15,14 @@ import ./world.bend as WD
 
 # A wormhole jump from one anchor tile to another, paying both anchors' offsets.
 type Jump is Data:
-  Jump{from: U32, to: U32, offset: WL.Length}
+  Jump{from: U32, to: U32, offset: Walk.Length}
 
 # A source: its anchor tile, the length already paid there (cost plus offset), and its seed position.
 type Start is Data:
-  Start{tile: U32, length: WL.Length, seed: U32}
+  Start{tile: U32, length: Walk.Length, seed: U32}
 
 type Cand is Data:
-  Cand{length: WL.Length, tile: U32, seed: U32}
+  Cand{length: Walk.Length, tile: U32, seed: U32}
 
 def none() -> U32:
   4294967295
@@ -68,14 +68,14 @@ def cand_tile(+c: Cand) -> U32:
     case Cand{_, +tile, _}:
       tile
 
-def cand_length(+c: Cand) -> WL.Length:
+def cand_length(+c: Cand) -> Walk.Length:
   match c:
     case Cand{+l, _, _}:
       l
 
 def label_5(got: Array<U32> & U32, +tile: U32, +q2: U32, +q1: U32, +q0: U32, +b: U32) -> Array<U32> & Cand:
   (a, +seed) = got
-  (a, Cand{WL.Length{q2, q1, q0, b}, tile, seed})
+  (a, Cand{Walk.Length{q2, q1, q0, b}, tile, seed})
 
 def label_4(got: Array<U32> & U32, +base: U32, +tile: U32, +q2: U32, +q1: U32, +q0: U32) -> Array<U32> & Cand:
   (a, +b) = got
@@ -100,7 +100,7 @@ def read_label(a: Array<U32>, +base: U32, +tile: U32) -> Array<U32> & Cand:
 # Stores a candidate's length and seed as q2 q1 q0 b seed at base.
 def write_label(a: Array<U32>, +base: U32, +c: Cand) -> Array<U32>:
   match c:
-    case Cand{WL.Length{+q2, +q1, +q0, +b}, _, +seed}:
+    case Cand{Walk.Length{+q2, +q1, +q0, +b}, _, +seed}:
       a[base] <- q2
       a[(base + 1 : U32)] <- q1
       a[(base + 2 : U32)] <- q0
@@ -109,7 +109,7 @@ def write_label(a: Array<U32>, +base: U32, +c: Cand) -> Array<U32>:
 
 def pool_6(got: Array<U32> & U32, +tile: U32, +q2: U32, +q1: U32, +q0: U32, +b: U32) -> Array<U32> & Cand:
   (a, +seed) = got
-  (a, Cand{WL.Length{q2, q1, q0, b}, tile, seed})
+  (a, Cand{Walk.Length{q2, q1, q0, b}, tile, seed})
 
 def pool_5(got: Array<U32> & U32, +base: U32, +q2: U32, +q1: U32, +q0: U32, +b: U32) -> Array<U32> & Cand:
   (a, +tile) = got
@@ -136,7 +136,7 @@ def pool_cand(pool: Array<U32>, +index: U32) -> Array<U32> & Cand:
 
 def write_pool(pool: Array<U32>, +index: U32, +c: Cand) -> Array<U32>:
   match c:
-    case Cand{WL.Length{+q2, +q1, +q0, +b}, +tile, +seed}:
+    case Cand{Walk.Length{+q2, +q1, +q0, +b}, +tile, +seed}:
       +base = (index * 8 : U32)
       pool[base] <- q2
       pool[(base + 1 : U32)] <- q1
@@ -149,25 +149,25 @@ def write_pool(pool: Array<U32>, +index: U32, +c: Cand) -> Array<U32>:
 def label_order(+a: Cand, +b: Cand) -> U32:
   match a b:
     case Cand{+la, _, +sa} Cand{+lb, _, +sb}:
-      +order = WL.compare(la, lb)
+      +order = Walk.compare(la, lb)
       Bool.pick(U32, U32.is_eq(order, 1), Bool.pick(U32, (sa < sb : U32), 0, Bool.pick(U32, (sa > sb : U32), 2, 1)), order)
 
 # The heap order of two candidates: (length, tile, seed), with their keys.
-def cand_less(+a: Cand, +b: Cand, +ka: WL.Approx, +kb: WL.Approx) -> Bool:
+def cand_less(+a: Cand, +b: Cand, +ka: Walk.Approx, +kb: Walk.Approx) -> Bool:
   match a b:
     case Cand{+la, +ta, +sa} Cand{+lb, +tb, +sb}:
-      +order = WL.compare_keyed(la, lb, ka, kb)
+      +order = Walk.compare_keyed(la, lb, ka, kb)
       U32.is_zero(order) || (U32.is_eq(order, 1) && ((ta < tb : U32) || (U32.is_eq(ta, tb) && (sa < sb : U32))))
 
-def finish_compare(got: Array<U32> & Cand, +a: Cand, +ka: WL.Approx, +kb: WL.Approx) -> Array<U32> & Bool:
+def finish_compare(got: Array<U32> & Cand, +a: Cand, +ka: Walk.Approx, +kb: Walk.Approx) -> Array<U32> & Bool:
   (pool, +b) = got
   (pool, cand_less(a, b, ka, kb))
 
-def compare_read(got: Array<U32> & Cand, +index_b: U32, +ka: WL.Approx, +kb: WL.Approx) -> Array<U32> & Bool:
+def compare_read(got: Array<U32> & Cand, +index_b: U32, +ka: Walk.Approx, +kb: Walk.Approx) -> Array<U32> & Bool:
   (pool, +a) = got
   finish_compare(pool_cand(pool, index_b), a, ka, kb)
 
-def resolved(+decided: U32, pool: Array<U32>, +index_a: U32, +index_b: U32, +ka: WL.Approx, +kb: WL.Approx) -> Array<U32> & Bool:
+def resolved(+decided: U32, pool: Array<U32>, +index_a: U32, +index_b: U32, +ka: Walk.Approx, +kb: Walk.Approx) -> Array<U32> & Bool:
   match decided:
     case 0:
       (pool, True{})
@@ -177,8 +177,8 @@ def resolved(+decided: U32, pool: Array<U32>, +index_a: U32, +index_b: U32, +ka:
       compare_read(pool_cand(pool, index_a), index_b, ka, kb)
 
 # Whether the candidate at pool index a (key ka) pops before the one at b (key kb).
-def pooled_less(pool: Array<U32>, +index_a: U32, +ka: WL.Approx, +index_b: U32, +kb: WL.Approx) -> Array<U32> & Bool:
-  resolved(WL.keys_decide(ka, kb), pool, index_a, index_b, ka, kb)
+def pooled_less(pool: Array<U32>, +index_a: U32, +ka: Walk.Approx, +index_b: U32, +kb: Walk.Approx) -> Array<U32> & Bool:
+  resolved(Walk.keys_decide(ka, kb), pool, index_a, index_b, ka, kb)
 
 type Slot is Data:
   Slot{kh: U32, kl: U32, idx: U32}
@@ -227,7 +227,7 @@ def up_decide(got: Array<U32> & Bool, slots: Array<U32>, +hole: U32, +parent: U3
 def up_compare(+p: Slot, +e: Slot, slots: Array<U32>, pool: Array<U32>, +hole: U32, +parent: U32) -> Up:
   match p e:
     case Slot{+pkh, +pkl, +pidx} Slot{+kh, +kl, +idx}:
-      up_decide(pooled_less(pool, idx, WL.Approx{kh, kl}, pidx, WL.Approx{pkh, pkl}), slots, hole, parent, p)
+      up_decide(pooled_less(pool, idx, Walk.Approx{kh, kl}, pidx, Walk.Approx{pkh, pkl}), slots, hole, parent, p)
 
 def up_parent(got: Array<U32> & Slot, pool: Array<U32>, +hole: U32, +parent: U32, +e: Slot) -> Up:
   (slots, +p) = got
@@ -264,7 +264,7 @@ def down_decide(got: Array<U32> & Bool, slots: Array<U32>, +hole: U32, +child: U
 def down_child(+c: Slot, +child: U32, pool: Array<U32>, slots: Array<U32>, +hole: U32, +e: Slot) -> Down:
   match c e:
     case Slot{+ckh, +ckl, +cidx} Slot{+kh, +kl, +idx}:
-      down_decide(pooled_less(pool, cidx, WL.Approx{ckh, ckl}, idx, WL.Approx{kh, kl}), slots, hole, child, c)
+      down_decide(pooled_less(pool, cidx, Walk.Approx{ckh, ckl}, idx, Walk.Approx{kh, kl}), slots, hole, child, c)
 
 def pick_child(got: Array<U32> & Bool, slots: Array<U32>, +hole: U32, +c1: U32, +a: Slot, +b: Slot, +e: Slot) -> Down:
   (pool, +second) = got
@@ -273,7 +273,7 @@ def pick_child(got: Array<U32> & Bool, slots: Array<U32>, +hole: U32, +c1: U32, 
 def compare_children(+a: Slot, +b: Slot, slots: Array<U32>, pool: Array<U32>, +hole: U32, +c1: U32, +e: Slot) -> Down:
   match a b:
     case Slot{+kh1, +kl1, +i1} Slot{+kh2, +kl2, +i2}:
-      pick_child(pooled_less(pool, i2, WL.Approx{kh2, kl2}, i1, WL.Approx{kh1, kl1}), slots, hole, c1, a, b, e)
+      pick_child(pooled_less(pool, i2, Walk.Approx{kh2, kl2}, i1, Walk.Approx{kh1, kl1}), slots, hole, c1, a, b, e)
 
 def second_child(got: Array<U32> & Slot, pool: Array<U32>, +hole: U32, +c1: U32, +a: Slot, +e: Slot) -> Down:
   (slots, +b) = got
@@ -337,15 +337,15 @@ def heap_of(got: Array<U32> & Array<U32>, +size: U32, +used: U32, +depth: Nat, +
   (slots, pool) = got
   Heap{slots, pool, size, used, depth, capacity}
 
-def pushed_keyed(h: Heap, +c: Cand, +key: WL.Approx) -> Heap:
+def pushed_keyed(h: Heap, +c: Cand, +key: Walk.Approx) -> Heap:
   match h key:
-    case Heap{slots, pool, +size, +used, +depth, +capacity} WL.Approx{+kh, +kl}:
+    case Heap{slots, pool, +size, +used, +depth, +capacity} Walk.Approx{+kh, +kl}:
       heap_of(sift_up(64n, Up{slots, write_pool(pool, used, c), size, True{}}, Slot{kh, kl, used}), (size + 1 : U32), (used + 1 : U32), depth, capacity)
 
 def push(h: Heap, +c: Cand) -> Heap:
   match h:
     case Heap{slots, pool, +size, +used, +depth, +capacity}:
-      pushed_keyed(room_for((used >= capacity : U32), Heap{slots, pool, size, used, depth, capacity}), c, WL.key(cand_length(c)))
+      pushed_keyed(room_for((used >= capacity : U32), Heap{slots, pool, size, used, depth, capacity}), c, Walk.key(cand_length(c)))
 
 def empty_heap() -> Heap:
   Heap{[0 : U32^14n], [0 : U32^15n], 0, 0, 12n, 4096}
@@ -374,7 +374,7 @@ def pop_top(got: Array<U32> & Slot, pool: Array<U32>, +size: U32, +used: U32, +d
 def pop_sized(empty: Bool, slots: Array<U32>, pool: Array<U32>, +size: U32, +used: U32, +depth: Nat, +capacity: U32) -> Popped:
   match empty:
     case True{}:
-      Popped{Heap{slots, pool, size, used, depth, capacity}, Cand{WL.zero(), 0, 0}, False{}}
+      Popped{Heap{slots, pool, size, used, depth, capacity}, Cand{Walk.zero(), 0, 0}, False{}}
     case False{}:
       pop_top(read_slot(slots, 0), pool, size, used, depth, capacity)
 
@@ -521,7 +521,7 @@ def move_delta(+k: U32, +w: U32) -> U32:
 def moved(valid: Bool, g: Grid, +ctx: Ctx, +c: Cand, +k: U32) -> Grid:
   match valid ctx c:
     case True{} Ctx{+w, +needed, _} Cand{+l, +tile, +seed}:
-      offer(g, Cand{WL.stepped(l, Bool.to_u32((k < 4 : U32)), Bool.to_u32((k >= 4 : U32))), (tile + move_delta(k, w) : U32), seed}, needed, tile, 0)
+      offer(g, Cand{Walk.stepped(l, Bool.to_u32((k < 4 : U32)), Bool.to_u32((k >= 4 : U32))), (tile + move_delta(k, w) : U32), seed}, needed, tile, 0)
     case _ _ _:
       g
 
@@ -532,10 +532,10 @@ def moves(n: Nat, g: Grid, +c: Cand, +flags: U32, +ctx: Ctx, +k: U32) -> Grid:
     case 1n+p:
       moves(p, moved(Bool.not(U32.is_zero(((flags >> U32.to_nat((k + 8 : U32))) .&. 1 : U32))), g, ctx, c, k), c, flags, ctx, (k + 1 : U32))
 
-def jumped(valid: Bool, g: Grid, +c: Cand, +to: U32, +offset: WL.Length, +needed: U32, +j: U32) -> Grid:
+def jumped(valid: Bool, g: Grid, +c: Cand, +to: U32, +offset: Walk.Length, +needed: U32, +j: U32) -> Grid:
   match valid c:
     case True{} Cand{+l, +tile, +seed}:
-      offer(g, Cand{WL.plus(l, offset), to, seed}, needed, tile, (j + 1 : U32))
+      offer(g, Cand{Walk.plus(l, offset), to, seed}, needed, tile, (j + 1 : U32))
     case False{} _:
       g
 
@@ -609,7 +609,7 @@ def settle_loop(n: Nat, s: Search, +ctx: Ctx) -> Search:
       other
 
 def land_word(+tile: U32) -> U32:
-  Bool.to_u32(WD.is_land_tile(tile))
+  Bool.to_u32(FilterWorld.is_land_tile(tile))
 
 def land_pair(cells: Array<U32>, +i: U32, +word: U32) -> Array<U32>:
   cells[at(i, 0)] <- land_word((word .&. 65535 : U32))
@@ -744,9 +744,9 @@ def started(got: Array<U32> & U32, starts: List<&2, Start>, +ctx: Ctx) -> Array<
   cells_of(settle_loop(1073741824n, search_of(offer_starts(starts, Grid{cells, empty_heap()}, ctx_needed(ctx)), waiting), ctx))
 
 # The cells after a search from the starts until every target tile has `needed` labels (or nothing is left).
-def run(+world: WD.World, +depth: Nat, +jumps: List<&2, Jump>, starts: List<&2, Start>, targets: List<&2, U32>, +needed: U32) -> Array<U32>:
+def run(+world: FilterWorld.World, +depth: Nat, +jumps: List<&2, Jump>, starts: List<&2, Start>, targets: List<&2, U32>, +needed: U32) -> Array<U32>:
   match world:
-    case WD.World{_, +w, +h, _, _, _, +tiles}:
+    case FilterWorld.World{_, +w, +h, _, _, _, +tiles}:
       masked_cells = all_masks(U32.to_nat((w * h : U32)), land_cells(tiles, [0 : U32^(Nat.add(depth, 4n))], 0), 0, w, h)
       started(flag_targets(targets, (flag_jumps(jumps, masked_cells), 0)), starts, Ctx{w, needed, jumps})
 

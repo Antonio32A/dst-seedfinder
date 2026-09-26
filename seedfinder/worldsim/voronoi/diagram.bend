@@ -1,8 +1,8 @@
 import Base
-import ../../f64/word.bend as FW
-import ../../f64/repr.bend as FR
-import ../../f64/cmp.bend as FC
-import ./predicates.bend as VP
+import ../../f64/word.bend as F64Word
+import ../../f64/repr.bend as F64Repr
+import ../../f64/cmp.bend as F64Cmp
+import ./predicates.bend as VoronoiPredicates
 
 # Boost.Polygon 1.52 voronoi_diagram<double>: cells, vertices and half-edges in arrays (edge i's twin is i ^ 1, as
 # edges are always pushed in pairs), the builder's two _insert_new_edge forms, and _build() (degenerate edge removal
@@ -13,7 +13,7 @@ type Edge is Data:
   Edge{cell: U32, v0: U32, next: U32, prev: U32, flags: U32}
 
 type Vertex is Data:
-  Vertex{x: FR.F64, y: FR.F64, incident: U32}
+  Vertex{x: F64Repr.F64, y: F64Repr.F64, incident: U32}
 
 type Cell is Data:
   Cell{src: U32, cat: U32, incident: U32}
@@ -41,29 +41,29 @@ def empty(+sites: U32) -> Diagram:
   +edge_depth = depth_for(((sites * 8 : U32) + 16 : U32))
   +site_depth = depth_for(((sites * 2 : U32) + 8 : U32))
   Diagram{Array.new(Edge, edge_depth, Edge{0, nil(), nil(), nil(), 0}), 0,
-    Array.new(Vertex, site_depth, Vertex{FR.zero(), FR.zero(), nil()}), 0,
+    Array.new(Vertex, site_depth, Vertex{F64Repr.zero(), F64Repr.zero(), nil()}), 0,
     Array.new(Cell, site_depth, Cell{0, 0, nil()}), 0}
 
 # is_primary_edge(site1, site2).
-def is_primary(+s1: VP.Site, +s2: VP.Site) -> Bool:
-  +f1 = VP.is_segment(s1)
-  +f2 = VP.is_segment(s2)
-  +one = Bool.not(VP.pt_eq(VP.point0(s1), VP.point0(s2))) && Bool.not(VP.pt_eq(VP.point1(s1), VP.point0(s2)))
-  +two = Bool.not(VP.pt_eq(VP.point0(s2), VP.point0(s1))) && Bool.not(VP.pt_eq(VP.point1(s2), VP.point0(s1)))
+def is_primary(+s1: VoronoiPredicates.Site, +s2: VoronoiPredicates.Site) -> Bool:
+  +f1 = VoronoiPredicates.is_segment(s1)
+  +f2 = VoronoiPredicates.is_segment(s2)
+  +one = Bool.not(VoronoiPredicates.pt_eq(VoronoiPredicates.point0(s1), VoronoiPredicates.point0(s2))) && Bool.not(VoronoiPredicates.pt_eq(VoronoiPredicates.point1(s1), VoronoiPredicates.point0(s2)))
+  +two = Bool.not(VoronoiPredicates.pt_eq(VoronoiPredicates.point0(s2), VoronoiPredicates.point0(s1))) && Bool.not(VoronoiPredicates.pt_eq(VoronoiPredicates.point1(s2), VoronoiPredicates.point0(s1)))
   Bool.pick(Bool, f1 && Bool.not(f2), one, Bool.pick(Bool, Bool.not(f1) && f2, two, True{}))
 
-def edge_flags(+s1: VP.Site, +s2: VP.Site) -> U32:
+def edge_flags(+s1: VoronoiPredicates.Site, +s2: VoronoiPredicates.Site) -> U32:
   +primary = is_primary(s1, s2)
-  +linear = Bool.not(primary) || Bool.not(Bool.xor(VP.is_segment(s1), VP.is_segment(s2)))
+  +linear = Bool.not(primary) || Bool.not(Bool.xor(VoronoiPredicates.is_segment(s1), VoronoiPredicates.is_segment(s2)))
   ((Bool.to_u32(linear) * linear_bit()) + (Bool.to_u32(primary) * primary_bit()) : U32)
 
-def cell_of(+s: VP.Site) -> Cell:
-  Cell{VP.site_initial(s), VP.site_category(s), nil()}
+def cell_of(+s: VoronoiPredicates.Site) -> Cell:
+  Cell{VoronoiPredicates.site_initial(s), VoronoiPredicates.site_category(s), nil()}
 
-def push_cell(cells: Array<Cell>, +nc: U32, +s: VP.Site) -> Array<Cell>:
+def push_cell(cells: Array<Cell>, +nc: U32, +s: VoronoiPredicates.Site) -> Array<Cell>:
   Array.set(Cell, cells, nc, cell_of(s))
 
-def first_cell(first: Bool, cells: Array<Cell>, +nc: U32, +s: VP.Site) -> Array<Cell>:
+def first_cell(first: Bool, cells: Array<Cell>, +nc: U32, +s: VoronoiPredicates.Site) -> Array<Cell>:
   match first:
     case True{}:
       push_cell(cells, nc, s)
@@ -71,21 +71,21 @@ def first_cell(first: Bool, cells: Array<Cell>, +nc: U32, +s: VP.Site) -> Array<
       cells
 
 # _process_single_site(site).
-def single_site(d: Diagram, +s: VP.Site) -> Diagram:
+def single_site(d: Diagram, +s: VoronoiPredicates.Site) -> Diagram:
   match d:
     case Diagram{edges, +ne, vertices, +nv, cells, +nc}:
       Diagram{edges, ne, vertices, nv, push_cell(cells, nc, s), (nc + 1 : U32)}
 
 # _insert_new_edge(site1, site2): a new twin pair between the two sites' cells (site2's cell is pushed now).
 # Returns the diagram and the index of the first edge.
-def insert_edge(d: Diagram, +s1: VP.Site, +s2: VP.Site) -> Diagram & U32:
+def insert_edge(d: Diagram, +s1: VoronoiPredicates.Site, +s2: VoronoiPredicates.Site) -> Diagram & U32:
   match d:
     case Diagram{edges, +ne, vertices, +nv, cells, +nc}:
       +f = edge_flags(s1, s2)
       with_first = first_cell(U32.is_zero(nc), cells, nc, s1)
       +nc1 = (nc + Bool.to_u32(U32.is_zero(nc)) : U32)
-      e1 = Array.set(Edge, edges, ne, Edge{VP.site_sorted(s1), nil(), nil(), nil(), f})
-      e2 = Array.set(Edge, e1, (ne + 1 : U32), Edge{VP.site_sorted(s2), nil(), nil(), nil(), f})
+      e1 = Array.set(Edge, edges, ne, Edge{VoronoiPredicates.site_sorted(s1), nil(), nil(), nil(), f})
+      e2 = Array.set(Edge, e1, (ne + 1 : U32), Edge{VoronoiPredicates.site_sorted(s2), nil(), nil(), nil(), f})
       (Diagram{e2, (ne + 2 : U32), vertices, nv, push_cell(with_first, nc1, s2), (nc1 + 1 : U32)}, ne)
 
 def with_v0(+v: U32, e: Edge) -> Edge:
@@ -129,16 +129,16 @@ def twin(+e: U32) -> U32:
 
 # _insert_new_edge(site1, site3, circle, edge12, edge23): the circle event's vertex and the new twin pair.
 # Returns the diagram and the index of the first new edge.
-def insert_vertex(d: Diagram, +s1: VP.Site, +s3: VP.Site, +c: VP.Circle, +e12: U32, +e23: U32) -> Diagram & U32:
+def insert_vertex(d: Diagram, +s1: VoronoiPredicates.Site, +s3: VoronoiPredicates.Site, +c: VoronoiPredicates.Circle, +e12: U32, +e23: U32) -> Diagram & U32:
   match d:
     case Diagram{edges, +ne, vertices, +nv, cells, +nc}:
       +f = edge_flags(s1, s3)
-      v = Array.set(Vertex, vertices, nv, Vertex{VP.circle_x(c), VP.circle_y(c), nil()})
+      v = Array.set(Vertex, vertices, nv, Vertex{VoronoiPredicates.circle_x(c), VoronoiPredicates.circle_y(c), nil()})
       a1 = assign_prev(assign_v0(edges, e12, nv), e12, ne)
       a2 = assign_prev(assign_v0(a1, e23, nv), e23, twin(e12))
       a3 = assign_next(assign_next(a2, twin(e12), e23), twin(e23), (ne + 1 : U32))
-      a4 = Array.set(Edge, a3, ne, Edge{VP.site_sorted(s1), nil(), e12, nil(), f})
-      a5 = Array.set(Edge, a4, (ne + 1 : U32), Edge{VP.site_sorted(s3), nv, nil(), twin(e23), f})
+      a4 = Array.set(Edge, a3, ne, Edge{VoronoiPredicates.site_sorted(s1), nil(), e12, nil(), f})
+      a5 = Array.set(Edge, a4, (ne + 1 : U32), Edge{VoronoiPredicates.site_sorted(s3), nv, nil(), twin(e23), f})
       (Diagram{a5, (ne + 2 : U32), v, (nv + 1 : U32), cells, nc}, ne)
 
 def edge_prev(got: Array<Edge> & Edge) -> Array<Edge> & U32:
@@ -237,8 +237,8 @@ def remove_spread(got: Array<Edge> & U32, +i: U32, +fuel: U32) -> Array<Edge>:
 def remove_edge(edges: Array<Edge>, +i: U32, +fuel: U32) -> Array<Edge>:
   remove_spread(v0_of(edges, i), i, fuel)
 
-def ulp_same(+a: FR.F64, +b: FR.F64) -> Bool:
-  Cmp.is_eq(FC.ulp_cmp(a, b, 128))
+def ulp_same(+a: F64Repr.F64, +b: F64Repr.F64) -> Bool:
+  Cmp.is_eq(F64Cmp.ulp_cmp(a, b, 128))
 
 def vertex_pair_equal(got: Array<Vertex> & Vertex, +w: Vertex) -> Array<Vertex> & Bool:
   (vs, v) = got
@@ -448,11 +448,11 @@ type Chase is Type:
 
 def chase_prev(got: Array<Edge> & U32, +cur: U32, +start: U32) -> Chase:
   (a, +p) = got
-  Chase{a, cur, p, FW.pick(is_nil(p), 1, FW.pick(U32.is_eq(p, start), 2, 0))}
+  Chase{a, cur, p, F64Word.pick(is_nil(p), 1, F64Word.pick(U32.is_eq(p, start), 2, 0))}
 
 def chase_next(got: Array<Edge> & U32, +cur: U32) -> Chase:
   (a, +x) = got
-  Chase{a, cur, x, FW.pick(is_nil(x), 1, 0)}
+  Chase{a, cur, x, F64Word.pick(is_nil(x), 1, 0)}
 
 def walk_prev(n: Nat, c: Chase, +start: U32) -> Array<Edge> & U32:
   match n:
@@ -562,14 +562,14 @@ def build(d: Diagram) -> Diagram:
 
 # One half-edge of a cell ring, resolved: the twin's cell, both vertices (when present) and the flags.
 type Half is Data:
-  Half{twin_cell: U32, has0: Bool, x0: FR.F64, y0: FR.F64, has1: Bool, x1: FR.F64, y1: FR.F64, flags: U32}
+  Half{twin_cell: U32, has0: Bool, x0: F64Repr.F64, y0: F64Repr.F64, has1: Bool, x1: F64Repr.F64, y1: F64Repr.F64, flags: U32}
 
 def vertex_get(has: Bool, vs: Array<Vertex>, +v: U32) -> Array<Vertex> & Vertex:
   match has:
     case True{}:
       Array.get(Vertex, vs, v)
     case False{}:
-      (vs, Vertex{FR.zero(), FR.zero(), nil()})
+      (vs, Vertex{F64Repr.zero(), F64Repr.zero(), nil()})
 
 def vertex_at(vs: Array<Vertex>, +v: U32) -> Array<Vertex> & Vertex:
   vertex_get(Bool.not(is_nil(v)), vs, v)

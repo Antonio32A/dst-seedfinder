@@ -1,6 +1,6 @@
 import Base
-import ../../f32/ops.bend as FO
-import ./world.bend as TW
+import ../../f32/ops.bend as F32Ops
+import ./world.bend as TileWorld
 
 # PolygonTilesWithinRadius (boostmap.cpp): the integer corners (x, y) of the polygon's float bounding box, x outer
 # and y inner, with sqrtf((x - cx)^2 + (y - cy)^2) < radius and inside the polygon by the float winding number
@@ -47,17 +47,17 @@ def seg_keep(spans: Bool, +s: Seg, tail: List<&2, Seg>) -> List<&2, Seg>:
     case False{}:
       tail
 
-def spanning(+py: F32, a: TW.Point, b: TW.Point, tail: List<&2, Seg>) -> List<&2, Seg>:
+def spanning(+py: F32, a: TileWorld.Point, b: TileWorld.Point, tail: List<&2, Seg>) -> List<&2, Seg>:
   match a:
-    case TW.Point{+ax, +ay}:
+    case TileWorld.Point{+ax, +ay}:
       match b:
-        case TW.Point{+bx, +by}:
+        case TileWorld.Point{+bx, +by}:
           +below = (ay <= py : F32)
           +up = below && (py < by : F32)
           +down = Bool.not(below) && (by <= py : F32)
           seg_keep(up || down, Seg{ax, ay, bx, by, up}, tail)
 
-def row_loop(poly: List<&2, TW.Point>, +first: TW.Point, +prev: TW.Point, +py: F32) -> List<&2, Seg>:
+def row_loop(poly: List<&2, TileWorld.Point>, +first: TileWorld.Point, +prev: TileWorld.Point, +py: F32) -> List<&2, Seg>:
   match poly:
     case Nil{}:
       spanning(py, prev, first, Nil{})
@@ -65,7 +65,7 @@ def row_loop(poly: List<&2, TW.Point>, +first: TW.Point, +prev: TW.Point, +py: F
       spanning(py, prev, q, row_loop(rest, first, q, py))
 
 # The edges of the polygon (in ring order, the closing edge last) that span row py.
-def row_segs(poly: List<&2, TW.Point>, +py: F32) -> List<&2, Seg>:
+def row_segs(poly: List<&2, TileWorld.Point>, +py: F32) -> List<&2, Seg>:
   match poly:
     case Nil{}:
       Nil{}
@@ -75,15 +75,15 @@ def row_segs(poly: List<&2, TW.Point>, +py: F32) -> List<&2, Seg>:
 type Box is Data:
   Box{minx: F32, maxx: F32, miny: F32, maxy: F32}
 
-def grow(b: Box, p: TW.Point) -> Box:
+def grow(b: Box, p: TileWorld.Point) -> Box:
   match b:
     case Box{+minx, +maxx, +miny, +maxy}:
       match p:
-        case TW.Point{+x, +y}:
+        case TileWorld.Point{+x, +y}:
           Box{Bool.pick(F32, (x < minx : F32), x, minx), Bool.pick(F32, (maxx < x : F32), x, maxx),
             Bool.pick(F32, (y < miny : F32), y, miny), Bool.pick(F32, (maxy < y : F32), y, maxy)}
 
-def bounds(poly: List<&2, TW.Point>, b: Box) -> Box:
+def bounds(poly: List<&2, TileWorld.Point>, b: Box) -> Box:
   match poly:
     case Nil{}:
       b
@@ -91,7 +91,7 @@ def bounds(poly: List<&2, TW.Point>, b: Box) -> Box:
       bounds(rest, grow(b, p))
 
 def max_float() -> F32:
-  FO.from_bits(2139095039)
+  F32Ops.from_bits(2139095039)
 
 # (uint32_t)(int64_t)v: truncation toward zero, modulo 2^32.
 def trunc_wrap(+v: F32) -> U32:
@@ -148,7 +148,7 @@ def columns(n: Nat, go: Bool, +rows: List<&2, List<&2, Seg>>, +d: Disk, +b: Box,
                 column(rows, (U32.to_f32(y0) < maxy : F32), d, maxy, x, y0, acc))
 
 # Per scan row y0, y0 + 1, ... below maxy, the polygon edges spanning it.
-def rows_of(n: Nat, go: Bool, +poly: List<&2, TW.Point>, +maxy: F32, +y: U32) -> List<&2, List<&2, Seg>>:
+def rows_of(n: Nat, go: Bool, +poly: List<&2, TileWorld.Point>, +maxy: F32, +y: U32) -> List<&2, List<&2, Seg>>:
   match n:
     case 0n:
       Nil{}
@@ -159,7 +159,7 @@ def rows_of(n: Nat, go: Bool, +poly: List<&2, TW.Point>, +maxy: F32, +y: U32) ->
         case True{}:
           row_segs(poly, U32.to_f32(y)) <> rows_of(p, (U32.to_f32((y + 1 : U32)) < maxy : F32), poly, maxy, (y + 1 : U32))
 
-def scan(+poly: List<&2, TW.Point>, +d: Disk, b: Box) -> List<&2, U32>:
+def scan(+poly: List<&2, TileWorld.Point>, +d: Disk, b: Box) -> List<&2, U32>:
   match b:
     case Box{+minx, +maxx, +miny, +maxy}:
       +x0 = trunc_wrap(minx)
@@ -168,7 +168,7 @@ def scan(+poly: List<&2, TW.Point>, +d: Disk, b: Box) -> List<&2, U32>:
       List.reverse(&2, U32, columns(U32.to_nat(65536), (U32.to_f32(x0) < maxx : F32), rows, d, Box{minx, maxx, miny, maxy}, x0, Nil{}))
 
 # PolygonTilesWithinRadius(poly, (cx, cy), radius), packed tiles in scan order.
-def within_radius(+poly: List<&2, TW.Point>, +cx: F32, +cy: F32, +radius: F32) -> List<&2, U32>:
+def within_radius(+poly: List<&2, TileWorld.Point>, +cx: F32, +cy: F32, +radius: F32) -> List<&2, U32>:
   match poly:
     case Nil{}:
       Nil{}
@@ -176,7 +176,7 @@ def within_radius(+poly: List<&2, TW.Point>, +cx: F32, +cy: F32, +radius: F32) -
       scan(poly, Disk{cx, cy, radius}, bounds(poly, Box{max_float(), (0.0 - max_float() : F32), max_float(), (0.0 - max_float() : F32)}))
 
 # SiteTiles / SitePoints: the site's polygon within radius 20 of the site.
-def site_tiles(s: TW.Site) -> List<&2, U32>:
+def site_tiles(s: TileWorld.Site) -> List<&2, U32>:
   match s:
-    case TW.Site{_, +x, +y, _, _, +polygon}:
+    case TileWorld.Site{_, +x, +y, _, _, +polygon}:
       within_radius(polygon, x, y, 20.0)

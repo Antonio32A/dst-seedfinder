@@ -1,6 +1,6 @@
 import Base
-import ../../f64/repr.bend as FR
-import ./table.bend as TB
+import ../../f64/repr.bend as F64Repr
+import ./table.bend as TileTable
 
 # The inputs of the tile stages: the committed map after ConvertToTileMap's final Voronoi build.
 
@@ -8,7 +8,7 @@ type Point is Data:
   Point{x: F32, y: F32}
 
 type DPoint is Data:
-  DPoint{x: FR.F64, y: FR.F64}
+  DPoint{x: F64Repr.F64, y: F64Repr.F64}
 
 # One half-edge of a cell ring: the twin cell's source index (>= the site count for a boundary segment), its
 # vertices (None = infinite) and the double points DrawVoronoiEdge rasterises (clipped or sampled when needed).
@@ -33,7 +33,7 @@ type Edge is Data:
 # sites/site_at: in vertex order; adjacency: each vertex's out-edge targets in Boost order; edges: boost::edges order
 # (source first); cells: the diagram's point cells in cell order, cell_at: the same by source index.
 type World is Data:
-  World{width: U32, height: U32, count: U32, sites: List<&2, Site>, site_at: TB.Tree<Site>, adjacency: TB.Tree<List<&2, U32>>, edges: List<&2, Edge>, cells: List<&2, Cell>, cell_at: TB.Tree<Cell>}
+  World{width: U32, height: U32, count: U32, sites: List<&2, Site>, site_at: TileTable.Tree<Site>, adjacency: TileTable.Tree<List<&2, U32>>, edges: List<&2, Edge>, cells: List<&2, Cell>, cell_at: TileTable.Tree<Cell>}
 
 def none() -> U32:
   4294967295
@@ -44,7 +44,7 @@ def is_none(+v: U32) -> Bool:
 def site(+w: World, +i: U32) -> Site:
   match w:
     case World{_, _, _, _, +site_at, _, _, _, _}:
-      TB.at(~Site, site_at, i)
+      TileTable.at(~Site, site_at, i)
 
 def node_of(s: Site) -> Node:
   match s:
@@ -63,4 +63,4 @@ def count(+w: World) -> U32:
 def cell(+w: World, +i: U32) -> Cell:
   match w:
     case World{_, _, _, _, _, _, _, _, +cell_at}:
-      TB.at(~Cell, cell_at, i)
+      TileTable.at(~Cell, cell_at, i)

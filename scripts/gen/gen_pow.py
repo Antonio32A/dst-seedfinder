@@ -123,7 +123,7 @@ def small_table(m, name, rows, doc, shift=2):
         m.lines += [f"    case {c // per}:", f'      "{literal}"']
     m.lines += ["    case _:", '      ""', ""]
     m.lines += [f"def {name}(+i: U32) -> List<&2, U32>:",
-                f"  B.row({name}_chunk((i >> {shift}n : U32)), (i .&. {per - 1} : U32))", ""]
+                f"  Blob.row({name}_chunk((i >> {shift}n : U32)), (i .&. {per - 1} : U32))", ""]
 
 
 def units128(v):
@@ -131,27 +131,27 @@ def units128(v):
 
 
 def w128(v):
-    return "FW.W128{" + ", ".join(str((v >> s) & 0xFFFFFFFF) for s in (96, 64, 32, 0)) + "}"
+    return "F64Word.W128{" + ", ".join(str((v >> s) & 0xFFFFFFFF) for s in (96, 64, 32, 0)) + "}"
 
 
 def f64(bits):
-    return f"FR.F64{{{bits >> 32}, {bits & 0xFFFFFFFF}}}"
+    return f"F64Repr.F64{{{bits >> 32}, {bits & 0xFFFFFFFF}}}"
 
 
 def bend_module():
     log_head, log_tab, exp_head, exp_tab = glibc_tables()
     m = blob.Module("pow", "scripts/gen/gen_pow.py",
                     "Tables of ocean/pow.bend: pow(r, 0.8) on Linux and Windows.",
-                    ("./blob.bend as B", "../f64/word.bend as FW", "../f64/repr.bend as FR"))
+                    ("./blob.bend as Blob", "../f64/word.bend as F64Word", "../f64/repr.bend as F64Repr"))
     names = ["glibc_ln2hi", "glibc_ln2lo"] + [f"glibc_log_a{k}" for k in range(7)]
     for name, bits in zip(names, log_head):
-        m.const(name, f64(bits), "FR.F64")
+        m.const(name, f64(bits), "F64Repr.F64")
     log_rows = [blob.f64(as_double(a)) + blob.f64(as_double(b)) + blob.f64(as_double(c)) for a, b, c in log_tab]
     small_table(m, "glibc_log_tab", log_rows, "__pow_log_data.tab[i]: invc, logc, logctail.")
     names = ["glibc_invln2n", "glibc_negln2hin", "glibc_negln2lon", "glibc_exp_c2", "glibc_exp_c3", "glibc_exp_c4",
              "glibc_exp_c5", "glibc_shift"]
     for name, bits in zip(names, exp_head):
-        m.const(name, f64(bits), "FR.F64")
+        m.const(name, f64(bits), "F64Repr.F64")
     small_table(m, "glibc_exp_tab", [units128(tail << 64 | sbits) for tail, sbits in exp_tab],
                 "__exp_data.tab[2i], tab[2i + 1]: tail bits, scale bits (hi-hi first).")
     small_table(m, "win_log_tab", [[c] + units128(v) for c, v in log_reduction()],
@@ -160,10 +160,10 @@ def bend_module():
     small_table(m, "win_exp_coarse", [units128(v) for v in coarse], "Row a + 16: 2^(a/32) at 2^-127.")
     small_table(m, "win_exp_fine", [units128(v) for v in fine], "Row b: 2^(b/1024) at 2^-127.")
     log, exp = series()
-    m.const("win_log_series", "[" + ", ".join(w128(v) for v in reversed(log)) + "]", "List<&2, FW.W128>")
-    m.const("win_exp_series", "[" + ", ".join(w128(v) for v in reversed(exp)) + "]", "List<&2, FW.W128>")
+    m.const("win_log_series", "[" + ", ".join(w128(v) for v in reversed(log)) + "]", "List<&2, F64Word.W128>")
+    m.const("win_exp_series", "[" + ", ".join(w128(v) for v in reversed(exp)) + "]", "List<&2, F64Word.W128>")
     for name, v in windows_constants().items():
-        m.const(f"win_{name}", w128(v), "FW.W128")
+        m.const(f"win_{name}", w128(v), "F64Word.W128")
     buckets = [[] for _ in range(1 << (32 - BUCKET_SHIFT))]
     for x, d in exceptions():
         buckets[x >> BUCKET_SHIFT].append((x & ((1 << BUCKET_SHIFT) - 1)) | (int(d > 0) << BUCKET_SHIFT))

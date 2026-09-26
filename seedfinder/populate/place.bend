@@ -1,18 +1,18 @@
 import Base
-import ../rng/pcg.bend as R
-import ../lua/math_random.bend as LM
-import ../f32/ops.bend as FO
-import ../f64/repr.bend as FR
-import ../f64/arith.bend as FA
-import ../f64/cmp.bend as FC
-import ../data/blob.bend as B
-import ../data/layouts.bend as LY
-import ../worldsim/grid.bend as GR
-import ../worldsim/points.bend as PT
-import ../worldsim/tiles/groups.bend as TG
-import ./entities.bend as PE
-import ./layout.bend as PL
-import ./state.bend as PS
+import ../rng/pcg.bend as Pcg
+import ../lua/math_random.bend as MathRandom
+import ../f32/ops.bend as F32Ops
+import ../f64/repr.bend as F64Repr
+import ../f64/arith.bend as F64Arith
+import ../f64/cmp.bend as F64Cmp
+import ../data/blob.bend as Blob
+import ../data/layouts.bend as Layouts
+import ../worldsim/grid.bend as Grid
+import ../worldsim/points.bend as Points
+import ../worldsim/tiles/groups.bend as TileGroups
+import ./entities.bend as Entities
+import ./layout.bend as PopulateLayout
+import ./state.bend as PopulateState
 
 # object_layout.lua's ReserveAndPlaceLayout for ConvertGround's layouts (position nil, WorldSim): the reserved size
 # from the entity list's bounding box (or the ground's side), the random transform (3 GetRandomItem draws unless
@@ -20,58 +20,58 @@ import ./state.bend as PS
 # rcx + size - 0.5 + x * scale through Node:AddEntity without the random offset.
 
 type Box is Data:
-  Box{xmin: FR.F64, xmax: FR.F64, ymin: FR.F64, ymax: FR.F64}
+  Box{xmin: F64Repr.F64, xmax: F64Repr.F64, ymin: F64Repr.F64, ymax: F64Repr.F64}
 
-def million() -> FR.F64:
-  FR.from_u32(1000000)
+def million() -> F64Repr.F64:
+  F64Repr.from_u32(1000000)
 
-def grown(+b: Box, +i: PL.Item) -> Box:
+def grown(+b: Box, +i: PopulateLayout.Item) -> Box:
   match b:
     case Box{+xmin, +xmax, +ymin, +ymax}:
       match i:
-        case PL.Item{_, +x, +y, _}:
-          Box{FR.pick(FC.lt(x, xmin), x, xmin), FR.pick(FC.gt(x, xmax), x, xmax), FR.pick(FC.lt(y, ymin), y, ymin), FR.pick(FC.gt(y, ymax), y, ymax)}
+        case PopulateLayout.Item{_, +x, +y, _}:
+          Box{F64Repr.pick(F64Cmp.lt(x, xmin), x, xmin), F64Repr.pick(F64Cmp.gt(x, xmax), x, xmax), F64Repr.pick(F64Cmp.lt(y, ymin), y, ymin), F64Repr.pick(F64Cmp.gt(y, ymax), y, ymax)}
 
-def bounds(items: List<&2, PL.Item>, +b: Box) -> Box:
+def bounds(items: List<&2, PopulateLayout.Item>, +b: Box) -> Box:
   match items:
     case Nil{}:
       b
     case Con{+i, rest}:
       bounds(rest, grown(b, i))
 
-def scale_of(bits: U32 & U32) -> FR.F64:
+def scale_of(bits: U32 & U32) -> F64Repr.F64:
   (+hi, +lo) = bits
-  FR.F64{hi, lo}
+  F64Repr.F64{hi, lo}
 
-def half_extent(+b: Box) -> FR.F64:
+def half_extent(+b: Box) -> F64Repr.F64:
   match b:
     case Box{+xmin, +xmax, +ymin, +ymax}:
-      +w = FA.mul(FA.sub(xmax, xmin), FR.half())
-      +h = FA.mul(FA.sub(ymax, ymin), FR.half())
-      FR.pick(FC.lt(w, h), h, w)
+      +w = F64Arith.mul(F64Arith.sub(xmax, xmin), F64Repr.half())
+      +h = F64Arith.mul(F64Arith.sub(ymax, ymin), F64Repr.half())
+      F64Repr.pick(F64Cmp.lt(w, h), h, w)
 
 # The transform: switch_xy and the two flips (1 or -1 as True/False: True = 1).
 type Turn is Data:
   Turn{switch: Bool, fx: Bool, fy: Bool}
 
-def turned_y(got: U32 & R.Rng, +switch: Bool, +fx: Bool) -> Turn & R.Rng:
+def turned_y(got: U32 & Pcg.Rng, +switch: Bool, +fx: Bool) -> Turn & Pcg.Rng:
   (+v, rng) = got
   (Turn{switch, fx, U32.is_eq(v, 1)}, rng)
 
-def turned_x(got: U32 & R.Rng, +switch: Bool) -> Turn & R.Rng:
+def turned_x(got: U32 & Pcg.Rng, +switch: Bool) -> Turn & Pcg.Rng:
   (+v, rng) = got
-  turned_y(LM.random_upto(rng, 2), switch, U32.is_eq(v, 1))
+  turned_y(MathRandom.random_upto(rng, 2), switch, U32.is_eq(v, 1))
 
-def turned(got: U32 & R.Rng) -> Turn & R.Rng:
+def turned(got: U32 & Pcg.Rng) -> Turn & Pcg.Rng:
   (+v, rng) = got
-  turned_x(LM.random_upto(rng, 2), U32.is_eq(v, 1))
+  turned_x(MathRandom.random_upto(rng, 2), U32.is_eq(v, 1))
 
-def turn(fixed: Bool, rng: R.Rng) -> Turn & R.Rng:
+def turn(fixed: Bool, rng: Pcg.Rng) -> Turn & Pcg.Rng:
   match fixed:
     case True{}:
       (Turn{False{}, False{}, True{}}, rng)
     case False{}:
-      turned(LM.random_upto(rng, 2))
+      turned(MathRandom.random_upto(rng, 2))
 
 def flipped(+keep: Bool, +n: U32, +k: U32) -> U32:
   Bool.pick(U32, keep, k, (n - 1 - k : U32))
@@ -84,7 +84,7 @@ def ground_index(+t: Turn, +n: U32, +column: U32, +row: U32) -> U32:
       (rw * n + clmn : U32)
 
 def ground_at(+v: U32, +t: Turn, +n: U32, +column: U32, +row: U32) -> U32:
-  LY.ground_tile(v, ground_index(t, n, column, row))
+  Layouts.ground_tile(v, ground_index(t, n, column, row))
 
 def unpack_ground(units: List<&2, U32>, tiles: Array<U32>, +k: U32) -> Array<U32>:
   match units:
@@ -114,76 +114,76 @@ def ground_decoded(empty: Bool, +v: U32, +t: Turn, +n: U32) -> List<&2, U32>:
       Nil{}
     case False{}:
       +cells = (n * n : U32)
-      ground_loop(U32.to_nat(cells), (unpack_ground(LY.ground(v), [0 : U32^10n], 0), Nil{}), t, n, (cells - 1 : U32))
+      ground_loop(U32.to_nat(cells), (unpack_ground(Layouts.ground(v), [0 : U32^10n], 0), Nil{}), t, n, (cells - 1 : U32))
 
 # The ground tiles as ReserveAndPlaceLayout lists them: column outer, row inner, transformed (0 = keep the tile).
 # The variant's ground row is decoded once (sizes up to 30 x 30).
 def ground(+v: U32, +t: Turn) -> List<&2, U32>:
-  +n = LY.ground_size(v)
+  +n = Layouts.ground_size(v)
   ground_decoded(U32.is_zero(n), v, t, n)
 
-def item_x(+t: Turn, +i: PL.Item) -> FR.F64:
+def item_x(+t: Turn, +i: PopulateLayout.Item) -> F64Repr.F64:
   match t:
     case Turn{+switch, +fx, +fy}:
       match i:
-        case PL.Item{_, +x, +y, _}:
-          Bool.pick(FR.F64, switch, FR.pick(fy, y, FR.neg(y)), FR.pick(fx, x, FR.neg(x)))
+        case PopulateLayout.Item{_, +x, +y, _}:
+          Bool.pick(F64Repr.F64, switch, F64Repr.pick(fy, y, F64Repr.neg(y)), F64Repr.pick(fx, x, F64Repr.neg(x)))
 
-def item_y(+t: Turn, +i: PL.Item) -> FR.F64:
+def item_y(+t: Turn, +i: PopulateLayout.Item) -> F64Repr.F64:
   match t:
     case Turn{+switch, +fx, +fy}:
       match i:
-        case PL.Item{_, +x, +y, _}:
-          Bool.pick(FR.F64, switch, FR.pick(fx, x, FR.neg(x)), FR.pick(fy, y, FR.neg(y)))
+        case PopulateLayout.Item{_, +x, +y, _}:
+          Bool.pick(F64Repr.F64, switch, F64Repr.pick(fx, x, F64Repr.neg(x)), F64Repr.pick(fy, y, F64Repr.neg(y)))
 
-def item_prefab(+i: PL.Item) -> U32:
+def item_prefab(+i: PopulateLayout.Item) -> U32:
   match i:
-    case PL.Item{+prefab, _, _, _}:
+    case PopulateLayout.Item{+prefab, _, _, _}:
       prefab
 
-def fixed_placed(got: GR.Grid & Bool, +c: PS.Ctx, +e: PE.Ent, +rng: R.Rng, +ents: List<&2, PE.Ent>, +events: List<&2, PS.Ev>) -> PS.Land:
+def fixed_placed(got: Grid.Grid & Bool, +c: PopulateState.Ctx, +e: Entities.Ent, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   (g, _) = got
-  PS.added_in(c, PS.Land{g, rng, ents, events}, e)
+  PopulateState.added_in(c, PopulateState.Land{g, rng, ents, events}, e)
 
-def fixed_on(land: Bool, g: GR.Grid, +c: PS.Ctx, +prefab: U32, +px: FR.F64, +py: FR.F64, +ix: U32, +iy: U32, rng: R.Rng, +ents: List<&2, PE.Ent>, +events: List<&2, PS.Ev>) -> PS.Land:
+def fixed_on(land: Bool, g: Grid.Grid, +c: PopulateState.Ctx, +prefab: U32, +px: F64Repr.F64, +py: F64Repr.F64, +ix: U32, +iy: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   match land:
     case False{}:
-      PS.Land{g, rng, ents, events}
+      PopulateState.Land{g, rng, ents, events}
     case True{}:
-      +e = PE.entity(prefab, px, py, PS.width_of(c), PS.height_of(c), False{}, rng)
-      fixed_placed(PT.reserve_tile(g, ix, iy), c, e, PE.rng_of(e), ents, events)
+      +e = Entities.entity(prefab, px, py, PopulateState.width_of(c), PopulateState.height_of(c), False{}, rng)
+      fixed_placed(Points.reserve_tile(g, ix, iy), c, e, Entities.rng_of(e), ents, events)
 
-def fixed_tile(got: GR.Grid & U32, +c: PS.Ctx, +prefab: U32, +px: FR.F64, +py: FR.F64, +ix: U32, +iy: U32, rng: R.Rng, +ents: List<&2, PE.Ent>, +events: List<&2, PS.Ev>) -> PS.Land:
+def fixed_tile(got: Grid.Grid & U32, +c: PopulateState.Ctx, +prefab: U32, +px: F64Repr.F64, +py: F64Repr.F64, +ix: U32, +iy: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   (g, +tile) = got
-  fixed_on(TG.is_land(tile), g, c, prefab, px, py, ix, iy, rng, ents, events)
+  fixed_on(TileGroups.is_land(tile), g, c, prefab, px, py, ix, iy, rng, ents, events)
 
 # Node:AddEntity(prefab, {px}, {py}, 1, ..., rand_offset = false).
-def add_fixed(+c: PS.Ctx, +prefab: U32, +px: FR.F64, +py: FR.F64, l: PS.Land) -> PS.Land:
+def add_fixed(+c: PopulateState.Ctx, +prefab: U32, +px: F64Repr.F64, +py: F64Repr.F64, l: PopulateState.Land) -> PopulateState.Land:
   match l:
-    case PS.Land{g, +rng, +ents, +events}:
-      +ix = PT.lua_int(px)
-      +iy = PT.lua_int(py)
-      fixed_tile(PT.get_tile(g, ix, iy), c, prefab, px, py, ix, iy, rng, ents, events)
+    case PopulateState.Land{g, +rng, +ents, +events}:
+      +ix = Points.lua_int(px)
+      +iy = Points.lua_int(py)
+      fixed_tile(Points.get_tile(g, ix, iy), c, prefab, px, py, ix, iy, rng, ents, events)
 
 # Where the layout's centre is: rcx, rcy after `+ size - 0.5`, the transform and the scale.
 type Frame is Data:
-  Frame{cx: FR.F64, cy: FR.F64, turn: Turn, scale: FR.F64}
+  Frame{cx: F64Repr.F64, cy: F64Repr.F64, turn: Turn, scale: F64Repr.F64}
 
-def place_items(items: List<&2, PL.Item>, +f: Frame, +c: PS.Ctx, l: PS.Land) -> PS.Land:
+def place_items(items: List<&2, PopulateLayout.Item>, +f: Frame, +c: PopulateState.Ctx, l: PopulateState.Land) -> PopulateState.Land:
   match items:
     case Nil{}:
       l
     case Con{+i, rest}:
       match f:
         case Frame{+cx, +cy, +t, +scale}:
-          +px = FA.add(cx, FA.mul(item_x(t, i), scale))
-          +py = FA.add(cy, FA.mul(item_y(t, i), scale))
+          +px = F64Arith.add(cx, F64Arith.mul(item_x(t, i), scale))
+          +py = F64Arith.add(cy, F64Arith.mul(item_y(t, i), scale))
           place_items(rest, Frame{cx, cy, t, scale}, c, add_fixed(c, item_prefab(i), px, py, l))
 
-def corner(+v: U32, +size: FR.F64) -> FR.F64:
-  FA.sub(FA.add(FR.from_u32(v), size), FR.half())
+def corner(+v: U32, +size: F64Repr.F64) -> F64Repr.F64:
+  F64Arith.sub(F64Arith.add(F64Repr.from_u32(v), size), F64Repr.half())
 
-def place_if(ok: Bool, l: PS.Land, +c: PS.Ctx, +items: List<&2, PL.Item>, +f: Frame, +cx: FR.F64, +cy: FR.F64) -> PS.Land:
+def place_if(ok: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +items: List<&2, PopulateLayout.Item>, +f: Frame, +cx: F64Repr.F64, +cy: F64Repr.F64) -> PopulateState.Land:
   match ok:
     case False{}:
       l
@@ -192,37 +192,37 @@ def place_if(ok: Bool, l: PS.Land, +c: PS.Ctx, +items: List<&2, PL.Item>, +f: Fr
         case Frame{_, _, +t, +scale}:
           place_items(items, Frame{cx, cy, t, scale}, c, l)
 
-def reserved(r: PT.Reserved, +c: PS.Ctx, +node: U32, +ask: PT.Ask, +pos: U32, +items: List<&2, PL.Item>, +f: Frame, +size: FR.F64, +before: R.Rng, +ents: List<&2, PE.Ent>, +events: List<&2, PS.Ev>) -> PS.Land:
+def reserved(r: Points.Reserved, +c: PopulateState.Ctx, +node: U32, +ask: Points.Ask, +pos: U32, +items: List<&2, PopulateLayout.Item>, +f: Frame, +size: F64Repr.F64, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   match r:
-    case PT.Reserved{g, +rng, +ok, +x, +y, +n}:
+    case Points.Reserved{g, +rng, +ok, +x, +y, +n}:
       match ask:
-        case PT.Ask{+fsize, +start, +fill}:
-          place_if(ok, PS.Land{g, rng, ents, PS.EReserve{node, FO.bits(fsize), start, fill, pos, n, before, rng, ok, x, y} <> events}, c,
+        case Points.Ask{+fsize, +start, +fill}:
+          place_if(ok, PopulateState.Land{g, rng, ents, PopulateState.EReserve{node, F32Ops.bits(fsize), start, fill, pos, n, before, rng, ok, x, y} <> events}, c,
             items, f, corner(x, size), corner(y, size))
 
-def ground_size(+v: U32, +size: FR.F64) -> FR.F64:
-  +n = LY.ground_size(v)
-  FR.pick(U32.is_zero(n), size, FA.mul(FR.from_u32(n), FR.half()))
+def ground_size(+v: U32, +size: F64Repr.F64) -> F64Repr.F64:
+  +n = Layouts.ground_size(v)
+  F64Repr.pick(U32.is_zero(n), size, F64Arith.mul(F64Repr.from_u32(n), F64Repr.half()))
 
 def or_zero(+v: U32) -> U32:
-  Bool.pick(U32, B.is_none(v), 0, v)
+  Bool.pick(U32, Blob.is_none(v), 0, v)
 
 def position_of(+v: U32) -> U32:
-  or_zero(LY.layout_position(v))
+  or_zero(Layouts.layout_position(v))
 
-def placed_turn(got: Turn & R.Rng, +c: PS.Ctx, +node: U32, +v: U32, +items: List<&2, PL.Item>, +size: FR.F64, g: GR.Grid, +ents: List<&2, PE.Ent>, +events: List<&2, PS.Ev>) -> PS.Land:
+def placed_turn(got: Turn & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   (+t, +rng) = got
   +sized = ground_size(v, size)
-  +ask = {PT.Ask{FO.from_f64(sized), or_zero(LY.start_mask(v)), or_zero(LY.fill_mask(v))} : PT.Ask}
-  +site = PS.site_of(c, node)
-  +f = {Frame{FR.zero(), FR.zero(), t, scale_of(LY.scale(v))} : Frame}
-  reserved(PT.reserve_space(PS.windows_of(c), PS.sites_of(c), site, ask, position_of(v), ground(v, t), g, rng), c, node, ask, position_of(v),
+  +ask = {Points.Ask{F32Ops.from_f64(sized), or_zero(Layouts.start_mask(v)), or_zero(Layouts.fill_mask(v))} : Points.Ask}
+  +site = PopulateState.site_of(c, node)
+  +f = {Frame{F64Repr.zero(), F64Repr.zero(), t, scale_of(Layouts.scale(v))} : Frame}
+  reserved(Points.reserve_space(PopulateState.windows_of(c), PopulateState.sites_of(c), site, ask, position_of(v), ground(v, t), g, rng), c, node, ask, position_of(v),
     items, f, sized, rng, ents, events)
 
 # ReserveAndPlaceLayout(node, layout, prefabs, add_fn) for the layout variant v.
-def place(+c: PS.Ctx, +node: U32, +v: U32, +items: List<&2, PL.Item>, l: PS.Land) -> PS.Land:
+def place(+c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, l: PopulateState.Land) -> PopulateState.Land:
   match l:
-    case PS.Land{g, +rng, +ents, +events}:
-      +start = {Box{million(), FR.neg(million()), million(), FR.neg(million())} : Box}
-      +size = FA.mul(scale_of(LY.scale(v)), half_extent(bounds(items, start)))
-      placed_turn(turn(LY.has(v, LY.flag_disable_transform()), rng), c, node, v, items, size, g, ents, events)
+    case PopulateState.Land{g, +rng, +ents, +events}:
+      +start = {Box{million(), F64Repr.neg(million()), million(), F64Repr.neg(million())} : Box}
+      +size = F64Arith.mul(scale_of(Layouts.scale(v)), half_extent(bounds(items, start)))
+      placed_turn(turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), c, node, v, items, size, g, ents, events)

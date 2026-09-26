@@ -184,40 +184,40 @@ def row_of(+room: U32, +depth: U32) -> U32:
   (((room * 2 : U32) + depth : U32) - 1 : U32)
 
 def name(+room: U32) -> U32:
-  B.at(rooms(room), 0)
+  Blob.at(rooms(room), 0)
 
 def value(+room: U32) -> U32:
-  B.at(rooms(room), 1)
+  Blob.at(rooms(room), 1)
 
 def node_type(+room: U32) -> U32:
-  B.at(rooms(room), 2)
+  Blob.at(rooms(room), 2)
 
 def flags(+room: U32) -> U32:
-  B.at(rooms(room), 3)
+  Blob.at(rooms(room), 3)
 
 def has(+room: U32, +flag: U32) -> Bool:
   U32.is_ne((flags(room) .&. flag : U32), 0)
 
 # distributepercent as f64 (hi, lo).
 def distribute_percent(+room: U32) -> U32 & U32:
-  B.f64(rooms(room), 4)
+  Blob.f64(rooms(room), 4)
 
 # math.random() < distributepercent holds exactly when the PCG output is below this.
 def distribute_threshold(+room: U32) -> U32:
-  B.word(rooms(room), 8)
+  Blob.word(rooms(room), 8)
 
 def internal_type(+room: U32) -> U32:
-  B.at(rooms(room), 10)
+  Blob.at(rooms(room), 10)
 
 def random_node_exit_weight(+room: U32) -> U32:
-  B.at(rooms(room), 11)
+  Blob.at(rooms(room), 11)
 
 def random_node_entrance_weight(+room: U32) -> U32:
-  B.at(rooms(room), 12)
+  Blob.at(rooms(room), 12)
 
 # A distribute weight as f64 (hi, lo).
 def weight(+id: U32) -> U32 & U32:
-  B.f64(weights(id), 0)
+  Blob.f64(weights(id), 0)
 ''')
     m.emit()
 

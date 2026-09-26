@@ -1,12 +1,12 @@
 import Base
-import ../rng/pcg.bend as R
-import ../level/setpieces.bend as S
-import ../data/world_catalog.bend as K
-import ../level/prefix.bend as P
-import ../level/choose.bend as CH
-import ./json.bend as J
-import ./parse.bend as PS
-import ./rules.bend as RU
+import ../rng/pcg.bend as Pcg
+import ../level/setpieces.bend as LevelSetpieces
+import ../data/world_catalog.bend as WorldCatalog
+import ../level/prefix.bend as LevelPrefix
+import ../level/choose.bend as LevelChoose
+import ./json.bend as Json
+import ./parse.bend as Parse
+import ./rules.bend as Rules
 
 # A world filter (README.md "world find"): criteria are alternatives, a seed matches when one holds.
 # Task sets are masks over data/world_catalog.bend task ids; a rule bounds how many times a set piece
@@ -22,7 +22,7 @@ type Criteria is Data:
 # has a counts, distances, tiles or routes key, and the part A criteria that make a seed a candidate (those of the
 # entries that are not passive; anything when there are no entries).
 type Config is Data:
-  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, RU.Later>, unsupported: Maybe<&2, String>, scanned: List<&2, Criteria>}
+  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, Rules.Later>, unsupported: Maybe<&2, String>, scanned: List<&2, Criteria>}
 
 def every_task() -> U32:
   33554431
@@ -42,51 +42,51 @@ def or_anything(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
       criteria
 
 def is_member(names: List<&2, String>, +name: String) -> Bool:
-  PS.is_member(names, name)
+  Parse.is_member(names, name)
 
 # The parts B-E of an entry without counts, distances, tiles or routes rules.
-def no_later() -> RU.Later:
-  RU.nothing_later()
+def no_later() -> Rules.Later:
+  Rules.nothing_later()
 
-def lookup(names: List<&2, K.Name>, +name: String) -> Maybe<&2, U32>:
+def lookup(names: List<&2, WorldCatalog.Name>, +name: String) -> Maybe<&2, U32>:
   match names:
     case Nil{}:
       None{}
-    case Con{K.Name{+entry, +id}, rest}:
+    case Con{WorldCatalog.Name{+entry, +id}, rest}:
       Bool.pick(Maybe<&2, U32>, String.eq(entry, name), Some{id}, lookup(rest, name))
 
 def known(found: Maybe<&2, U32>, +kind: String, +name: String, +path: String) -> Result<&1, &1, U32 & String, U32>:
   match found:
     case None{}:
-      Fail{PS.failure("unknown " ++ kind ++ " " ++ PS.quoted(name) ++ " in " ++ path)}
+      Fail{Parse.failure("unknown " ++ kind ++ " " ++ Parse.quoted(name) ++ " in " ++ path)}
     case Some{id}:
       Done{id}
 
-def task_of(json: J.Json, +index: U32, +path: String) -> Result<&1, &1, U32 & String, U32>:
+def task_of(json: Json.Json, +index: U32, +path: String) -> Result<&1, &1, U32 & String, U32>:
   do Result<&1, &1, U32 & String, U32>:
-    +name : String <- PS.string_of(json, PS.indexed(path, index))
-    known(lookup(K.tasks(), name), "task", name, path)
+    +name : String <- Parse.string_of(json, Parse.indexed(path, index))
+    known(lookup(WorldCatalog.tasks(), name), "task", name, path)
 
-def task_mask(items: List<&2, J.Json>, +index: U32, +path: String, +acc: U32) -> Result<&1, &1, U32 & String, U32>:
+def task_mask(items: List<&2, Json.Json>, +index: U32, +path: String, +acc: U32) -> Result<&1, &1, U32 & String, U32>:
   match items:
     case Nil{}:
       Done{acc}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, U32>:
         +task : U32 <- task_of(item, index, path)
-        task_mask(rest, (index + 1 : U32), path, (acc .|. P.task_bit(task) : U32))
+        task_mask(rest, (index + 1 : U32), path, (acc .|. LevelPrefix.task_bit(task) : U32))
 
-def task_list(m: Maybe<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, U32>:
+def task_list(m: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, U32>:
   do Result<&1, &1, U32 & String, U32>:
-    items : List<&2, J.Json> <- PS.optional_items(m, path)
-    listed : List<&2, J.Json> <- PS.capped(items, 25, "tasks", path)
+    items : List<&2, Json.Json> <- Parse.optional_items(m, path)
+    listed : List<&2, Json.Json> <- Parse.capped(items, 25, "tasks", path)
     task_mask(listed, 0, path, 0)
 
-def task_rule(+tasks_key: String, section: Maybe<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, U32>:
+def task_rule(+tasks_key: String, section: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, U32>:
   do Result<&1, &1, U32 & String, U32>:
-    +fields : List<&2, J.Json> <- PS.optional_fields(section, path)
-    ok : Unit <- PS.check_keys(fields, ["required", "excluded"], path)
-    task_list(PS.field(fields, tasks_key), path ++ "." ++ tasks_key)
+    +fields : List<&2, Json.Json> <- Parse.optional_fields(section, path)
+    ok : Unit <- Parse.check_keys(fields, ["required", "excluded"], path)
+    task_list(Parse.field(fields, tasks_key), path ++ "." ++ tasks_key)
 
 def swap_bit(+category: String) -> U32:
   Bool.pick(U32, String.eq(category, "grass"), 1, Bool.pick(U32, String.eq(category, "twigs"), 2, Bool.pick(U32, String.eq(category, "berries"), 4, 0)))
@@ -97,152 +97,152 @@ def swapped_name(+bit: U32) -> String:
 def regular_name(+bit: U32) -> String:
   Bool.pick(String, U32.is_eq(bit, 1), "regular grass", Bool.pick(String, U32.is_eq(bit, 2), "regular twigs", "regular berries"))
 
-def text_of(json: J.Json) -> String:
+def text_of(json: Json.Json) -> String:
   match json:
-    case J.JStr{s}:
+    case Json.JStr{s}:
       s
     case _:
       ""
 
-def is_string(json: J.Json) -> Bool:
+def is_string(json: Json.Json) -> Bool:
   match json:
-    case J.JStr{_}:
+    case Json.JStr{_}:
       True{}
     case _:
       False{}
 
 # Packs a prefab swap choice as care bit | want bit << 8.
-def swap_choice(+category: String, +value: J.Json, +path: String) -> Result<&1, &1, U32 & String, U32>:
+def swap_choice(+category: String, +value: Json.Json, +path: String) -> Result<&1, &1, U32 & String, U32>:
   +bit = swap_bit(category)
   +choice = text_of(value)
   +valid = is_string(value) && Bool.not(U32.is_zero(bit)) && (String.eq(choice, swapped_name(bit)) || String.eq(choice, regular_name(bit)))
   +want = Bool.pick(U32, String.eq(choice, swapped_name(bit)), bit, 0)
   Bool.pick(Result<&1, &1, U32 & String, U32>, valid, Done{(bit .|. (want << 8n) : U32)},
-    Fail{PS.failure("unknown prefab swap " ++ PS.quoted(category) ++ ": " ++ J.dump(value) ++ " in " ++ path)})
+    Fail{Parse.failure("unknown prefab swap " ++ Parse.quoted(category) ++ ": " ++ Json.dump(value) ++ " in " ++ path)})
 
-def swap_choices(fields: List<&2, J.Json>, +path: String, +acc: U32) -> Result<&1, &1, U32 & String, U32>:
+def swap_choices(fields: List<&2, Json.Json>, +path: String, +acc: U32) -> Result<&1, &1, U32 & String, U32>:
   match fields:
     case Nil{}:
       Done{acc}
-    case Con{J.JField{+category, +value}, rest}:
+    case Con{Json.JField{+category, +value}, rest}:
       do Result<&1, &1, U32 & String, U32>:
         +packed : U32 <- swap_choice(category, value, path)
         swap_choices(rest, path, (acc .|. packed : U32))
     case Con{_, rest}:
       swap_choices(rest, path, acc)
 
-def swaps_of(m: Maybe<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, U32>:
+def swaps_of(m: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, U32>:
   do Result<&1, &1, U32 & String, U32>:
-    fields : List<&2, J.Json> <- PS.optional_fields(m, path)
+    fields : List<&2, Json.Json> <- Parse.optional_fields(m, path)
     swap_choices(fields, path, 0)
 
 def bound_message(+path: String) -> U32 & String:
-  PS.failure(path ++ " must be an integer in 0..4294967295 or [min, max]")
+  Parse.failure(path ++ " must be an integer in 0..4294967295 or [min, max]")
 
-def bounded_rule(+piece: U32, +tasks: U32, bound: J.Json, +path: String) -> Result<&1, &1, U32 & String, Rule>:
+def bounded_rule(+piece: U32, +tasks: U32, bound: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Rule>:
   match bound:
-    case J.JNum{+low}:
+    case Json.JNum{+low}:
       Done{Rule{piece, tasks, low, unbounded()}}
-    case J.JArr{Con{J.JNum{+low}, Con{J.JNum{+high}, Nil{}}}}:
+    case Json.JArr{Con{Json.JNum{+low}, Con{Json.JNum{+high}, Nil{}}}}:
       Done{Rule{piece, tasks, low, high}}
     case _:
       Fail{bound_message(path)}
 
-def piece_ids(entries: List<&2, J.Json>, +path: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
+def piece_ids(entries: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   match entries:
     case Nil{}:
       Done{Nil{}}
-    case Con{J.JField{+name, _}, rest}:
+    case Con{Json.JField{+name, _}, rest}:
       do Result<&1, &1, U32 & String, List<&2, U32>>:
-        piece : U32 <- known(lookup(K.pieces(), name), "set piece", name, path)
+        piece : U32 <- known(lookup(WorldCatalog.pieces(), name), "set piece", name, path)
         others : List<&2, U32> <- piece_ids(rest, path)
         return piece <> others
     case Con{_, rest}:
       piece_ids(rest, path)
 
-def rules_in(+tasks: U32, entries: List<&2, J.Json>, pieces: List<&2, U32>, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
+def rules_in(+tasks: U32, entries: List<&2, Json.Json>, pieces: List<&2, U32>, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   match entries pieces:
-    case Con{J.JField{+name, bound}, rest} Con{+piece, others}:
+    case Con{Json.JField{+name, bound}, rest} Con{+piece, others}:
       do Result<&1, &1, U32 & String, List<&2, Rule>>:
-        rule : Rule <- bounded_rule(piece, tasks, bound, path ++ "[" ++ PS.quoted(name) ++ "]")
+        rule : Rule <- bounded_rule(piece, tasks, bound, path ++ "[" ++ Parse.quoted(name) ++ "]")
         rules_in(tasks, rest, others, path, rule <> acc)
     case _ _:
       Done{acc}
 
-def setpiece_rules(item: J.Json, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
+def setpiece_rules(item: Json.Json, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   do Result<&1, &1, U32 & String, List<&2, Rule>>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(item, ["tasks", "required"], path)
-    +required : List<&2, J.Json> <- PS.optional_fields(PS.field(fields, "required"), path ++ ".required")
-    listed : List<&2, J.Json> <- PS.capped(required, 16, "set pieces", path ++ ".required")
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(item, ["tasks", "required"], path)
+    +required : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "required"), path ++ ".required")
+    listed : List<&2, Json.Json> <- Parse.capped(required, 16, "set pieces", path ++ ".required")
     pieces : List<&2, U32> <- piece_ids(required, path ++ ".required")
-    +tasks : U32 <- task_list(PS.field(fields, "tasks"), path ++ ".tasks")
+    +tasks : U32 <- task_list(Parse.field(fields, "tasks"), path ++ ".tasks")
     rules_in(Bool.pick(U32, U32.is_zero(tasks), every_task(), tasks), required, pieces, path ++ ".required", acc)
 
-def rules_of(items: List<&2, J.Json>, +index: U32, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
+def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   match items:
     case Nil{}:
       Done{acc}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Rule>>:
-        more : List<&2, Rule> <- setpiece_rules(item, PS.indexed(path, index), acc)
+        more : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), acc)
         rules_of(rest, (index + 1 : U32), path, more)
 
 def later_parts() -> List<&2, String>:
   ["counts", "distances", "tiles", "routes"]
 
-def first_later(+fields: List<&2, J.Json>, sections: List<&2, String>, +path: String) -> Maybe<&2, String>:
+def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +path: String) -> Maybe<&2, String>:
   match sections:
     case Nil{}:
       None{}
     case Con{+section, rest}:
-      Bool.pick(Maybe<&2, String>, Maybe.is_some(&2, J.Json, PS.field(fields, section)),
+      Bool.pick(Maybe<&2, String>, Maybe.is_some(&2, Json.Json, Parse.field(fields, section)),
         Some{"config: " ++ path ++ "." ++ section ++ " is not supported by this binary yet (only tasks, prefab_swaps and setpieces are)"},
         first_later(fields, rest, path))
 
 # One parsed criteria entry: its part A, its parts B-E, the message for a finder without worlds when it has a
 # counts, distances, tiles or routes key, and whether it is passive (only decided on candidates of other entries).
 type Entry is Data:
-  Entry{level: Criteria, later: RU.Later, unsupported: Maybe<&2, String>, passive: Bool}
+  Entry{level: Criteria, later: Rules.Later, unsupported: Maybe<&2, String>, passive: Bool}
 
-def entry_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
+def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
   do Result<&1, &1, U32 & String, Entry>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "routes"], path)
-    +passive : Bool <- PS.optional_flag(PS.field(fields, "passive"), path ++ ".passive")
-    items : List<&2, J.Json> <- PS.optional_items(PS.field(fields, "setpieces"), path ++ ".setpieces")
-    listed : List<&2, J.Json> <- PS.capped(items, 16, "rules", path ++ ".setpieces")
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "routes"], path)
+    +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
+    listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
-    later : RU.Later <- RU.later_of(fields, path)
-    +required : U32 <- task_rule("required", PS.field(fields, "tasks"), path ++ ".tasks")
-    +excluded : U32 <- task_rule("excluded", PS.field(fields, "tasks"), path ++ ".tasks")
-    +swaps : U32 <- swaps_of(PS.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
+    later : Rules.Later <- Rules.later_of(fields, path)
+    +required : U32 <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
+    +excluded : U32 <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
+    +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
     return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, first_later(fields, later_parts(), path), passive}
 
-def entry_list(items: List<&2, J.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
+def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Entry>>:
-        head : Entry <- entry_of(item, PS.indexed("criteria", index))
+        head : Entry <- entry_of(item, Parse.indexed("criteria", index))
         tail : List<&2, Entry> <- entry_list(rest, (index + 1 : U32))
         return head <> tail
 
-def is_default(json: J.Json) -> Bool:
+def is_default(json: Json.Json) -> Bool:
   match json:
-    case J.JStr{level}:
+    case Json.JStr{level}:
       String.eq(level, "default")
     case _:
       False{}
 
-def default_setting(entry: J.Json) -> Result<&1, &1, U32 & String, Unit>:
+def default_setting(entry: Json.Json) -> Result<&1, &1, U32 & String, Unit>:
   match entry:
-    case J.JField{key, value}:
+    case Json.JField{key, value}:
       Bool.pick(Result<&1, &1, U32 & String, Unit>, is_default(value), Done{Unit{}},
-        Fail{PS.failure("only default settings are supported (" ++ key ++ ")")})
+        Fail{Parse.failure("only default settings are supported (" ++ key ++ ")")})
     case _:
-      Fail{PS.failure("settings must be an object")}
+      Fail{Parse.failure("settings must be an object")}
 
-def default_settings(entries: List<&2, J.Json>) -> Result<&1, &1, U32 & String, Unit>:
+def default_settings(entries: List<&2, Json.Json>) -> Result<&1, &1, U32 & String, Unit>:
   match entries:
     case Nil{}:
       Done{Unit{}}
@@ -251,27 +251,27 @@ def default_settings(entries: List<&2, J.Json>) -> Result<&1, &1, U32 & String, 
         ok : Unit <- default_setting(entry)
         default_settings(rest)
 
-def is_one(json: J.Json) -> Bool:
+def is_one(json: Json.Json) -> Bool:
   match json:
-    case J.JNum{n}:
+    case Json.JNum{n}:
       U32.is_eq(n, 1)
     case _:
       False{}
 
-def supported_version(m: Maybe<&2, J.Json>) -> Result<&1, &1, U32 & String, Unit>:
+def supported_version(m: Maybe<&2, Json.Json>) -> Result<&1, &1, U32 & String, Unit>:
   match m:
     case None{}:
       Done{Unit{}}
     case Some{+json}:
-      Bool.pick(Result<&1, &1, U32 & String, Unit>, is_one(json), Done{Unit{}}, Fail{PS.failure("unsupported version " ++ J.dump(json))})
+      Bool.pick(Result<&1, &1, U32 & String, Unit>, is_one(json), Done{Unit{}}, Fail{Parse.failure("unsupported version " ++ Json.dump(json))})
 
-def platform_of(m: Maybe<&2, J.Json>) -> Result<&1, &1, U32 & String, Bool>:
+def platform_of(m: Maybe<&2, Json.Json>) -> Result<&1, &1, U32 & String, Bool>:
   match m:
     case None{}:
       Done{True{}}
     case Some{+json}:
-      Bool.pick(Result<&1, &1, U32 & String, Bool>, PS.is_text(json, "windows") || PS.is_text(json, "linux"),
-        Done{PS.is_text(json, "windows")}, Fail{PS.failure("unknown platform " ++ J.dump_text(json) ++ " (windows or linux)")})
+      Bool.pick(Result<&1, &1, U32 & String, Bool>, Parse.is_text(json, "windows") || Parse.is_text(json, "linux"),
+        Done{Parse.is_text(json, "windows")}, Fail{Parse.failure("unknown platform " ++ Json.dump_text(json) ++ " (windows or linux)")})
 
 def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
   match entries:
@@ -280,7 +280,7 @@ def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
     case Con{Entry{level, _, _, _}, rest}:
       level <> levels_of(rest)
 
-def laters_of(entries: List<&2, Entry>) -> List<&2, RU.Later>:
+def laters_of(entries: List<&2, Entry>) -> List<&2, Rules.Later>:
   match entries:
     case Nil{}:
       Nil{}
@@ -307,7 +307,7 @@ def active_levels(entries: List<&2, Entry>) -> List<&2, Criteria>:
 
 def some_active(+entries: List<&2, Entry>) -> Result<&1, &1, U32 & String, Unit>:
   Bool.pick(Result<&1, &1, U32 & String, Unit>, List.is_empty(&2, Entry, entries) || Bool.not(List.is_empty(&2, Criteria, active_levels(entries))), Done{Unit{}},
-    Fail{PS.failure("every criteria entry is passive (at least one must not be)")})
+    Fail{Parse.failure("every criteria entry is passive (at least one must not be)")})
 
 def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
   Config{windows, levels_of(entries), laters_of(entries), unsupported_of(entries), or_anything(active_levels(entries))}
@@ -316,14 +316,14 @@ def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
 # parts B-E of every entry, checking in the order of .scratch/search/config.py.
 def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
   do Result<&1, &1, U32 & String, Config>:
-    json : J.Json <- J.parse(text)
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["version", "platform", "settings", "criteria"], "the config")
-    +windows : Bool <- platform_of(PS.field(fields, "platform"))
-    supported : Unit <- supported_version(PS.field(fields, "version"))
-    settings : List<&2, J.Json> <- PS.optional_fields(PS.field(fields, "settings"), "settings")
+    json : Json.Json <- Json.parse(text)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "criteria"], "the config")
+    +windows : Bool <- platform_of(Parse.field(fields, "platform"))
+    supported : Unit <- supported_version(Parse.field(fields, "version"))
+    settings : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "settings"), "settings")
     defaults : Unit <- default_settings(settings)
-    items : List<&2, J.Json> <- PS.optional_items(PS.field(fields, "criteria"), "criteria")
-    listed : List<&2, J.Json> <- PS.capped(items, 8, "entries", "criteria")
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "criteria"), "criteria")
+    listed : List<&2, Json.Json> <- Parse.capped(items, 8, "entries", "criteria")
     +entries : List<&2, Entry> <- entry_list(listed, 0)
     active : Unit <- some_active(entries)
     return config_from(windows, entries)
@@ -352,17 +352,17 @@ def selected(+id: U32, +index: U32) -> U32:
   Bool.to_u32(U32.is_eq(id, index))
 
 # How many times a set piece can at most be placed, knowing only AddSetPeices' outcome.
-def most_placed(+pieces: S.Pieces, +piece: U32) -> U32:
+def most_placed(+pieces: LevelSetpieces.Pieces, +piece: U32) -> U32:
   match pieces:
-    case S.Pieces{+trap, +poi, +protected, _, _, _, _}:
-      +fixed = ((K.key_info(piece) >> 8n) .&. 15 : U32)
-      Bool.pick(U32, (piece < K.first_boon_key() : U32), fixed,
-      Bool.pick(U32, (piece <= K.first_trap_key() : U32), S.boon_count(pieces, (piece - K.first_boon_key() : U32)),
-      Bool.pick(U32, (piece <= K.first_poi_key() : U32), selected(trap, (piece - K.first_trap_key() : U32)),
-      Bool.pick(U32, (piece <= K.first_protected_key() : U32), selected(poi, (piece - K.first_poi_key() : U32)),
-      Bool.pick(U32, (piece < K.special_piece() : U32), selected(protected, (piece - K.first_protected_key() : U32)), 6)))))
+    case LevelSetpieces.Pieces{+trap, +poi, +protected, _, _, _, _}:
+      +fixed = ((WorldCatalog.key_info(piece) >> 8n) .&. 15 : U32)
+      Bool.pick(U32, (piece < WorldCatalog.first_boon_key() : U32), fixed,
+      Bool.pick(U32, (piece <= WorldCatalog.first_trap_key() : U32), LevelSetpieces.boon_count(pieces, (piece - WorldCatalog.first_boon_key() : U32)),
+      Bool.pick(U32, (piece <= WorldCatalog.first_poi_key() : U32), selected(trap, (piece - WorldCatalog.first_trap_key() : U32)),
+      Bool.pick(U32, (piece <= WorldCatalog.first_protected_key() : U32), selected(poi, (piece - WorldCatalog.first_poi_key() : U32)),
+      Bool.pick(U32, (piece < WorldCatalog.special_piece() : U32), selected(protected, (piece - WorldCatalog.first_protected_key() : U32)), 6)))))
 
-def rules_possible(rules: List<&2, Rule>, +pieces: S.Pieces) -> Bool:
+def rules_possible(rules: List<&2, Rule>, +pieces: LevelSetpieces.Pieces) -> Bool:
   match rules:
     case Nil{}:
       True{}
@@ -374,7 +374,7 @@ def criteria_rules(+c: Criteria) -> List<&2, Rule>:
     case Criteria{_, _, _, _, rules}:
       rules
 
-def any_possible(criteria: List<&2, Criteria>, +chosen: U32, +swaps: U32, +pieces: S.Pieces) -> Bool:
+def any_possible(criteria: List<&2, Criteria>, +chosen: U32, +swaps: U32, +pieces: LevelSetpieces.Pieces) -> Bool:
   match criteria:
     case Nil{}:
       False{}
@@ -391,7 +391,7 @@ def special_hits(n: Nat, +sp: Specials, +code: U32, +tasks: U32, +k: U32) -> U32
     case 1n+p:
       match sp:
         case Specials{+codes, +special_tasks, _}:
-          +hit = U32.is_eq(P.field5(codes, k), code) && Bool.not(U32.is_zero((tasks .&. P.task_bit(P.field5(special_tasks, k)) : U32)))
+          +hit = U32.is_eq(LevelPrefix.field5(codes, k), code) && Bool.not(U32.is_zero((tasks .&. LevelPrefix.task_bit(LevelPrefix.field5(special_tasks, k)) : U32)))
           (Bool.to_u32(hit) + special_hits(p, sp, code, tasks, (k + 1 : U32)) : U32)
 
 def special_placed(+sp: Specials, +code: U32, +tasks: U32) -> U32:
@@ -406,8 +406,8 @@ def judge_count(got: Array<U32> & U32, holds: Bool, +rule: Rule, +sp: Specials) 
   (table, +mask) = got
   match rule:
     case Rule{+piece, +tasks, +low, +high}:
-      +special = (piece >= K.special_piece() : U32)
-      +placed = Bool.pick(U32, special, special_placed(sp, (piece - K.special_piece() : U32), tasks), CH.popcount((mask .&. tasks : U32)))
+      +special = (piece >= WorldCatalog.special_piece() : U32)
+      +placed = Bool.pick(U32, special, special_placed(sp, (piece - WorldCatalog.special_piece() : U32), tasks), LevelChoose.popcount((mask .&. tasks : U32)))
       Judging{table, holds && (low <= placed : U32) && (placed <= high : U32)}
 
 def rule_piece(+rule: Rule) -> U32:
@@ -418,7 +418,7 @@ def rule_piece(+rule: Rule) -> U32:
 def judge(+rule: Rule, st: Judging, +sp: Specials) -> Judging:
   match st:
     case Judging{table, holds}:
-      judge_count(table[((CH.mask_slot() + rule_piece(rule)) .&. 127 : U32)], holds, rule, sp)
+      judge_count(table[((LevelChoose.mask_slot() + rule_piece(rule)) .&. 127 : U32)], holds, rule, sp)
 
 def rules_hold(rules: List<&2, Rule>, st: Judging, +sp: Specials) -> Judging:
   match rules:
@@ -449,39 +449,39 @@ def verdict(judged: Judging) -> Bool:
     case Judging{_, holds}:
       holds
 
-def final_stage(+criteria: List<&2, Criteria>, w: CH.World) -> Bool:
+def final_stage(+criteria: List<&2, Criteria>, w: LevelChoose.World) -> Bool:
   match w:
-    case CH.World{+swaps, _, +chosen, _, table, _, +codes, +tasks, +count, crashed}:
+    case LevelChoose.World{+swaps, _, +chosen, _, table, _, +codes, +tasks, +count, crashed}:
       Bool.not(crashed) && verdict(criteria_hold(criteria, Judging{table, False{}}, chosen, swaps, Specials{codes, tasks, count}))
 
-def choose_gate(pass: Bool, +criteria: List<&2, Criteria>, +swaps: U32, +lo: U32, +chosen: U32, +a: CH.Added) -> Bool:
+def choose_gate(pass: Bool, +criteria: List<&2, Criteria>, +swaps: U32, +lo: U32, +chosen: U32, +a: LevelChoose.Added) -> Bool:
   match pass:
     case False{}:
       False{}
     case True{}:
-      final_stage(criteria, CH.choose(swaps, lo, chosen, a))
+      final_stage(criteria, LevelChoose.choose(swaps, lo, chosen, a))
 
-def added_stage(+criteria: List<&2, Criteria>, +swaps: U32, +lo: U32, +chosen: U32, +a: CH.Added) -> Bool:
+def added_stage(+criteria: List<&2, Criteria>, +swaps: U32, +lo: U32, +chosen: U32, +a: LevelChoose.Added) -> Bool:
   match a:
-    case CH.Added{+pieces, _, _, _, _}:
+    case LevelChoose.Added{+pieces, _, _, _, _}:
       choose_gate(any_possible(criteria, chosen, swaps, pieces), criteria, swaps, lo, chosen, a)
 
-def added_gate(pass: Bool, +criteria: List<&2, Criteria>, +swaps: U32, +lo: U32, +chosen: U32, rng: R.Rng) -> Bool:
+def added_gate(pass: Bool, +criteria: List<&2, Criteria>, +swaps: U32, +lo: U32, +chosen: U32, rng: Pcg.Rng) -> Bool:
   match pass:
     case False{}:
       False{}
     case True{}:
-      added_stage(criteria, swaps, lo, chosen, CH.added(rng))
+      added_stage(criteria, swaps, lo, chosen, LevelChoose.added(rng))
 
-def prefix_stage(+criteria: List<&2, Criteria>, p: P.Prefix) -> Bool:
+def prefix_stage(+criteria: List<&2, Criteria>, p: LevelPrefix.Prefix) -> Bool:
   match p:
-    case P.Prefix{+swaps, +lo, _, rng}:
-      +chosen = P.chosen_tasks(lo)
+    case LevelPrefix.Prefix{+swaps, +lo, _, rng}:
+      +chosen = LevelPrefix.chosen_tasks(lo)
       added_gate(any_tasks_hold(criteria, chosen, swaps), criteria, swaps, lo, chosen, rng)
 
 # Stages bail out early: tasks and prefab swaps, then AddSetPeices counts, then ChooseSetPieces.
 def matches(+criteria: List<&2, Criteria>, +seed: U32) -> Bool:
-  prefix_stage(criteria, P.prefix(seed))
+  prefix_stage(criteria, LevelPrefix.prefix(seed))
 
 # Index of the first criteria entry that holds for the seed (the number of entries when none does).
 def first_match(criteria: List<&2, Criteria>, +seed: U32) -> U32:

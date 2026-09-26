@@ -1,5 +1,5 @@
 import Base
-import ../filters/config.bend as CF
+import ../filters/config.bend as Config
 
 def share(xs: List<String>) -> List<&2, String>:
   match xs:
@@ -43,7 +43,7 @@ def is_inline_flag(flags: List<&2, String>, +arg: String) -> Bool:
 def arg_kind(+arg: String) -> U32:
   Bool.pick(U32, Bool.not(String.starts_with(arg, "--")), 0,
     Bool.pick(U32, String.eq(arg, "--json") || is_inline_flag(value_flags(), arg), 1,
-      Bool.pick(U32, CF.is_member(value_flags(), arg), 2, 3)))
+      Bool.pick(U32, Config.is_member(value_flags(), arg), 2, 3)))
 
 def with_positional(+kind: U32, +arg: String, rest: Result<&1, &1, U32 & String, List<&2, String>>) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match rest:
@@ -169,7 +169,7 @@ def query_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Query>:
     +time_ms : Nat <- time_limit(flag_value(args, "--time-limit"))
     +platform : U32 <- platform_flag(flag_value(args, "--platform"))
     +native : Bool <- kk_flag(flag_value(args, "--kk"))
-    return Query{start, total, limit, time_ms, CF.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native}
+    return Query{start, total, limit, time_ms, Config.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native}
 
 def query_config(+q: Query) -> Maybe<&2, String>:
   match q:

@@ -1,6 +1,6 @@
 import Base
-import ../grid.bend as GR
-import ./groups.bend as TG
+import ../grid.bend as Grid
+import ./groups.bend as TileGroups
 
 # DrawTileLine (tiles.cpp): the float GridWalk from p0 to p1, both clamped to the map, painting every visited cell.
 
@@ -17,7 +17,7 @@ def clamp(+v: F32, +limit: U32) -> F32:
 def painted(+pen: Pen, +old: U32) -> U32:
   match pen:
     case Pen{+tile, +flag, +only_invalid}:
-      +keep = only_invalid && Bool.not(TG.is_invalid(GR.tile_of(old)))
+      +keep = only_invalid && Bool.not(TileGroups.is_invalid(Grid.tile_of(old)))
       ((old .&. 2147418112 : U32) .|. Bool.pick(U32, keep, (old .&. 65535 : U32), (tile .&. 65535 : U32))
         .|. Bool.pick(U32, flag, 2147483648, 0) : U32)
 
@@ -28,7 +28,7 @@ def paint_got(got: Array<U32> & U32, +i: U32, +pen: Pen) -> Array<U32>:
 def paint(cells: Array<U32>, +w: U32, +h: U32, +pen: Pen, +x: F32, +y: F32) -> Array<U32>:
   +fx = F32.to_u32(F32.floor(clamp(F32.floor(x), w)))
   +fy = F32.to_u32(F32.floor(clamp(F32.floor(y), h)))
-  paint_got(cells[GR.index(fx, fy, w)], GR.index(fx, fy, w), pen)
+  paint_got(cells[Grid.index(fx, fy, w)], Grid.index(fx, fy, w), pen)
 
 def walk_loop(n: Nat, go: Bool, +k: Walk, cells: Array<U32>, +w: U32, +h: U32, +pen: Pen, +px: F32, +py: F32, +err: F32, +i: U32) -> Array<U32>:
   match n:
@@ -62,7 +62,7 @@ def walk_from(cells: Array<U32>, +w: U32, +h: U32, +pen: Pen, +x0: F32, +y0: F32
 def draw_cells(cells: Array<U32>, +w: U32, +h: U32, +pen: Pen, +x0: F32, +y0: F32, +x1: F32, +y1: F32) -> Array<U32>:
   walk_from(cells, w, h, pen, clamp(x0, w), clamp(y0, h), clamp(x1, w), clamp(y1, h))
 
-def draw(g: GR.Grid, +pen: Pen, +x0: F32, +y0: F32, +x1: F32, +y1: F32) -> GR.Grid:
+def draw(g: Grid.Grid, +pen: Pen, +x0: F32, +y0: F32, +x1: F32, +y1: F32) -> Grid.Grid:
   match g:
-    case GR.Grid{cells, +w, +h}:
-      GR.Grid{draw_cells(cells, w, h, pen, x0, y0, x1, y1), w, h}
+    case Grid.Grid{cells, +w, +h}:
+      Grid.Grid{draw_cells(cells, w, h, pen, x0, y0, x1, y1), w, h}

@@ -1,5 +1,5 @@
 import Base
-import ./heap.bend as SH
+import ./heap.bend as Heap
 
 # std::sort over items[first, last) with the comparisons, in order, and the moves of the game's two C++ libraries:
 # `sort` is libstdc++ (GCC >= 4.9, the Linux build: introsort, threshold 16, __move_median_to_first(first + 1, mid,
@@ -19,7 +19,7 @@ type Cut<-S: Type> is Type:
   Cut{state: S, items: Array<U32>, lo: U32, hi: U32, done: Bool}
 
 type Plan<-S: Type> is Type:
-  Plan{work: SH.Work<S>, rf: U32, rl: U32, rd: U32, nf: U32, nl: U32, nd: U32, done: Bool}
+  Plan{work: Heap.Work<S>, rf: U32, rl: U32, rd: U32, nf: U32, nl: U32, nd: U32, done: Bool}
 
 type Fat<-S: Type> is Type:
   Fat{state: S, items: Array<U32>, pf: U32, pl: U32, gf: U32, gl: U32, done: Bool}
@@ -93,39 +93,39 @@ def scan_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, sc: Scan<S>, +
 def scan(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +start: U32, +pivot: U32, +up: Bool, +fuel: Nat) -> Scan<S>:
   scan_loop(~S, ~lt, fuel, scan_probe(~S, ~lt, st, items, start, pivot, up), pivot, up)
 
-def sink_write(~S: Type, hit: Bool, st: S, items: Array<U32>, +hole: U32, +below: U32) -> SH.Hole<S>:
+def sink_write(~S: Type, hit: Bool, st: S, items: Array<U32>, +hole: U32, +below: U32) -> Heap.Hole<S>:
   match hit:
     case True{}:
       items[hole] <- below
-      SH.Hole{st, items, (hole - 1 : U32), False{}}
+      Heap.Hole{st, items, (hole - 1 : U32), False{}}
     case False{}:
-      SH.Hole{st, items, hole, True{}}
+      Heap.Hole{st, items, hole, True{}}
 
-def sink_decided(~S: Type, sc: Scan<S>, +hole: U32) -> SH.Hole<S>:
+def sink_decided(~S: Type, sc: Scan<S>, +hole: U32) -> Heap.Hole<S>:
   match sc:
     case Scan{st, items, _, +below, +hit, _}:
       sink_write(~S, hit, st, items, hole, below)
 
-def insert_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, h: SH.Hole<S>, +value: U32) -> SH.Work<S>:
+def insert_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, h: Heap.Hole<S>, +value: U32) -> Heap.Work<S>:
   match n:
     case 0n:
       match h:
-        case SH.Hole{st, items, +hole, _}:
+        case Heap.Hole{st, items, +hole, _}:
           items[hole] <- value
-          SH.Work{st, items}
+          Heap.Work{st, items}
     case 1n+p:
       match h:
-        case SH.Hole{st, items, +hole, +done}:
+        case Heap.Hole{st, items, +hole, +done}:
           match done:
             case True{}:
               items[hole] <- value
-              SH.Work{st, items}
+              Heap.Work{st, items}
             case False{}:
               insert_loop(~S, ~lt, p, sink_decided(~S, scan_probe(~S, ~lt, st, items, (hole - 1 : U32), value, False{}), hole), value)
 
 # __unguarded_linear_insert: while value < a[hole - 1], shift it up; then value goes into the hole.
-def linear_insert(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +hole: U32, +value: U32, +fuel: Nat) -> SH.Work<S>:
-  insert_loop(~S, ~lt, fuel, SH.Hole{st, items, hole, False{}}, value)
+def linear_insert(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +hole: U32, +value: U32, +fuel: Nat) -> Heap.Work<S>:
+  insert_loop(~S, ~lt, fuel, Heap.Hole{st, items, hole, False{}}, value)
 
 def shift_up(n: Nat, got: Array<U32> & U32, +i: U32) -> Array<U32>:
   match n:
@@ -137,57 +137,57 @@ def shift_up(n: Nat, got: Array<U32> & U32, +i: U32) -> Array<U32>:
       items[(i + 1 : U32)] <- v
       shift_up(p, items[(i - 1 : U32)], (i - 1 : U32))
 
-def front_choose(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, less: Bool, st: S, items: Array<U32>, +first: U32, +i: U32, +value: U32, +fuel: Nat) -> SH.Work<S>:
+def front_choose(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, less: Bool, st: S, items: Array<U32>, +first: U32, +i: U32, +value: U32, +fuel: Nat) -> Heap.Work<S>:
   match less:
     case True{}:
       moved = shift_up(U32.to_nat((i - first : U32)), items[(i - 1 : U32)], (i - 1 : U32))
       moved[first] <- value
-      SH.Work{st, moved}
+      Heap.Work{st, moved}
     case False{}:
       linear_insert(~S, ~lt, st, items, i, value, fuel)
 
-def front_insert(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +i: U32, +fuel: Nat) -> SH.Work<S>:
+def front_insert(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +i: U32, +fuel: Nat) -> Heap.Work<S>:
   match c:
     case Compared{st, items, +value, _, +less}:
       front_choose(~S, ~lt, less, st, items, first, i, value, fuel)
 
-def insertion_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, w: SH.Work<S>, +first: U32, +i: U32, +fuel: Nat) -> SH.Work<S>:
+def insertion_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, w: Heap.Work<S>, +first: U32, +i: U32, +fuel: Nat) -> Heap.Work<S>:
   match n:
     case 0n:
       w
     case 1n+p:
       match w:
-        case SH.Work{st, items}:
+        case Heap.Work{st, items}:
           insertion_loop(~S, ~lt, p, front_insert(~S, ~lt, compare_at(~S, ~lt, st, items, i, first), first, i, fuel), first, (i + 1 : U32), fuel)
 
 # __insertion_sort / VC9 _Insertion_sort: a[i] < a[first] moves a[i] to the front, else an unguarded linear insert.
-def insertion_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def insertion_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   +count = (last - first : U32)
-  insertion_loop(~S, ~lt, U32.to_nat(Bool.pick(U32, (count >= 2 : U32), (count - 1 : U32), 0)), SH.Work{st, items}, first, (first + 1 : U32), U32.to_nat((count + 2 : U32)))
+  insertion_loop(~S, ~lt, U32.to_nat(Bool.pick(U32, (count >= 2 : U32), (count - 1 : U32), 0)), Heap.Work{st, items}, first, (first + 1 : U32), U32.to_nat((count + 2 : U32)))
 
-def value_insert(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, got: Array<U32> & U32, st: S, +i: U32, +fuel: Nat) -> SH.Work<S>:
+def value_insert(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, got: Array<U32> & U32, st: S, +i: U32, +fuel: Nat) -> Heap.Work<S>:
   (items, +value) = got
   linear_insert(~S, ~lt, st, items, i, value, fuel)
 
-def unguarded_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, w: SH.Work<S>, +i: U32, +fuel: Nat) -> SH.Work<S>:
+def unguarded_loop(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, n: Nat, w: Heap.Work<S>, +i: U32, +fuel: Nat) -> Heap.Work<S>:
   match n:
     case 0n:
       w
     case 1n+p:
       match w:
-        case SH.Work{st, items}:
+        case Heap.Work{st, items}:
           unguarded_loop(~S, ~lt, p, value_insert(~S, ~lt, items[i], st, i, fuel), (i + 1 : U32), fuel)
 
 # __unguarded_insertion_sort: a linear insert of every element of [from, last).
-def unguarded_insertion_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +from: U32, +last: U32, +fuel: Nat) -> SH.Work<S>:
-  unguarded_loop(~S, ~lt, U32.to_nat((last - from : U32)), SH.Work{st, items}, from, fuel)
+def unguarded_insertion_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +from: U32, +last: U32, +fuel: Nat) -> Heap.Work<S>:
+  unguarded_loop(~S, ~lt, U32.to_nat((last - from : U32)), Heap.Work{st, items}, from, fuel)
 
-def final_after_head(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +last: U32) -> SH.Work<S>:
+def final_after_head(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +last: U32) -> Heap.Work<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       unguarded_insertion_sort(~S, ~lt, st, items, (first + 16 : U32), last, U32.to_nat(((last - first : U32) + 2 : U32)))
 
-def final_split(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, long: Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def final_split(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, long: Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   match long:
     case True{}:
       final_after_head(~S, ~lt, insertion_sort(~S, ~lt, st, items, first, (first + 16 : U32)), first, last)
@@ -195,57 +195,57 @@ def final_split(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, long: Bool, st: S, i
       insertion_sort(~S, ~lt, st, items, first, last)
 
 # __final_insertion_sort
-def final_insertion_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def final_insertion_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   final_split(~S, ~lt, ((last - first : U32) > 16 : U32), st, items, first, last)
 
-def median_swap(~S: Type, c: Compared<S>, +first: U32, +chosen: U32) -> SH.Work<S>:
+def median_swap(~S: Type, c: Compared<S>, +first: U32, +chosen: U32) -> Heap.Work<S>:
   match c:
     case Compared{st, items, _, _, _}:
-      SH.Work{st, swap(items, first, chosen)}
+      Heap.Work{st, swap(items, first, chosen)}
 
-def median_last(~S: Type, c: Compared<S>, +first: U32, +if_less: U32, +otherwise: U32) -> SH.Work<S>:
+def median_last(~S: Type, c: Compared<S>, +first: U32, +if_less: U32, +otherwise: U32) -> Heap.Work<S>:
   match c:
     case Compared{st, items, _, _, +less}:
-      SH.Work{st, swap(items, first, Bool.pick(U32, less, if_less, otherwise))}
+      Heap.Work{st, swap(items, first, Bool.pick(U32, less, if_less, otherwise))}
 
-def median_low_pick(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, a_less_c: Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def median_low_pick(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, a_less_c: Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   match a_less_c:
     case True{}:
-      SH.Work{st, swap(items, first, a)}
+      Heap.Work{st, swap(items, first, a)}
     case False{}:
       median_last(~S, compare_at(~S, ~lt, st, items, b, cc), first, cc, b)
 
-def median_low(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def median_low(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   match c:
     case Compared{st, items, _, _, +a_less_c}:
       median_low_pick(~S, ~lt, a_less_c, st, items, first, a, b, cc)
 
-def median_high_pick(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, b_less_c: Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def median_high_pick(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, b_less_c: Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   match b_less_c:
     case True{}:
-      SH.Work{st, swap(items, first, b)}
+      Heap.Work{st, swap(items, first, b)}
     case False{}:
       median_last(~S, compare_at(~S, ~lt, st, items, a, cc), first, cc, a)
 
-def median_high(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def median_high(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   match c:
     case Compared{st, items, _, _, +b_less_c}:
       median_high_pick(~S, ~lt, b_less_c, st, items, first, a, b, cc)
 
-def median_branch(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, a_less_b: Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def median_branch(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, a_less_b: Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   match a_less_b:
     case True{}:
       median_high(~S, ~lt, compare_at(~S, ~lt, st, items, b, cc), first, a, b, cc)
     case False{}:
       median_low(~S, ~lt, compare_at(~S, ~lt, st, items, a, cc), first, a, b, cc)
 
-def median_start(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def median_start(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, c: Compared<S>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   match c:
     case Compared{st, items, _, _, +a_less_b}:
       median_branch(~S, ~lt, a_less_b, st, items, first, a, b, cc)
 
 # __move_median_to_first(result, a, b, c)
-def move_median_to_first(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> SH.Work<S>:
+def move_median_to_first(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +a: U32, +b: U32, +cc: U32) -> Heap.Work<S>:
   median_start(~S, ~lt, compare_at(~S, ~lt, st, items, a, b), first, a, b, cc)
 
 def cut_settle(~S: Type, crossing: Bool, st: S, items: Array<U32>, +lo: U32, +hi: U32, +low_value: U32, +high_value: U32) -> Cut<S>:
@@ -285,9 +285,9 @@ def cut_pivot(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, got: Array<U32> & U32,
   +fuel = U32.to_nat(((last - first : U32) + 2 : U32))
   cut_loop(~S, ~lt, fuel, Cut{st, items, (first + 1 : U32), last, False{}}, pivot, fuel)
 
-def cut_median(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +last: U32) -> Cut<S>:
+def cut_median(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +last: U32) -> Cut<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       cut_pivot(~S, ~lt, items[first], st, first, last)
 
 # __unguarded_partition_pivot: median of a[first + 1], a[mid], a[last - 1] to first, then partition [first + 1, last).
@@ -297,15 +297,15 @@ def partition_pivot(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Ar
 def intro_cut(~S: Type, c: Cut<S>, +first: U32, +last: U32, +depth: U32) -> Plan<S>:
   match c:
     case Cut{st, items, +cut, _, _}:
-      Plan{SH.Work{st, items}, cut, last, depth, first, cut, depth, False{}}
+      Plan{Heap.Work{st, items}, cut, last, depth, first, cut, depth, False{}}
 
-def intro_heap(~S: Type, w: SH.Work<S>) -> Plan<S>:
+def intro_heap(~S: Type, w: Heap.Work<S>) -> Plan<S>:
   Plan{w, 0, 0, 0, 0, 0, 0, True{}}
 
 def intro_depth(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, exhausted: Bool, st: S, items: Array<U32>, +first: U32, +last: U32, +depth: U32) -> Plan<S>:
   match exhausted:
     case True{}:
-      intro_heap(~S, SH.heap_sort(~S, ~lt, st, items, first, last))
+      intro_heap(~S, Heap.heap_sort(~S, ~lt, st, items, first, last))
     case False{}:
       intro_cut(~S, partition_pivot(~S, ~lt, st, items, first, last), first, last, (depth - 1 : U32))
 
@@ -314,15 +314,15 @@ def intro_size(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, big: Bool, st: S, ite
     case True{}:
       intro_depth(~S, ~lt, U32.is_zero(depth), st, items, first, last, depth)
     case False{}:
-      Plan{SH.Work{st, items}, 0, 0, 0, 0, 0, 0, True{}}
+      Plan{Heap.Work{st, items}, 0, 0, 0, 0, 0, 0, True{}}
 
 # One pass of __introsort_loop over [first, last): the plan recurses on [cut, last) and continues with [first, cut).
-def intro_step(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +last: U32, +depth: U32) -> Plan<S>:
+def intro_step(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +last: U32, +depth: U32) -> Plan<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       intro_size(~S, ~lt, ((last - first : U32) > 16 : U32), st, items, first, last, depth)
 
-def intro(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +n: Nat, plan: Plan<S>) -> SH.Work<S>:
+def intro(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +n: Nat, plan: Plan<S>) -> Heap.Work<S>:
   match n:
     case 0n:
       match plan:
@@ -337,34 +337,34 @@ def intro(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +n: Nat, plan: Plan<S>) ->
             case False{}:
               intro(~S, ~lt, p, intro_step(~S, ~lt, intro(~S, ~lt, p, intro_step(~S, ~lt, w, rf, rl, rd)), nf, nl, nd))
 
-def sort_final(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +last: U32) -> SH.Work<S>:
+def sort_final(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +last: U32) -> Heap.Work<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       final_insertion_sort(~S, ~lt, st, items, first, last)
 
 # libstdc++ std::sort(first, last, lt) (the Linux build).
-def sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   +depth = (floor_log2((last - first : U32)) << 1n : U32)
-  sort_final(~S, ~lt, intro(~S, ~lt, U32.to_nat((depth + 4 : U32)), intro_step(~S, ~lt, SH.Work{st, items}, first, last, depth)), first, last)
+  sort_final(~S, ~lt, intro(~S, ~lt, U32.to_nat((depth + 4 : U32)), intro_step(~S, ~lt, Heap.Work{st, items}, first, last, depth)), first, last)
 
-def ordered(~S: Type, c: Compared<S>, +i: U32, +j: U32) -> SH.Work<S>:
+def ordered(~S: Type, c: Compared<S>, +i: U32, +j: U32) -> Heap.Work<S>:
   match c:
     case Compared{st, items, +xj, +yi, +less}:
       items[i] <- Bool.pick(U32, less, xj, yi)
       items[j] <- Bool.pick(U32, less, yi, xj)
-      SH.Work{st, items}
+      Heap.Work{st, items}
 
 # if a[j] < a[i]: swap them (one step of VC9 _Med3).
-def order_pair(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +i: U32, +j: U32) -> SH.Work<S>:
+def order_pair(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +i: U32, +j: U32) -> Heap.Work<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       ordered(~S, compare_at(~S, ~lt, st, items, j, i), i, j)
 
 # VC9 _Med3(a, b, c): sorts the three so that the median is at b.
-def med3(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +a: U32, +b: U32, +c: U32) -> SH.Work<S>:
+def med3(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +a: U32, +b: U32, +c: U32) -> Heap.Work<S>:
   order_pair(~S, ~lt, order_pair(~S, ~lt, order_pair(~S, ~lt, w, a, b), b, c), a, b)
 
-def median_ninther(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, nine: Bool, w: SH.Work<S>, +first: U32, +mid: U32, +last: U32) -> SH.Work<S>:
+def median_ninther(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, nine: Bool, w: Heap.Work<S>, +first: U32, +mid: U32, +last: U32) -> Heap.Work<S>:
   match nine:
     case True{}:
       +step = (((last - first : U32) + 1 : U32) >> 3n : U32)
@@ -374,7 +374,7 @@ def median_ninther(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, nine: Bool, w: SH
       med3(~S, ~lt, w, first, mid, last)
 
 # VC9 _Median(first, mid, last) (last inclusive): median of three, or of nine when last - first > 40.
-def median(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +mid: U32, +last: U32) -> SH.Work<S>:
+def median(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +mid: U32, +last: U32) -> Heap.Work<S>:
   median_ninther(~S, ~lt, ((last - first : U32) > 40 : U32), w, first, mid, last)
 
 def expand_settle(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, less: Bool, st: S, items: Array<U32>, +x: U32, +pf: U32, +pl: U32, +gf: U32, +gl: U32, +down: Bool) -> Fat<S>:
@@ -576,27 +576,27 @@ def fat_start(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, f: Fat<S>, +first: U32
     case Fat{st, items, +pf, +pl, _, _, _}:
       fat_loop(~S, ~lt, fuel, Fat{st, items, pf, pl, pl, pf, False{}}, first, last, fuel)
 
-def fat_median(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +last: U32, +mid: U32, +fuel: Nat) -> Fat<S>:
+def fat_median(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +last: U32, +mid: U32, +fuel: Nat) -> Fat<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       fat_start(~S, ~lt, expand_loop(~S, ~lt, fuel, expand_loop(~S, ~lt, fuel, Fat{st, items, mid, (mid + 1 : U32), 0, 0, False{}}, first, last, True{}), first, last, False{}), first, last, fuel)
 
 # VC9 _Unguarded_partition(first, last): Fat{.., pf, pl, ..} with [pf, pl) the elements equivalent to the pivot.
 def fat_partition(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Fat<S>:
   +mid = (first + ((last - first : U32) >> 1n) : U32)
-  fat_median(~S, ~lt, median(~S, ~lt, SH.Work{st, items}, first, mid, (last - 1 : U32)), first, last, mid, U32.to_nat(((last - first : U32) + 2 : U32)))
+  fat_median(~S, ~lt, median(~S, ~lt, Heap.Work{st, items}, first, mid, (last - 1 : U32)), first, last, mid, U32.to_nat(((last - first : U32) + 2 : U32)))
 
 def msvc_cut(~S: Type, f: Fat<S>, +first: U32, +last: U32, +ideal: U32) -> Plan<S>:
   match f:
     case Fat{st, items, +pf, +pl, _, _, _}:
       +next = ((ideal >> 1n) + (ideal >> 2n) : U32)
       +low = ((pf - first : U32) < (last - pl : U32) : U32)
-      Plan{SH.Work{st, items}, Bool.pick(U32, low, first, pl), Bool.pick(U32, low, pf, last), next, Bool.pick(U32, low, pl, first), Bool.pick(U32, low, last, pf), next, False{}}
+      Plan{Heap.Work{st, items}, Bool.pick(U32, low, first, pl), Bool.pick(U32, low, pf, last), next, Bool.pick(U32, low, pl, first), Bool.pick(U32, low, last, pf), next, False{}}
 
 def msvc_ideal(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, spent: Bool, st: S, items: Array<U32>, +first: U32, +last: U32, +ideal: U32) -> Plan<S>:
   match spent:
     case True{}:
-      intro_heap(~S, SH.heap_sort(~S, ~lt, st, items, first, last))
+      intro_heap(~S, Heap.heap_sort(~S, ~lt, st, items, first, last))
     case False{}:
       msvc_cut(~S, fat_partition(~S, ~lt, st, items, first, last), first, last, ideal)
 
@@ -608,12 +608,12 @@ def msvc_size(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, big: Bool, st: S, item
       intro_heap(~S, insertion_sort(~S, ~lt, st, items, first, last))
 
 # One pass of VC9 _Sort's loop: the plan recurses on the smaller part and continues with the larger one.
-def msvc_step(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: SH.Work<S>, +first: U32, +last: U32, +ideal: U32) -> Plan<S>:
+def msvc_step(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, w: Heap.Work<S>, +first: U32, +last: U32, +ideal: U32) -> Plan<S>:
   match w:
-    case SH.Work{st, items}:
+    case Heap.Work{st, items}:
       msvc_size(~S, ~lt, ((last - first : U32) > 32 : U32), st, items, first, last, ideal)
 
-def msvc_drive(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +n: Nat, plan: Plan<S>) -> SH.Work<S>:
+def msvc_drive(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +n: Nat, plan: Plan<S>) -> Heap.Work<S>:
   match n:
     case 0n:
       match plan:
@@ -629,16 +629,16 @@ def msvc_drive(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +n: Nat, plan: Plan<S
               msvc_drive(~S, ~lt, p, msvc_step(~S, ~lt, msvc_drive(~S, ~lt, p, msvc_step(~S, ~lt, w, rf, rl, rd)), nf, nl, nd))
 
 # VC9 std::sort(first, last, lt) (the Windows build).
-def msvc_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def msvc_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   +count = (last - first : U32)
-  msvc_drive(~S, ~lt, U32.to_nat((((floor_log2(count) + 2 : U32) * 3 : U32) + 8 : U32)), msvc_step(~S, ~lt, SH.Work{st, items}, first, last, count))
+  msvc_drive(~S, ~lt, U32.to_nat((((floor_log2(count) + 2 : U32) * 3 : U32) + 8 : U32)), msvc_step(~S, ~lt, Heap.Work{st, items}, first, last, count))
 
 # VC9 _Sort(first, last, ideal) with an explicit ideal (0 = straight to the heap sort), for tests.
-def msvc_sort_ideal(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32, +ideal: U32) -> SH.Work<S>:
+def msvc_sort_ideal(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32, +ideal: U32) -> Heap.Work<S>:
   +count = (last - first : U32)
-  msvc_drive(~S, ~lt, U32.to_nat((((floor_log2(count) + 2 : U32) * 3 : U32) + 8 : U32)), msvc_step(~S, ~lt, SH.Work{st, items}, first, last, ideal))
+  msvc_drive(~S, ~lt, U32.to_nat((((floor_log2(count) + 2 : U32) * 3 : U32) + 8 : U32)), msvc_step(~S, ~lt, Heap.Work{st, items}, first, last, ideal))
 
-def platform_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, windows: Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def platform_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, windows: Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   match windows:
     case True{}:
       msvc_sort(~S, ~lt, st, items, first, last)
@@ -646,9 +646,9 @@ def platform_sort(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, windows: Bool, st:
       sort(~S, ~lt, st, items, first, last)
 
 # std::sort of the platform's C++ library: VC9 on Windows, libstdc++ on Linux.
-def sort_for(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +windows: Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> SH.Work<S>:
+def sort_for(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, +windows: Bool, st: S, items: Array<U32>, +first: U32, +last: U32) -> Heap.Work<S>:
   platform_sort(~S, ~lt, windows, st, items, first, last)
 
 # libstdc++ std::sort with an explicit depth limit (0 = straight to the heap sort), for tests.
-def sort_depth(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32, +depth: U32) -> SH.Work<S>:
-  sort_final(~S, ~lt, intro(~S, ~lt, U32.to_nat((depth + 4 : U32)), intro_step(~S, ~lt, SH.Work{st, items}, first, last, depth)), first, last)
+def sort_depth(~S: Type, ~lt: S -> U32 -> U32 -> S & Bool, st: S, items: Array<U32>, +first: U32, +last: U32, +depth: U32) -> Heap.Work<S>:
+  sort_final(~S, ~lt, intro(~S, ~lt, U32.to_nat((depth + 4 : U32)), intro_step(~S, ~lt, Heap.Work{st, items}, first, last, depth)), first, last)

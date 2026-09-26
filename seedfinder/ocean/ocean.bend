@@ -1,18 +1,18 @@
 import Base
-import ../rng/pcg.bend as R
-import ../worldsim/grid.bend as GR
-import ../worldsim/points.bend as PT
-import ../worldsim/tiles/groups.bend as TG
-import ../data/ocean.bend as OC
-import ./ents.bend as OE
-import ./state.bend as OS
-import ./place.bend as OP
-import ./populate.bend as OPP
-import ./monkey.bend as OM
-import ./post.bend as OT
-import ./bunches.bend as OB
-import ./convert.bend as OV
-import ./convert_blend.bend as CB
+import ../rng/pcg.bend as Pcg
+import ../worldsim/grid.bend as Grid
+import ../worldsim/points.bend as Points
+import ../worldsim/tiles/groups.bend as TileGroups
+import ../data/ocean.bend as OceanData
+import ./ents.bend as OceanEnts
+import ./state.bend as OceanState
+import ./place.bend as OceanPlace
+import ./populate.bend as OceanPopulate
+import ./monkey.bend as Monkey
+import ./post.bend as OceanPost
+import ./bunches.bend as Bunches
+import ./convert.bend as OceanConvert
+import ./convert_blend.bend as ConvertBlend
 
 # forest_map.Generate from land_done to the required prefab check (has_ocean): Ocean_PlaceSetPieces (prefill),
 # Ocean_ConvertImpassibleToWater, PopulateOcean, MonkeyIsland_GenerateDocks, Graph:GlobalPostPopulate, the
@@ -20,97 +20,97 @@ import ./convert_blend.bend as CB
 # goes through GetEncodedMap's ReplaceSingleNonLandTiles).
 
 # The prefill: level.ocean_prefill_setpieces on IMPASSABLE with ocean_prefill_setpieces_min_land_dist.
-def prefill(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
-  OS.digest(c, OP.place_set_pieces(OPP.prefill_specs(), c, TG.impassable(), OC.config_ocean_prefill_setpieces_min_land_dist(), s), 0)
+def prefill(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+  OceanState.digest(c, OceanPlace.place_set_pieces(OceanPopulate.prefill_specs(), c, TileGroups.impassable(), OceanData.config_ocean_prefill_setpieces_min_land_dist(), s), 0)
 
-def encoded(ok: Bool, +c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def encoded(ok: Bool, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match ok:
     case False{}:
       s
     case True{}:
       match s:
-        case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-          OS.digest(c, OS.Sea{PT.replace_single_non_land(g), ids, rng, ents, topo, events}, 10)
+        case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+          OceanState.digest(c, OceanState.Sea{Points.replace_single_non_land(g), ids, rng, ents, topo, events}, 10)
 
-def checked(got: OS.Sea & Bool, +c: OS.Ctx) -> OS.Sea & Bool:
+def checked(got: OceanState.Sea & Bool, +c: OceanState.Ctx) -> OceanState.Sea & Bool:
   (s, +ok) = got
   (encoded(ok, c, s), ok)
 
-def with_counts(got: OS.Sea & List<&2, OE.Ent>, +c: OS.Ctx) -> OS.Sea:
+def with_counts(got: OceanState.Sea & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx) -> OceanState.Sea:
   (s, +ents) = got
-  OS.noted(c, s, OS.ECounts{0, ents})
+  OceanState.noted(c, s, OceanState.ECounts{0, ents})
 
-def populated(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
-  with_counts(OS.ents_of(OS.digest(c, OPP.populate(c, s), 6)), c)
+def populated(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+  with_counts(OceanState.ents_of(OceanState.digest(c, OceanPopulate.populate(c, s), 6)), c)
 
 # Everything after the conversion, with the required prefab table: the final state and whether it passed.
-def after_convert(+c: OS.Ctx, +reqs: List<&2, OT.Req>, s: OS.Sea) -> OS.Sea & Bool:
-  docked = OS.digest(c, OM.docks(c, populated(c, s)), 7)
-  checked(OT.required(reqs, c, OB.bunches(c, OT.impassable_filter(c, OT.post_populate(c, docked)))), c)
+def after_convert(+c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
+  docked = OceanState.digest(c, Monkey.docks(c, populated(c, s)), 7)
+  checked(OceanPost.required(reqs, c, Bunches.bunches(c, OceanPost.impassable_filter(c, OceanPost.post_populate(c, docked)))), c)
 
-def fills_step(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def fills_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
-    case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-      OS.digest(c, OS.Sea{OV.fills(g), ids, rng, ents, topo, events}, 1)
+    case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+      OceanState.digest(c, OceanState.Sea{OceanConvert.fills(g), ids, rng, ents, topo, events}, 1)
 
-def noised(got: GR.Grid & R.Rng, ids: GR.Grid, +ents: List<&2, OE.Ent>, +topo: U32, +events: List<&2, OS.Ev>) -> OS.Sea:
+def noised(got: Grid.Grid & Pcg.Rng, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (g, +rng) = got
-  OS.Sea{g, ids, rng, ents, topo, events}
+  OceanState.Sea{g, ids, rng, ents, topo, events}
 
-def noise_step(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def noise_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
-    case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-      OS.digest(c, noised(OV.noise(g, rng), ids, ents, topo, events), 2)
+    case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+      OceanState.digest(c, noised(OceanConvert.noise(g, rng), ids, ents, topo, events), 2)
 
-def hashed(got: Array<U32> & GR.Hash, +k: U32, +events: List<&2, OS.Ev>) -> Array<U32> & List<&2, OS.Ev>:
+def hashed(got: Array<U32> & Grid.Hash, +k: U32, +events: List<&2, OceanState.Ev>) -> Array<U32> & List<&2, OceanState.Ev>:
   (o, +h) = got
-  (o, OS.EBlend{k, h} <> events)
+  (o, OceanState.EBlend{k, h} <> events)
 
-def el_hashed(got: Array<U32> & List<&2, OS.Ev>, +n: U32) -> Array<U32> & List<&2, OS.Ev>:
+def el_hashed(got: Array<U32> & List<&2, OceanState.Ev>, +n: U32) -> Array<U32> & List<&2, OceanState.Ev>:
   (o, +events) = got
-  hashed(CB.map_hash(o, CB.el_base(n), n), 2, events)
+  hashed(ConvertBlend.map_hash(o, ConvertBlend.el_base(n), n), 2, events)
 
-def g_hashed(got: Array<U32> & List<&2, OS.Ev>, +n: U32) -> Array<U32> & List<&2, OS.Ev>:
+def g_hashed(got: Array<U32> & List<&2, OceanState.Ev>, +n: U32) -> Array<U32> & List<&2, OceanState.Ev>:
   (o, +events) = got
-  el_hashed(hashed(CB.map_hash(o, CB.g_base(n), n), 1, events), n)
+  el_hashed(hashed(ConvertBlend.map_hash(o, ConvertBlend.g_base(n), n), 1, events), n)
 
-def blend_applied(got: Array<U32> & List<&2, OS.Ev>, g: GR.Grid, ids: GR.Grid, +rng: R.Rng, +ents: List<&2, OE.Ent>, +topo: U32) -> OS.Sea:
+def blend_applied(got: Array<U32> & List<&2, OceanState.Ev>, g: Grid.Grid, ids: Grid.Grid, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32) -> OceanState.Sea:
   (o, +events) = got
-  OS.Sea{CB.apply(g, o), ids, rng, ents, topo, events}
+  OceanState.Sea{ConvertBlend.apply(g, o), ids, rng, ents, topo, events}
 
-def blend_maps(got: GR.Grid & Array<U32>, ids: GR.Grid, +rng: R.Rng, +ents: List<&2, OE.Ent>, +topo: U32, +events: List<&2, OS.Ev>, +n: U32) -> OS.Sea:
+def blend_maps(got: Grid.Grid & Array<U32>, ids: Grid.Grid, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>, +n: U32) -> OceanState.Sea:
   (g, o) = got
-  blend_applied(g_hashed(hashed(CB.map_hash(o, CB.cm_base(n), n), 0, events), n), g, ids, rng, ents, topo)
+  blend_applied(g_hashed(hashed(ConvertBlend.map_hash(o, ConvertBlend.cm_base(n), n), 0, events), n), g, ids, rng, ents, topo)
 
-def blend_if(tracing: Bool, +c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def blend_if(tracing: Bool, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match tracing:
     case False{}:
       match s:
-        case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-          OS.Sea{OV.blend(g), ids, rng, ents, topo, events}
+        case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+          OceanState.Sea{OceanConvert.blend(g), ids, rng, ents, topo, events}
     case True{}:
       match s:
-        case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-          blend_maps(CB.maps(g), ids, rng, ents, topo, events, (OS.width_of(c) * OS.height_of(c) : U32))
+        case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+          blend_maps(ConvertBlend.maps(g), ids, rng, ents, topo, events, (OceanState.width_of(c) * OceanState.height_of(c) : U32))
 
 # do_blend, with the three blended maps' hashes when tracing.
-def blend_step(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
-  OS.digest(c, blend_if(OS.tracing_of(c), c, s), 3)
+def blend_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+  OceanState.digest(c, blend_if(OceanState.tracing_of(c), c, s), 3)
 
-def shore_step(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def shore_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
-    case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-      OS.digest(c, OS.Sea{OV.shoreline(g), ids, rng, ents, topo, events}, 4)
+    case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+      OceanState.digest(c, OceanState.Sea{OceanConvert.shoreline(g), ids, rng, ents, topo, events}, 4)
 
-def void_step(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def void_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
-    case OS.Sea{g, ids, +rng, +ents, +topo, +events}:
-      OS.digest(c, noised(OV.void_outline(g, rng), ids, ents, topo, events), 5)
+    case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+      OceanState.digest(c, noised(OceanConvert.void_outline(g, rng), ids, ents, topo, events), 5)
 
 # Ocean_ConvertImpassibleToWater (ocean/convert.bend), step by step for the digests.
-def convert(+c: OS.Ctx, s: OS.Sea) -> OS.Sea:
+def convert(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   void_step(c, shore_step(c, blend_step(c, noise_step(c, fills_step(c, s)))))
 
 # The ocean phase of one attempt from land_done: the final state and whether the required prefabs are all there.
-def run(+c: OS.Ctx, +reqs: List<&2, OT.Req>, s: OS.Sea) -> OS.Sea & Bool:
+def run(+c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
   after_convert(c, reqs, convert(c, prefill(c, s)))

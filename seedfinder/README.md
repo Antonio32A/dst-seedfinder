@@ -213,7 +213,7 @@ are the RNG stream and stock Lua 5.1 table orders, so the finder replays the RNG
   `scripts/gen/gen_world_catalog.py`; the Python spec is `.scratch/world/model.py`). Required and random
   set pieces go to random placeable tasks. Each entry's copies go to distinct random tasks among
   its choices.
-- `math.random(n)` is computed exactly with U32 math (`R.scale`), bit-exact with the game's
+- `math.random(n)` is computed exactly with U32 math (`LuaRandom.scale`), bit-exact with the game's
   double arithmetic for every n the worldgen uses.
 - The config is parsed in Bend (`filters/json.bend`, `filters/config.bend`). The search is a chunked parallel
   fork-join (`search/`).
@@ -249,7 +249,7 @@ the seed alone, every attempt, M11); each is checked by its
   whole level table of seed 1, and config parsing (including the default-only settings and `version` checks)
   and matching. `.scratch/world/golden.py` checks a level-table golden value against the harness.
   `.scratch/lawprobe/probe.sh LAW` checks one law alone with a memory cap. Keep each law cheap: the
-  checker evaluates slowly, and a `W.summary` of a seed with many boons can need more than 8 GB.
+  checker evaluates slowly, and a `LevelSummary.summary` of a seed with many boons can need more than 8 GB.
 - `.scratch/harness/`: runs the real worldgen Lua under Lua 5.1.5 with DST's RNG.
   - `setpiece`: Bend == harness for seeds 1..1,000,000 (`harness/compare.py` against `harness/out/out_1M.txt`).
   - `world show` (`.scratch/world/validate_all.sh`, `compare_bend.sh`) is byte-identical to the harness for

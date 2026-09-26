@@ -1,10 +1,10 @@
 import Base
-import ../../trace/canon.bend as CN
-import ../commit.bend as CM
-import ../voronoi/diagram.bend as VD
-import ../voronoi/builder.bend as VB
-import ../voronoi/polygon.bend as VG
-import ../voronoi/records.bend as VN
+import ../../trace/canon.bend as Canon
+import ../commit.bend as Commit
+import ../voronoi/diagram.bend as VoronoiDiagram
+import ../voronoi/builder.bend as VoronoiBuilder
+import ../voronoi/polygon.bend as VoronoiPolygon
+import ../voronoi/records.bend as VoronoiRecords
 
 # Trace stages `voronoi` and `polygons` (lane N, M6). The input (written by .scratch/port/diff/voronoi.py and
 # polygons.py from the oracle's graph, voronoi and polygons dumps) lists, per Voronoi call of an attempt:
@@ -30,13 +30,13 @@ def hex_value(s: String, +acc: U32) -> U32:
       hex_value(rest, ((acc << 4n) + hex_digit(c) : U32))
 
 def hex_of(+key: String, +fields: List<&2, String>) -> U32:
-  hex_value(String.take(CN.text_or(CN.value_of(key, fields), "0"), 8n), 0)
+  hex_value(String.take(Canon.text_or(Canon.value_of(key, fields), "0"), 8n), 0)
 
 def num(+key: String, +fields: List<&2, String>) -> U32:
-  CN.number_or(CN.value_of(key, fields), 0)
+  Canon.number_or(Canon.value_of(key, fields), 0)
 
 def text(+key: String, +fields: List<&2, String>) -> String:
-  CN.text_or(CN.value_of(key, fields), "")
+  Canon.text_or(Canon.value_of(key, fields), "")
 
 def unquoted(+s: String) -> String:
   String.take(String.drop(s, 1n), Nat.sub(String.length(s), 2n))
@@ -65,10 +65,10 @@ def sites_go(recs: List<&2, List<&2, String>>, here: Bool, +a: String, +g: Strin
 def block_sites(+recs: List<&2, List<&2, String>>, +a: String, +g: String) -> List<&2, List<&2, String>>:
   sites_go(recs, head_in(recs, a, g), a, g)
 
-def site_in(+r: List<&2, String>) -> VG.SiteIn:
-  VG.SiteIn{hex_of("sx", r), hex_of("sy", r), num("kind", r), hex_of("cx", r), hex_of("cy", r)}
+def site_in(+r: List<&2, String>) -> VoronoiPolygon.SiteIn:
+  VoronoiPolygon.SiteIn{hex_of("sx", r), hex_of("sy", r), num("kind", r), hex_of("cx", r), hex_of("cy", r)}
 
-def sites_in(recs: List<&2, List<&2, String>>) -> List<&2, VG.SiteIn>:
+def sites_in(recs: List<&2, List<&2, String>>) -> List<&2, VoronoiPolygon.SiteIn>:
   match recs:
     case Nil{}:
       Nil{}
@@ -82,17 +82,17 @@ def names_in(recs: List<&2, List<&2, String>>) -> List<&2, String>:
     case Con{+r, rest}:
       unquoted(text("node", r)) <> names_in(rest)
 
-def checks_of_nodes(recs: List<&2, List<&2, String>>) -> List<&2, CM.NodeCheck>:
+def checks_of_nodes(recs: List<&2, List<&2, String>>) -> List<&2, Commit.NodeCheck>:
   match recs:
     case Nil{}:
       Nil{}
     case Con{+r, rest}:
-      CM.NodeCheck{num("kind", r), U32.is_eq(num("parent", r), 1), 0} <> checks_of_nodes(rest)
+      Commit.NodeCheck{num("kind", r), U32.is_eq(num("parent", r), 1), 0} <> checks_of_nodes(rest)
 
 type Out is Type:
   Out{voronoi: List<&2, String>, polygons: List<&2, String>}
 
-def point_count(l: List<&2, VG.P32>, +acc: U32) -> U32:
+def point_count(l: List<&2, VoronoiPolygon.P32>, +acc: U32) -> U32:
   match l:
     case Nil{}:
       acc
@@ -100,21 +100,21 @@ def point_count(l: List<&2, VG.P32>, +acc: U32) -> U32:
       point_count(rest, (acc + 1 : U32))
 
 type Checks is Type:
-  Checks{polys: Array<VG.Poly>, acc: List<&2, CM.NodeCheck>}
+  Checks{polys: Array<VoronoiPolygon.Poly>, acc: List<&2, Commit.NodeCheck>}
 
-def check_of(+p: VG.Poly, +r: List<&2, String>) -> CM.NodeCheck:
+def check_of(+p: VoronoiPolygon.Poly, +r: List<&2, String>) -> Commit.NodeCheck:
   match p:
-    case VG.Poly{+pts, _, _, _, _}:
-      CM.NodeCheck{num("kind", r), U32.is_eq(num("parent", r), 1), point_count(pts, 0)}
+    case VoronoiPolygon.Poly{+pts, _, _, _, _}:
+      Commit.NodeCheck{num("kind", r), U32.is_eq(num("parent", r), 1), point_count(pts, 0)}
 
-def check_got(got: Array<VG.Poly> & VG.Poly, +r: List<&2, String>, +acc: List<&2, CM.NodeCheck>) -> Checks:
+def check_got(got: Array<VoronoiPolygon.Poly> & VoronoiPolygon.Poly, +r: List<&2, String>, +acc: List<&2, Commit.NodeCheck>) -> Checks:
   (polys, +p) = got
   Checks{polys, check_of(p, r) <> acc}
 
 def check_step(c: Checks, +r: List<&2, String>, +i: U32) -> Checks:
   match c:
     case Checks{polys, +acc}:
-      check_got(Array.get(VG.Poly, polys, i), r, acc)
+      check_got(Array.get(VoronoiPolygon.Poly, polys, i), r, acc)
 
 # The CheckForValidCells entries of the sited nodes (their polygons' point counts).
 def site_checks(recs: List<&2, List<&2, String>>, c: Checks, +i: U32) -> Checks:
@@ -129,7 +129,7 @@ def renumber_words(l: List<&2, String>, +b: U32, +next: U32) -> List<&2, String>
     case Nil{}:
       Nil{}
     case Con{+w, rest}:
-      Bool.pick(String, String.eq(w, CN.number("b", b)), CN.number("b", next), w) <> renumber_words(rest, b, next)
+      Bool.pick(String, String.eq(w, Canon.number("b", b)), Canon.number("b", next), w) <> renumber_words(rest, b, next)
 
 def renumbered(l: List<&2, String>, +b: U32, +next: U32) -> List<&2, String>:
   match l:
@@ -145,63 +145,63 @@ def copied(twice: Bool, +vl: List<&2, String>, +b: U32) -> List<&2, String>:
     case False{}:
       vl
 
-def lines_with(got: VD.Diagram & List<&2, String>, polys: Array<VG.Poly>, +a: U32, +b: U32, +ctx: String, +copies: U32, +at: String, +sites: List<&2, VG.SiteIn>, +names: List<&2, String>) -> Out:
+def lines_with(got: VoronoiDiagram.Diagram & List<&2, String>, polys: Array<VoronoiPolygon.Poly>, +a: U32, +b: U32, +ctx: String, +copies: U32, +at: String, +sites: List<&2, VoronoiPolygon.SiteIn>, +names: List<&2, String>) -> Out:
   (_, +vl) = got
-  Out{copied(U32.is_eq(copies, 2), vl, b), VN.polygon_records(a, at, polys, sites, names)}
+  Out{copied(U32.is_eq(copies, 2), vl, b), VoronoiRecords.polygon_records(a, at, polys, sites, names)}
 
-def build_lines(c: VG.Cells, +a: U32, +b: U32, +ctx: String, +copies: U32, +at: String, +sites: List<&2, VG.SiteIn>, +names: List<&2, String>) -> Out:
+def build_lines(c: VoronoiPolygon.Cells, +a: U32, +b: U32, +ctx: String, +copies: U32, +at: String, +sites: List<&2, VoronoiPolygon.SiteIn>, +names: List<&2, String>) -> Out:
   match c:
-    case VG.Cells{built, polys, _}:
-      lines_with(VN.build_records(a, b, ctx, built), polys, a, b, ctx, copies, at, sites, names)
+    case VoronoiPolygon.Cells{built, polys, _}:
+      lines_with(VoronoiRecords.build_records(a, b, ctx, built), polys, a, b, ctx, copies, at, sites, names)
 
 def commit_record(+a: U32, +ok: Bool, +size: U32) -> String:
-  CN.record("commit", [CN.number("a", a), CN.number("ok", Bool.to_u32(ok)), CN.number("size", size)])
+  Canon.record("commit", [Canon.number("a", a), Canon.number("ok", Bool.to_u32(ok)), Canon.number("size", size)])
 
 def commit_joined(o: Out, +rec: String) -> Out:
   match o:
     case Out{+v, +p}:
       Out{v, List.append(&2, String, p, [rec])}
 
-def commit_checked_with(polys: Array<VG.Poly>, +checks: List<&2, CM.NodeCheck>, built: VB.Built, +n: U32, +block: List<&2, String>, +names: List<&2, String>, +size: U32, +sites: List<&2, VG.SiteIn>, +twice: Bool) -> Out:
+def commit_checked_with(polys: Array<VoronoiPolygon.Poly>, +checks: List<&2, Commit.NodeCheck>, built: VoronoiBuilder.Built, +n: U32, +block: List<&2, String>, +names: List<&2, String>, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +twice: Bool) -> Out:
   +a = num("a", block)
-  commit_joined(build_lines(VG.Cells{built, polys, n}, a, num("b", block), unquoted(text("at", block)), Bool.pick(U32, twice, 2, 1), unquoted(text("at", block)), sites, names), commit_record(a, CM.valid_cells(checks), size))
+  commit_joined(build_lines(VoronoiPolygon.Cells{built, polys, n}, a, num("b", block), unquoted(text("at", block)), Bool.pick(U32, twice, 2, 1), unquoted(text("at", block)), sites, names), commit_record(a, Commit.valid_cells(checks), size))
 
-def commit_checked(c: Checks, built: VB.Built, +n: U32, +block: List<&2, String>, +names: List<&2, String>, +size: U32, +sites: List<&2, VG.SiteIn>, +twice: Bool) -> Out:
+def commit_checked(c: Checks, built: VoronoiBuilder.Built, +n: U32, +block: List<&2, String>, +names: List<&2, String>, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +twice: Bool) -> Out:
   match c:
     case Checks{polys, +checks}:
       commit_checked_with(polys, checks, built, n, block, names, size, sites, twice)
 
-def commit_cells(c: VG.Cells, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, CM.NodeCheck>, +names: List<&2, String>, +size: U32, +sites: List<&2, VG.SiteIn>, +twice: Bool) -> Out:
+def commit_cells(c: VoronoiPolygon.Cells, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, Commit.NodeCheck>, +names: List<&2, String>, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +twice: Bool) -> Out:
   match c:
-    case VG.Cells{built, polys, +n}:
+    case VoronoiPolygon.Cells{built, polys, +n}:
       commit_checked(site_checks(site_recs, Checks{polys, extra}, 0), built, n, block, names, size, sites, twice)
 
-def commit_out(c: CM.Committed, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, CM.NodeCheck>, +names: List<&2, String>, +windows: Bool) -> Out:
+def commit_out(c: Commit.Committed, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, Commit.NodeCheck>, +names: List<&2, String>, +windows: Bool) -> Out:
   match c:
-    case CM.Committed{+size, +sites, +twice, cells}:
+    case Commit.Committed{+size, +sites, +twice, cells}:
       commit_cells(cells, block, site_recs, extra, names, size, sites, twice)
 
-def tile_out(+c: CM.Centred, +windows: Bool, +a: U32, +b: U32, +at: String, +size: U32, +names: List<&2, String>) -> Out:
+def tile_out(+c: Commit.Centred, +windows: Bool, +a: U32, +b: U32, +at: String, +size: U32, +names: List<&2, String>) -> Out:
   match c:
-    case CM.Centred{+sites, _}:
-      build_lines(VG.build_voronoi(windows, size, size, sites), a, b, at, 1, at, sites, names)
+    case Commit.Centred{+sites, _}:
+      build_lines(VoronoiPolygon.build_voronoi(windows, size, size, sites), a, b, at, 1, at, sites, names)
 
-def op_pass(tilemap: Bool, +windows: Bool, +sites: List<&2, VG.SiteIn>, +names: List<&2, String>, +a: U32, +b: U32, +at: String, +w: U32, +h: U32, +size: U32) -> Out:
+def op_pass(tilemap: Bool, +windows: Bool, +sites: List<&2, VoronoiPolygon.SiteIn>, +names: List<&2, String>, +a: U32, +b: U32, +at: String, +w: U32, +h: U32, +size: U32) -> Out:
   match tilemap:
     case True{}:
-      tile_out(CM.tile_map_centre(sites, size, w, h), windows, a, b, at, size, names)
+      tile_out(Commit.tile_map_centre(sites, size, w, h), windows, a, b, at, size, names)
     case False{}:
-      build_lines(VG.build_voronoi(windows, w, h, sites), a, b, at, 1, at, sites, names)
+      build_lines(VoronoiPolygon.build_voronoi(windows, w, h, sites), a, b, at, 1, at, sites, names)
 
-def op_block(commit: Bool, +tilemap: Bool, +windows: Bool, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, CM.NodeCheck>, +sites: List<&2, VG.SiteIn>, +names: List<&2, String>) -> Out:
+def op_block(commit: Bool, +tilemap: Bool, +windows: Bool, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, Commit.NodeCheck>, +sites: List<&2, VoronoiPolygon.SiteIn>, +names: List<&2, String>) -> Out:
   match commit:
     case True{}:
-      commit_out(CM.commit(windows, num("w", block), num("h", block), sites), block, site_recs, extra, names, windows)
+      commit_out(Commit.commit(windows, num("w", block), num("h", block), sites), block, site_recs, extra, names, windows)
     case False{}:
       op_pass(tilemap, windows, sites, names, num("a", block), num("b", block), unquoted(text("at", block)), num("w", block),
         num("h", block), num("size", block))
 
-def op_route(+op: String, +windows: Bool, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, CM.NodeCheck>) -> Out:
+def op_route(+op: String, +windows: Bool, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +extra: List<&2, Commit.NodeCheck>) -> Out:
   op_block(String.eq(op, "commit"), String.eq(op, "tilemap"), windows, block, site_recs, extra, sites_in(site_recs), names_in(site_recs))
 
 def block_out(+windows: Bool, +block: List<&2, String>, +site_recs: List<&2, List<&2, String>>, +node_recs: List<&2, List<&2, String>>) -> Out:
@@ -223,4 +223,4 @@ def all_blocks(blocks: List<&2, List<&2, String>>, +windows: Bool, +site_recs: L
 
 def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
   +lines = String.split(input, '\n')
-  all_blocks(CN.records("tblock", lines), windows, CN.records("tsite", lines), CN.records("tnode", lines), String.eq(stage, "polygons"))
+  all_blocks(Canon.records("tblock", lines), windows, Canon.records("tsite", lines), Canon.records("tnode", lines), String.eq(stage, "polygons"))

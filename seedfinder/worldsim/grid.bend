@@ -1,5 +1,5 @@
 import Base
-import ../rng/pcg.bend as R
+import ../rng/pcg.bend as Pcg
 
 # The WorldSim tile map and flag map in one flat array: cell y * width + x holds the tile in the low 16 bits and the
 # flags in the high 16 bits. The flags' variant nibble (0x0f00, drawn by ConvertToTileMap) is not stored: only the
@@ -131,7 +131,7 @@ def tiles_loop(n: Nat, got: Array<U32> & U32, +i: U32, h: Hash) -> Array<U32> & 
       (cells, +v) = got
       tiles_loop(p, cells[(i + 1 : U32)], (i + 1 : U32), fnv_u16(h, (v .&. 65535 : U32)))
 
-def flags_loop(n: Nat, got: Array<U32> & U32, +i: U32, h: Hash, drawn: U32 & R.Rng) -> Array<U32> & Hash:
+def flags_loop(n: Nat, got: Array<U32> & U32, +i: U32, h: Hash, drawn: U32 & Pcg.Rng) -> Array<U32> & Hash:
   match n:
     case 0n:
       (cells, _) = got
@@ -139,7 +139,7 @@ def flags_loop(n: Nat, got: Array<U32> & U32, +i: U32, h: Hash, drawn: U32 & R.R
     case 1n+p:
       (cells, +v) = got
       (+out, rng) = drawn
-      flags_loop(p, cells[(i + 1 : U32)], (i + 1 : U32), fnv_u16(h, ((v >> 16n) .|. ((out .&. 15) << 8n) : U32)), R.draw(rng))
+      flags_loop(p, cells[(i + 1 : U32)], (i + 1 : U32), fnv_u16(h, ((v >> 16n) .|. ((out .&. 15) << 8n) : U32)), Pcg.draw(rng))
 
 def header(+width: U32, +height: U32) -> Hash:
   fnv_u32(fnv_u32(fnv_offset(), width), height)
@@ -156,7 +156,7 @@ def tiles_digest(g: Grid) -> Grid & Hash:
 
 # The flag map digest, with each cell's variant nibble drawn as pcg32_boundedrand(16) from `rng` in cell order
 # (the state before ConvertToTileMap).
-def flags_digest(g: Grid, rng: R.Rng) -> Grid & Hash:
+def flags_digest(g: Grid, rng: Pcg.Rng) -> Grid & Hash:
   match g:
     case Grid{cells, +width, +height}:
-      tiles_done(flags_loop(U32.to_nat((width * height : U32)), cells[0], 0, header(width, height), R.draw(rng)), width, height)
+      tiles_done(flags_loop(U32.to_nat((width * height : U32)), cells[0], 0, header(width, height), Pcg.draw(rng)), width, height)

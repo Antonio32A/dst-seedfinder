@@ -1,12 +1,12 @@
 import Base
-import ../lua/table.bend as LT
-import ../lua/util.bend as LU
-import ../level/prefix.bend as P
-import ../level/summary.bend as W
-import ../data/story.bend as SY
-import ../data/enums.bend as EN
-import ./graph.bend as GG
-import ./order.bend as GO
+import ../lua/table.bend as LuaTable
+import ../lua/util.bend as LuaUtil
+import ../level/prefix.bend as LevelPrefix
+import ../level/summary.bend as LevelSummary
+import ../data/story.bend as StoryData
+import ../data/enums.bend as Enums
+import ./graph.bend as StoryGraph
+import ./order.bend as StoryOrder
 
 # Story:InsertAdditionalSetPieces: every task's set_pieces (Level:ChooseSetPieces, in pairs(level.set_pieces) order)
 # and random_set_pieces go into the first acceptable node of shuffledKeys(task.nodes) (countstaticlayouts[name] = 1).
@@ -23,7 +23,7 @@ def keyed_pieces(entries: List<&2, U32>, +task: U32) -> List<&2, U32>:
       +tail = keyed_pieces(rest, task)
       +key = (entry .&. 63 : U32)
       +placed = U32.is_eq((((entry >> 6n) >> U32.to_nat(task)) .&. 1 : U32), 1)
-      Bool.pick(List<&2, U32>, placed, packed(SY.piece_key(key), SY.piece_key_layout(key)) <> tail, tail)
+      Bool.pick(List<&2, U32>, placed, packed(StoryData.piece_key(key), StoryData.piece_key_layout(key)) <> tail, tail)
 
 def special_pieces(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, U32>:
   match n:
@@ -31,19 +31,19 @@ def special_pieces(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> Lis
       Nil{}
     case 1n+p:
       +tail = special_pieces(p, codes, tasks, task, (k + 1 : U32))
-      +code = P.field5(codes, k)
-      Bool.pick(List<&2, U32>, U32.is_eq(P.field5(tasks, k), task), packed(SY.piece_special(code), SY.piece_special_layout(code)) <> tail, tail)
+      +code = LevelPrefix.field5(codes, k)
+      Bool.pick(List<&2, U32>, U32.is_eq(LevelPrefix.field5(tasks, k), task), packed(StoryData.piece_special(code), StoryData.piece_special_layout(code)) <> tail, tail)
 
 # task.set_pieces of a task.
-def set_pieces(+level: W.Summary, +task: U32) -> List<&2, U32>:
+def set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
   match level:
-    case W.Summary{_, _, +entries, _, _, _, _}:
+    case LevelSummary.Summary{_, _, +entries, _, _, _, _}:
       keyed_pieces(entries, task)
 
 # task.random_set_pieces of a task.
-def random_set_pieces(+level: W.Summary, +task: U32) -> List<&2, U32>:
+def random_set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
   match level:
-    case W.Summary{_, _, _, +codes, +tasks, +count, _}:
+    case LevelSummary.Summary{_, _, _, +codes, +tasks, +count, _}:
       special_pieces(U32.to_nat(count), codes, tasks, task, 0)
 
 def written(arr: Array<U32>, +i: U32, +v: U32) -> Array<U32>:
@@ -63,60 +63,60 @@ def read_out(n: Nat, got: Array<U32> & U32, +i: U32) -> List<&2, U32>:
     case 1n+p:
       (arr, +v) = got
       +rest = read_out(p, arr[(i + 1 : U32)], (i + 1 : U32))
-      Bool.pick(List<&2, U32>, U32.is_eq(v, GG.none()), Nil{}, v <> rest)
+      Bool.pick(List<&2, U32>, U32.is_eq(v, StoryGraph.none()), Nil{}, v <> rest)
 
 type Picks is Data:
-  Picks{order: List<&2, U32>, st: GG.St}
+  Picks{order: List<&2, U32>, st: StoryGraph.St}
 
-def unshuffled(sh: LU.Shuffled, +n: U32, +s: GG.St) -> Picks:
+def unshuffled(sh: LuaUtil.Shuffled, +n: U32, +s: StoryGraph.St) -> Picks:
   match sh:
-    case LU.Shuffled{items, rng}:
-      Picks{read_out(U32.to_nat((n + 1 : U32)), items[0], 0), GG.with_rng(s, rng)}
+    case LuaUtil.Shuffled{items, rng}:
+      Picks{read_out(U32.to_nat((n + 1 : U32)), items[0], 0), StoryGraph.with_rng(s, rng)}
 
 # shuffledKeys(task.nodes): the keys in pairs() order, shuffleArray'd (n - 1 draws), as ipairs sees them.
-def shuffled(+s: GG.St, +order: List<&2, U32>) -> Picks:
-  +n = GO.count(order, 0)
-  arr = fill_array(order, Array.new(U32, U32.to_nat(LT.ceil_log2((n + 2 : U32))), GG.none()), 0)
-  unshuffled(LU.shuffle_array(arr, n, GG.rng_of(s)), n, s)
+def shuffled(+s: StoryGraph.St, +order: List<&2, U32>) -> Picks:
+  +n = StoryOrder.count(order, 0)
+  arr = fill_array(order, Array.new(U32, U32.to_nat(LuaTable.ceil_log2((n + 2 : U32))), StoryGraph.none()), 0)
+  unshuffled(LuaUtil.shuffle_array(arr, n, StoryGraph.rng_of(s)), n, s)
 
-def acceptable(+s: GG.St, +node: U32, +random: Bool) -> Bool:
-  +not_blank = Bool.pick(Bool, random, U32.is_ne(GG.nf(s, node, GG.f_type()), EN.node_type_blank()),
-    Bool.not(SY.is_impassable(GG.nf(s, node, GG.f_value()))))
-  Bool.not(GG.is_entrance(s, node)) && not_blank
+def acceptable(+s: StoryGraph.St, +node: U32, +random: Bool) -> Bool:
+  +not_blank = Bool.pick(Bool, random, U32.is_ne(StoryGraph.nf(s, node, StoryGraph.f_type()), Enums.node_type_blank()),
+    Bool.not(StoryData.is_impassable(StoryGraph.nf(s, node, StoryGraph.f_value()))))
+  Bool.not(StoryGraph.is_entrance(s, node)) && not_blank
 
-def choice(order: List<&2, U32>, +s: GG.St, +random: Bool) -> U32:
+def choice(order: List<&2, U32>, +s: StoryGraph.St, +random: Bool) -> U32:
   match order:
     case Nil{}:
-      GG.none()
+      StoryGraph.none()
     case Con{+node, rest}:
       Bool.pick(U32, acceptable(s, node, random), node, choice(rest, s, random))
 
-def placed_if(missing: Bool, +node: U32, +s: GG.St, +piece: U32) -> GG.St:
+def placed_if(missing: Bool, +node: U32, +s: StoryGraph.St, +piece: U32) -> StoryGraph.St:
   match missing:
     case True{}:
-      GG.say(s)
+      StoryGraph.say(s)
     case False{}:
-      GG.place_piece(s, node, (piece >> 16n : U32), (piece .&. 65535 : U32))
+      StoryGraph.place_piece(s, node, (piece >> 16n : U32), (piece .&. 65535 : U32))
 
-def placed(+node: U32, +s: GG.St, +piece: U32) -> GG.St:
-  placed_if(U32.is_eq(node, GG.none()), node, s, piece)
+def placed(+node: U32, +s: StoryGraph.St, +piece: U32) -> StoryGraph.St:
+  placed_if(U32.is_eq(node, StoryGraph.none()), node, s, piece)
 
-def place_one(+p: Picks, +piece: U32, +random: Bool) -> GG.Got:
+def place_one(+p: Picks, +piece: U32, +random: Bool) -> StoryGraph.Got:
   match p:
     case Picks{+order, +s}:
       +node = choice(order, s, random)
-      GG.Got{node, placed(node, s, piece)}
+      StoryGraph.Got{node, placed(node, s, piece)}
 
 # Placing set pieces: the state and whether a piece found no node (which ends the pass).
 type Placing is Data:
-  Placing{st: GG.St, stopped: Bool}
+  Placing{st: StoryGraph.St, stopped: Bool}
 
-def placing_of(+g: GG.Got) -> Placing:
+def placing_of(+g: StoryGraph.Got) -> Placing:
   match g:
-    case GG.Got{+v, +s}:
-      Placing{s, U32.is_eq(v, GG.none())}
+    case StoryGraph.Got{+v, +s}:
+      Placing{s, U32.is_eq(v, StoryGraph.none())}
 
-def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random: Bool) -> GG.St:
+def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random: Bool) -> StoryGraph.St:
   match pieces:
     case Nil{}:
       match p:
@@ -131,23 +131,23 @@ def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random
             case False{}:
               place_all(rest, placing_of(place_one(shuffled(s, order), piece, random)), order, random)
 
-def pieces_of_graph(task_graph: Bool, +s: GG.St, +g: U32, +level: W.Summary) -> GG.St:
+def pieces_of_graph(task_graph: Bool, +s: StoryGraph.St, +g: U32, +level: LevelSummary.Summary) -> StoryGraph.St:
   match task_graph:
     case True{}:
-      +task = GG.gf(s, g, GG.g_part())
-      +order = GG.node_order(s, g)
+      +task = StoryGraph.gf(s, g, StoryGraph.g_part())
+      +order = StoryGraph.node_order(s, g)
       place_all(random_set_pieces(level, task), Placing{place_all(set_pieces(level, task), Placing{s, False{}}, order, False{}), False{}}, order, True{})
     case False{}:
       s
 
-def pieces_loop(graphs: List<&2, U32>, +s: GG.St, +level: W.Summary) -> GG.St:
+def pieces_loop(graphs: List<&2, U32>, +s: StoryGraph.St, +level: LevelSummary.Summary) -> StoryGraph.St:
   match graphs:
     case Nil{}:
       s
     case Con{+g, rest}:
-      pieces_loop(rest, pieces_of_graph(U32.is_eq(GG.gf(s, g, GG.g_kind()), GG.k_task()), s, g, level), level)
+      pieces_loop(rest, pieces_of_graph(U32.is_eq(StoryGraph.gf(s, g, StoryGraph.g_kind()), StoryGraph.k_task()), s, g, level), level)
 
 # Story:InsertAdditionalSetPieces over the given graphs (pairs order).
-def insert_set_pieces(+s: GG.St, +graphs: List<&2, U32>, +level: W.Summary) -> GG.St:
-  +before = GG.rng_of(s)
-  GG.returned(pieces_loop(graphs, s, level), GG.f_insert_additional_set_pieces(), before)
+def insert_set_pieces(+s: StoryGraph.St, +graphs: List<&2, U32>, +level: LevelSummary.Summary) -> StoryGraph.St:
+  +before = StoryGraph.rng_of(s)
+  StoryGraph.returned(pieces_loop(graphs, s, level), StoryGraph.f_insert_additional_set_pieces(), before)

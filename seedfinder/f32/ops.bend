@@ -1,5 +1,5 @@
 import Base
-import ../f64/repr.bend as FR
+import ../f64/repr.bend as F64Repr
 
 # The only module that touches Bend's native F32 (IEEE binary32 on the CPU), so a soft backend can replace it.
 
@@ -34,12 +34,12 @@ def from_u32(x: U32) -> F32:
   U32.to_f32(x)
 
 # (double)x, exact.
-def to_f64(x: F32) -> FR.F64:
-  FR.from_f32_bits(F32.bits(x))
+def to_f64(x: F32) -> F64Repr.F64:
+  F64Repr.from_f32_bits(F32.bits(x))
 
 # (float)x, rounded to nearest even.
-def from_f64(x: FR.F64) -> F32:
-  from_bits(FR.to_f32_bits(x))
+def from_f64(x: F64Repr.F64) -> F32:
+  from_bits(F64Repr.to_f32_bits(x))
 
 # a <= b (false with a NaN).
 def le(a: F32, b: F32) -> Bool:
@@ -51,4 +51,4 @@ def eq(a: F32, b: F32) -> Bool:
 
 # (int)x: truncation toward zero (cvttss2si; 0x80000000 for NaN and out of range).
 def to_i32(x: F32) -> U32:
-  FR.to_i32(to_f64(x))
+  F64Repr.to_i32(to_f64(x))

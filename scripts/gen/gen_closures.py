@@ -25,7 +25,7 @@ def main():
     closures = ids.closures()
     m = blob.Module("closures", "scripts/gen/gen_closures.py",
                     "Closure variants referenced by the data modules (bodies in scripts/gen/out/closures.json).",
-                    imports=("./blob.bend as B",))
+                    imports=("./blob.bend as Blob",))
     m.comment("Categories: " + ", ".join(f"{i} {c}" for i, c in enumerate(CATEGORIES)) + ".",
               "Evaluated in this build: IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) is false, SIZE_VARIATION 3.")
     for c in closures:

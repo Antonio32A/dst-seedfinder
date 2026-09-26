@@ -1,5 +1,5 @@
 import Base
-import ../worldsim/grid.bend as GR
+import ../worldsim/grid.bend as Grid
 
 # Bit planes over the tile map for Ocean_ConvertImpassibleToWater's neighbourhood tests, stored in flat arrays: the
 # plane at base b holds row y's words at b + y * ww .. b + y * ww + ww - 1, bit x of the row in word x >> 5 at bit
@@ -23,7 +23,7 @@ def size(+g: Geo) -> U32:
       (h * ww : U32)
 
 def blank(+n: U32) -> Array<U32>:
-  GR.alloc(GR.depth_for(24n, n, 0n, 1), 0)
+  Grid.alloc(Grid.depth_for(24n, n, 0n, 1), 0)
 
 # An array for k planes, all clear.
 def arena(+g: Geo, +k: U32) -> Array<U32>:

@@ -1,5 +1,5 @@
 import Base
-import ../../f64/repr.bend as FR
+import ../../f64/repr.bend as F64Repr
 
 # The Kamada-Kawai workspace: one Array<U32> of 2^21 words holding every table of a layout job, with a vertex
 # stride of 512 (so at most 512 vertices). Regions: pair partials (4 words per ordered pair), pair distances
@@ -8,7 +8,7 @@ import ../../f64/repr.bend as FR
 # each Newton move of an inner loop (4 words per move).
 
 type Vec is Data:
-  Vec{x: FR.F64, y: FR.F64}
+  Vec{x: F64Repr.F64, y: F64Repr.F64}
 
 def max_vertices() -> U32:
   512
@@ -55,29 +55,29 @@ def queue_at(+k: U32) -> U32:
 def history_at(+m: U32) -> U32:
   (1900544 + (m << 2n) : U32)
 
-def get_lo(got: Array<U32> & U32, +hi: U32) -> Array<U32> & FR.F64:
+def get_lo(got: Array<U32> & U32, +hi: U32) -> Array<U32> & F64Repr.F64:
   (ws, lo) = got
-  (ws, FR.F64{hi, lo})
+  (ws, F64Repr.F64{hi, lo})
 
-def get_hi(got: Array<U32> & U32, +at: U32) -> Array<U32> & FR.F64:
+def get_hi(got: Array<U32> & U32, +at: U32) -> Array<U32> & F64Repr.F64:
   (ws, hi) = got
   get_lo(ws[(at + 1 : U32)], hi)
 
 # The F64 stored in the two words at `at` (high word first).
-def get(ws: Array<U32>, +at: U32) -> Array<U32> & FR.F64:
+def get(ws: Array<U32>, +at: U32) -> Array<U32> & F64Repr.F64:
   get_hi(ws[at], at)
 
-def put(ws: Array<U32>, +at: U32, x: FR.F64) -> Array<U32>:
+def put(ws: Array<U32>, +at: U32, x: F64Repr.F64) -> Array<U32>:
   match x:
-    case FR.F64{hi, lo}:
+    case F64Repr.F64{hi, lo}:
       ws[at] <- hi
       ws[(at + 1 : U32)] <- lo
 
-def get_y(got: Array<U32> & FR.F64, +x: FR.F64) -> Array<U32> & Vec:
+def get_y(got: Array<U32> & F64Repr.F64, +x: F64Repr.F64) -> Array<U32> & Vec:
   (ws, y) = got
   (ws, Vec{x, y})
 
-def get_x(got: Array<U32> & FR.F64, +at: U32) -> Array<U32> & Vec:
+def get_x(got: Array<U32> & F64Repr.F64, +at: U32) -> Array<U32> & Vec:
   (ws, x) = got
   get_y(get(ws, (at + 2 : U32)), x)
 

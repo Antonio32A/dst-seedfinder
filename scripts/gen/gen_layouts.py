@@ -147,7 +147,7 @@ def main():
         m.code('''
 # The JSON text of a property reference (id >= 1) of data/layouts.bend.
 def text(+id: U32) -> String:
-  B.text(props((id - 1 : U32)))
+  Blob.text(props((id - 1 : U32)))
 ''')
     else:
         m = blob.Module("layouts", "scripts/gen/gen_layouts.py",
@@ -191,41 +191,41 @@ def text(+id: U32) -> String:
                 "source order with repeats (comments skipped); empty for other closures.")
         m.code('''
 def variant(+layout: U32, +state: U32) -> U32:
-  B.at(states(layout), state)
+  Blob.at(states(layout), state)
 
 def name(+variant: U32) -> U32:
-  B.at(variants(variant), 0)
+  Blob.at(variants(variant), 0)
 
 def layout_type(+variant: U32) -> U32:
-  B.at(variants(variant), 1)
+  Blob.at(variants(variant), 1)
 
 # layout.scale as f64 (hi, lo).
 def scale(+variant: U32) -> U32 & U32:
-  B.f64(variants(variant), 2)
+  Blob.f64(variants(variant), 2)
 
 def flags(+variant: U32) -> U32:
-  B.at(variants(variant), 6)
+  Blob.at(variants(variant), 6)
 
 def has(+variant: U32, +flag: U32) -> Bool:
   U32.is_ne((flags(variant) .&. flag : U32), 0)
 
 def force_rotation(+variant: U32) -> U32:
-  B.at(variants(variant), 7)
+  Blob.at(variants(variant), 7)
 
 def start_mask(+variant: U32) -> U32:
-  B.at(variants(variant), 8)
+  Blob.at(variants(variant), 8)
 
 def fill_mask(+variant: U32) -> U32:
-  B.at(variants(variant), 9)
+  Blob.at(variants(variant), 9)
 
 def layout_position(+variant: U32) -> U32:
-  B.at(variants(variant), 10)
+  Blob.at(variants(variant), 10)
 
 def ground_size(+variant: U32) -> U32:
-  B.at(variants(variant), 11)
+  Blob.at(variants(variant), 11)
 
 def min_dist_from_land(+variant: U32) -> U32:
-  B.at(variants(variant), 12)
+  Blob.at(variants(variant), 12)
 
 def ground_half(odd: Bool, +u: U32) -> U32:
   match odd:
@@ -236,7 +236,7 @@ def ground_half(odd: Bool, +u: U32) -> U32:
 
 # Ground tile k (row-major) of a variant.
 def ground_tile(+variant: U32, +k: U32) -> U32:
-  ground_half(U32.is_ne((k .&. 1 : U32), 0), B.at(ground(variant), (k >> 1n : U32)))
+  ground_half(U32.is_ne((k .&. 1 : U32), 0), Blob.at(ground(variant), (k >> 1n : U32)))
 ''')
     if sys.argv[-1:] == ["-"]:
         sys.stdout.write(m.text())

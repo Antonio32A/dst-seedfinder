@@ -1,8 +1,8 @@
 import Base
-import ./world.bend as WD
-import ./anchor.bend as AN
-import ./dijkstra.bend as DJ
-import ./parse.bend as PS
+import ./world.bend as FilterWorld
+import ./anchor.bend as Anchor
+import ./dijkstra.bend as Dijkstra
+import ./parse.bend as Parse
 
 # The tiles rule (criteria.py check_tiles): a 4-neighbour BFS through any tile, from every land tile of the `from`
 # types at once (in tile order) to the first land tile of the `to` types that the queue reaches.
@@ -24,14 +24,14 @@ def ids_of(+tile_ids: List<&2, U32>, names: List<&2, U32>) -> List<&2, U32>:
   ids_from(names, tile_ids, Nil{})
 
 def kind_of(+tile: U32, +from: List<&2, U32>, +to: List<&2, U32>) -> U32:
-  +land = WD.is_land_tile(tile)
-  (Bool.to_u32(land && PS.contains_id(from, tile)) .|. (Bool.to_u32(land && PS.contains_id(to, tile)) << 1n) : U32)
+  +land = FilterWorld.is_land_tile(tile)
+  (Bool.to_u32(land && Parse.contains_id(from, tile)) .|. (Bool.to_u32(land && Parse.contains_id(to, tile)) << 1n) : U32)
 
 type Setup is Type:
   Setup{cells: Array<U32>, queue: Array<U32>, tail: U32}
 
 def write_kind(cells: Array<U32>, +i: U32, +kind: U32, +start: Bool) -> Array<U32>:
-  DJ.write_words(cells, (i * 4 : U32), [kind, Bool.to_u32(start), i])
+  Dijkstra.write_words(cells, (i * 4 : U32), [kind, Bool.to_u32(start), i])
 
 def marked(s: Setup, +i: U32, +kind: U32) -> Setup:
   match s:
@@ -62,7 +62,7 @@ def offsets_y() -> List<&2, U32>:
 def visit_fresh(fresh: Bool, cells: Array<U32>, queue: Array<U32>, +n: U32, +steps: U32, +origin: U32, +tail: U32) -> Walk:
   match fresh:
     case True{}:
-      Walk{DJ.write_words(cells, (n * 4 + 1 : U32), [(steps + 2 : U32), origin]), queue[tail] <- n, 0, (tail + 1 : U32), None{}}
+      Walk{Dijkstra.write_words(cells, (n * 4 + 1 : U32), [(steps + 2 : U32), origin]), queue[tail] <- n, 0, (tail + 1 : U32), None{}}
     case False{}:
       Walk{cells, queue, 0, tail, None{}}
 
@@ -108,7 +108,7 @@ def expand_tile(got: Array<U32> & List<&2, U32>, queue: Array<U32>, +i: U32, +he
 
 def popped(got: Array<U32> & U32, cells: Array<U32>, +head: U32, +tail: U32, +width: U32, +height: U32) -> Walk:
   (queue, +i) = got
-  expand_tile(DJ.read_words(cells, (i * 4 : U32), 3n), queue, i, (head + 1 : U32), tail, width, height)
+  expand_tile(Dijkstra.read_words(cells, (i * 4 : U32), 3n), queue, i, (head + 1 : U32), tail, width, height)
 
 def unreachable() -> Found:
   Found{4294967295, 0, 0}
@@ -146,9 +146,9 @@ def walk_of(s: Setup) -> Walk:
 
 # The shortest 4-neighbour step count from a `from` tile to a `to` tile (vocabulary tile names), with the start
 # tile owning the BFS region and the goal reached first.
-def nearest(+world: WD.World, +from: List<&2, U32>, +to: List<&2, U32>) -> Maybe<&2, Found>:
+def nearest(+world: FilterWorld.World, +from: List<&2, U32>, +to: List<&2, U32>) -> Maybe<&2, Found>:
   match world:
-    case WD.World{_, +w, +h, +tile_ids, _, _, +tiles}:
-      +depth = AN.depth_of((w * h : U32))
+    case FilterWorld.World{_, +w, +h, +tile_ids, _, _, +tiles}:
+      +depth = Anchor.depth_of((w * h : U32))
       setup = mark_all(tiles, Setup{[0 : U32^(Nat.add(depth, 3n))], [0 : U32^(Nat.add(depth, 1n))], 0}, 0, (w * h : U32), ids_of(tile_ids, from), ids_of(tile_ids, to))
       result_of(bfs(U32.to_nat((w * h + 2 : U32)), walk_of(setup), w, h))

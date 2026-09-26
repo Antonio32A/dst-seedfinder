@@ -1,11 +1,11 @@
 import Base
-import ../rng/pcg.bend as R
-import ../lua/math_random.bend as LM
-import ../lua/strhash.bend as LS
-import ../data/strings.bend as ST
-import ../data/rooms.bend as RM
-import ./mem.bend as SM
-import ./order.bend as GO
+import ../rng/pcg.bend as Pcg
+import ../lua/math_random.bend as MathRandom
+import ../lua/strhash.bend as StrHash
+import ../data/strings.bend as Strings
+import ../data/rooms.bend as Rooms
+import ./mem.bend as StoryMem
+import ./order.bend as StoryOrder
 
 # The story graph (network.lua Graph/Node/Edge) as one persistent word array, plus the log of every WorldSim call and
 # wrapped Lua function in execution order, and the RNG. Graph 0 is GAME_root; every other graph is a child of the root,
@@ -14,14 +14,14 @@ import ./order.bend as GO
 # One entry of the log. EGraph: AddChild(root, graph id, ...); ENode: AddChild(graph, node id, ...); ELink: AddLink or
 # AddExternalLink; ECall: another WorldSim call (method codes below); ELua: a wrapped Lua function returned.
 type Ev is Data:
-  EGraph{graph: U32, rng: R.Rng}
-  ENode{node: U32, rng: R.Rng}
-  ELink{external: Bool, from: U32, to: U32, rng: R.Rng}
-  ECall{method: U32, rng: R.Rng}
-  ELua{func: U32, before: R.Rng, after: R.Rng}
+  EGraph{graph: U32, rng: Pcg.Rng}
+  ENode{node: U32, rng: Pcg.Rng}
+  ELink{external: Bool, from: U32, to: U32, rng: Pcg.Rng}
+  ECall{method: U32, rng: Pcg.Rng}
+  ELua{func: U32, before: Pcg.Rng, after: Pcg.Rng}
 
 type St is Data:
-  St{mem: SM.Mem, log: List<&2, Ev>, rng: R.Rng}
+  St{mem: StoryMem.Mem, log: List<&2, Ev>, rng: Pcg.Rng}
 
 # A result next to the state.
 type Got is Data:
@@ -268,12 +268,12 @@ def f_depth() -> U32:
 def f_blocker_blank() -> U32:
   18
 
-def mem_of(+s: St) -> SM.Mem:
+def mem_of(+s: St) -> StoryMem.Mem:
   match s:
     case St{+m, _, _}:
       m
 
-def rng_of(+s: St) -> R.Rng:
+def rng_of(+s: St) -> Pcg.Rng:
   match s:
     case St{_, _, +rng}:
       rng
@@ -284,17 +284,17 @@ def log_of(+s: St) -> List<&2, Ev>:
       log
 
 def get(+s: St, +slot: U32) -> U32:
-  SM.get(mem_of(s), slot)
+  StoryMem.get(mem_of(s), slot)
 
 def put(+s: St, +slot: U32, +v: U32) -> St:
   match s:
     case St{+m, +log, +rng}:
-      St{SM.set(m, slot, v), log, rng}
+      St{StoryMem.set(m, slot, v), log, rng}
 
 def bump(+s: St, +slot: U32) -> St:
   put(s, slot, (get(s, slot) + 1 : U32))
 
-def with_rng(+s: St, +rng: R.Rng) -> St:
+def with_rng(+s: St, +rng: Pcg.Rng) -> St:
   match s:
     case St{+m, +log, _}:
       St{m, log, rng}
@@ -311,33 +311,33 @@ def say(+s: St) -> St:
   call(s, m_print())
 
 # The record of a wrapped Lua function that started at `before` and returns now.
-def returned(+s: St, +func: U32, +before: R.Rng) -> St:
+def returned(+s: St, +func: U32, +before: Pcg.Rng) -> St:
   emit(s, ELua{func, before, rng_of(s)})
 
 # `returned` on the state of a result, keeping its value.
-def returned_got(+g: Got, +func: U32, +before: R.Rng) -> Got:
+def returned_got(+g: Got, +func: U32, +before: Pcg.Rng) -> Got:
   match g:
     case Got{+v, +s}:
       Got{v, returned(s, func, before)}
 
-def drawn(+x: U32, +rng: R.Rng, +s: St) -> Got:
+def drawn(+x: U32, +rng: Pcg.Rng, +s: St) -> Got:
   Got{x, with_rng(s, rng)}
 
-def drawn_pair(got: U32 & R.Rng, +s: St) -> Got:
+def drawn_pair(got: U32 & Pcg.Rng, +s: St) -> Got:
   (+x, +rng) = got
   drawn(x, rng, s)
 
 # One raw PCG32 output (math.random() is x / (2^32 - 1)).
 def draw(+s: St) -> Got:
-  drawn_pair(R.draw(rng_of(s)), s)
+  drawn_pair(Pcg.draw(rng_of(s)), s)
 
 # math.random(u)
 def upto(+s: St, +u: U32) -> Got:
-  drawn_pair(LM.random_upto(rng_of(s), u), s)
+  drawn_pair(MathRandom.random_upto(rng_of(s), u), s)
 
 # math.random(m, n)
 def range(+s: St, +m: U32, +n: U32) -> Got:
-  drawn_pair(LM.random_range(rng_of(s), m, n), s)
+  drawn_pair(MathRandom.random_range(rng_of(s), m, n), s)
 
 # math.random() < p, for the exact threshold of p: 1 or 0.
 def below(+s: St, +threshold: U32) -> Got:
@@ -366,14 +366,14 @@ def is_entrance(+s: St, +n: U32) -> Bool:
   U32.is_eq(nf(s, n, f_entrance()), 1)
 
 def room_name(+room: U32) -> String:
-  ST.name(RM.name(room))
+  Strings.name(Rooms.name(room))
 
 def graph_name_of(+kind: U32, +part: U32) -> String:
   match kind:
     case 0:
       "GAME_root"
     case 1:
-      ST.name(part)
+      Strings.name(part)
     case 2:
       "LOOP_BLANK" ++ U32.show(part)
     case _:
@@ -415,11 +415,11 @@ def node_name(+s: St, +n: U32) -> String:
 def put_block(+s: St, +slot: U32, +k: Nat, +words: List<&2, U32>) -> St:
   match s:
     case St{+m, +log, +rng}:
-      St{SM.set_block(m, slot, k, SM.block(k, words)), log, rng}
+      St{StoryMem.set_block(m, slot, k, StoryMem.block(k, words)), log, rng}
 
 def new_graph(+s: St, +kind: U32, +part: U32, +tile: U32, +background: U32) -> Got:
   +g = get(s, s_graphs())
-  +fields = {[kind, part, LS.hash_string(graph_name_of(kind, part)), none(), none(), 0, none(), none(), get(s, s_edges()), background, tile] : List<&2, U32>}
+  +fields = {[kind, part, StrHash.hash_string(graph_name_of(kind, part)), none(), none(), 0, none(), none(), get(s, s_edges()), background, tile] : List<&2, U32>}
   Got{g, put_block(put(s, s_graphs(), (g + 1 : U32)), graph_slot(g, 0), 4n, fields)}
 
 # WorldSim:AddChild(root, graph id, tile, ...) for a graph.
@@ -467,7 +467,7 @@ def entrance_of(+d: Info) -> U32:
       entrance
 
 def hashed(+s: St, +n: U32) -> St:
-  set_nf(s, n, f_hash(), LS.hash_string(node_name(s, n)))
+  set_nf(s, n, f_hash(), StrHash.hash_string(node_name(s, n)))
 
 # Graph:AddNode: the node joins graph g (nodes[id] = node, entrancenode) and WorldSim:AddChild(graph, node, ...).
 def add_node(+s: St, +g: U32, +d: Info) -> Got:
@@ -536,16 +536,16 @@ def members_loop(n: Nat, +s: St, +node: U32) -> List<&2, U32>:
 def members(+s: St, +g: U32) -> List<&2, U32>:
   members_loop(U32.to_nat(gf(s, g, g_count())), s, gf(s, g, g_first()))
 
-def node_slots(+s: St, nodes: List<&2, U32>) -> List<&2, GO.Slot>:
+def node_slots(+s: St, nodes: List<&2, U32>) -> List<&2, StoryOrder.Slot>:
   match nodes:
     case Nil{}:
       Nil{}
     case Con{+n, rest}:
-      GO.Slot{nf(s, n, f_hash()), n} <> node_slots(s, rest)
+      StoryOrder.Slot{nf(s, n, f_hash()), n} <> node_slots(s, rest)
 
 # pairs() order of a fresh table after t[node id] = node for each of `nodes` in turn.
 def node_table_order(+s: St, +nodes: List<&2, U32>) -> List<&2, U32>:
-  GO.order(node_slots(s, nodes))
+  StoryOrder.order(node_slots(s, nodes))
 
 # pairs(graph.nodes)
 def node_order(+s: St, +g: U32) -> List<&2, U32>:
@@ -555,16 +555,16 @@ def node_order(+s: St, +g: U32) -> List<&2, U32>:
 def copy_order(+s: St, +g: U32) -> List<&2, U32>:
   node_table_order(s, node_order(s, g))
 
-def graph_slots(+s: St, graphs: List<&2, U32>) -> List<&2, GO.Slot>:
+def graph_slots(+s: St, graphs: List<&2, U32>) -> List<&2, StoryOrder.Slot>:
   match graphs:
     case Nil{}:
       Nil{}
     case Con{+g, rest}:
-      GO.Slot{gf(s, g, g_hash()), g} <> graph_slots(s, rest)
+      StoryOrder.Slot{gf(s, g, g_hash()), g} <> graph_slots(s, rest)
 
 # pairs() order of a fresh table keyed by graph ids, inserted in the given order.
 def graph_table_order(+s: St, +graphs: List<&2, U32>) -> List<&2, U32>:
-  GO.order(graph_slots(s, graphs))
+  StoryOrder.order(graph_slots(s, graphs))
 
 def span(n: Nat, +from: U32) -> List<&2, U32>:
   match n:
@@ -589,9 +589,9 @@ def add_extra(+s: St, +n: U32, +kind: U32, +value: U32) -> St:
   +slot = (extra_base() + (k * 3 : U32) : U32)
   put(put(put(put(s, s_extras(), (k + 1 : U32)), slot, n), (slot + 1 : U32), kind), (slot + 2 : U32), value)
 
-def fresh(+rng: R.Rng) -> St:
-  St{SM.empty(), Nil{}, rng}
+def fresh(+rng: Pcg.Rng) -> St:
+  St{StoryMem.empty(), Nil{}, rng}
 
 # The empty story: GAME_root only, loop_blanks and region_link_tasks at 1.
-def initial(+rng: R.Rng) -> St:
+def initial(+rng: Pcg.Rng) -> St:
   put(put(st(new_graph(fresh(rng), k_root(), 0, 0, none())), s_loop_blanks(), 1), s_region_links(), 1)

@@ -88,16 +88,16 @@ def main():
     m.const("region_link_room", ids.room_index("MoonIsland_Meadows"))
     m.code('''
 def piece_key(+key: U32) -> U32:
-  B.at(piece_keys(key), 0)
+  Blob.at(piece_keys(key), 0)
 
 def piece_key_layout(+key: U32) -> U32:
-  B.at(piece_keys(key), 1)
+  Blob.at(piece_keys(key), 1)
 
 def piece_special(+code: U32) -> U32:
-  B.at(piece_specials(code), 0)
+  Blob.at(piece_specials(code), 0)
 
 def piece_special_layout(+code: U32) -> U32:
-  B.at(piece_specials(code), 1)
+  Blob.at(piece_specials(code), 1)
 
 def is_impassable(+tile: U32) -> Bool:
   U32.is_eq(tile, impassable_value()) || ((tile >= legacy_impassable_first() : U32) && (tile <= legacy_impassable_last() : U32))

@@ -1,15 +1,15 @@
 import Base
-import ../f64/repr.bend as FR
-import ../f64/arith.bend as FA
-import ../f64/cmp.bend as FC
-import ../data/search_vocab.bend as V
+import ../f64/repr.bend as F64Repr
+import ../f64/arith.bend as F64Arith
+import ../f64/cmp.bend as F64Cmp
+import ../data/search_vocab.bend as SearchVocab
 
 # A generated world as the filters see it (.scratch/port/tools/world_dump.py writes the dump; M11 will build it from
 # the generator instead). Instances are savedata.ents entries: `index` is the position in its prefab's list, x/z the
 # doubles the worldgen rounded to 0.01, xk/zk those values times 100, and flags bit 0/1 say that x/z were integers in
 # the JSON (for printing them like Python does).
 type Inst is Data:
-  Inst{prefab: U32, index: U32, x: FR.F64, z: FR.F64, xk: U32, zk: U32, flags: U32}
+  Inst{prefab: U32, index: U32, x: F64Repr.F64, z: F64Repr.F64, xk: U32, zk: U32, flags: U32}
 
 # A directed wormhole link between two `wormhole` instances.
 type Link is Data:
@@ -48,7 +48,7 @@ type Insts is Data:
 def inst_list(n: Nat, +prefab: U32, +index: U32, words: List<&2, U32>, acc: List<&2, Inst>) -> Insts:
   match n words:
     case 1n+p Con{+xh, Con{+xl, Con{+zh, Con{+zl, Con{+xk, Con{+zk, Con{+flags, rest}}}}}}}:
-      inst_list(p, prefab, (index + 1 : U32), rest, Inst{prefab, index, FR.F64{xh, xl}, FR.F64{zh, zl}, xk, zk, flags} <> acc)
+      inst_list(p, prefab, (index + 1 : U32), rest, Inst{prefab, index, F64Repr.F64{xh, xl}, F64Repr.F64{zh, zl}, xk, zk, flags} <> acc)
     case _ rest:
       Insts{List.reverse(&2, Inst, acc), rest}
 
@@ -64,7 +64,7 @@ def grouped(counts: List<&2, U32>, +prefab: U32, got: Insts, acc: List<&2, List<
 
 def instance_at(+groups: List<&2, List<&2, Inst>>, +prefab: U32, +index: U32) -> Inst:
   +group = Maybe.default(&2, List<&2, Inst>, List.get(&2, List<&2, Inst>, groups, U32.to_nat(prefab)), Nil{})
-  Maybe.default(&2, Inst, List.get(&2, Inst, group, U32.to_nat(index)), Inst{prefab, index, FR.zero(), FR.zero(), 0, 0, 0})
+  Maybe.default(&2, Inst, List.get(&2, Inst, group, U32.to_nat(index)), Inst{prefab, index, F64Repr.zero(), F64Repr.zero(), 0, 0, 0})
 
 def link_list(n: Nat, +groups: List<&2, List<&2, Inst>>, +wormhole: U32, words: List<&2, U32>, acc: List<&2, Link>) -> Taken & List<&2, Link>:
   match n words:
@@ -82,7 +82,7 @@ def index_of(names: List<&2, String>, +name: String, +i: U32) -> U32:
 
 # The vocabulary id of a prefab name (the vocabulary size when unknown).
 def prefab_id(+name: String) -> U32:
-  index_of(V.prefabs(), name, 0)
+  index_of(SearchVocab.prefabs(), name, 0)
 
 def world_from_links(+seed: U32, +width: U32, +height: U32, +tile_ids: List<&2, U32>, +groups: List<&2, List<&2, Inst>>, got: Taken & List<&2, Link>) -> Loaded:
   (rest, links) = got

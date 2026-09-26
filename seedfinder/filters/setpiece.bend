@@ -1,6 +1,6 @@
 import Base
-import ../data/catalog.bend as C
-import ../level/setpieces.bend as S
+import ../data/catalog.bend as Catalog
+import ../level/setpieces.bend as LevelSetpieces
 
 # Per-boon count bounds in the same 8-bit layout as Pieces, plus bitmasks of the catalog ids
 # each single-choice category may take (bit 0 = nothing chosen).
@@ -34,10 +34,10 @@ def lanes_at_least(+a: U32, +b: U32) -> Bool:
 def has_bit(+mask: U32, +id: U32) -> Bool:
   U32.is_eq(((mask >> U32.to_nat((id .&. 31 : U32))) .&. 1 : U32), 1)
 
-def matches(+f: Filter, +p: S.Pieces) -> Bool:
+def matches(+f: Filter, +p: LevelSetpieces.Pieces) -> Bool:
   match f p:
     case Filter{+min_a, +min_b, +min_c, +min_d, +max_a, +max_b, +max_c, +max_d, +traps, +pois, +protecteds}
-         S.Pieces{+trap, +poi, +protected, +a, +b, +c, +d}:
+         LevelSetpieces.Pieces{+trap, +poi, +protected, +a, +b, +c, +d}:
       lanes_at_least(a, min_a) && lanes_at_least(b, min_b) && lanes_at_least(c, min_c) && lanes_at_least(d, min_d)
         && lanes_at_least(max_a, a) && lanes_at_least(max_b, b) && lanes_at_least(max_c, c) && lanes_at_least(max_d, d)
         && has_bit(traps, trap) && has_bit(pois, poi) && has_bit(protecteds, protected)
@@ -61,27 +61,27 @@ def restrict_mask(+mask: U32, +applies: Bool, +allowed: U32) -> U32:
 def restrict(+f: Filter, +kind: U32, +index: U32, +low: U32, +high: U32) -> Filter:
   match f:
     case Filter{+min_a, +min_b, +min_c, +min_d, +max_a, +max_b, +max_c, +max_d, +traps, +pois, +protecteds}:
-      +boon = U32.is_eq(kind, C.kind_boon())
+      +boon = U32.is_eq(kind, Catalog.kind_boon())
       +allowed = allowed_ids(index, low, high)
-      +impossible_fixed = U32.is_eq(kind, C.kind_fixed()) && Bool.not(in_range(index, low, high))
+      +impossible_fixed = U32.is_eq(kind, Catalog.kind_fixed()) && Bool.not(in_range(index, low, high))
       Filter{
         set_lane(boon, min_a, 0, index, low), set_lane(boon, min_b, 4, index, low),
         set_lane(boon, min_c, 8, index, low), set_lane(boon, min_d, 12, index, low),
         set_lane(boon, max_a, 0, index, high), set_lane(boon, max_b, 4, index, high),
         set_lane(boon, max_c, 8, index, high), set_lane(boon, max_d, 12, index, high),
-        restrict_mask(restrict_mask(traps, U32.is_eq(kind, C.kind_trap()), allowed), impossible_fixed, 0),
-        restrict_mask(pois, U32.is_eq(kind, C.kind_point_of_interest()), allowed),
-        restrict_mask(protecteds, U32.is_eq(kind, C.kind_protected_resource()), allowed)
+        restrict_mask(restrict_mask(traps, U32.is_eq(kind, Catalog.kind_trap()), allowed), impossible_fixed, 0),
+        restrict_mask(pois, U32.is_eq(kind, Catalog.kind_point_of_interest()), allowed),
+        restrict_mask(protecteds, U32.is_eq(kind, Catalog.kind_protected_resource()), allowed)
       }
 
-def find_entry(entries: List<&2, C.Entry>, +name: String) -> Maybe<&2, C.Entry>:
+def find_entry(entries: List<&2, Catalog.Entry>, +name: String) -> Maybe<&2, Catalog.Entry>:
   match entries:
     case Nil{}:
       None{}
     case Con{+entry, rest}:
       match entry:
-        case C.Entry{+entry_name, _, _}:
-          Bool.pick(Maybe<&2, C.Entry>, String.eq(entry_name, name), Some{entry}, find_entry(rest, name))
+        case Catalog.Entry{+entry_name, _, _}:
+          Bool.pick(Maybe<&2, Catalog.Entry>, String.eq(entry_name, name), Some{entry}, find_entry(rest, name))
 
 def parsed_bound(read: Maybe<&2, U32>, +text: String) -> Result<&1, &1, U32 & String, U32>:
   match read:
@@ -101,12 +101,12 @@ def bound(parts: List<&2, String>, +i: Nat, +fallback: U32) -> Result<&1, &1, U3
   bound_text(List.get(&2, String, parts, i), fallback)
 
 def restrict_by_entry(
-  found: Maybe<&2, C.Entry>, +f: Filter, +name: String, +low: U32, +high: U32
+  found: Maybe<&2, Catalog.Entry>, +f: Filter, +name: String, +low: U32, +high: U32
 ) -> Result<&1, &1, U32 & String, Filter>:
   match found:
     case None{}:
       Fail{(2, "unknown set piece: " ++ name)}
-    case Some{C.Entry{_, +kind, +index}}:
+    case Some{Catalog.Entry{_, +kind, +index}}:
       Done{restrict(f, kind, index, low, high)}
 
 def with_bounds(
@@ -114,7 +114,7 @@ def with_bounds(
 ) -> Result<&1, &1, U32 & String, Filter>:
   match low high:
     case Done{+l} Done{+h}:
-      restrict_by_entry(find_entry(C.catalog(), name), f, name, l, h)
+      restrict_by_entry(find_entry(Catalog.catalog(), name), f, name, l, h)
     case Fail{e} _:
       Fail{e}
     case _ Fail{e}:

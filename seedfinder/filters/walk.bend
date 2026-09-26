@@ -1,8 +1,8 @@
 import Base
-import ./bignum.bend as BN
-import ../f64/repr.bend as FR
-import ../f64/arith.bend as FA
-import ../f64/cmp.bend as FC
+import ./bignum.bend as BigNum
+import ../f64/repr.bend as F64Repr
+import ../f64/arith.bend as F64Arith
+import ../f64/cmp.bend as F64Cmp
 
 # An exact walk length q + 4*sqrt(2)*b (search-v1.md section 5): q = the offsets plus 4 per orthogonal step, as a
 # 96-bit fixed-point number with 64 fraction bits (q2 the integer part, q1 q0 the fraction words), which holds every
@@ -85,12 +85,12 @@ def words_compare(+a2: U32, +a1: U32, +a0: U32, +b2: U32, +b1: U32, +b0: U32) ->
       Bool.pick(U32, (a0 < b0 : U32), 0, Bool.pick(U32, (a0 > b0 : U32), 2, 1))))))
 
 def big_of(+q2: U32, +q1: U32, +q0: U32) -> List<&2, U32>:
-  BN.add(BN.of_u32(q0), BN.add(BN.shl(BN.of_u32(q1), 32n), BN.shl(BN.of_u32(q2), 64n)))
+  BigNum.add(BigNum.of_u32(q0), BigNum.add(BigNum.shl(BigNum.of_u32(q1), 32n), BigNum.shl(BigNum.of_u32(q2), 64n)))
 
 def rational_wins(+difference: List<&2, U32>, +c: U32) -> Bool:
-  +square = BN.mul(difference, difference)
-  +c2 = BN.shl(BN.mul_small(BN.mul(BN.of_u32(c), BN.of_u32(c)), 32), 128n)
-  U32.is_eq(BN.compare(square, c2), 2)
+  +square = BigNum.mul(difference, difference)
+  +c2 = BigNum.shl(BigNum.mul_small(BigNum.mul(BigNum.of_u32(c), BigNum.of_u32(c)), 32), 128n)
+  U32.is_eq(BigNum.compare(square, c2), 2)
 
 def mixed_sign(+q_order: U32, +difference: List<&2, U32>, +b_order: U32, +c: U32) -> U32:
   Bool.pick(U32, U32.is_eq(q_order, 1) || U32.is_eq(q_order, b_order), b_order,
@@ -102,7 +102,7 @@ def exact_compare(a: Length, b: Length) -> U32:
       +q_order = words_compare(a2, a1, a0, b2, b1, b0)
       +big_a = big_of(a2, a1, a0)
       +big_b = big_of(b2, b1, b0)
-      +difference = Bool.pick(List<&2, U32>, U32.is_eq(q_order, 2), BN.sub(big_a, big_b), BN.sub(big_b, big_a))
+      +difference = Bool.pick(List<&2, U32>, U32.is_eq(q_order, 2), BigNum.sub(big_a, big_b), BigNum.sub(big_b, big_a))
       +b_order = Bool.pick(U32, (ab < bb : U32), 0, Bool.pick(U32, (ab > bb : U32), 2, 1))
       +c = Bool.pick(U32, (ab < bb : U32), (bb - ab : U32), (ab - bb : U32))
       Bool.pick(U32, U32.is_eq(b_order, 1), q_order, mixed_sign(q_order, difference, b_order, c))
@@ -158,17 +158,17 @@ def is_lt(+a: Length, +b: Length) -> Bool:
   U32.is_zero(compare(a, b))
 
 def length_of_scaled(+scaled: List<&2, U32>) -> Length:
-  +fixed = BN.shr(scaled, 1010n)
-  Length{BN.word(fixed, 2n), BN.word(fixed, 1n), BN.word(fixed, 0n), 0}
+  +fixed = BigNum.shr(scaled, 1010n)
+  Length{BigNum.word(fixed, 2n), BigNum.word(fixed, 1n), BigNum.word(fixed, 0n), 0}
 
 # The length of an offset double (>= 0): exact for doubles >= 2^-11, truncated below.
-def of_double(+d: FR.F64) -> Length:
-  length_of_scaled(BN.of_double(d))
+def of_double(+d: F64Repr.F64) -> Length:
+  length_of_scaled(BigNum.of_double(d))
 
 # A double bound as a length plus the flag for lost bits.
-def bound_of(+d: FR.F64) -> Bound:
-  +scaled = BN.of_double(d)
-  Bound{length_of_scaled(scaled), Bool.not(BN.is_zero(BN.low_bits(scaled, 1010n)))}
+def bound_of(+d: F64Repr.F64) -> Bound:
+  +scaled = BigNum.of_double(d)
+  Bound{length_of_scaled(scaled), Bool.not(BigNum.is_zero(BigNum.low_bits(scaled, 1010n)))}
 
 # length <= bound, exactly (a length is 0 or at least 2^-11, so lost bits of a tiny bound never matter).
 def within_max(+l: Length, b: Bound) -> Bool:
@@ -187,17 +187,17 @@ def thousand_root2() -> List<&2, U32>:
   [10257, 37647, 10220, 26053, 6208, 55984, 5656]
 
 def rounded_of(+scaled: List<&2, U32>, +exact: Bool) -> Nat:
-  +whole = BN.shr(scaled, 96n)
-  +rest = BN.low_bits(scaled, 96n)
-  +half = BN.shl([1], 95n)
-  +order = BN.compare(rest, half)
-  +up = U32.is_eq(order, 2) || (U32.is_eq(order, 1) && (Bool.not(exact) || U32.is_eq(BN.bit(whole, 0n), 1)))
-  +n = BN.add(whole, Bool.pick(List<&2, U32>, up, [1], Nil{}))
-  Nat.add(U32.to_nat(BN.word(n, 0n)), Nat.mul(U32.to_nat(BN.word(n, 1n)), Nat.mul(65536n, 65536n)))
+  +whole = BigNum.shr(scaled, 96n)
+  +rest = BigNum.low_bits(scaled, 96n)
+  +half = BigNum.shl([1], 95n)
+  +order = BigNum.compare(rest, half)
+  +up = U32.is_eq(order, 2) || (U32.is_eq(order, 1) && (Bool.not(exact) || U32.is_eq(BigNum.bit(whole, 0n), 1)))
+  +n = BigNum.add(whole, Bool.pick(List<&2, U32>, up, [1], Nil{}))
+  Nat.add(U32.to_nat(BigNum.word(n, 0n)), Nat.mul(U32.to_nat(BigNum.word(n, 1n)), Nat.mul(65536n, 65536n)))
 
 # round(length * 1000), half to even (only a length without diagonals can be a tie).
 def thousandths(l: Length) -> Nat:
   match l:
     case Length{+q2, +q1, +q0, +b}:
-      +rational = BN.shl(BN.mul_small(big_of(q2, q1, q0), 1000), 32n)
-      rounded_of(BN.add(rational, BN.mul(BN.of_u32(b), thousand_root2())), U32.is_zero(b))
+      +rational = BigNum.shl(BigNum.mul_small(big_of(q2, q1, q0), 1000), 32n)
+      rounded_of(BigNum.add(rational, BigNum.mul(BigNum.of_u32(b), thousand_root2())), U32.is_zero(b))

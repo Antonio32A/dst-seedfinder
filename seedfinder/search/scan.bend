@@ -1,30 +1,30 @@
 import Base
-import ../filters/config.bend as CF
-import ../cli/args.bend as A
-import ./common.bend as SC
-import ./report.bend as RP
-import ./worlds.bend as SWD
-import ./generated.bend as SGN
-import ../filters/rules.bend as RU
+import ../filters/config.bend as Config
+import ../cli/args.bend as Args
+import ./common.bend as SearchCommon
+import ./report.bend as SearchReport
+import ./worlds.bend as SearchWorlds
+import ./generated.bend as SearchGenerated
+import ../filters/rules.bend as Rules
 
 def world_scan(
-  n: Nat, +seed: U32, +criteria: List<&2, CF.Criteria>, +cap: U32, +count: U32, hits: List<&2, U32>
+  n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +cap: U32, +count: U32, hits: List<&2, U32>
 ) -> U32 & List<&2, U32>:
   match n:
     case 0n:
       (count, List.reverse(&2, U32, hits))
     case 1n+p:
-      +hit = CF.matches(criteria, seed)
-      world_scan(p, (seed + 1 : U32), criteria, cap, (count + Bool.to_u32(hit) : U32), SC.keep_hit(hit, seed, count, cap, hits))
+      +hit = Config.matches(criteria, seed)
+      world_scan(p, (seed + 1 : U32), criteria, cap, (count + Bool.to_u32(hit) : U32), SearchCommon.keep_hit(hit, seed, count, cap, hits))
 
-def world_search(+depth: Nat, +lo: U32, +n: Nat, +criteria: List<&2, CF.Criteria>, +cap: U32) -> U32 & List<&2, U32>:
+def world_search(+depth: Nat, +lo: U32, +n: Nat, +criteria: List<&2, Config.Criteria>, +cap: U32) -> U32 & List<&2, U32>:
   match depth:
     case 0n:
-      world_scan(n, lo, CF.local_criteria(criteria), cap, 0, Nil{})
+      world_scan(n, lo, Config.local_criteria(criteria), cap, 0, Nil{})
     case 1n+d:
       +half = Nat.div(n, 2n)
       a b = world_search(d, lo, half, criteria, cap) world_search(d, (lo + U32.from_nat(half) : U32), Nat.sub(n, half), criteria, cap)
-      SC.combine(a, b)
+      SearchCommon.combine(a, b)
 
 type Scan is Data:
   Scan{next: U32, left: Nat, size: Nat, found: U32, hits: List<&2, U32>, code: U32, len: Nat}
@@ -59,12 +59,12 @@ def round_len(+stop: U32, +size: Nat, +left: Nat) -> Nat:
   +whole = Nat.is_le(left, Nat.add(size, Nat.div(size, 2n)))
   Bool.pick(Nat, U32.is_zero(stop), Bool.pick(Nat, whole, left, size), 0n)
 
-def report(+q: A.Query, +entries: List<&2, CF.Criteria>, +scan: Scan) -> IO(Unit):
+def report(+q: Args.Query, +entries: List<&2, Config.Criteria>, +scan: Scan) -> IO(Unit):
   match q:
-    case A.Query{+start, +total, _, _, json, _, +platform, _, _}:
+    case Args.Query{+start, +total, _, _, json, _, +platform, _, _}:
       match scan:
         case Scan{_, +left, _, +found, +hits, +code, _}:
-          RP.print_report(json, U32.is_ne(platform, 2), entries, hits, start, RP.scanned_of(code, hits, start, total, left), found, code)
+          SearchReport.print_report(json, U32.is_ne(platform, 2), entries, hits, start, SearchReport.scanned_of(code, hits, start, total, left), found, code)
 
 def advance(
   +scan: Scan, +count: U32, got: List<&2, U32>, +limit: U32, +time_ms: Nat, +elapsed: Nat, +round_ms: Nat
@@ -99,11 +99,11 @@ def room_of(+scan: Scan, +limit: U32) -> U32:
 def progress_of(+scan: Scan, +total: Nat, +elapsed: Nat) -> String:
   match scan:
     case Scan{_, +left, _, +found, _, _, +len}:
-      SC.progress_line(Nat.sub(total, Nat.add(left, len)), total, found, elapsed)
+      SearchCommon.progress_line(Nat.sub(total, Nat.add(left, len)), total, found, elapsed)
 
 def world_rounds(
-  k: Nat, round: U32 & List<&2, U32>, +scan: Scan, +q: A.Query, +entries: List<&2, CF.Criteria>,
-  +criteria: List<&2, CF.Criteria>, +started: Nat, +ticked: Nat
+  k: Nat, round: U32 & List<&2, U32>, +scan: Scan, +q: Args.Query, +entries: List<&2, Config.Criteria>,
+  +criteria: List<&2, Config.Criteria>, +started: Nat, +ticked: Nat
 ) -> IO(Unit):
   match k:
     case 0n:
@@ -115,7 +115,7 @@ def world_rounds(
           match code:
             case 0:
               match q:
-                case A.Query{_, +total, +limit, +time_ms, _, _, _, _, _}:
+                case Args.Query{_, +total, +limit, +time_ms, _, _, _, _, _}:
                   do IO<Unit>:
                     +now : Nat <- IO.now()
                     +after : Scan = advance(scan, count, got, limit, time_ms, Nat.sub(now, started), Nat.sub(now, ticked))
@@ -123,42 +123,42 @@ def world_rounds(
                     +len : Nat = round_len_of(after)
                     +room : U32 = room_of(after, limit)
                     IO.print_err(progress_of(after, total, Nat.sub(now, started)))
-                    world_rounds(p, world_search(SC.search_depth(), from, len, criteria, room), after, q, entries, criteria, started, now)
+                    world_rounds(p, world_search(SearchCommon.search_depth(), from, len, criteria, room), after, q, entries, criteria, started, now)
             case _:
               report(q, entries, scan)
 
-def level_rounds(+q: A.Query, +config: CF.Config) -> IO(Unit):
+def level_rounds(+q: Args.Query, +config: Config.Config) -> IO(Unit):
   match q config:
-    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} CF.Config{+windows, +entries, _, _, +scanned}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} Config.Config{+windows, +entries, _, _, +scanned}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         world_rounds(round_fuel(), (0, Nil{}), Scan{start, total, min_round(), 0, Nil{}, 0, 0n},
-          A.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}}, entries, scanned, started, started)
+          Args.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}}, entries, scanned, started, started)
 
-def any_rules(laters: List<&2, RU.Later>) -> Bool:
+def any_rules(laters: List<&2, Rules.Later>) -> Bool:
   match laters:
     case Nil{}:
       False{}
     case Con{+later, rest}:
-      RU.has_rules(later) || any_rules(rest)
+      Rules.has_rules(later) || any_rules(rest)
 
-def with_worlds(worlds: Maybe<&2, String>, +q: A.Query, +config: CF.Config) -> IO(Unit):
+def with_worlds(worlds: Maybe<&2, String>, +q: Args.Query, +config: Config.Config) -> IO(Unit):
   match worlds config:
-    case None{} CF.Config{_, _, +laters, _, _}:
-      Bool.pick(IO(Unit), any_rules(laters), SGN.run(q, config), level_rounds(q, config))
-    case Some{+dir} CF.Config{_, _, +laters, _, _}:
-      Bool.pick(IO(Unit), any_rules(laters), SWD.run(q, config, dir), level_rounds(q, config))
+    case None{} Config.Config{_, _, +laters, _, _}:
+      Bool.pick(IO(Unit), any_rules(laters), SearchGenerated.run(q, config), level_rounds(q, config))
+    case Some{+dir} Config.Config{_, _, +laters, _, _}:
+      Bool.pick(IO(Unit), any_rules(laters), SearchWorlds.run(q, config, dir), level_rounds(q, config))
 
-def with_platform(+config: CF.Config, +platform: U32) -> CF.Config:
+def with_platform(+config: Config.Config, +platform: U32) -> Config.Config:
   match config:
-    case CF.Config{+windows, +criteria, +laters, +unsupported, +scanned}:
-      CF.Config{Bool.pick(Bool, U32.is_zero(platform), windows, U32.is_eq(platform, 1)), criteria, laters, unsupported, scanned}
+    case Config.Config{+windows, +criteria, +laters, +unsupported, +scanned}:
+      Config.Config{Bool.pick(Bool, U32.is_zero(platform), windows, U32.is_eq(platform, 1)), criteria, laters, unsupported, scanned}
 
 # world find: the level-table scan, or (with parts B-E) the search over worlds generated in memory, or with
 # --worlds DIR over pre-generated world dumps. --platform overrides the config's platform.
-def run_query(+q: A.Query, loaded: Result<&1, &1, U32 & String, CF.Config>) -> IO(Unit):
+def run_query(+q: Args.Query, loaded: Result<&1, &1, U32 & String, Config.Config>) -> IO(Unit):
   match q loaded:
-    case A.Query{_, _, _, _, +json, _, _, _, _} Fail{failure}:
-      RP.fail_job(json, failure)
-    case A.Query{_, _, _, _, _, _, +platform, +worlds, _} Done{+config}:
+    case Args.Query{_, _, _, _, +json, _, _, _, _} Fail{failure}:
+      SearchReport.fail_job(json, failure)
+    case Args.Query{_, _, _, _, _, _, +platform, +worlds, _} Done{+config}:
       with_worlds(worlds, q, with_platform(config, platform))

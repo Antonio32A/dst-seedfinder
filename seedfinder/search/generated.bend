@@ -1,19 +1,19 @@
 import Base
-import ../filters/config.bend as CF
-import ../filters/world.bend as WD
-import ../worldsim/layout/space.bend as KS
-import ../gen/job.bend as GJ
-import ../gen/layout.bend as LO
-import ../gen/savedata.bend as GV
-import ../cli/args.bend as A
-import ./report.bend as RP
-import ./worlds.bend as SWD
-import ./order.bend as SO
-import ./threads.bend as STH
+import ../filters/config.bend as Config
+import ../filters/world.bend as FilterWorld
+import ../worldsim/layout/space.bend as LayoutSpace
+import ../gen/job.bend as GenJob
+import ../gen/layout.bend as GenLayout
+import ../gen/savedata.bend as SaveData
+import ../cli/args.bend as Args
+import ./report.bend as SearchReport
+import ./worlds.bend as SearchWorlds
+import ./order.bend as SearchOrder
+import ./threads.bend as SearchThreads
 
 # `world find` for configs with parts B-E, on worlds generated in memory: part A picks the candidates chunk by chunk
 # (the level-table scan), and only candidates are generated, many at once, one per slot. A round:
-# - starts every KK pass the slots asked for as its own computation (LO.solve: the native KK runs on the runtime's IO
+# - starts every KK pass the slots asked for as its own computation (GenLayout.solve: the native KK runs on the runtime's IO
 #   helper threads while the rounds go on), each sending its positions to the search's channel when done;
 # - runs the next CPU stage of every other slot in parallel (storygen, Voronoi, commit, tiles, land, ocean, the
 #   filters), on a fork tree split by the stages' estimated cost so the threads get even shares;
@@ -29,12 +29,12 @@ import ./threads.bend as STH
 # decided, or held out while its CPU work runs. `cost` estimates the next CPU work (ms).
 type Slot is Type:
   Free{}
-  Cpu{seed: U32, job: GJ.Job, cost: U32}
-  Wait{seed: U32, job: GJ.Job, cost: U32}
-  Back{seed: U32, job: GJ.Job, ps: List<&2, KS.Vec>, cost: U32}
-  Rush{seed: U32, job: GJ.Job, ps: List<&2, KS.Vec>, back: Bool}
-  Asked{seed: U32, job: GJ.Job, layout: LO.Layout}
-  Decided{seed: U32, verdict: SWD.Verdict}
+  Cpu{seed: U32, job: GenJob.Job, cost: U32}
+  Wait{seed: U32, job: GenJob.Job, cost: U32}
+  Back{seed: U32, job: GenJob.Job, ps: List<&2, LayoutSpace.Vec>, cost: U32}
+  Rush{seed: U32, job: GenJob.Job, ps: List<&2, LayoutSpace.Vec>, back: Bool}
+  Asked{seed: U32, job: GenJob.Job, layout: GenLayout.Layout}
+  Decided{seed: U32, verdict: SearchWorlds.Verdict}
   Held{}
 
 type Slots is Type:
@@ -132,26 +132,26 @@ def flat(s: Slots) -> List<&1, Slot>:
 
 # A KK pass a slot asked for (tag: the slot's index).
 type Request is Data:
-  Request{tag: U32, layout: LO.Layout}
+  Request{tag: U32, layout: GenLayout.Layout}
 
 # What the search's channel carries: a finished pass's positions, or the marker that ends a take.
 type Note is Data:
-  Laid{tag: U32, ps: List<&2, KS.Vec>}
+  Laid{tag: U32, ps: List<&2, LayoutSpace.Vec>}
   Mark{}
 
 # The per-run constants: scan start and length, hit limit, time limit, output mode, config, the start time, the slots
 # (seeds in flight), the KK engine and the channel the passes answer on.
 type Ctx is Data:
-  Ctx{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: CF.Config, started: Nat, slots: U32, native: Bool, laid: Chan(Note)}
+  Ctx{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Config.Config, started: Nat, slots: U32, native: Bool, laid: Chan(Note)}
 
-def config_of(+ctx: Ctx) -> CF.Config:
+def config_of(+ctx: Ctx) -> Config.Config:
   match ctx:
     case Ctx{_, _, _, _, _, +config, _, _, _, _}:
       config
 
-def windows_of(+config: CF.Config) -> Bool:
+def windows_of(+config: Config.Config) -> Bool:
   match config:
-    case CF.Config{+windows, _, _, _, _}:
+    case Config.Config{+windows, _, _, _, _}:
       windows
 
 def ctx_start(+ctx: Ctx) -> U32:
@@ -174,9 +174,9 @@ def elapsed(+ctx: Ctx, +now: Nat) -> Nat:
     case Ctx{_, _, _, _, _, _, +started, _, _, _}:
       Nat.sub(now, started)
 
-def criteria_of(+ctx: Ctx) -> List<&2, CF.Criteria>:
+def criteria_of(+ctx: Ctx) -> List<&2, Config.Criteria>:
   match ctx:
-    case Ctx{_, _, _, _, _, CF.Config{_, _, _, _, +scanned}, _, _, _, _}:
+    case Ctx{_, _, _, _, _, Config.Config{_, _, _, _, +scanned}, _, _, _, _}:
       scanned
 
 def slots_of(+ctx: Ctx) -> U32:
@@ -189,14 +189,14 @@ def laid_of(+ctx: Ctx) -> Chan(Note):
     case Ctx{_, _, _, _, _, _, _, _, _, +laid}:
       laid
 
-def world_verdict(job: GJ.Job, +config: CF.Config, +seed: U32) -> SWD.Verdict:
+def world_verdict(job: GenJob.Job, +config: Config.Config, +seed: U32) -> SearchWorlds.Verdict:
   match job:
-    case GJ.JWorld{_, _, final}:
-      SWD.world_verdict(Done{WD.Generated{GV.world(seed, windows_of(config), final), 0}}, config, seed)
+    case GenJob.JWorld{_, _, final}:
+      SearchWorlds.world_verdict(Done{FilterWorld.Generated{SaveData.world(seed, windows_of(config), final), 0}}, config, seed)
     case _:
-      SWD.Miss{}
+      SearchWorlds.Miss{}
 
-# The estimated ms of a job's next CPU stage (see GJ.Job: 0 start, 3 commit, 4 tiles, 5 land, 6 ocean; `gen --times`).
+# The estimated ms of a job's next CPU stage (see GenJob.Job: 0 start, 3 commit, 4 tiles, 5 land, 6 ocean; `gen --times`).
 def stage_cost(+stage: U32) -> U32:
   match stage:
     case 4:
@@ -209,12 +209,12 @@ def stage_cost(+stage: U32) -> U32:
       8
 
 # The estimated ms of resuming after a KK pass: Voronoi and the story up to pass 2 after pass 1, Voronoi after pass 2.
-def pass_cost(+l: LO.Layout) -> U32:
+def pass_cost(+l: GenLayout.Layout) -> U32:
   match l:
-    case LO.Layout{+first, _, _, _, _}:
+    case GenLayout.Layout{+first, _, _, _, _}:
       Bool.pick(U32, U32.is_zero(first), 8, 5)
 
-def asked(got: GJ.Job & Maybe<&2, LO.Layout>, +seed: U32, +stage: U32) -> Slot:
+def asked(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +stage: U32) -> Slot:
   (job, pass) = got
   match pass:
     case Some{+l}:
@@ -222,53 +222,53 @@ def asked(got: GJ.Job & Maybe<&2, LO.Layout>, +seed: U32, +stage: U32) -> Slot:
     case None{}:
       Cpu{seed, job, stage_cost(stage)}
 
-def settled_at(settled: Bool, job: GJ.Job, +stage: U32, +config: CF.Config, +seed: U32) -> Slot:
+def settled_at(settled: Bool, job: GenJob.Job, +stage: U32, +config: Config.Config, +seed: U32) -> Slot:
   match settled:
     case True{}:
       Decided{seed, world_verdict(job, config, seed)}
     case False{}:
-      asked(GJ.layout(job), seed, stage)
+      asked(GenJob.layout(job), seed, stage)
 
 # Where a job stands after its CPU work: decided, asking for a KK pass, or its next stage for the next round.
-def parked(got: GJ.Job & GJ.Where, +config: CF.Config, +seed: U32) -> Slot:
+def parked(got: GenJob.Job & GenJob.Where, +config: Config.Config, +seed: U32) -> Slot:
   (job, +at) = got
   match at:
-    case GJ.Where{+stage, _}:
-      settled_at(GJ.settled(stage), job, stage, config, seed)
+    case GenJob.Where{+stage, _}:
+      settled_at(GenJob.settled(stage), job, stage, config, seed)
 
-def moved_on(got: GJ.Job & Maybe<&2, LO.Layout>) -> GJ.Job:
+def moved_on(got: GenJob.Job & Maybe<&2, GenLayout.Layout>) -> GenJob.Job:
   (job, pass) = got
   match pass:
     case Some{_}:
       job
     case None{}:
-      GJ.step(job)
+      GenJob.step(job)
 
-def moved_at(settled: Bool, job: GJ.Job) -> GJ.Job:
+def moved_at(settled: Bool, job: GenJob.Job) -> GenJob.Job:
   match settled:
     case True{}:
       job
     case False{}:
-      moved_on(GJ.layout(job))
+      moved_on(GenJob.layout(job))
 
 # A stage transition; decided jobs and jobs at a KK pass stay.
-def moved(got: GJ.Job & GJ.Where) -> GJ.Job:
+def moved(got: GenJob.Job & GenJob.Where) -> GenJob.Job:
   (job, +at) = got
   match at:
-    case GJ.Where{+stage, _}:
-      moved_at(GJ.settled(stage), job)
+    case GenJob.Where{+stage, _}:
+      moved_at(GenJob.settled(stage), job)
 
-def rushed(budget: Nat, job: GJ.Job, +config: CF.Config, +seed: U32) -> Slot:
+def rushed(budget: Nat, job: GenJob.Job, +config: Config.Config, +seed: U32) -> Slot:
   match budget:
     case 0n:
-      parked(GJ.stage(job), config, seed)
+      parked(GenJob.stage(job), config, seed)
     case 1n+b:
-      rushed(b, moved(GJ.stage(job)), config, seed)
+      rushed(b, moved(GenJob.stage(job)), config, seed)
 
-def resumed(back: Bool, job: GJ.Job, +ps: List<&2, KS.Vec>) -> GJ.Job:
+def resumed(back: Bool, job: GenJob.Job, +ps: List<&2, LayoutSpace.Vec>) -> GenJob.Job:
   match back:
     case True{}:
-      GJ.laid(job, ps)
+      GenJob.laid(job, ps)
     case False{}:
       job
 
@@ -286,19 +286,19 @@ def rush_cost() -> U32:
 
 # One stage transition per slot and round (or the resume after a pass), so the work of a round splits evenly; a
 # rushed seed runs on to its next pass or verdict.
-def work(slot: Slot, +config: CF.Config) -> Slot:
+def work(slot: Slot, +config: Config.Config) -> Slot:
   match slot:
     case Cpu{+seed, job, _}:
-      parked(GJ.stage(GJ.step(job)), config, seed)
+      parked(GenJob.stage(GenJob.step(job)), config, seed)
     case Back{+seed, job, +ps, _}:
-      parked(GJ.stage(GJ.laid(job, ps)), config, seed)
+      parked(GenJob.stage(GenJob.laid(job, ps)), config, seed)
     case Rush{+seed, job, +ps, back}:
       rushed(rush_steps(), resumed(back, job, ps), config, seed)
     case other:
       other
 
 # The CPU work of every slot, both halves of each fork in parallel.
-def worked_all(s: Slots, +config: CF.Config) -> Slots:
+def worked_all(s: Slots, +config: Config.Config) -> Slots:
   match s:
     case Leaf{slot}:
       Leaf{work(slot, config)}
@@ -331,10 +331,10 @@ def gather(xs: List<&1, Slot>, acc: List<&1, Slot>, todo: List<&1, Slot>, +costs
     case Con{x, rest}:
       match x:
         case Cpu{+seed, job, +cost}:
-          +r = Nat.is_le(SO.position(seed, start), rush)
+          +r = Nat.is_le(SearchOrder.position(seed, start), rush)
           gather(rest, Held{} <> acc, as_todo(r, Cpu{seed, job, cost}) <> todo, Bool.pick(U32, r, (cost + rush_cost() : U32), cost) <> costs, start, rush)
         case Back{+seed, job, +ps, +cost}:
-          +r = Nat.is_le(SO.position(seed, start), rush)
+          +r = Nat.is_le(SearchOrder.position(seed, start), rush)
           gather(rest, Held{} <> acc, as_todo(r, Back{seed, job, ps, cost}) <> todo, Bool.pick(U32, r, (cost + rush_cost() : U32), cost) <> costs, start, rush)
         case other:
           gather(rest, other <> acc, todo, costs, start, rush)
@@ -362,7 +362,7 @@ def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slo
         case other:
           merge(rest, done, (tag + 1 : U32), other <> acc, asked)
 
-def worked_slots(g: Gathered, +config: CF.Config) -> Merged:
+def worked_slots(g: Gathered, +config: Config.Config) -> Merged:
   match g:
     case Gathered{slots, todo, +costs}:
       merge(slots, flat(worked_all(tree_of(todo, costs), config)), 0, Nil{}, Nil{})
@@ -389,7 +389,7 @@ def sorted_laid(laid: List<&2, Note>, +acc: List<&2, Note>) -> List<&2, Note>:
     case Con{+n, rest}:
       sorted_laid(rest, by_tag(acc, n))
 
-def back_if(hit: Bool, x: Slot, +ps: List<&2, KS.Vec>) -> Slot:
+def back_if(hit: Bool, x: Slot, +ps: List<&2, LayoutSpace.Vec>) -> Slot:
   match hit:
     case True{}:
       match x:
@@ -400,7 +400,7 @@ def back_if(hit: Bool, x: Slot, +ps: List<&2, KS.Vec>) -> Slot:
     case False{}:
       x
 
-def laid_ps(+n: Note) -> List<&2, KS.Vec>:
+def laid_ps(+n: Note) -> List<&2, LayoutSpace.Vec>:
   match n:
     case Laid{_, +ps}:
       ps
@@ -421,16 +421,16 @@ def deliver(xs: List<&1, Slot>, +laid: List<&2, Note>, +tag: U32, acc: List<&1, 
           deliver(rest, Bool.pick(List<&2, Note>, hit, more, laid), (tag + 1 : U32), back_if(hit, x, laid_ps(n)) <> acc)
 # The decided slots taken out (newest first), the others kept in order.
 type Harvested is Type:
-  Harvested{slots: List<&1, Slot>, done: List<&2, SWD.Judged>}
+  Harvested{slots: List<&1, Slot>, done: List<&2, SearchWorlds.Judged>}
 
-def harvest(xs: List<&1, Slot>, +done: List<&2, SWD.Judged>, acc: List<&1, Slot>) -> Harvested:
+def harvest(xs: List<&1, Slot>, +done: List<&2, SearchWorlds.Judged>, acc: List<&1, Slot>) -> Harvested:
   match xs:
     case Nil{}:
       Harvested{List.reverse(&1, Slot, acc), done}
     case Con{x, rest}:
       match x:
         case Decided{+seed, +v}:
-          harvest(rest, SWD.Judged{seed, v} <> done, Free{} <> acc)
+          harvest(rest, SearchWorlds.Judged{seed, v} <> done, Free{} <> acc)
         case other:
           harvest(rest, done, other <> acc)
 
@@ -449,18 +449,18 @@ def fill(xs: List<&1, Slot>, +pending: List<&2, U32>, +windows: Bool, +start: U3
         case Free{}:
           match pending:
             case Con{+seed, +more}:
-              +p = SO.position(seed, start)
-              fill(rest, more, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, GJ.start(seed, windows), stage_cost(0)} <> acc)
+              +p = SearchOrder.position(seed, start)
+              fill(rest, more, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, GenJob.start(seed, windows), stage_cost(0)} <> acc)
             case Nil{}:
               fill(rest, Nil{}, windows, start, first, busy, ready, at, Free{} <> acc)
         case Cpu{+seed, job, +cost}:
-          +p = SO.position(seed, start)
+          +p = SearchOrder.position(seed, start)
           fill(rest, pending, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, job, cost} <> acc)
         case Wait{+seed, job, +cost}:
-          +p = SO.position(seed, start)
+          +p = SearchOrder.position(seed, start)
           fill(rest, pending, windows, start, lesser(first, p), (busy + 1 : U32), ready, p <> at, Wait{seed, job, cost} <> acc)
         case Back{+seed, job, +ps, +cost}:
-          +p = SO.position(seed, start)
+          +p = SearchOrder.position(seed, start)
           fill(rest, pending, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Back{seed, job, ps, cost} <> acc)
         case other:
           fill(rest, pending, windows, start, first, busy, ready, at, other <> acc)
@@ -484,27 +484,27 @@ def rush_at(+positions: List<&2, Nat>, +n: Nat) -> Nat:
   +sorted = sorted_nats(positions, Nil{})
   Maybe.default(&2, Nat, List.get(&2, Nat, sorted, Nat.sub(lesser(n, List.length(&2, Nat, sorted)), 1n)), 0n)
 
-def judged_seed(+j: SWD.Judged) -> U32:
+def judged_seed(+j: SearchWorlds.Judged) -> U32:
   match j:
-    case SWD.Judged{+seed, _}:
+    case SearchWorlds.Judged{+seed, _}:
       seed
 
-def judged_position(+j: SWD.Judged, +start: U32) -> Nat:
-  SO.position(judged_seed(j), start)
+def judged_position(+j: SearchWorlds.Judged, +start: U32) -> Nat:
+  SearchOrder.position(judged_seed(j), start)
 
 # Hits found (JSON objects of the job result), hit lines to print, the scan position after the last hit, the stop
 # code (0 running, 1 limit, 2 end, 3 time) and the decided prefix of the scan.
 type Tally is Data:
   Tally{found: U32, hits: List<&2, String>, lines: List<&2, String>, last: Nat, code: U32, scanned: Nat}
 
-def tallied(+t: Tally, +seed: U32, +v: SWD.Verdict, +ctx: Ctx) -> Tally:
+def tallied(+t: Tally, +seed: U32, +v: SearchWorlds.Verdict, +ctx: Ctx) -> Tally:
   match t ctx:
     case Tally{+found, +hits, +lines, +last, _, +scanned} Ctx{+start, _, +limit, _, _, _, _, _, _, _}:
-      +count = (found + Bool.to_u32(SWD.is_hit(v)) : U32)
-      Tally{count, List.append(&2, String, hits, SWD.hit_object(seed, v)), List.append(&2, String, lines, SWD.hit_line(seed, v)),
-        Bool.pick(Nat, SWD.is_hit(v), Nat.add(SO.position(seed, start), 1n), last), Bool.pick(U32, (count >= limit : U32), 1, 0), scanned}
+      +count = (found + Bool.to_u32(SearchWorlds.is_hit(v)) : U32)
+      Tally{count, List.append(&2, String, hits, SearchWorlds.hit_object(seed, v)), List.append(&2, String, lines, SearchWorlds.hit_line(seed, v)),
+        Bool.pick(Nat, SearchWorlds.is_hit(v), Nat.add(SearchOrder.position(seed, start), 1n), last), Bool.pick(U32, (count >= limit : U32), 1, 0), scanned}
 
-def ready(+sorted: List<&2, SWD.Judged>, +frontier: Nat, +start: U32) -> Bool:
+def ready(+sorted: List<&2, SearchWorlds.Judged>, +frontier: Nat, +start: U32) -> Bool:
   match sorted:
     case Nil{}:
       False{}
@@ -517,18 +517,18 @@ def running(+t: Tally) -> Bool:
       U32.is_zero(code)
 
 type Released is Data:
-  Released{waiting: List<&2, SWD.Judged>, tally: Tally}
+  Released{waiting: List<&2, SearchWorlds.Judged>, tally: Tally}
 
 # Decides the waiting candidates before the frontier (the first undecided scan position), in scan order, up to the
 # hit limit.
-def release(sorted: List<&2, SWD.Judged>, go: Bool, +frontier: Nat, +t: Tally, +ctx: Ctx) -> Released:
+def release(sorted: List<&2, SearchWorlds.Judged>, go: Bool, +frontier: Nat, +t: Tally, +ctx: Ctx) -> Released:
   match sorted:
     case Nil{}:
       Released{Nil{}, t}
-    case Con{SWD.Judged{+seed, +v}, +rest}:
+    case Con{SearchWorlds.Judged{+seed, +v}, +rest}:
       match go:
         case False{}:
-          Released{SWD.Judged{seed, v} <> rest, t}
+          Released{SearchWorlds.Judged{seed, v} <> rest, t}
         case True{}:
           +next = tallied(t, seed, v, ctx)
           release(rest, ready(rest, frontier, ctx_start(ctx)) && running(next), frontier, next, ctx)
@@ -546,11 +546,11 @@ def max_chunk() -> Nat:
 def round_seeds() -> Nat:
   16777216n
 
-def scanned_chunk(+sc: Scan, +criteria: List<&2, CF.Criteria>, +wanted: Nat) -> Scan:
+def scanned_chunk(+sc: Scan, +criteria: List<&2, Config.Criteria>, +wanted: Nat) -> Scan:
   match sc:
     case Scan{+next, +left, +size, +pending}:
       +len = lesser(size, left)
-      +found = SWD.candidates(SWD.chunk_candidates(len, next, criteria))
+      +found = SearchWorlds.candidates(SearchWorlds.chunk_candidates(len, next, criteria))
       Scan{(next + U32.from_nat(len) : U32), Nat.sub(left, len), Bool.pick(Nat, Nat.is_lt(List.length(&2, U32, found), wanted), lesser(Nat.mul(size, 2n), max_chunk()), size),
         List.append(&2, U32, pending, found)}
 
@@ -565,7 +565,7 @@ def chunk_of(+sc: Scan) -> Nat:
       size
 
 # Scans part A chunk by chunk while candidates are short of `wanted`, up to round_seeds() seeds.
-def refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +criteria: List<&2, CF.Criteria>, +wanted: Nat) -> Scan:
+def refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +criteria: List<&2, Config.Criteria>, +wanted: Nat) -> Scan:
   match n:
     case 0n:
       sc
@@ -578,7 +578,7 @@ def refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +criteria: List<&2, CF.C
           +rest = Nat.sub(budget, chunk_of(sc))
           refilled(p, short(next, rest, wanted), next, rest, criteria, wanted)
 
-def refill(+sc: Scan, +criteria: List<&2, CF.Criteria>, +wanted: Nat) -> Scan:
+def refill(+sc: Scan, +criteria: List<&2, Config.Criteria>, +wanted: Nat) -> Scan:
   refilled(64n, short(sc, round_seeds(), wanted), sc, round_seeds(), criteria, wanted)
 
 def covered(+sc: Scan, +ctx: Ctx) -> Nat:
@@ -591,7 +591,7 @@ def first_pending(+pending: List<&2, U32>, +start: U32, +otherwise: Nat) -> Nat:
     case Nil{}:
       otherwise
     case Con{+seed, _}:
-      lesser(SO.position(seed, start), otherwise)
+      lesser(SearchOrder.position(seed, start), otherwise)
 
 def with_scanned(+t: Tally, +scanned: Nat) -> Tally:
   match t:
@@ -640,7 +640,7 @@ def due(+s: Stats, +now: Nat) -> Bool:
 # The search's data between rounds: the part-A scan, the passes to start, the decided candidates waiting for an
 # earlier one, the tally, how many candidates were decided, the busy slots, the passes in flight and the stats.
 type Book is Data:
-  Book{scan: Scan, queue: List<&2, Request>, waiting: List<&2, SWD.Judged>, tally: Tally, made: U32, busy: U32, flying: U32, stats: Stats}
+  Book{scan: Scan, queue: List<&2, Request>, waiting: List<&2, SearchWorlds.Judged>, tally: Tally, made: U32, busy: U32, flying: U32, stats: Stats}
 
 def book_scan(+b: Book) -> Scan:
   match b:
@@ -652,7 +652,7 @@ def book_queue(+b: Book) -> List<&2, Request>:
     case Book{_, +queue, _, _, _, _, _, _}:
       queue
 
-def book_waiting(+b: Book) -> List<&2, SWD.Judged>:
+def book_waiting(+b: Book) -> List<&2, SearchWorlds.Judged>:
   match b:
     case Book{_, _, +waiting, _, _, _, _, _}:
       waiting
@@ -677,7 +677,7 @@ def with_stats(+b: Book, +s: Stats) -> Book:
     case Book{+sc, +queue, +waiting, +t, +made, +busy, +flying, _}:
       Book{sc, queue, waiting, t, made, busy, flying, s}
 
-def with_tally(+b: Book, +waiting: List<&2, SWD.Judged>, +t: Tally) -> Book:
+def with_tally(+b: Book, +waiting: List<&2, SearchWorlds.Judged>, +t: Tally) -> Book:
   match b:
     case Book{+sc, +queue, _, _, +made, +busy, +flying, +s}:
       Book{sc, queue, waiting, t, made, busy, flying, s}
@@ -700,21 +700,21 @@ def with_pending(+sc: Scan, +pending: List<&2, U32>) -> Scan:
       Scan{next, left, size, pending}
 
 # The book after a harvest: the refilled scan and the decided candidates merged into the waiting ones.
-def with_decided(+b: Book, +sc: Scan, +done: List<&2, SWD.Judged>, +ctx: Ctx) -> Book:
+def with_decided(+b: Book, +sc: Scan, +done: List<&2, SearchWorlds.Judged>, +ctx: Ctx) -> Book:
   match b:
     case Book{_, +queue, +waiting, +t, +made, +busy, +flying, +s}:
-      Book{sc, queue, SO.merged(~SWD.Judged, ~judged_seed, done, waiting, ctx_start(ctx)), t,
-        (made + U32.from_nat(List.length(&2, SWD.Judged, done)) : U32), busy, flying, s}
+      Book{sc, queue, SearchOrder.merged(~SearchWorlds.Judged, ~judged_seed, done, waiting, ctx_start(ctx)), t,
+        (made + U32.from_nat(List.length(&2, SearchWorlds.Judged, done)) : U32), busy, flying, s}
 
 def with_filled(+b: Book, +pending: List<&2, U32>, +busy: U32) -> Book:
   match b:
     case Book{+sc, +queue, +waiting, +t, +made, _, +flying, +s}:
       Book{with_pending(sc, pending), queue, waiting, t, made, busy, flying, s}
 
-def ended(+b: Book, +waiting: List<&2, SWD.Judged>) -> Bool:
+def ended(+b: Book, +waiting: List<&2, SearchWorlds.Judged>) -> Bool:
   match b:
     case Book{Scan{_, +left, _, +pending}, _, _, _, _, +busy, _, _}:
-      Nat.is_eq(left, 0n) && List.is_empty(&2, U32, pending) && U32.is_zero(busy) && List.is_empty(&2, SWD.Judged, waiting)
+      Nat.is_eq(left, 0n) && List.is_empty(&2, U32, pending) && U32.is_zero(busy) && List.is_empty(&2, SearchWorlds.Judged, waiting)
 
 # Whether the next round has nothing to do but wait for passes in flight: no slot with CPU work, no pass to start,
 # and no free slot the scan could still fill.
@@ -742,7 +742,7 @@ def progress(+b: Book, +levels: Nat) -> String:
     case Book{_, _, +waiting, Tally{+found, _, _, _, _, +scanned}, +made, +busy, +flying, Stats{+rounds, +cpu, +take, +passes, _}}:
       "search: scanned " ++ Nat.show(scanned) ++ ", levels " ++ Nat.show(levels) ++ ", worlds " ++ U32.show(made) ++ ", generating " ++ U32.show(busy)
         ++ " (kk " ++ U32.show(flying) ++ ", passes " ++ Nat.show(passes) ++ "), waiting "
-        ++ Nat.show(List.length(&2, SWD.Judged, waiting)) ++ ", hits " ++ U32.show(found) ++ " (rounds " ++ Nat.show(rounds)
+        ++ Nat.show(List.length(&2, SearchWorlds.Judged, waiting)) ++ ", hits " ++ U32.show(found) ++ " (rounds " ++ Nat.show(rounds)
         ++ ", cpu " ++ Nat.show(cpu) ++ " ms, take " ++ Nat.show(take) ++ " ms)"
 
 def worked_round(go: Bool, slots: List<&1, Slot>, +b: Book, +ready: U32, +rush: Nat, +now: Nat, +ctx: Ctx) -> State:
@@ -789,7 +789,7 @@ def harvested(h: Harvested, +b: Book, +now: Nat, +ctx: Ctx) -> State:
   match h:
     case Harvested{slots, +done}:
       +cap = U32.to_nat(slots_of(ctx))
-      +room = Nat.sub(allowed(ctx, now), Nat.sub(U32.to_nat(book_busy(b)), List.length(&2, SWD.Judged, done)))
+      +room = Nat.sub(allowed(ctx, now), Nat.sub(U32.to_nat(book_busy(b)), List.length(&2, SearchWorlds.Judged, done)))
       +next = refill(book_scan(b), criteria_of(ctx), cap)
       +pending = pending_of(next)
       filled_round(fill(slots, List.take(&2, U32, pending, room), windows_of(config_of(ctx)), ctx_start(ctx), covered(next, ctx), 0, 0, Nil{}, Nil{}),
@@ -817,9 +817,9 @@ def native_of(+ctx: Ctx) -> Bool:
       native
 
 # A pass as its own computation: its positions go to the search's channel.
-def solved(+tag: U32, +l: LO.Layout, +ctx: Ctx) -> IO(Bool):
+def solved(+tag: U32, +l: GenLayout.Layout, +ctx: Ctx) -> IO(Bool):
   do IO<Bool>:
-    +ps : List<&2, KS.Vec> <- LO.solve(native_of(ctx), l)
+    +ps : List<&2, LayoutSpace.Vec> <- GenLayout.solve(native_of(ctx), l)
     Chan.send(Note, laid_of(ctx), Laid{tag, ps})
 
 def launched(reqs: List<&2, Request>, +ctx: Ctx) -> IO(Unit):
@@ -883,15 +883,15 @@ def stats_line(+s: Stats) -> String:
 
 def report(host: Host, +code: U32, +ctx: Ctx) -> IO(Unit):
   match host ctx:
-    case Host{Book{_, _, _, Tally{+found, +hits, _, +last, _, +scanned}, +made, _, _, +stats}, _} Ctx{+start, +total, _, _, +json, CF.Config{+windows, _, _, _, _}, _, _, _, _}:
-      +position = RP.position_json(start, scanned_at(Tally{found, hits, Nil{}, last, code, scanned}, code, total), code)
+    case Host{Book{_, _, _, Tally{+found, +hits, _, +last, _, +scanned}, +made, _, _, +stats}, _} Ctx{+start, +total, _, _, +json, Config.Config{+windows, _, _, _, _}, _, _, _, _}:
+      +position = SearchReport.position_json(start, scanned_at(Tally{found, hits, Nil{}, last, code, scanned}, code, total), code)
       do IO<Unit>:
         IO.print_err("search: " ++ U32.show(made) ++ " candidate worlds generated")
         IO.print_err(stats_line(stats))
         IO.print(Bool.pick(String, json,
-          "{\"version\":1,\"platform\":\"" ++ SWD.platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits, ",") ++ "]," ++ position ++ ",\"stopped\":\"" ++ RP.stop_name(code) ++ "\"}",
-          "done {" ++ position ++ ",\"hits\":" ++ U32.show(found) ++ ",\"stopped\":\"" ++ RP.stop_name(code) ++ "\"}"))
-        RP.exit_status(found)
+          "{\"version\":1,\"platform\":\"" ++ SearchWorlds.platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits, ",") ++ "]," ++ position ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}",
+          "done {" ++ position ++ ",\"hits\":" ++ U32.show(found) ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}"))
+        SearchReport.exit_status(found)
 
 # The rounds: print the last round's hits and progress, start the passes asked for (a yield lets them reach the KK
 # engine), run the CPU phase, take the finished passes, then the host half.
@@ -935,11 +935,11 @@ def started(+ctx: Ctx) -> State:
       State{Host{book, free_slots(U32.to_nat(slots))}, False{}, 0n, Out{Nil{}, 0, "search: " ++ U32.show(slots) ++ " slots"}}
 
 # world find on generated worlds for a config with parts B-E (spec search-v1.md section 8 output).
-def run(+q: A.Query, +config: CF.Config) -> IO(Unit):
+def run(+q: Args.Query, +config: Config.Config) -> IO(Unit):
   match q:
-    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, +native}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, +native}:
       do IO<Unit>:
-        +threads : U32 <- STH.threads()
+        +threads : U32 <- SearchThreads.threads()
         +started_ms : Nat <- IO.now()
         +slots : U32 = slots_for(threads)
         +laid : Chan(Note) <- Chan.new(Note, (slots + 2 : U32))

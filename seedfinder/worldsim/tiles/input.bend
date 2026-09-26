@@ -1,12 +1,12 @@
 import Base
-import ../../trace/canon.bend as CN
-import ../../f32/ops.bend as FO
-import ../../f64/repr.bend as FR
-import ./table.bend as TB
-import ./world.bend as TW
+import ../../trace/canon.bend as Canon
+import ../../f32/ops.bend as F32Ops
+import ../../f64/repr.bend as F64Repr
+import ./table.bend as TileTable
+import ./world.bend as TileWorld
 
 # The tile stages' inputs read back from lane G's oracle `tileinput` records (.scratch/port/status/M8.md): the
-# committed map of one attempt as a TW.World, plus record helpers shared by lane G's trace stages.
+# committed map of one attempt as a TileWorld.World, plus record helpers shared by lane G's trace stages.
 
 def hex_value(+code: U32) -> U32:
   Bool.pick(U32, (code >= 97 : U32), (code - 87 : U32), (code - 48 : U32))
@@ -23,17 +23,17 @@ def hex_loop(n: Nat, s: String, +acc: U32) -> U32:
           hex_loop(p, rest, ((acc << 4n) .|. hex_value(code) : U32))
 
 def text(+key: String, +fields: List<&2, String>) -> String:
-  CN.text_or(CN.value_of(key, fields), "")
+  Canon.text_or(Canon.value_of(key, fields), "")
 
 def num(+key: String, +fields: List<&2, String>) -> U32:
-  CN.number_or(CN.value_of(key, fields), TW.none())
+  Canon.number_or(Canon.value_of(key, fields), TileWorld.none())
 
 def f32_field(+key: String, +fields: List<&2, String>) -> F32:
-  FO.from_bits(hex_loop(8n, text(key, fields), 0))
+  F32Ops.from_bits(hex_loop(8n, text(key, fields), 0))
 
-def f64_field(+key: String, +fields: List<&2, String>) -> FR.F64:
+def f64_field(+key: String, +fields: List<&2, String>) -> F64Repr.F64:
   +s = text(key, fields)
-  FR.F64{hex_loop(8n, s, 0), hex_loop(8n, String.drop(s, 8n), 0)}
+  F64Repr.F64{hex_loop(8n, s, 0), hex_loop(8n, String.drop(s, 8n), 0)}
 
 def is_inf(+key: String, +fields: List<&2, String>) -> Bool:
   String.eq(text(key, fields), "inf")
@@ -53,7 +53,7 @@ def keep_attempt(+a: String, recs: List<&2, List<&2, String>>) -> List<&2, List<
       keep_if(String.eq(text("a", fields), a), fields, keep_attempt(a, rest))
 
 def of_attempt(+kind: String, +a: String, +lines: List<&2, String>) -> List<&2, List<&2, String>>:
-  keep_attempt(a, CN.records(kind, lines))
+  keep_attempt(a, Canon.records(kind, lines))
 
 type Raw is Data:
   Raw{kind: U32, itype: U32, tile: U32, flags: U32, site: U32, parent: U32, pig: U32}
@@ -73,47 +73,47 @@ def raws(recs: List<&2, List<&2, String>>) -> List<&2, Raw>:
       raw_of(fields) <> raws(rest)
 
 def no_raw() -> Raw:
-  Raw{TW.none(), 0, 0, 0, TW.none(), TW.none(), 0}
+  Raw{TileWorld.none(), 0, 0, 0, TileWorld.none(), TileWorld.none(), 0}
 
-def raw_at(+t: TB.Tree<Raw>, +i: U32) -> Raw:
-  Bool.pick(Raw, TW.is_none(i), no_raw(), TB.at(~Raw, t, i))
+def raw_at(+t: TileTable.Tree<Raw>, +i: U32) -> Raw:
+  Bool.pick(Raw, TileWorld.is_none(i), no_raw(), TileTable.at(~Raw, t, i))
 
-def node_with_parent(+i: U32, r: Raw, p: Raw) -> TW.Node:
+def node_with_parent(+i: U32, r: Raw, p: Raw) -> TileWorld.Node:
   match r:
     case Raw{+kind, +itype, +tile, +flags, _, +parent, +pig}:
       match p:
         case Raw{+pkind, _, _, _, +psite, +grand, _}:
-          TW.Node{i, kind, itype, tile, flags, parent, grand, pkind, psite, pig}
+          TileWorld.Node{i, kind, itype, tile, flags, parent, grand, pkind, psite, pig}
 
-def node_of(+t: TB.Tree<Raw>, +i: U32, r: Raw) -> TW.Node:
+def node_of(+t: TileTable.Tree<Raw>, +i: U32, r: Raw) -> TileWorld.Node:
   match r:
     case Raw{+kind, +itype, +tile, +flags, +site, +parent, +pig}:
       node_with_parent(i, Raw{kind, itype, tile, flags, site, parent, pig}, raw_at(t, parent))
 
-def point_of(+fields: List<&2, String>) -> TW.Point:
-  TW.Point{f32_field("x", fields), f32_field("y", fields)}
+def point_of(+fields: List<&2, String>) -> TileWorld.Point:
+  TileWorld.Point{f32_field("x", fields), f32_field("y", fields)}
 
-def points_of(recs: List<&2, List<&2, String>>) -> List<&2, TW.Point>:
+def points_of(recs: List<&2, List<&2, String>>) -> List<&2, TileWorld.Point>:
   match recs:
     case Nil{}:
       Nil{}
     case Con{+fields, rest}:
       point_of(fields) <> points_of(rest)
 
-def sites_loop(recs: List<&2, List<&2, String>>, +t: TB.Tree<Raw>, +i: U32, +points: List<&2, TW.Point>) -> List<&2, TW.Site>:
+def sites_loop(recs: List<&2, List<&2, String>>, +t: TileTable.Tree<Raw>, +i: U32, +points: List<&2, TileWorld.Point>) -> List<&2, TileWorld.Site>:
   match recs:
     case Nil{}:
       Nil{}
     case Con{+fields, rest}:
       +n = U32.to_nat(num("n", fields))
-      TW.Site{node_of(t, i, raw_at(t, i)), f32_field("x", fields), f32_field("y", fields), f32_field("cx", fields),
-        f32_field("cy", fields), List.take(&2, TW.Point, points, n)}
-        <> sites_loop(rest, t, (i + 1 : U32), List.drop(&2, TW.Point, points, n))
+      TileWorld.Site{node_of(t, i, raw_at(t, i)), f32_field("x", fields), f32_field("y", fields), f32_field("cx", fields),
+        f32_field("cy", fields), List.take(&2, TileWorld.Point, points, n)}
+        <> sites_loop(rest, t, (i + 1 : U32), List.drop(&2, TileWorld.Point, points, n))
 
-def edge_of(+s: String, +t: String, +fields: List<&2, String>) -> TW.Edge:
-  TW.Edge{num(s, fields), num(t, fields)}
+def edge_of(+s: String, +t: String, +fields: List<&2, String>) -> TileWorld.Edge:
+  TileWorld.Edge{num(s, fields), num(t, fields)}
 
-def edges_of(+s: String, +t: String, recs: List<&2, List<&2, String>>) -> List<&2, TW.Edge>:
+def edges_of(+s: String, +t: String, recs: List<&2, List<&2, String>>) -> List<&2, TileWorld.Edge>:
   match recs:
     case Nil{}:
       Nil{}
@@ -127,96 +127,96 @@ def targets_keep(hit: Bool, +t: U32, tail: List<&2, U32>) -> List<&2, U32>:
     case False{}:
       tail
 
-def targets_of(+v: U32, pairs: List<&2, TW.Edge>) -> List<&2, U32>:
+def targets_of(+v: U32, pairs: List<&2, TileWorld.Edge>) -> List<&2, U32>:
   match pairs:
     case Nil{}:
       Nil{}
-    case Con{TW.Edge{+s, +t}, rest}:
+    case Con{TileWorld.Edge{+s, +t}, rest}:
       targets_keep(U32.is_eq(s, v), t, targets_of(v, rest))
 
-def adjacency_loop(n: Nat, +v: U32, +pairs: List<&2, TW.Edge>) -> List<&2, List<&2, U32>>:
+def adjacency_loop(n: Nat, +v: U32, +pairs: List<&2, TileWorld.Edge>) -> List<&2, List<&2, U32>>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
       targets_of(v, pairs) <> adjacency_loop(p, (v + 1 : U32), pairs)
 
-def maybe_point(inf: Bool, +x: FR.F64, +y: FR.F64) -> Maybe<&2, TW.DPoint>:
+def maybe_point(inf: Bool, +x: F64Repr.F64, +y: F64Repr.F64) -> Maybe<&2, TileWorld.DPoint>:
   match inf:
     case True{}:
       None{}
     case False{}:
-      Some{TW.DPoint{x, y}}
+      Some{TileWorld.DPoint{x, y}}
 
-def vertex_of(+kx: String, +ky: String, +fields: List<&2, String>) -> Maybe<&2, TW.DPoint>:
+def vertex_of(+kx: String, +ky: String, +fields: List<&2, String>) -> Maybe<&2, TileWorld.DPoint>:
   maybe_point(is_inf(kx, fields), f64_field(kx, fields), f64_field(ky, fields))
 
-def dpoints_of(recs: List<&2, List<&2, String>>) -> List<&2, TW.DPoint>:
+def dpoints_of(recs: List<&2, List<&2, String>>) -> List<&2, TileWorld.DPoint>:
   match recs:
     case Nil{}:
       Nil{}
     case Con{+fields, rest}:
-      TW.DPoint{f64_field("x", fields), f64_field("y", fields)} <> dpoints_of(rest)
+      TileWorld.DPoint{f64_field("x", fields), f64_field("y", fields)} <> dpoints_of(rest)
 
-def plain_second(+a: TW.DPoint, v1: Maybe<&2, TW.DPoint>) -> List<&2, TW.DPoint>:
+def plain_second(+a: TileWorld.DPoint, v1: Maybe<&2, TileWorld.DPoint>) -> List<&2, TileWorld.DPoint>:
   match v1:
     case None{}:
       Nil{}
     case Some{+b}:
       [a, b]
 
-def plain_points(v0: Maybe<&2, TW.DPoint>, +v1: Maybe<&2, TW.DPoint>) -> List<&2, TW.DPoint>:
+def plain_points(v0: Maybe<&2, TileWorld.DPoint>, +v1: Maybe<&2, TileWorld.DPoint>) -> List<&2, TileWorld.DPoint>:
   match v0:
     case None{}:
       Nil{}
     case Some{+a}:
       plain_second(a, v1)
 
-def vedge_points(+np: Nat, +v0: Maybe<&2, TW.DPoint>, +v1: Maybe<&2, TW.DPoint>, +pts: List<&2, TW.DPoint>) -> List<&2, TW.DPoint>:
+def vedge_points(+np: Nat, +v0: Maybe<&2, TileWorld.DPoint>, +v1: Maybe<&2, TileWorld.DPoint>, +pts: List<&2, TileWorld.DPoint>) -> List<&2, TileWorld.DPoint>:
   match np:
     case 0n:
       plain_points(v0, v1)
     case 1n+_:
-      List.take(&2, TW.DPoint, pts, np)
+      List.take(&2, TileWorld.DPoint, pts, np)
 
-def vedge_of(+fields: List<&2, String>, +pts: List<&2, TW.DPoint>) -> TW.VEdge:
+def vedge_of(+fields: List<&2, String>, +pts: List<&2, TileWorld.DPoint>) -> TileWorld.VEdge:
   +v0 = vertex_of("x0", "y0", fields)
   +v1 = vertex_of("x1", "y1", fields)
-  TW.VEdge{num("twin", fields), v0, v1, vedge_points(U32.to_nat(num("np", fields)), v0, v1, pts)}
+  TileWorld.VEdge{num("twin", fields), v0, v1, vedge_points(U32.to_nat(num("np", fields)), v0, v1, pts)}
 
-def vedges_loop(recs: List<&2, List<&2, String>>, +pts: List<&2, TW.DPoint>) -> List<&2, TW.VEdge>:
+def vedges_loop(recs: List<&2, List<&2, String>>, +pts: List<&2, TileWorld.DPoint>) -> List<&2, TileWorld.VEdge>:
   match recs:
     case Nil{}:
       Nil{}
     case Con{+fields, rest}:
-      vedge_of(fields, pts) <> vedges_loop(rest, List.drop(&2, TW.DPoint, pts, U32.to_nat(num("np", fields))))
+      vedge_of(fields, pts) <> vedges_loop(rest, List.drop(&2, TileWorld.DPoint, pts, U32.to_nat(num("np", fields))))
 
-def cells_loop(recs: List<&2, List<&2, String>>, +edges: List<&2, TW.VEdge>) -> List<&2, TW.Cell>:
+def cells_loop(recs: List<&2, List<&2, String>>, +edges: List<&2, TileWorld.VEdge>) -> List<&2, TileWorld.Cell>:
   match recs:
     case Nil{}:
       Nil{}
     case Con{+fields, rest}:
       +ne = U32.to_nat(num("ne", fields))
-      TW.Cell{num("src", fields), List.take(&2, TW.VEdge, edges, ne)} <> cells_loop(rest, List.drop(&2, TW.VEdge, edges, ne))
+      TileWorld.Cell{num("src", fields), List.take(&2, TileWorld.VEdge, edges, ne)} <> cells_loop(rest, List.drop(&2, TileWorld.VEdge, edges, ne))
 
-def no_cell() -> TW.Cell:
-  TW.Cell{TW.none(), Nil{}}
+def no_cell() -> TileWorld.Cell:
+  TileWorld.Cell{TileWorld.none(), Nil{}}
 
-def cell_pick(hit: Bool, +c: TW.Cell, +other: TW.Cell) -> TW.Cell:
+def cell_pick(hit: Bool, +c: TileWorld.Cell, +other: TileWorld.Cell) -> TileWorld.Cell:
   match hit:
     case True{}:
       c
     case False{}:
       other
 
-def cell_for(+i: U32, cells: List<&2, TW.Cell>) -> TW.Cell:
+def cell_for(+i: U32, cells: List<&2, TileWorld.Cell>) -> TileWorld.Cell:
   match cells:
     case Nil{}:
       no_cell()
-    case Con{TW.Cell{+src, +edges}, rest}:
-      cell_pick(U32.is_eq(src, i), TW.Cell{src, edges}, cell_for(i, rest))
+    case Con{TileWorld.Cell{+src, +edges}, rest}:
+      cell_pick(U32.is_eq(src, i), TileWorld.Cell{src, edges}, cell_for(i, rest))
 
-def cells_by_site(n: Nat, +i: U32, +cells: List<&2, TW.Cell>) -> List<&2, TW.Cell>:
+def cells_by_site(n: Nat, +i: U32, +cells: List<&2, TileWorld.Cell>) -> List<&2, TileWorld.Cell>:
   match n:
     case 0n:
       Nil{}
@@ -230,16 +230,16 @@ def first_fields(recs: List<&2, List<&2, String>>) -> List<&2, String>:
     case Con{+fields, _}:
       fields
 
-def world_parts(+map: List<&2, String>, +raw: TB.Tree<Raw>, +sites: List<&2, TW.Site>, +adjacency: List<&2, List<&2, U32>>, +edges: List<&2, TW.Edge>, +cells: List<&2, TW.Cell>) -> TW.World:
+def world_parts(+map: List<&2, String>, +raw: TileTable.Tree<Raw>, +sites: List<&2, TileWorld.Site>, +adjacency: List<&2, List<&2, U32>>, +edges: List<&2, TileWorld.Edge>, +cells: List<&2, TileWorld.Cell>) -> TileWorld.World:
   +count = num("sites", map)
-  TW.World{num("w", map), num("h", map), count, sites, TB.from_list(~TW.Site, sites, TW.Site{node_of(raw, 0, no_raw()), 0.0, 0.0, 0.0, 0.0, Nil{}}),
-    TB.from_list(~List<&2, U32>, adjacency, Nil{}), edges, cells,
-    TB.from_list(~TW.Cell, cells_by_site(U32.to_nat(count), 0, cells), no_cell())}
+  TileWorld.World{num("w", map), num("h", map), count, sites, TileTable.from_list(~TileWorld.Site, sites, TileWorld.Site{node_of(raw, 0, no_raw()), 0.0, 0.0, 0.0, 0.0, Nil{}}),
+    TileTable.from_list(~List<&2, U32>, adjacency, Nil{}), edges, cells,
+    TileTable.from_list(~TileWorld.Cell, cells_by_site(U32.to_nat(count), 0, cells), no_cell())}
 
 # The World of attempt `a` from lane G's `tileinput` records.
-def world_of(+a: String, +lines: List<&2, String>) -> TW.World:
+def world_of(+a: String, +lines: List<&2, String>) -> TileWorld.World:
   +map = first_fields(of_attempt("tmap", a, lines))
-  +raw = TB.from_list(~Raw, raws(of_attempt("tnode", a, lines)), no_raw())
+  +raw = TileTable.from_list(~Raw, raws(of_attempt("tnode", a, lines)), no_raw())
   +count = num("sites", map)
   world_parts(map, raw, sites_loop(of_attempt("tsite", a, lines), raw, 0, points_of(of_attempt("tppt", a, lines))),
     adjacency_loop(U32.to_nat(count), 0, edges_of("v", "to", of_attempt("tadj", a, lines))),
