@@ -3,8 +3,8 @@
 #   loop           : one offline dedicated server launch that generates every seed (first seed fresh, rest looped)
 #   fresh (default): one launch per seed, so every world is a genuine fresh generation
 #   seeds          : comma separated seeds or ranges, default 1-10
-# Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder. Logs go to build/groundtruth/logs/worldgen/,
-# worlds to build/groundtruth/data/worlds/ (GT_WORLDS_DIR overrides).
+# Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder.
+# Logs go to build/groundtruth/logs/worldgen/, worlds to build/groundtruth/data/worlds/ (GT_WORLDS_DIR overrides).
 set -euo pipefail
 
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
@@ -29,13 +29,18 @@ mkdir -p "$logs"
 expand_seeds() {
     local part
     for part in ${1//,/ }; do
-        if [[ "$part" == *-* ]]; then seq "${part%-*}" "${part#*-}"; else echo "$part"; fi
+        if [[ "$part" == *-* ]]; then
+            seq "${part%-*}" "${part#*-}"
+        else
+            echo "$part"
+        fi
     done
 }
 
 run_server() {
     local spec="$1" loop="$2"
     local run_log="$logs/run_${spec//,/_}_${loop}_$(date +%Y%m%d_%H%M%S)"
+
     mkdir -p "$cluster_dir"
     cp -r "$here/cluster_template/." "$cluster_dir/"
     rm -rf "$cluster_dir/Master/save" "$server_log"
@@ -47,12 +52,16 @@ return {
     },
 }
 EOF
-    (cd "$dst/bin64" && LD_LIBRARY_PATH="$dst/bin64/lib64:$runtime_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-        exec ./dontstarve_dedicated_server_nullrenderer_x64 \
-        -persistent_storage_root "$storage" -conf_dir DoNotStarveTogether \
-        -cluster Cluster_GTW -shard Master -offline -skip_update_server_mods \
-        -monitor_parent_process $$) > "$run_log.stdout.txt" 2>&1 &
+
+    (
+        cd "$dst/bin64" && LD_LIBRARY_PATH="$dst/bin64/lib64:$runtime_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+            exec ./dontstarve_dedicated_server_nullrenderer_x64 \
+            -persistent_storage_root "$storage" -conf_dir DoNotStarveTogether \
+            -cluster Cluster_GTW -shard Master -offline -skip_update_server_mods \
+            -monitor_parent_process $$
+    ) > "$run_log.stdout.txt" 2>&1 &
     local server=$!
+
     local deadline=$((SECONDS + ${GT_TIMEOUT:-1800}))
     until grep -q "GTWORLD done:" "$server_log" 2>/dev/null; do
         if ! kill -0 "$server" 2>/dev/null || (( SECONDS > deadline )); then
@@ -61,17 +70,29 @@ EOF
         fi
         sleep 2
     done
+
     kill "$server" 2>/dev/null || true
     wait "$server" 2>/dev/null || true
-    [[ -f "$server_log" ]] && cp "$server_log" "$run_log.server_log.txt"
+    if [[ -f "$server_log" ]]; then
+        cp "$server_log" "$run_log.server_log.txt"
+    fi
     run_logs+=("$run_log.server_log.txt")
 }
-run_logs=()
 
+run_logs=()
 case "$mode" in
-    loop) run_server "$seeds" true ;;
-    fresh) for seed in $(expand_seeds "$seeds"); do run_server "$seed" false; done ;;
-    *) echo "usage: $0 [loop|fresh] [seeds]" >&2; exit 2 ;;
+loop)
+    run_server "$seeds" true
+    ;;
+fresh)
+    for seed in $(expand_seeds "$seeds"); do
+        run_server "$seed" false
+    done
+    ;;
+*)
+    echo "usage: $0 [loop|fresh] [seeds]" >&2
+    exit 2
+    ;;
 esac
 
 if [[ -n "${GT_WORLDS_DIR:-}" ]]; then
