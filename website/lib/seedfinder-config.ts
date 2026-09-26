@@ -39,77 +39,77 @@ export type TileSet = string | string[];
 export type SetPieceBound = number | [number, number];
 
 export interface TaskFilter {
-  required?: string[];
-  excluded?: string[];
+    required?: string[];
+    excluded?: string[];
 }
 
 export type PrefabSwaps = Partial<Record<SwapCategory, string>>;
 
 export interface SetPieceRule {
-  tasks?: string[];
-  required?: Record<string, SetPieceBound>;
+    tasks?: string[];
+    required?: Record<string, SetPieceBound>;
 }
 
 export interface Near {
-  prefab: PrefabSet;
-  within: number;
-  metric?: Metric;
-  wormholes?: boolean;
+    prefab: PrefabSet;
+    within: number;
+    metric?: Metric;
+    wormholes?: boolean;
 }
 
 export interface CountRule {
-  prefab: PrefabSet;
-  min?: number;
-  max?: number;
-  near?: Near;
+    prefab: PrefabSet;
+    min?: number;
+    max?: number;
+    near?: Near;
 }
 
 export interface DistanceRule {
-  from: PrefabSet;
-  to: PrefabSet;
-  min?: number;
-  max?: number;
-  metric?: Metric;
-  wormholes?: boolean;
+    from: PrefabSet;
+    to: PrefabSet;
+    min?: number;
+    max?: number;
+    metric?: Metric;
+    wormholes?: boolean;
 }
 
 export interface TileRule {
-  from: TileSet;
-  to: TileSet;
-  max: number;
+    from: TileSet;
+    to: TileSet;
+    max: number;
 }
 
 export interface RouteRule {
-  from: PrefabSet;
-  visit: PrefabSet[];
-  to?: PrefabSet;
-  max: number;
-  order?: RouteOrder;
-  metric?: Metric;
-  wormholes?: boolean;
+    from: PrefabSet;
+    visit: PrefabSet[];
+    to?: PrefabSet;
+    max: number;
+    order?: RouteOrder;
+    metric?: Metric;
+    wormholes?: boolean;
 }
 
 export interface Criterion {
-  passive?: boolean;
-  tasks?: TaskFilter;
-  prefab_swaps?: PrefabSwaps;
-  setpieces?: SetPieceRule[];
-  counts?: CountRule[];
-  distances?: DistanceRule[];
-  tiles?: TileRule[];
-  routes?: RouteRule[];
+    passive?: boolean;
+    tasks?: TaskFilter;
+    prefab_swaps?: PrefabSwaps;
+    setpieces?: SetPieceRule[];
+    counts?: CountRule[];
+    distances?: DistanceRule[];
+    tiles?: TileRule[];
+    routes?: RouteRule[];
 }
 
 /** A search config in the form the site writes and stores: `version` always set, `settings` left out (defaults only), `platform` always written. */
 export interface SeedfinderConfig {
-  version: typeof CONFIG_VERSION;
-  platform?: Platform;
-  criteria?: Criterion[];
+    version: typeof CONFIG_VERSION;
+    platform?: Platform;
+    criteria?: Criterion[];
 }
 
 export interface JobRequest {
-  config: SeedfinderConfig;
-  wanted: number;
-  maxCost: number;
-  startSeed?: number;
+    config: SeedfinderConfig;
+    wanted: number;
+    maxCost: number;
+    startSeed?: number;
 }

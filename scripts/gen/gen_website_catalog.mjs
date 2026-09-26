@@ -8,21 +8,21 @@ const outPath = path.join(root, "website", "lib", "world-catalog.ts");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
 
 const GROUP_ORDER = [
-  "spawn & travel", "bosses & spawners", "landmarks", "clockwork", "sculptures", "statues", "trees", "rocks", "plants",
-  "mobs & dens", "structures", "items", "set-piece loot", "ocean", "moon island", "markers", "other",
+    "spawn & travel", "bosses & spawners", "landmarks", "clockwork", "sculptures", "statues", "trees", "rocks", "plants",
+    "mobs & dens", "structures", "items", "set-piece loot", "ocean", "moon island", "markers", "other",
 ];
 
 const ANCHORS = [
-  ["multiplayer_portal", "Spawn (Florid Postern)"],
-  ["pigking", "Pig King"],
-  ["moonbase", "Moon Stone"],
-  ["dragonfly_spawner", "Dragonfly"],
-  ["beequeenhive", "Bee Queen (Gigantic Beehive)"],
-  ["antlion_spawner", "Antlion"],
-  ["crabking_spawner", "Crab King"],
-  ["hermithouse_construction1", "Crabby Hermit (Pearl's house)"],
-  ["monkeyqueen", "Queen of Moon Quay"],
-  ["wormhole", "Worm Hole"],
+    ["multiplayer_portal", "Spawn (Florid Postern)"],
+    ["pigking", "Pig King"],
+    ["moonbase", "Moon Stone"],
+    ["dragonfly_spawner", "Dragonfly"],
+    ["beequeenhive", "Bee Queen (Gigantic Beehive)"],
+    ["antlion_spawner", "Antlion"],
+    ["crabking_spawner", "Crab King"],
+    ["hermithouse_construction1", "Crabby Hermit (Pearl's house)"],
+    ["monkeyqueen", "Queen of Moon Quay"],
+    ["wormhole", "Worm Hole"],
 ];
 
 const prefabIds = new Set(catalog.prefabs.map((prefab) => prefab.id));
@@ -35,21 +35,21 @@ const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 const titleCase = (name) => name.toLowerCase().split("_").map(capitalize).join(" ");
 
 const prefabRow = ({ id, display_name, group, variant_of, default_reachable, empirical, swap }) => ({
-  id,
-  name: display_name,
-  group,
-  ...(variant_of ? { variantOf: variant_of } : {}),
-  ...(default_reachable ? {} : { unreachable: true }),
-  ...(empirical.always ? { always: true } : {}),
-  ...(empirical.unique ? { unique: true } : {}),
-  ...(empirical.worlds > 0 ? { counts: [empirical.min, empirical.median, empirical.max] } : {}),
-  ...(swap ? { swapOption: swap.option } : {}),
+    id,
+    name: display_name,
+    group,
+    ...(variant_of ? { variantOf: variant_of } : {}),
+    ...(default_reachable ? {} : { unreachable: true }),
+    ...(empirical.always ? { always: true } : {}),
+    ...(empirical.unique ? { unique: true } : {}),
+    ...(empirical.worlds > 0 ? { counts: [empirical.min, empirical.median, empirical.max] } : {}),
+    ...(swap ? { swapOption: swap.option } : {}),
 });
 
 const landTileRow = ({ name, display_name, in_forest_worlds }) => ({
-  name,
-  displayName: display_name ?? titleCase(name),
-  ...((in_forest_worlds?.worlds ?? 0) > 0 ? { inDefaultWorlds: true } : {}),
+    name,
+    displayName: display_name ?? titleCase(name),
+    ...((in_forest_worlds?.worlds ?? 0) > 0 ? { inDefaultWorlds: true } : {}),
 });
 
 const rows = (items) => items.map((item) => `  ${JSON.stringify(item)},`).join("\n");

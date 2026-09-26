@@ -13,23 +13,23 @@ export type JobStatus = ActiveJobStatus | FinishedJobStatus;
 
 /** The vast.ai machine a search runs on. */
 export interface Machine {
-  cpuName: string;
-  cores: number;
-  ghz: number;
-  dollarsPerHour: number;
+    cpuName: string;
+    cores: number;
+    ghz: number;
+    dollarsPerHour: number;
 }
 
 /** How far a world-filter search is: worlds fully generated so far, and worlds being generated right now. */
 export interface WorldProgress {
-  generated: number;
-  generating: number;
+    generated: number;
+    generating: number;
 }
 
 export interface JobProgress {
-  scanned: number;
-  hits: number;
-  seedsPerSecond: number;
-  worlds?: WorldProgress;
+    scanned: number;
+    hits: number;
+    seedsPerSecond: number;
+    worlds?: WorldProgress;
 }
 
 /**
@@ -38,12 +38,18 @@ export interface JobProgress {
  * job and closes the stream.
  */
 export type JobEvent =
-  | { type: "status"; status: JobStatus; queuePosition: number | null; machine: Machine | null; attempt: number | null }
-  | { type: "progress"; progress: JobProgress }
-  | { type: "hit"; hit: SearchHit }
-  | { type: "end"; job: JobView };
+    | {
+    type: "status";
+    status: JobStatus;
+    queuePosition: number | null;
+    machine: Machine | null;
+    attempt: number | null
+}
+    | { type: "progress"; progress: JobProgress }
+    | { type: "hit"; hit: SearchHit }
+    | { type: "end"; job: JobView };
 
 /** Whether a search is still waiting, booting or running. */
 export function isActiveStatus(status: JobStatus): status is ActiveJobStatus {
-  return (ACTIVE_JOB_STATUSES as readonly JobStatus[]).includes(status);
+    return (ACTIVE_JOB_STATUSES as readonly JobStatus[]).includes(status);
 }

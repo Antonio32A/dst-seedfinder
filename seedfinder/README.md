@@ -11,7 +11,8 @@ candidate world in memory, bit-identical to the game on Windows and Linux hosts:
   (`set_pieces` and `random_set_pieces`) `Level:ChooseSetPieces` puts in each task, plus the generated world's
   entities and tiles (counts, distances, tile distances, routes), filtered with a JSON config.
 
-Written in Bend (module folders in this directory, see "Code layout"), validated against the real game (build 747465). Only the default world
+Written in Bend (module folders in this directory, see "Code layout"), validated against the real game (build 747465).
+Only the default world
 settings are supported (forest, preset SURVIVAL_TOGETHER, every world generation option at `default`).
 
 ## Build and run
@@ -66,7 +67,7 @@ multi-threaded runs fail with `bend: reservation failed`.
 - `world find` implements the search command of the v1 spec (`docs/config.md` § 8), parts A-E:
 
   | Flag | Values | Default | Meaning |
-  |---|---|---|---|
+      |---|---|---|---|
   | `--start-seed S` | uint32 | 0 | Scan `S, S+1, ..., 4294967295, 0, ..., S-1`: every seed at most once. |
   | `--limit N` | 1..100 | 100 | Stop at the N-th hit. |
   | `--time-limit T` | seconds > 0, fractional (ms precision, e.g. `0.25`) | none | Stop once T seconds have passed. |
@@ -76,7 +77,8 @@ multi-threaded runs fail with `bend: reservation failed`.
 
   Hit lines are `seed {"entry":E,"level":{...},"results":[...]}` in scan order: `entry` is the index of the first
   matching criteria entry (`null` without criteria), `level` is exactly the `world show` object, and `results`
-  holds one witness per counts/tiles/distances/routes rule of that entry (`[]` for a level-table entry). The last line is
+  holds one witness per counts/tiles/distances/routes rule of that entry (`[]` for a level-table entry). The last line
+  is
   `done {"scanned":C,"last_scanned":L,"next_seed":X,"hits":H,"stopped":"limit"|"time"|"end"}`: the first C seeds
   of the scan order were decided, L is the C-th (`null` if C = 0; the last hit when stopped by the limit) and X the
   one after it (`null` when stopped at the end). `--start-seed X` continues without gaps or repeats. `--json` prints
@@ -124,7 +126,8 @@ multi-threaded runs fail with `bend: reservation failed`.
   of Generate, the savedata.ents count and the encoded tile map's FNV-1a digest); `--times` adds one
   `stage seed=S a=A name=NAME ms=T` line per stage of every attempt. About 0.3-0.6 s per seed on one thread with the
   native KK (5-8 s with `--kk bend`, KK ~95% of it).
-- Example: `seedfinder --threads 22 -- world find --start-seed 123 --limit 10 --time-limit 30 --json --config config.json`
+- Example:
+  `seedfinder --threads 22 -- world find --start-seed 123 --limit 10 --time-limit 30 --json --config config.json`
 
 ### JSON config
 
@@ -134,34 +137,67 @@ The binary implements all of it: part A (the level table) below, and the world s
 
 ```json
 {
-  "version": 1,
-  "platform": "windows",
-  "settings": {},
-  "criteria": [
-    {
-      "tasks": {"required": ["Killer bees!", "Magic meadow"], "excluded": ["Mole Colony Rocks"]},
-      "prefab_swaps": {"twigs": "twiggy trees"},
-      "setpieces": [
-        {"tasks": ["Magic meadow"], "required": {"MooseNest": 1}},
-        {"required": {"MiscBoon": [2, 8], "Chessy_1": 1}}
-      ]
-    },
-    {"setpieces": [{"required": {"Level4Boon": 2}}]}
-  ]
+    "version": 1,
+    "platform": "windows",
+    "settings": {},
+    "criteria": [
+        {
+            "tasks": {
+                "required": [
+                    "Killer bees!",
+                    "Magic meadow"
+                ],
+                "excluded": [
+                    "Mole Colony Rocks"
+                ]
+            },
+            "prefab_swaps": {
+                "twigs": "twiggy trees"
+            },
+            "setpieces": [
+                {
+                    "tasks": [
+                        "Magic meadow"
+                    ],
+                    "required": {
+                        "MooseNest": 1
+                    }
+                },
+                {
+                    "required": {
+                        "MiscBoon": [
+                            2,
+                            8
+                        ],
+                        "Chessy_1": 1
+                    }
+                }
+            ]
+        },
+        {
+            "setpieces": [
+                {
+                    "required": {
+                        "Level4Boon": 2
+                    }
+                }
+            ]
+        }
+    ]
 }
 ```
 
-| Key | Meaning |
-|---|---|
-| `version` | Optional schema version. Missing means 1; anything else exits 2 with `config: unsupported version 2`. |
-| `platform` | Optional, `"windows"` (the default) or `"linux"`: the OS of the host that generates the world. The level table is the same on both, so part A ignores it; `--json` echoes it. Anything else exits 2 with `config: unknown platform "mac" (windows or linux)`. |
-| `settings` | Optional and reserved for later. Only the default settings are supported, so it must be absent, `{}`, or map every key to `"default"`; anything else exits 2 with `config: only default settings are supported (boons)`. |
-| `criteria` | Optional list of at most 8 alternatives. A seed matches when **any** entry holds. A missing or empty list matches every seed. |
-| `criteria[].passive` | Optional `true`/`false` (default `false`). A seed is only decided when the part A of an entry that isn't passive holds (its world is generated when the config has parts B-E); it then matches the first entry, passive or not, that holds. A passive entry rides along on the other entries' candidates without making every seed one. At least one entry must not be passive (`config: every criteria entry is passive (at least one must not be)`). |
-| `criteria[].tasks.required` | Every listed task is among the chosen tasks. Task lists are always lists (never a bare string) of at most 25 tasks. |
-| `criteria[].tasks.excluded` | No listed task is among the chosen tasks. |
-| `criteria[].prefab_swaps` | `grass`: `regular grass` or `grass gekko`; `twigs`: `regular twigs` or `twiggy trees`; `berries`: `regular berries` or `juicy berries`. |
-| `criteria[].setpieces[]` | At most 16 rules. `required` maps at most 16 set piece names to `min` (at least min) or `[min, max]` (inclusive), integers in 0..4294967295. The count is how many times the piece is placed, summed over `set_pieces` and `random_set_pieces` of the entry's `tasks`. A missing or empty `tasks` means every task. |
+| Key                         | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `version`                   | Optional schema version. Missing means 1; anything else exits 2 with `config: unsupported version 2`.                                                                                                                                                                                                                                                                                                                                                  |
+| `platform`                  | Optional, `"windows"` (the default) or `"linux"`: the OS of the host that generates the world. The level table is the same on both, so part A ignores it; `--json` echoes it. Anything else exits 2 with `config: unknown platform "mac" (windows or linux)`.                                                                                                                                                                                          |
+| `settings`                  | Optional and reserved for later. Only the default settings are supported, so it must be absent, `{}`, or map every key to `"default"`; anything else exits 2 with `config: only default settings are supported (boons)`.                                                                                                                                                                                                                               |
+| `criteria`                  | Optional list of at most 8 alternatives. A seed matches when **any** entry holds. A missing or empty list matches every seed.                                                                                                                                                                                                                                                                                                                          |
+| `criteria[].passive`        | Optional `true`/`false` (default `false`). A seed is only decided when the part A of an entry that isn't passive holds (its world is generated when the config has parts B-E); it then matches the first entry, passive or not, that holds. A passive entry rides along on the other entries' candidates without making every seed one. At least one entry must not be passive (`config: every criteria entry is passive (at least one must not be)`). |
+| `criteria[].tasks.required` | Every listed task is among the chosen tasks. Task lists are always lists (never a bare string) of at most 25 tasks.                                                                                                                                                                                                                                                                                                                                    |
+| `criteria[].tasks.excluded` | No listed task is among the chosen tasks.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `criteria[].prefab_swaps`   | `grass`: `regular grass` or `grass gekko`; `twigs`: `regular twigs` or `twiggy trees`; `berries`: `regular berries` or `juicy berries`.                                                                                                                                                                                                                                                                                                                |
+| `criteria[].setpieces[]`    | At most 16 rules. `required` maps at most 16 set piece names to `min` (at least min) or `[min, max]` (inclusive), integers in 0..4294967295. The count is how many times the piece is placed, summed over `set_pieces` and `random_set_pieces` of the entry's `tasks`. A missing or empty `tasks` means every task.                                                                                                                                    |
 
 All conditions of one criteria entry must hold. Task names are the game's task ids as printed by
 `world show` (e.g. `"Killer bees!"`, `"MoonIsland_Beach"`). Set piece names are the `level.set_pieces` keys
@@ -174,15 +210,15 @@ All conditions of one criteria entry must hold. Task names are the game's task i
 
 ### Speed (clang build, 22 threads)
 
-| Command | seeds/s | whole 2^32 space |
-|---|---|---|
-| `setpiece find MiscBoon:6` | ~40M (1 thread ~4.2M) | ~2 min |
-| `world find`, prefab swap + trap filter (`t_traps.json`) | ~55M | ~1.5 min |
-| `world find`, boon filters (`t_boons.json`, `example.json`, `t_scoped.json`) | ~18–21M (1 thread ~2.1M) | ~4 min |
-| `world find`, filters that need ChooseSetPieces for most seeds (`t_fixed.json`, `t_specials.json`) | ~6.7–7.2M | ~10 min |
-| `world find`, every seed matches (full level table for every seed) | ~8.2M (1 thread ~720k) | ~9 min |
-| `world find`, no hits: rejected at the tasks (`nohit_fast`) / boon counts (`misc7`) / ChooseSetPieces (`nohit_deep`) | ~85–90M / ~26M / ~8.6M | ~50 s / ~3 min / ~8 min |
-| `world show` (sequential, JSON output) | ~5k | |
+| Command                                                                                                              | seeds/s                  | whole 2^32 space        |
+|----------------------------------------------------------------------------------------------------------------------|--------------------------|-------------------------|
+| `setpiece find MiscBoon:6`                                                                                           | ~40M (1 thread ~4.2M)    | ~2 min                  |
+| `world find`, prefab swap + trap filter (`t_traps.json`)                                                             | ~55M                     | ~1.5 min                |
+| `world find`, boon filters (`t_boons.json`, `example.json`, `t_scoped.json`)                                         | ~18–21M (1 thread ~2.1M) | ~4 min                  |
+| `world find`, filters that need ChooseSetPieces for most seeds (`t_fixed.json`, `t_specials.json`)                   | ~6.7–7.2M                | ~10 min                 |
+| `world find`, every seed matches (full level table for every seed)                                                   | ~8.2M (1 thread ~720k)   | ~9 min                  |
+| `world find`, no hits: rejected at the tasks (`nohit_fast`) / boon counts (`misc7`) / ChooseSetPieces (`nohit_deep`) | ~85–90M / ~26M / ~8.6M   | ~50 s / ~3 min / ~8 min |
+| `world show` (sequential, JSON output)                                                                               | ~5k                      |                         |
 
 `world find` works in stages and stops at the first one that can't match. First the tasks and prefab swaps.
 Then AddSetPeices: a count bound fails early when too few copies of a piece exist. The last stage is the
@@ -216,19 +252,19 @@ are the RNG stream and stock Lua 5.1 table orders, so the finder replays the RNG
 
 ## Code layout
 
-| Path | What |
-|---|---|
-| `main.bend` | CLI dispatch |
-| `rng/` | PCG32 (`pcg.bend`: seeding, affine skip, jump-ahead, draw counters), `math.random` (`lua_random.bend`), Klei's C++ `rand()` and `std::random_shuffle` for Windows and Linux hosts (`crand.bend`) |
-| `level/` | the level table: `prefix.bend` (prefab swaps, ChooseTasks), `setpieces.bend` (AddSetPeices), `choose.bend` (ChooseSetPieces), `summary.bend` (the `world show` JSON) |
-| `filters/` | `json.bend` (reader), `config.bend` (search config), `setpiece.bend` (`setpiece find` filters), `world.bend` (the world the filters read) and the part B-E evaluators (`evaluate.bend`, `metric.bend`, `walk.bend`, `routes.bend`, ...) |
-| `storygen/`, `worldsim/`, `populate/`, `ocean/`, `f64/`, `f32/`, `xint/`, `lua/`, `stl/` | the worldgen port: storygen, KK layout, Voronoi, tiles, land and ocean population, soft float, Lua and libstdc++ emulation |
-| `search/`, `cli/` | `setpiece`/`world` scans, rounds and output (`generated.bend`: the search on generated worlds, `order.bend`: scan order, `threads.bend`: the runtime's thread count (capped by the cgroup CPU quota); `worlds.bend`: on world dumps); argument parsing and file reading |
-| `native/` | the KK layout in C (the one part not in Bend), a foreign IO effect reached through `gen/layout.bend`'s `solve`; `worldsim/layout/kk.bend` is its reference |
-| `data/` | generated tables (`catalog.bend`, `world_catalog.bend`), never edited by hand: `scripts/gen/regen.sh` rewrites them |
-| `gen/` | the end-to-end generator: `generate.bend` (stage functions of forest_map.Generate), `job.bend` (the resumable per-seed job state machine: `step`, `layout`/`laid` at the KK passes; the ocean stage and its retries), `layout.bend` (a KK pass and its engines: `solve`, native C or kk.bend), `graph.bend`/`tags.bend`/`world.bend` (the Boost graph, ApplyPoisonTag, the tile world), `savedata.bend`/`centi.bend` (the filters' world of a generated world, positions rounded as the savedata dump prints them), `run.bend` (`seedfinder gen`), `trace.bend` (trace stage `gen`) |
-| `trace/`, `trace.bend` | `seedfinder_trace trace` (the debug binary), the canonical dumps the worldgen port is checked with |
-| `LAWS.bend`, `PROOF.bend`, `laws/` | golden-value laws with their proofs (`LAWS.bend`: root, `laws/*.bend`: each port lane); `PROOF.bend` imports them all |
+| Path                                                                                     | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `main.bend`                                                                              | CLI dispatch                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `rng/`                                                                                   | PCG32 (`pcg.bend`: seeding, affine skip, jump-ahead, draw counters), `math.random` (`lua_random.bend`), Klei's C++ `rand()` and `std::random_shuffle` for Windows and Linux hosts (`crand.bend`)                                                                                                                                                                                                                                                                                                                                                                                    |
+| `level/`                                                                                 | the level table: `prefix.bend` (prefab swaps, ChooseTasks), `setpieces.bend` (AddSetPeices), `choose.bend` (ChooseSetPieces), `summary.bend` (the `world show` JSON)                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `filters/`                                                                               | `json.bend` (reader), `config.bend` (search config), `setpiece.bend` (`setpiece find` filters), `world.bend` (the world the filters read) and the part B-E evaluators (`evaluate.bend`, `metric.bend`, `walk.bend`, `routes.bend`, ...)                                                                                                                                                                                                                                                                                                                                             |
+| `storygen/`, `worldsim/`, `populate/`, `ocean/`, `f64/`, `f32/`, `xint/`, `lua/`, `stl/` | the worldgen port: storygen, KK layout, Voronoi, tiles, land and ocean population, soft float, Lua and libstdc++ emulation                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `search/`, `cli/`                                                                        | `setpiece`/`world` scans, rounds and output (`generated.bend`: the search on generated worlds, `order.bend`: scan order, `threads.bend`: the runtime's thread count (capped by the cgroup CPU quota); `worlds.bend`: on world dumps); argument parsing and file reading                                                                                                                                                                                                                                                                                                             |
+| `native/`                                                                                | the KK layout in C (the one part not in Bend), a foreign IO effect reached through `gen/layout.bend`'s `solve`; `worldsim/layout/kk.bend` is its reference                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `data/`                                                                                  | generated tables (`catalog.bend`, `world_catalog.bend`), never edited by hand: `scripts/gen/regen.sh` rewrites them                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `gen/`                                                                                   | the end-to-end generator: `generate.bend` (stage functions of forest_map.Generate), `job.bend` (the resumable per-seed job state machine: `step`, `layout`/`laid` at the KK passes; the ocean stage and its retries), `layout.bend` (a KK pass and its engines: `solve`, native C or kk.bend), `graph.bend`/`tags.bend`/`world.bend` (the Boost graph, ApplyPoisonTag, the tile world), `savedata.bend`/`centi.bend` (the filters' world of a generated world, positions rounded as the savedata dump prints them), `run.bend` (`seedfinder gen`), `trace.bend` (trace stage `gen`) |
+| `trace/`, `trace.bend`                                                                   | `seedfinder_trace trace` (the debug binary), the canonical dumps the worldgen port is checked with                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `LAWS.bend`, `PROOF.bend`, `laws/`                                                       | golden-value laws with their proofs (`LAWS.bend`: root, `laws/*.bend`: each port lane); `PROOF.bend` imports them all                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 `seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]` prints one worldgen stage in the
 canonical record format of the reference oracle the worldgen port was checked against, stage by stage. Stages:
@@ -238,23 +274,24 @@ from the seed alone, every attempt).
 ## Validation
 
 - `scripts/bend.sh PROOF.bend` (~50-65 s, 2.2 GB; `scripts/proof.sh` checks the same law files one by one with
-  their times): golden values from the Lua reference harness and the port lanes' references. The root laws cover set pieces
+  their times): golden values from the Lua reference harness and the port lanes' references. The root laws cover set
+  pieces
   (edge seeds 0 / 1 / 2^31 / 2^32-1), the seed-1 prefix (prefab swaps, the task shuffle and the PCG state), the
   whole level table of seed 1, and config parsing (including the default-only settings and `version` checks)
   and matching. Keep each law cheap: the checker evaluates slowly, and a `LevelSummary.summary` of a seed with many
   boons can need more than 8 GB.
 - Against a harness that runs the real worldgen Lua under Lua 5.1.5 with DST's RNG:
-  - `setpiece`: identical for seeds 1..1,000,000.
-  - `world show` is byte-identical for 1..1,000,000 plus 2^31-50,000..2^31+49,999 and 2^32-100,000..2^32-1. That is
-    1.2M seeds in total.
-  - `world find`: the hit lines (seed, entry, level) and the `done` line agree with an independent evaluation of 9
-    configs over the harness summaries of seeds 1..20,000; `--limit`, wrap-around at 2^32, a whole-space scan,
-    `--threads 1` == `--threads 22`, the `--json` job object, time limits and their continuation, and the config
-    errors of the spec were checked too.
+    - `setpiece`: identical for seeds 1..1,000,000.
+    - `world show` is byte-identical for 1..1,000,000 plus 2^31-50,000..2^31+49,999 and 2^32-100,000..2^32-1. That is
+      1.2M seeds in total.
+    - `world find`: the hit lines (seed, entry, level) and the `done` line agree with an independent evaluation of 9
+      configs over the harness summaries of seeds 1..20,000; `--limit`, wrap-around at 2^32, a whole-space scan,
+      `--threads 1` == `--threads 22`, the `--json` job object, time limits and their continuation, and the config
+      errors of the spec were checked too.
 - Against the real game (`scripts/groundtruth/`, a mod that dumps worldgen data from the dedicated server):
-  - The log for seeds 1..1000 matches the harness and the finder exactly. That covers the set pieces and the
-    per-task `PLACE` lines of ChooseSetPieces.
-  - Full world dumps for seeds 1..10 (tasks, per-task set pieces and prefab swaps) also match.
+    - The log for seeds 1..1000 matches the harness and the finder exactly. That covers the set pieces and the
+      per-task `PLACE` lines of ChooseSetPieces.
+    - Full world dumps for seeds 1..10 (tasks, per-task set pieces and prefab swaps) also match.
 
 ## Limits
 

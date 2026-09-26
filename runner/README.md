@@ -11,13 +11,13 @@ accept the flag at all.
 
 Instance env (set by the Worker at create time; every value is free of spaces and quotes):
 
-| var | example |
-|---|---|
-| `CALLBACK_URL` | `https://<origin>/api/runner/<job id>` |
-| `RUNNER_TOKEN` | 64 hex chars, per job; the Durable Object stores only its SHA-256 |
-| `JOB_LIMIT` | `25` (`--limit`) |
+| var              | example                                                                |
+|------------------|------------------------------------------------------------------------|
+| `CALLBACK_URL`   | `https://<origin>/api/runner/<job id>`                                 |
+| `RUNNER_TOKEN`   | 64 hex chars, per job; the Durable Object stores only its SHA-256      |
+| `JOB_LIMIT`      | `25` (`--limit`)                                                       |
 | `JOB_TIME_LIMIT` | `37.5` (`--time-limit`, seconds; see "Credits" in `website/README.md`) |
-| `JOB_START_SEED` | `0` (`--start-seed`) |
+| `JOB_START_SEED` | `0` (`--start-seed`)                                                   |
 
 1. `GET $CALLBACK_URL` with `Authorization: Bearer $RUNNER_TOKEN` → `200` with the config file (JSON, as is). The first
    GET is the billing start. Repeated GETs return the same config until the first chunk arrives, `409` after.

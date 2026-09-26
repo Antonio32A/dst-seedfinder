@@ -9,14 +9,14 @@ Wrangler needs Node 22 or newer.
 1. `npx wrangler login`
 2. Set the secrets (this creates the Worker if it doesn't exist yet), one by one with `npx wrangler secret put <NAME>`
    or all at once with `npx wrangler secret bulk <file>` from a `KEY=VALUE` file with the production values:
-   - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`
-   - optional: `DISCORD_REDIRECT_URI` (defaults to `<origin>/api/auth/callback`)
-   - `VAST_API_KEY` (a vast.ai API key), `GHCR_USER` and `GHCR_PULL_TOKEN` (a GitHub user and a token with
-     `read:packages`, used as the instances' `image_login`)
-   - `RUNNER_IMAGE`: the `<RUNNER_REPOSITORY>@sha256:...` digest printed by `../runner/build.sh --push`
-   - optional: `PUBLIC_ORIGIN`, the origin runners call back on (defaults to the origin of the request that starts
-     the search; it has to be reachable without Cloudflare Access)
-   - optional: `MAX_INSTANCES`, live instances at once (default 15)
+    - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`
+    - optional: `DISCORD_REDIRECT_URI` (defaults to `<origin>/api/auth/callback`)
+    - `VAST_API_KEY` (a vast.ai API key), `GHCR_USER` and `GHCR_PULL_TOKEN` (a GitHub user and a token with
+      `read:packages`, used as the instances' `image_login`)
+    - `RUNNER_IMAGE`: the `<RUNNER_REPOSITORY>@sha256:...` digest printed by `../runner/build.sh --push`
+    - optional: `PUBLIC_ORIGIN`, the origin runners call back on (defaults to the origin of the request that starts
+      the search; it has to be reachable without Cloudflare Access)
+    - optional: `MAX_INSTANCES`, live instances at once (default 15)
 
    Until `VAST_API_KEY`, `GHCR_USER`, `GHCR_PULL_TOKEN` and `RUNNER_IMAGE` are all set, searches are refused with 503.
 3. `npm run build && npm run deploy`. The first deploy creates the `dst-seedfinder` D1 database and binds it. The
@@ -61,8 +61,10 @@ node scripts/gen/gen_website_catalog.mjs
 ## Credits
 
 Every user is topped up to 1000 credits a day at 00:00 UTC (`loadUser`): the balance plus the credits reserved by
-unsettled searches is raised to 1000, and a larger balance (granted by hand in D1) is kept. Refunds are not capped. D1 stores credits as integer hundredths
-(`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1,000,000 credits, default 100)
+unsettled searches is raised to 1000, and a larger balance (granted by hand in D1) is kept. Refunds are not capped. D1
+stores credits as integer hundredths
+(`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1,000,000 credits, default
+100)
 up front, atomically with the check that the user has fewer than 3 active searches (`MAX_ACTIVE_SEARCHES`, counted
 inside the reservation's `INSERT ... SELECT`).
 
@@ -78,14 +80,17 @@ refunded when the search settles.
 
 ## Searches on vast.ai
 
-The runner protocol is in [`runner/README.md`](../runner/README.md). Each search gets its own `JobRoom` Durable Object (keyed by job id)
+The runner protocol is in [`runner/README.md`](../runner/README.md). Each search gets its own `JobRoom` Durable Object (
+keyed by job id)
 that owns the whole lifecycle, and a singleton `Dispatcher` caps live instances at `MAX_INSTANCES` with a FIFO queue.
 
 - `queued`: waiting for a Dispatcher slot; the room is told its 1-based queue position. At 200 waiting searches,
   `POST /api/jobs` answers 503 before reserving anything.
 - `starting`: before each of up to 3 attempts the room searches `/bundles/` again; `lib/server/offers.ts`
-  (`pickOffers`, the replaceable offer algorithm) ranks the offers by cores × GHz ÷ $/h (verified machines only, at least
-  200 MB of RAM per core) and the room rents the best one it hasn't tried, giving it 3 minutes to fetch its config. Only a definite
+  (`pickOffers`, the replaceable offer algorithm) ranks the offers by cores × GHz ÷ $/h (verified machines only, at
+  least
+  200 MB of RAM per core) and the room rents the best one it hasn't tried, giving it 3 minutes to fetch its config. Only
+  a definite
   refusal of an offer (vast.ai 4xx) or a boot timeout uses up an attempt; vast.ai hiccups (429, 5xx, timeouts) are
   retried every 20 s. Nothing boots within 3 attempts or 10 minutes → `failed`, charged 0.
 - `running`: from the runner's first `GET /api/runner/<id>`. The runner POSTs its output every second with `X-Offset`

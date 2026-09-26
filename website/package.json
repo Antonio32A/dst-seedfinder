@@ -1,38 +1,38 @@
 {
-  "name": "dst-seedfinder",
-  "version": "0.1.0",
-  "private": true,
-  "packageManager": "npm@10.9.8",
-  "dependencies": {
-    "@vinext/cloudflare": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "react-server-dom-webpack": "latest",
-    "vinext": "latest"
-  },
-  "devDependencies": {
-    "@cloudflare/vite-plugin": "latest",
-    "@tailwindcss/postcss": "latest",
-    "@types/node": "^26.6.2",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "latest",
-    "@vitejs/plugin-rsc": "latest",
-    "tailwindcss": "latest",
-    "typescript": "latest",
-    "vite": "latest",
-    "wrangler": "^4.137.0"
-  },
-  "type": "module",
-  "scripts": {
-    "wasm": "mkdir -p public/wasm && cp ../build/wasm/seedfinder.wasm ../build/wasm/seedfinder.mjs public/wasm/",
-    "predev": "npm run wasm --silent || echo 'No ../build/wasm yet, so browser search is off. Build it with ../scripts/build.sh wasm.'",
-    "dev": "vinext dev",
-    "prebuild": "npm run wasm",
-    "build": "vinext build",
-    "start": "wrangler dev --config dist/server/wrangler.json",
-    "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",
-    "preview": "npm run build && npm run start --",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts"
-  }
+    "name": "dst-seedfinder",
+    "version": "0.1.0",
+    "private": true,
+    "packageManager": "npm@10.9.8",
+    "dependencies": {
+        "@vinext/cloudflare": "latest",
+        "react": "latest",
+        "react-dom": "latest",
+        "react-server-dom-webpack": "latest",
+        "vinext": "latest"
+    },
+    "devDependencies": {
+        "@cloudflare/vite-plugin": "latest",
+        "@tailwindcss/postcss": "latest",
+        "@types/node": "^26.6.2",
+        "@types/react": "latest",
+        "@types/react-dom": "latest",
+        "@vitejs/plugin-react": "latest",
+        "@vitejs/plugin-rsc": "latest",
+        "tailwindcss": "latest",
+        "typescript": "latest",
+        "vite": "latest",
+        "wrangler": "^4.137.0"
+    },
+    "type": "module",
+    "scripts": {
+        "wasm": "mkdir -p public/wasm && cp ../build/wasm/seedfinder.wasm ../build/wasm/seedfinder.mjs public/wasm/",
+        "predev": "npm run wasm --silent || echo 'No ../build/wasm yet, so browser search is off. Build it with ../scripts/build.sh wasm.'",
+        "dev": "vinext dev",
+        "prebuild": "npm run wasm",
+        "build": "vinext build",
+        "start": "wrangler dev --config dist/server/wrangler.json",
+        "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",
+        "preview": "npm run build && npm run start --",
+        "cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts"
+    }
 }
