@@ -232,6 +232,18 @@ function HitList({ hits, showOption, onCopy }: { hits: SearchHit[]; showOption: 
             copy all seeds
           </button>
         )}
+        <button
+          type="button"
+          className="link-button"
+          onClick={() =>
+            onCopy(
+              hits.map(({ seed, entry, level, results }) => `${seed} ${JSON.stringify({ entry, level, results })}`).join("\n"),
+              `${plural(hits.length, "seed")} with data`,
+            )
+          }
+        >
+          {hits.length > 1 ? "copy all seeds with data" : "copy seed with data"}
+        </button>
       </div>
     </>
   );
