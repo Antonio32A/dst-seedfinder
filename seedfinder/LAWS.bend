@@ -90,7 +90,7 @@ def world_seed_1_level_table():
   {==}
 
 law config_parses_every_section:
-  {CF.config_of("{\"version\": 1, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"criteria\": [{\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}]}") == Done{CF.Config{True{}, [CF.Criteria{0, 8, 2, 2, [CF.Rule{70, 32768, 1, 4294967295}, CF.Rule{3, 32768, 1, 2}]}], [CF.no_later()], None{}}} : Result<&1, &1, U32 & String, CF.Config>}
+  {CF.config_of("{\"version\": 1, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"criteria\": [{\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}]}") == Done{CF.Config{True{}, [CF.Criteria{0, 8, 2, 2, [CF.Rule{70, 32768, 1, 4294967295}, CF.Rule{3, 32768, 1, 2}]}], [CF.no_later()], None{}, [CF.Criteria{0, 8, 2, 2, [CF.Rule{70, 32768, 1, 4294967295}, CF.Rule{3, 32768, 1, 2}]}]}} : Result<&1, &1, U32 & String, CF.Config>}
 
 def config_parses_every_section():
   {==}
@@ -148,9 +148,27 @@ def first_match_skips_failing_entry():
   {==}
 
 law config_reads_linux_platform:
-  {CF.config_of("{\"platform\": \"linux\"}") == Done{CF.Config{False{}, [], [], None{}}} : Result<&1, &1, U32 & String, CF.Config>}
+  {CF.config_of("{\"platform\": \"linux\"}") == Done{CF.Config{False{}, [], [], None{}, [CF.anything()]}} : Result<&1, &1, U32 & String, CF.Config>}
 
 def config_reads_linux_platform():
+  {==}
+
+law passive_entry_makes_no_candidates:
+  {CF.config_of("{\"criteria\": [{\"passive\": true, \"tasks\": {\"excluded\": [\"Squeltch\"]}}, {\"tasks\": {\"required\": [\"Killer bees!\"]}}]}") == Done{CF.Config{True{}, [CF.Criteria{0, 8, 0, 0, []}, CF.Criteria{1024, 0, 0, 0, []}], [CF.no_later(), CF.no_later()], None{}, [CF.Criteria{1024, 0, 0, 0, []}]}} : Result<&1, &1, U32 & String, CF.Config>}
+
+def passive_entry_makes_no_candidates():
+  {==}
+
+law config_rejects_only_passive_entries:
+  {CF.config_of("{\"criteria\": [{\"passive\": true}]}") == Fail{(2, "config: every criteria entry is passive (at least one must not be)")} : Result<&1, &1, U32 & String, CF.Config>}
+
+def config_rejects_only_passive_entries():
+  {==}
+
+law config_rejects_non_flag_passive:
+  {CF.config_of("{\"criteria\": [{\"passive\": 1}]}") == Fail{(2, "config: criteria[0].passive must be true or false")} : Result<&1, &1, U32 & String, CF.Config>}
+
+def config_rejects_non_flag_passive():
   {==}
 
 law config_rejects_unknown_platform:

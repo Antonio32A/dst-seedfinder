@@ -64,7 +64,7 @@ def platform_message(+windows: Bool) -> String:
 
 def evaluate_world(+config: CF.Config, +text: String, loaded: WD.Loaded, +path: String, +fast: Bool) -> IO(Unit):
   match config loaded:
-    case CF.Config{+windows, +criteria, +laters, _} WD.Generated{+world, +platform}:
+    case CF.Config{+windows, +criteria, +laters, _, _} WD.Generated{+world, +platform}:
       match world:
         case WD.World{+seed, _, _, _, _, _, _}:
           Bool.pick(IO(Unit), platform_mismatch(windows, platform), IO.die(Unit, 2, platform_message(windows)),

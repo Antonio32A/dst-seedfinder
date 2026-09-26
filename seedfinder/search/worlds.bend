@@ -58,7 +58,7 @@ def platform_matches(+windows: Bool, +platform: U32) -> Bool:
 
 def world_verdict(loaded: Result<&1, &1, U32 & String, WD.Loaded>, +config: CF.Config, +seed: U32) -> Verdict:
   match loaded config:
-    case Done{WD.Generated{+world, +platform}} CF.Config{+windows, +criteria, +laters, _}:
+    case Done{WD.Generated{+world, +platform}} CF.Config{+windows, +criteria, +laters, _, _}:
       Bool.pick(Verdict, platform_matches(windows, platform), first_entry(criteria, laters, False{}, world, seed, 0, Nil{}), Absent{})
     case Done{WD.GaveUp{_}} _:
       Miss{}
@@ -226,8 +226,8 @@ def chunk_candidates(+len: Nat, +lo: U32, +criteria: List<&2, CF.Criteria>) -> U
 
 def criteria_of(+ctx: Ctx) -> List<&2, CF.Criteria>:
   match ctx:
-    case Ctx{_, _, _, _, _, CF.Config{_, +criteria, _, _}, _, _}:
-      CF.or_anything(criteria)
+    case Ctx{_, _, _, _, _, CF.Config{_, _, _, _, +scanned}, _, _}:
+      scanned
 
 def candidates(got: U32 & List<&2, U32>) -> List<&2, U32>:
   (count, seeds) = got
@@ -264,7 +264,7 @@ def platform_name(+windows: Bool) -> String:
 
 def report(+h: Hunt, +ctx: Ctx) -> IO(Unit):
   match h ctx:
-    case Hunt{_, _, +scanned, +found, +hits, +code, +missing, _} Ctx{+start, _, _, _, +json, CF.Config{+windows, _, _, _}, +dir, _}:
+    case Hunt{_, _, +scanned, +found, +hits, +code, +missing, _} Ctx{+start, _, _, _, +json, CF.Config{+windows, _, _, _, _}, +dir, _}:
       +position = RP.position_json(start, scanned, code)
       do IO<Unit>:
         missing_note(missing, dir)

@@ -32,6 +32,7 @@ export interface PieceRule {
 
 export interface CriteriaGroup extends WorldRows {
   key: string;
+  passive: boolean;
   biomes: Record<string, BiomeChoice>;
   swaps: Partial<Record<SwapCategory, string>>;
   rules: PieceRule[];
@@ -86,8 +87,9 @@ const REQUIREMENT: Record<CountMode, (rule: PieceRule) => SetPieceBound> = {
 
 const TASK_IDS = TASKS.map((task) => task.id);
 
-export function emptyGroup(): CriteriaGroup {
-  return { key: newKey(), biomes: {}, swaps: {}, rules: [], ...emptyWorldRows() };
+/** A group with nothing picked; `passive` groups are only checked on seeds the other groups already pick. */
+export function emptyGroup(passive = false): CriteriaGroup {
+  return { key: newKey(), passive, biomes: {}, swaps: {}, rules: [], ...emptyWorldRows() };
 }
 
 export function defaultState(): SearchState {
@@ -148,12 +150,13 @@ function biomesWith(group: CriteriaGroup, choice: BiomeChoice): string[] {
 }
 
 function groupToCriterion(group: CriteriaGroup): Criterion | undefined {
-  return compact<Criterion>({
+  const sections = compact<Criterion>({
     tasks: compact({ required: nonEmpty(biomesWith(group, "include")), excluded: nonEmpty(biomesWith(group, "exclude")) }),
     prefab_swaps: compact(group.swaps),
     setpieces: nonEmpty(rulesToSetPieces(group.rules)),
     ...worldSections(group),
   });
+  return sections && { passive: group.passive, ...sections };
 }
 
 /** Builds the strict seedfinder JSON config, omitting empty parts. */
@@ -196,6 +199,7 @@ function criterionToGroup(criterion: unknown): CriteriaGroup {
       .map((id) => [id, choice] as const);
   return {
     key: newKey(),
+    passive: record.passive === true,
     biomes: Object.fromEntries([...biomeEntries(tasks.required, "include"), ...biomeEntries(tasks.excluded, "exclude")]),
     swaps: Object.fromEntries(
       SWAPS.filter((swap) => swap.options.some((option) => option.id === swaps[swap.id])).map((swap) => [swap.id, swaps[swap.id]]),
@@ -274,7 +278,7 @@ const GROUP_CHECKS: GroupCheck[] = [
     });
   },
   (group) =>
-    worldRowCount(group) > 0 && levelTableChoices(group) === 0
+    !group.passive && worldRowCount(group) > 0 && levelTableChoices(group) === 0
       ? [{ severity: "warning", message: "only world details are picked, so every seed's world gets generated. Add a biome, resource or set piece to speed it up." }]
       : [],
   worldIssues,
@@ -291,10 +295,13 @@ export function validateSearch(state: SearchState): Issue[] {
     const issues = [...emptyWarning, ...GROUP_CHECKS.flatMap((check) => check(group))];
     return issues.map((issue) => ({ ...issue, message: label(issue.message) }));
   });
-  const nothing: Issue[] = state.groups.every(isEmptyGroup)
-    ? [{ severity: "warning", message: "Nothing picked yet, so every world matches." }]
-    : [];
-  const issues = [...nothing, ...perGroup];
+  const picked = state.groups.filter((group) => !isEmptyGroup(group));
+  const nothing: Issue[] = picked.length === 0 ? [{ severity: "warning", message: "Nothing picked yet, so every world matches." }] : [];
+  const allPassive: Issue[] =
+    picked.length > 0 && picked.every((group) => group.passive)
+      ? [{ severity: "error", message: "Every option is passive. At least one option has to pick the seeds the passive ones are checked on." }]
+      : [];
+  const issues = [...nothing, ...allPassive, ...perGroup];
   if (issues.some((issue) => issue.severity === "error")) return issues;
   const checked = validateConfig(toSeedfinderConfig(state));
   return checked.ok ? issues : [...issues, { severity: "error", message: `This search can't be sent: ${checked.error}` }];

@@ -18,10 +18,11 @@ type Criteria is Data:
   Criteria{required: U32, excluded: U32, swap_care: U32, swap_want: U32, rules: List<&2, Rule>}
 
 # A compiled config: the platform the worlds are generated on (windows unless "linux"), the part A criteria of the
-# entries, their parts B-E (in the same order), and the first "not supported by this binary yet" message when an entry
-# has a counts, distances, tiles or routes key.
+# entries, their parts B-E (in the same order), the first "not supported by this binary yet" message when an entry
+# has a counts, distances, tiles or routes key, and the part A criteria that make a seed a candidate (those of the
+# entries that are not passive; anything when there are no entries).
 type Config is Data:
-  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, RU.Later>, unsupported: Maybe<&2, String>}
+  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, RU.Later>, unsupported: Maybe<&2, String>, scanned: List<&2, Criteria>}
 
 def every_task() -> U32:
   33554431
@@ -198,14 +199,15 @@ def first_later(+fields: List<&2, J.Json>, sections: List<&2, String>, +path: St
         Some{"config: " ++ path ++ "." ++ section ++ " is not supported by this binary yet (only tasks, prefab_swaps and setpieces are)"},
         first_later(fields, rest, path))
 
-# One parsed criteria entry: its part A, its parts B-E, and the message for a finder without worlds when it has a
-# counts, distances, tiles or routes key.
+# One parsed criteria entry: its part A, its parts B-E, the message for a finder without worlds when it has a
+# counts, distances, tiles or routes key, and whether it is passive (only decided on candidates of other entries).
 type Entry is Data:
-  Entry{level: Criteria, later: RU.Later, unsupported: Maybe<&2, String>}
+  Entry{level: Criteria, later: RU.Later, unsupported: Maybe<&2, String>, passive: Bool}
 
 def entry_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
   do Result<&1, &1, U32 & String, Entry>:
-    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "routes"], path)
+    +fields : List<&2, J.Json> <- PS.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "routes"], path)
+    +passive : Bool <- PS.optional_flag(PS.field(fields, "passive"), path ++ ".passive")
     items : List<&2, J.Json> <- PS.optional_items(PS.field(fields, "setpieces"), path ++ ".setpieces")
     listed : List<&2, J.Json> <- PS.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
@@ -213,7 +215,7 @@ def entry_of(json: J.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>
     +required : U32 <- task_rule("required", PS.field(fields, "tasks"), path ++ ".tasks")
     +excluded : U32 <- task_rule("excluded", PS.field(fields, "tasks"), path ++ ".tasks")
     +swaps : U32 <- swaps_of(PS.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, first_later(fields, later_parts(), path)}
+    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, first_later(fields, later_parts(), path), passive}
 
 def entry_list(items: List<&2, J.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
   match items:
@@ -275,27 +277,40 @@ def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
   match entries:
     case Nil{}:
       Nil{}
-    case Con{Entry{level, _, _}, rest}:
+    case Con{Entry{level, _, _, _}, rest}:
       level <> levels_of(rest)
 
 def laters_of(entries: List<&2, Entry>) -> List<&2, RU.Later>:
   match entries:
     case Nil{}:
       Nil{}
-    case Con{Entry{_, later, _}, rest}:
+    case Con{Entry{_, later, _, _}, rest}:
       later <> laters_of(rest)
 
 def unsupported_of(entries: List<&2, Entry>) -> Maybe<&2, String>:
   match entries:
     case Nil{}:
       None{}
-    case Con{Entry{_, _, Some{message}}, _}:
+    case Con{Entry{_, _, Some{message}, _}, _}:
       Some{message}
     case Con{_, rest}:
       unsupported_of(rest)
 
+def active_levels(entries: List<&2, Entry>) -> List<&2, Criteria>:
+  match entries:
+    case Nil{}:
+      Nil{}
+    case Con{Entry{level, _, _, False{}}, rest}:
+      level <> active_levels(rest)
+    case Con{_, rest}:
+      active_levels(rest)
+
+def some_active(+entries: List<&2, Entry>) -> Result<&1, &1, U32 & String, Unit>:
+  Bool.pick(Result<&1, &1, U32 & String, Unit>, List.is_empty(&2, Entry, entries) || Bool.not(List.is_empty(&2, Criteria, active_levels(entries))), Done{Unit{}},
+    Fail{PS.failure("every criteria entry is passive (at least one must not be)")})
+
 def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
-  Config{windows, levels_of(entries), laters_of(entries), unsupported_of(entries)}
+  Config{windows, levels_of(entries), laters_of(entries), unsupported_of(entries), or_anything(active_levels(entries))}
 
 # Compiles the JSON text of a search config (.scratch/spec/search-v1.md) into its platform, the part A criteria and
 # parts B-E of every entry, checking in the order of .scratch/search/config.py.
@@ -310,14 +325,15 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
     items : List<&2, J.Json> <- PS.optional_items(PS.field(fields, "criteria"), "criteria")
     listed : List<&2, J.Json> <- PS.capped(items, 8, "entries", "criteria")
     +entries : List<&2, Entry> <- entry_list(listed, 0)
+    active : Unit <- some_active(entries)
     return config_from(windows, entries)
 
 # A config for a finder that only knows part A: the message when some entry has a counts/distances/tiles/routes key.
 def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
   match config:
-    case Config{_, _, _, None{}}:
+    case Config{_, _, _, None{}, _}:
       Done{config}
-    case Config{_, _, _, Some{+message}}:
+    case Config{_, _, _, Some{+message}, _}:
       Fail{(2, message)}
 
 def tasks_hold(+c: Criteria, +chosen: U32, +swaps: U32) -> Bool:

@@ -201,6 +201,7 @@ const route: Parse = (value, path) => {
 const rules = (parse: Parse) => optional(listOf(parse, MAX_RULES_PER_SECTION, "rules"));
 
 const criterion = objectOf({
+  passive: optional(flag),
   tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
   prefab_swaps: optional(prefabSwaps),
   setpieces: rules(objectOf({ tasks: optional(taskList), required: optional(setPieceBounds) })),
@@ -225,6 +226,14 @@ const criterion = objectOf({
   routes: rules(route),
 });
 
+const criteriaList = listOf(criterion, MAX_CRITERIA, "entries");
+
+const criteria: Parse = (value, path) => {
+  const entries = criteriaList(value, path);
+  const allPassive = entries.length > 0 && entries.every((entry) => (entry as { passive?: boolean }).passive === true);
+  return allPassive ? fail("every criteria entry is passive (at least one must not be)") : entries;
+};
+
 const configShape = objectOf({
   version: optional((value) => (value === CONFIG_VERSION ? value : fail(`unsupported version ${quoted(value)}`))),
   platform: optional((value) =>
@@ -234,7 +243,7 @@ const configShape = objectOf({
     const custom = Object.entries(recordAt(value, path)).find(([, level]) => level !== "default");
     return custom ? fail(`only default settings are supported (${custom[0]})`) : value;
   }),
-  criteria: optional(listOf(criterion, MAX_CRITERIA, "entries")),
+  criteria: optional(criteria),
 });
 
 function validated<T>(check: () => T): Validation<T> {

@@ -14,6 +14,7 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
   const setGroups = (update: (groups: CriteriaGroup[]) => CriteriaGroup[]) =>
     onChange((current) => ({ ...current, groups: update(current.groups) }));
   const multiple = state.groups.length > 1;
+  const onlyActive = state.groups.filter((group) => !group.passive).length === 1;
 
   return (
     <section className="section" aria-labelledby="criteria">
@@ -36,8 +37,14 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
             group={group}
             index={index}
             total={state.groups.length}
+            onlyActive={onlyActive}
             onChange={(changed) => setGroups((groups) => groups.map((item) => (item.key === changed.key ? changed : item)))}
-            onRemove={() => setGroups((groups) => groups.filter((item) => item.key !== group.key))}
+            onRemove={() =>
+              setGroups((groups) => {
+                const kept = groups.filter((item) => item.key !== group.key);
+                return kept.some((item) => !item.passive) ? kept : kept.map((item, at) => (at === 0 ? { ...item, passive: false } : item));
+              })
+            }
           />
         </Fragment>
       ))}
@@ -46,7 +53,7 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
           type="button"
           className="link-button"
           disabled={state.groups.length >= MAX_CRITERIA}
-          onClick={() => setGroups((groups) => [...groups, emptyGroup()])}
+          onClick={() => setGroups((groups) => [...groups, emptyGroup(groups.length > 0)])}
         >
           Or also accept...
         </button>{" "}

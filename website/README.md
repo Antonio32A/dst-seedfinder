@@ -46,6 +46,10 @@ and `lib/validate-config.ts` validates them strictly with the finder's error mes
 same on both, but generated worlds differ. The site always writes `platform`, and `validateConfig` fills it in when
 it's missing.
 
+Every entry the site writes has `passive` (`true` or `false`). A passive entry is only checked on seeds that an entry
+that isn't passive already picks (search spec § 1). Cards after the first start passive, the only card that isn't
+passive can't be switched, and a config where every entry is passive is rejected with the finder's message.
+
 `lib/world-catalog.ts` (prefabs, prefab groups, land tiles, game build) is generated from
 `../.scratch/catalog/catalog.json`. Regenerate it after every catalog regen, then check it against the spec:
 

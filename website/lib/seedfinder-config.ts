@@ -90,6 +90,7 @@ export interface RouteRule {
 }
 
 export interface Criterion {
+  passive?: boolean;
   tasks?: TaskFilter;
   prefab_swaps?: PrefabSwaps;
   setpieces?: SetPieceRule[];

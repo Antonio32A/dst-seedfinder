@@ -129,11 +129,11 @@ def world_rounds(
 
 def level_rounds(+q: A.Query, +config: CF.Config) -> IO(Unit):
   match q config:
-    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} CF.Config{+windows, +entries, _, _}:
+    case A.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} CF.Config{+windows, +entries, _, _, +scanned}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         world_rounds(round_fuel(), (0, Nil{}), Scan{start, total, min_round(), 0, Nil{}, 0, 0n},
-          A.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}}, entries, CF.or_anything(entries), started, started)
+          A.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}}, entries, scanned, started, started)
 
 def any_rules(laters: List<&2, RU.Later>) -> Bool:
   match laters:
@@ -144,15 +144,15 @@ def any_rules(laters: List<&2, RU.Later>) -> Bool:
 
 def with_worlds(worlds: Maybe<&2, String>, +q: A.Query, +config: CF.Config) -> IO(Unit):
   match worlds config:
-    case None{} CF.Config{_, _, +laters, _}:
+    case None{} CF.Config{_, _, +laters, _, _}:
       Bool.pick(IO(Unit), any_rules(laters), SGN.run(q, config), level_rounds(q, config))
-    case Some{+dir} CF.Config{_, _, +laters, _}:
+    case Some{+dir} CF.Config{_, _, +laters, _, _}:
       Bool.pick(IO(Unit), any_rules(laters), SWD.run(q, config, dir), level_rounds(q, config))
 
 def with_platform(+config: CF.Config, +platform: U32) -> CF.Config:
   match config:
-    case CF.Config{+windows, +criteria, +laters, +unsupported}:
-      CF.Config{Bool.pick(Bool, U32.is_zero(platform), windows, U32.is_eq(platform, 1)), criteria, laters, unsupported}
+    case CF.Config{+windows, +criteria, +laters, +unsupported, +scanned}:
+      CF.Config{Bool.pick(Bool, U32.is_zero(platform), windows, U32.is_eq(platform, 1)), criteria, laters, unsupported, scanned}
 
 # world find: the level-table scan, or (with parts B-E) the search over worlds generated in memory, or with
 # --worlds DIR over pre-generated world dumps. --platform overrides the config's platform.

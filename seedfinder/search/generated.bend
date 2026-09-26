@@ -151,7 +151,7 @@ def config_of(+ctx: Ctx) -> CF.Config:
 
 def windows_of(+config: CF.Config) -> Bool:
   match config:
-    case CF.Config{+windows, _, _, _}:
+    case CF.Config{+windows, _, _, _, _}:
       windows
 
 def ctx_start(+ctx: Ctx) -> U32:
@@ -176,8 +176,8 @@ def elapsed(+ctx: Ctx, +now: Nat) -> Nat:
 
 def criteria_of(+ctx: Ctx) -> List<&2, CF.Criteria>:
   match ctx:
-    case Ctx{_, _, _, _, _, CF.Config{_, +criteria, _, _}, _, _, _, _}:
-      CF.or_anything(criteria)
+    case Ctx{_, _, _, _, _, CF.Config{_, _, _, _, +scanned}, _, _, _, _}:
+      scanned
 
 def slots_of(+ctx: Ctx) -> U32:
   match ctx:
@@ -883,7 +883,7 @@ def stats_line(+s: Stats) -> String:
 
 def report(host: Host, +code: U32, +ctx: Ctx) -> IO(Unit):
   match host ctx:
-    case Host{Book{_, _, _, Tally{+found, +hits, _, +last, _, +scanned}, +made, _, _, +stats}, _} Ctx{+start, +total, _, _, +json, CF.Config{+windows, _, _, _}, _, _, _, _}:
+    case Host{Book{_, _, _, Tally{+found, +hits, _, +last, _, +scanned}, +made, _, _, +stats}, _} Ctx{+start, +total, _, _, +json, CF.Config{+windows, _, _, _, _}, _, _, _, _}:
       +position = RP.position_json(start, scanned_at(Tally{found, hits, Nil{}, last, code, scanned}, code, total), code)
       do IO<Unit>:
         IO.print_err("search: " ++ U32.show(made) ++ " candidate worlds generated")
