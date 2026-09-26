@@ -4,8 +4,8 @@ import ../f64/arith.bend as F64Arith
 import ../f64/cmp.bend as F64Cmp
 import ../data/search_vocab.bend as SearchVocab
 
-# A generated world as the filters see it (.scratch/port/tools/world_dump.py writes the dump; M11 will build it from
-# the generator instead). Instances are savedata.ents entries: `index` is the position in its prefab's list, x/z the
+# A generated world as the filters see it (gen/savedata.bend builds it; scripts/groundtruth/world_dump.py writes it
+# as a dump). Instances are savedata.ents entries: `index` is the position in its prefab's list, x/z the
 # doubles the worldgen rounded to 0.01, xk/zk those values times 100, and flags bit 0/1 say that x/z were integers in
 # the JSON (for printing them like Python does).
 type Inst is Data:
@@ -132,7 +132,7 @@ def loaded_of(words: List<&2, U32>) -> Result<&1, &1, U32 & String, Loaded>:
     case _:
       Fail{(2, "not a world dump (format 1)")}
 
-# Reads a dump of .scratch/port/tools/world_dump.py from its bytes.
+# Reads a dump of scripts/groundtruth/world_dump.py from its bytes.
 def of_bytes(bytes: List<&2, U32>) -> Result<&1, &1, U32 & String, Loaded>:
   loaded_of(words_of(bytes, Nil{}))
 
@@ -143,7 +143,7 @@ def instance_groups(+groups: List<&2, List<&2, Inst>>, ids: List<&2, U32>) -> Li
     case Con{+id, rest}:
       Maybe.default(&2, List<&2, Inst>, List.get(&2, List<&2, Inst>, groups, U32.to_nat(id)), Nil{}) <> instance_groups(groups, rest)
 
-# The instances of a prefab set, prefab by prefab (search-v1.md: the union over the ids, in order).
+# The instances of a prefab set, prefab by prefab (docs/config.md: the union over the ids, in order).
 def instances(+world: World, ids: List<&2, U32>) -> List<&2, Inst>:
   match world:
     case World{_, _, _, _, +groups, _, _}:

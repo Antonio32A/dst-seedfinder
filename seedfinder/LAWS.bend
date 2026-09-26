@@ -78,10 +78,10 @@ def world_seed_1_prefix():
   {==}
 
 # The level table after ChooseSetPieces: level.set_pieces keys in pairs() order with their task masks,
-# and the random set pieces with their tasks. .scratch/world/golden.py decodes these into the reference
-# harness' world line and its pairs() order, which match byte for byte. The input is seed 1 after
+# and the random set pieces with their tasks, which decode into the reference harness' world line and its
+# pairs() order byte for byte. The input is seed 1 after
 # AddSetPeices (pieces as in seed_1_pieces, new boons in first-pick order FarmingBoon TwigsBoon Level2WoodBoon
-# MiscBoon WeaponBoon CookingBoon, PCG32 state after 41 draws, all from .scratch/world/model.py), so the law
+# MiscBoon WeaponBoon CookingBoon, PCG32 state after 41 draws), so the law
 # skips the prefix and AddSetPeices the laws above already pin.
 law world_seed_1_level_table:
   {LevelSummary.summary_of(LevelChoose.choose(2, 426793026, LevelPrefix.chosen_tasks(426793026), LevelChoose.Added{LevelSetpieces.Pieces{3, 0, 1, 16777472, 33554688, 1, 1}, 1586631, 0, 6, Pcg.Rng{1208880263, 849893026}})) == LevelSummary.Summary{2, 426793026, [67108869, 1073741832, 4107, 802756, 1039, 67108871, 2321, 556099, 4149, 262170, 67108870, 2389378, 134217737, 2113, 16402, 524301, 4118], 606346272, 245803085, 6, False{}} : LevelSummary.Summary}
@@ -120,7 +120,7 @@ law killer_bees_criteria_reject_seed_4:
 def killer_bees_criteria_reject_seed_4():
   {==}
 
-# Spec search-v1 section 7: repeated keys and integers past 4294967295 are config errors.
+# docs/config.md section 7: repeated keys and integers past 4294967295 are config errors.
 law config_rejects_repeated_key:
   {Config.config_of("{\"version\": 1, \"version\": 1}") == Fail{(2, "config: duplicate key \"version\" in the config")} : Result<&1, &1, U32 & String, Config.Config>}
 
@@ -190,7 +190,7 @@ law pcg_counter_of_seeded:
 def pcg_counter_of_seeded():
   {==}
 
-# Klei's rand() 100 draws after math.randomseed(1), from .scratch/port/test/crand_ref.py.
+# Klei's rand() 100 draws after math.randomseed(1).
 law crand_linux_rand:
   {Pair.fst(U32, Pcg.Rng, CRand.rand(False{}, Pcg.at_counter(1, 100))) == 1595231506 : U32}
 

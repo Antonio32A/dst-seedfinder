@@ -16,7 +16,7 @@ import ./gen/run.bend as GenRun
 #   seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json]
 #                         [--platform windows|linux] [--worlds DIR] [--kk native|bend]
 #     parallel scan from S (or FROM, default 0) up to TO or once around the 2^32 seeds, stopping at N hits
-#     (1..100, default 100) or when the time limit is up (.scratch/spec/search-v1.md section 8); parts B-E are
+#     (1..100, default 100) or when the time limit is up (docs/config.md section 8); parts B-E are
 #     decided on worlds generated in memory (or on DIR/<seed>.dstw dumps with --worlds)
 #   seedfinder world show FROM [TO] [--config filters.json]
 #     level table of seeds FROM..TO, one JSON line each (the config is only validated)

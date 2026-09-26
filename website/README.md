@@ -39,7 +39,8 @@ Run `npm run cf-typegen` after changing `wrangler.jsonc`.
 
 ## Search configs
 
-Configs follow search format v1 (`../.scratch/spec/search-v1.md`). `lib/seedfinder-config.ts` has the types and caps,
+Configs follow search format v1 ([`docs/config.md`](../docs/config.md), JSON Schema
+[`config.schema.json`](../config.schema.json)). `lib/seedfinder-config.ts` has the types and caps,
 and `lib/validate-config.ts` validates them strictly with the finder's error messages (`config: <message>`).
 
 `platform` (`"windows"` or `"linux"`, the OS that generates the world) defaults to `"windows"`. The level table is the
@@ -51,11 +52,10 @@ that isn't passive already picks (search spec § 1). Cards after the first start
 passive can't be switched, and a config where every entry is passive is rejected with the finder's message.
 
 `lib/world-catalog.ts` (prefabs, prefab groups, land tiles, game build) is generated from
-`../.scratch/catalog/catalog.json`. Regenerate it after every catalog regen, then check it against the spec:
+`scripts/catalog/catalog.json`. Regenerate it after every catalog regen (from the repository root):
 
 ```sh
-node .scratch/gen-world-catalog.mjs [path/to/catalog.json]
-JITI_ALIAS='{"@/":"'"$PWD"'/"}' ./node_modules/.bin/jiti .scratch/verify-spec.ts
+node scripts/gen/gen_website_catalog.mjs
 ```
 
 ## Credits
@@ -78,7 +78,7 @@ refunded when the search settles.
 
 ## Searches on vast.ai
 
-The contract is `../.scratch/spec/runner-v1.md`. Each search gets its own `JobRoom` Durable Object (keyed by job id)
+The runner protocol is in [`runner/README.md`](../runner/README.md). Each search gets its own `JobRoom` Durable Object (keyed by job id)
 that owns the whole lifecycle, and a singleton `Dispatcher` caps live instances at `MAX_INSTANCES` with a FIFO queue.
 
 - `queued`: waiting for a Dispatcher slot; the room is told its 1-based queue position. At 200 waiting searches,

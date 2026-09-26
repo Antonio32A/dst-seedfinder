@@ -17,10 +17,12 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 HERE = os.path.dirname(os.path.realpath(__file__))
-SCRATCH = os.path.join(os.path.dirname(os.path.dirname(HERE)), ".scratch")
-WORK = os.path.join(SCRATCH, "catalog")
+ROOT = os.path.dirname(os.path.dirname(HERE))
+WORK = os.path.join(ROOT, "build/catalog")
 INPUTS = os.path.join(HERE, "inputs")
-SCRIPTS = os.path.join(SCRATCH, "game-scripts")
+SCRIPTS = os.path.join(ROOT, "build/deps/game-scripts")
+WORLDSIM = os.environ.get("WORLDSIM_DIR", "")
+REALGEN = os.environ.get("REALGEN_DIR", "")
 GAME_DIR = os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together")
 
 sys.path.insert(0, HERE)
@@ -43,11 +45,11 @@ def load_json(path):
 
 def real_world_sources():
     """Yields (seed, source_label, summary) for every real-game world on disk."""
-    for path in sorted(glob.glob(os.path.join(SCRATCH, "groundtruth/data/worlds/*.json"))):
+    for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds/*.json"))):
         yield "groundtruth_dump", path, summarize(load_json(path), "groundtruth_dump")
-    for path in sorted(glob.glob(os.path.join(SCRATCH, "worldsim/gt/*/world.json"))):
+    for path in sorted(glob.glob(os.path.join(WORLDSIM, "gt/*/world.json")) if WORLDSIM else []):
         yield "worldsim_gt_dump", path, summarize(load_json(path), "worldsim_gt_dump")
-    realgen = glob.glob(os.path.join(SCRATCH, "realgen/out/*/summary.json")) + glob.glob(os.path.join(WORK, "build/realgen/*/summary.json"))
+    realgen = (glob.glob(os.path.join(REALGEN, "out/*/summary.json")) if REALGEN else []) + glob.glob(os.path.join(WORK, "build/realgen/*/summary.json"))
     for path in sorted(realgen):
         d = load_json(path)
         yield "realgen_summary", path, {
@@ -66,7 +68,7 @@ def collect_inputs():
     emulator = [("emulator", p, load_json(p)) for p in sorted(glob.glob(os.path.join(WORK, "worlds/*.json")))]
     with open(os.path.join(INPUTS, "worlds.jsonl"), "w") as f:
         for label, path, w in real + emulator:
-            f.write(json.dumps({"source": label, "path": os.path.relpath(path, SCRATCH), "summary": w}, sort_keys=True) + "\n")
+            f.write(json.dumps({"source": label, "path": os.path.relpath(path, ROOT), "summary": w}, sort_keys=True) + "\n")
     for name in ["static.json", "level_table_stats.json", "level_world_stats.json"]:
         path = os.path.join(WORK, "build", name)
         if os.path.exists(path):
@@ -817,7 +819,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(HERE, "catalog.json"))
     ap.add_argument("--static", default=os.path.join(INPUTS, "static.json"))
-    ap.add_argument("--collect", action="store_true", help="only refresh inputs/ from .scratch")
+    ap.add_argument("--collect", action="store_true", help="only refresh inputs/ from build/catalog")
     args = ap.parse_args()
     if args.collect:
         collect_inputs()

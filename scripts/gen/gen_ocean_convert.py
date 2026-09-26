@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 
-SCRIPTS = blob.ROOT / ".scratch" / "game-scripts"
+SCRIPTS = blob.ROOT / "build" / "deps" / "game-scripts"
 NUMBER = r"(-?[0-9]*\.?[0-9]+)"
 
 INTEGERS = ("shallowRadius", "fillOffset", "fillDepth", "noise_octave_water", "noise_octave_grave", "kernelSize")

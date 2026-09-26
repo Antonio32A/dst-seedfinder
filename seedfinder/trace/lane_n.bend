@@ -3,7 +3,7 @@ import ../worldsim/layout/trace.bend as LayoutTrace
 import ../worldsim/voronoi/trace.bend as VoronoiTrace
 
 # Lane N (numeric) trace stages: `handles` names the stages this file owns, `run` returns their canonical
-# records (.scratch/port/CONVENTIONS.md "Trace mode"). Only lane N edits this file. Layout (M5): `hops`, `kk`. Voronoi (M6): `voronoi`,
+# records. Only lane N edits this file. Layout (M5): `hops`, `kk`. Voronoi (M6): `voronoi`,
 # `polygons`.
 # A new lane N stage module adds its `handles` to `handles` and a `via_*` step in place of `unowned`.
 

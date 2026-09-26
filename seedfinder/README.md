@@ -17,16 +17,16 @@ settings are supported (forest, preset SURVIVAL_TOGETHER, every world generation
 ## Build and run
 
 ```sh
-scripts/build.sh                               # bend main.bend -o .scratch/build/seedfinder; needs clang 14+
-.scratch/build/seedfinder --threads 22 -- setpiece find [FROM] [TO] [filters...]
-.scratch/build/seedfinder setpiece show FROM [TO]
-.scratch/build/seedfinder --threads 22 -- world find [--start-seed S] [--limit N] [--time-limit T] [--json] [--config filters.json] [--platform windows|linux] [--kk native|bend]
-.scratch/build/seedfinder world show FROM [TO] [--config filters.json]
-.scratch/build/seedfinder --threads 16 -- world find FROM TO --config filters.json --worlds DUMPS [--json] [--limit N]
-.scratch/build/seedfinder --threads 16 -- world eval --config filters.json --world DUMP.dstw [--fast]
-.scratch/build/seedfinder --threads 1 gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]
-scripts/build.sh trace                         # debug binary: bend trace.bend -o .scratch/build/seedfinder_trace
-.scratch/build/seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
+scripts/build.sh                               # bend main.bend -o build/seedfinder; needs clang 14+
+build/seedfinder --threads 22 -- setpiece find [FROM] [TO] [filters...]
+build/seedfinder setpiece show FROM [TO]
+build/seedfinder --threads 22 -- world find [--start-seed S] [--limit N] [--time-limit T] [--json] [--config filters.json] [--platform windows|linux] [--kk native|bend]
+build/seedfinder world show FROM [TO] [--config filters.json]
+build/seedfinder --threads 16 -- world find FROM TO --config filters.json --worlds DUMPS [--json] [--limit N]
+build/seedfinder --threads 16 -- world eval --config filters.json --world DUMP.dstw [--fast]
+build/seedfinder --threads 1 gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]
+scripts/build.sh trace                         # debug binary: bend trace.bend -o build/seedfinder_trace
+build/seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
 ```
 
 `scripts/build.sh` runs `bend main.bend -o` with the compiler's JavaScriptCore heap sized for a 4 GB machine
@@ -35,11 +35,6 @@ past 32 GB, while the script needs about 10 GB and emits the same C. For `main` 
 `-mllvm -inline-threshold=3000` to clang (`CCC_OVERRIDE_OPTIONS`): same output, ~15-20% faster worldgen, a longer
 clang step (the build takes 6-8 minutes). The worldgen trace stages are only in the debug
 binary (`trace.bend`, `build.sh trace`, 32 GB cap, needs 40 GB free); `seedfinder trace` exits 2 and points to it.
-
-`.scratch/build.sh main.bend .scratch/build/seedfinder` is an optional alternative: it emits C,
-widens the runtime's initial thread spread and compiles with gcc, which is ~12% faster. It passes `-ffp-contract=off`
-because `-march=native` enables FMA and gcc would otherwise fuse float multiply-adds; `bend -o` builds with
-`clang -std=c11 -O3` for baseline x86-64, which has no FMA, so both builds round every float operation separately.
 
 The runtime reserves a large virtual heap per worker thread (22 threads need more than 32 GB of
 address space, but resident memory stays around 330 MB), so a `ulimit -v` below ~64 GB makes
@@ -64,7 +59,7 @@ multi-threaded runs fail with `bend: reservation failed`.
   pieces in the order the game assigns them. This is byte-identical to the reference harness' world
   line. A seed whose worldgen would raise a Lua error (`math.random(n)` returning n + 1; one seed among
   the first 2^27) prints `{"error":"worldgen raises a Lua error for this seed"}` and never matches a filter.
-- `world find` implements the search command of the v1 spec (`.scratch/spec/search-v1.md` § 8), parts A-E:
+- `world find` implements the search command of the v1 spec (`docs/config.md` § 8), parts A-E:
 
   | Flag | Values | Default | Meaning |
   |---|---|---|---|
@@ -112,27 +107,24 @@ multi-threaded runs fail with `bend: reservation failed`.
 - `world find FROM [TO]` is a range mode for tests: FROM..TO inclusive (TO < FROM wraps; no TO means the whole
   space), with the same limit, time limit and output. FROM can't be combined with `--start-seed`.
 - `world show` only validates the config. With no `--config`, everything matches.
-- Parts B–E can also run on pre-generated worlds: world dumps written by `.scratch/port/tools/world_dump.py` (or
-  `snapshot_worlds.py`) from a `world.json` of the game's dump mod or the emulator. `world find ... --worlds DIR`
-  decides each part-A candidate on `DIR/<seed>.dstw` (a missing dump is no match, counted on stderr) and prints the
-  hits with their witnesses as `.scratch/search/search.py` does; on the same seeds it prints exactly what the
-  in-memory search prints.
-  `world eval` prints `.scratch/search/evaluate.py --json --level` for one dump (`--fast` stops at the first
-  failing rule). Both are byte-identical to the Python reference on the spec and search examples and on random
-  configs, on Windows and Linux worlds (`.scratch/port/status/M4.md`). Speed (16 threads, load ~11): 19 worlds with
-  `full.json`'s rules in 1.5 s (6.1 s on 1 thread); `route6.json` on one world 4.5 s (25 s on 1 thread;
-  `evaluate.py` ~110 s).
+- Parts B–E can also run on pre-generated worlds: world dumps written by `scripts/groundtruth/world_dump.py` from a
+  `world.json` of the game's dump mod. `world find ... --worlds DIR` decides each part-A candidate on
+  `DIR/<seed>.dstw` (a missing dump is no match, counted on stderr) and prints the hits with their witnesses; on the
+  same seeds it prints exactly what the in-memory search prints.
+  `world eval` prints the level table and the witnesses of every rule for one dump (`--fast` stops at the first
+  failing rule). Speed (16 threads, load ~11): 19 worlds with `full.json`'s rules in 1.5 s (6.1 s on 1 thread);
+  `route6.json` on one world 4.5 s (25 s on 1 thread).
 - `gen SEED [TO]` runs the ported forest worldgen (story, KK, Voronoi, tiles, land and ocean population, every
   attempt as worldgen_main retries it) of each seed and prints
   `gen seed=S platform=P a=A outcome=world|gaveup|crashed ctr=C ents=N tiles=H ms=T` (the RNG counter at the end
   of Generate, the savedata.ents count and the encoded tile map's FNV-1a digest); `--times` adds one
   `stage seed=S a=A name=NAME ms=T` line per stage of every attempt. About 0.3-0.6 s per seed on one thread with the
   native KK (5-8 s with `--kk bend`, KK ~95% of it).
-- Example: `seedfinder --threads 22 -- world find --start-seed 123 --limit 10 --time-limit 30 --json --config .scratch/world/configs/example.json`
+- Example: `seedfinder --threads 22 -- world find --start-seed 123 --limit 10 --time-limit 30 --json --config config.json`
 
 ### JSON config
 
-The format is the v1 search spec, `.scratch/spec/search-v1.md` (JSON Schema: `.scratch/spec/config.schema.json`).
+The format is the v1 search spec, `docs/config.md` (JSON Schema: `config.schema.json`).
 The binary implements all of it: part A (the level table) below, and the world sections `counts`, `distances`,
 `tiles` and `routes` (parts B–E, spec § 4-5) on both platforms.
 
@@ -198,19 +190,19 @@ Everything filtered on is decided in Lua before `forest_map.Generate` (`worldgen
 `GenerateNew`: `SelectPrefabSwaps`, `ChooseTasks`, `AddSetPeices`, `Level:ChooseSetPieces`). The only inputs
 are the RNG stream and stock Lua 5.1 table orders, so the finder replays the RNG draws:
 
-- RNG: Klei replaced libc rand with PCG32; `math.random` = output / (2^32 - 1). See
-  `.scratch/research/rng.md` (verified against the game binary).
+- RNG: Klei replaced libc rand with PCG32; `math.random` = output / (2^32 - 1) (verified against the game
+  binary; `scripts/harness/lmathlib_dst.c`).
 - The 13 draws before set piece selection are constant, so seeding plus skipping them is one
   affine map `state = seed * K + L (mod 2^64)` (`rng/pcg.bend`).
 - Prefab swaps are the first 3 draws after the discarded one. ChooseTasks shuffles the 10 optional tasks
   (9 draws), and the first 5 are chosen (`level/prefix.bend`).
 - Traps / POI / protected / boons picks follow `GetRandomFromLayouts` + `GetRandomKey`
   (`level/setpieces.bend`), with area/item orders baked into `data/catalog.bend`
-  (generated by `scripts/gen/gen_catalog.py`; orders from `.scratch/research/worldgen-trace.md`).
+  (generated by `scripts/gen/gen_catalog.py`).
 - ChooseSetPieces (`level/choose.bend`) walks `level.set_pieces` in `pairs()` order. That order depends on the
   insertion history, so `level/choose.bend` emulates Lua 5.1's `ltable.c` hash part (main positions, `lastfree`,
   rehash) with the string hashes baked into `data/world_catalog.bend` (generated by
-  `scripts/gen/gen_world_catalog.py`; the Python spec is `.scratch/world/model.py`). Required and random
+  `scripts/gen/gen_world_catalog.py`). Required and random
   set pieces go to random placeable tasks. Each entry's copies go to distinct random tasks among
   its choices.
 - `math.random(n)` is computed exactly with U32 math (`LuaRandom.scale`), bit-exact with the game's
@@ -235,11 +227,9 @@ are the RNG stream and stock Lua 5.1 table orders, so the finder replays the RNG
 | `LAWS.bend`, `PROOF.bend`, `laws/` | golden-value laws with their proofs (`LAWS.bend`: root, `laws/*.bend`: each port lane); `PROOF.bend` imports them all |
 
 `seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]` prints one worldgen stage in the
-canonical record format of the reference oracle (`.scratch/port/oracle/`), for the full-worldgen port
-(`.scratch/port/PLAN.md`, rules in `.scratch/port/CONVENTIONS.md`). Stages: `crand` (M0), `kk`/`hops`, `voronoi`,
-`polygons` (lane N), `storygen` (lane S), `sitetiles`/`tiles`/`populate`/`pvoronoi` (lane G), `gen` (end to end from
-the seed alone, every attempt, M11); each is checked by its
-`.scratch/port/diff/<stage>.py` against the oracle.
+canonical record format of the reference oracle the worldgen port was checked against, stage by stage. Stages:
+`crand`, `kk`/`hops`, `voronoi`, `polygons`, `storygen`, `sitetiles`/`tiles`/`populate`/`pvoronoi`, `gen` (end to end
+from the seed alone, every attempt).
 
 ## Validation
 
@@ -247,27 +237,20 @@ the seed alone, every attempt, M11); each is checked by its
   their times): golden values from the Lua reference harness and the port lanes' references. The root laws cover set pieces
   (edge seeds 0 / 1 / 2^31 / 2^32-1), the seed-1 prefix (prefab swaps, the task shuffle and the PCG state), the
   whole level table of seed 1, and config parsing (including the default-only settings and `version` checks)
-  and matching. `.scratch/world/golden.py` checks a level-table golden value against the harness.
-  `.scratch/lawprobe/probe.sh LAW` checks one law alone with a memory cap. Keep each law cheap: the
-  checker evaluates slowly, and a `LevelSummary.summary` of a seed with many boons can need more than 8 GB.
-- `.scratch/harness/`: runs the real worldgen Lua under Lua 5.1.5 with DST's RNG.
-  - `setpiece`: Bend == harness for seeds 1..1,000,000 (`harness/compare.py` against `harness/out/out_1M.txt`).
-  - `world show` (`.scratch/world/validate_all.sh`, `compare_bend.sh`) is byte-identical to the harness for
-    1..1,000,000 plus 2^31-50,000..2^31+49,999 and 2^32-100,000..2^32-1. That is 1.2M seeds in total.
-  - `world find` (`.scratch/world/run_find_checks.sh`): the hit lines (seed, entry, level) and the `done` line agree
-    with an independent Python evaluation of 9 configs over the harness summaries of seeds 1..20,000.
-  - `world find` flags (`.scratch/findflags/validate.py`): `--limit` hits equal the first lines of the old range mode
-    (8 configs × 3 start seeds × 3 limits, and `world find 2147483000 4294967295`), wrap-around at 2^32, a whole-space
-    scan, `--threads 1` == `--threads 22`, the `--json` job object against `world show` and the entries, time limits
-    and their continuation, platform and flag errors. `config_errors.py` compares 48 config errors with the
-    reference parser `.scratch/search/config.py`, and `spec_examples.py` checks `.scratch/spec/examples/`.
-- `.scratch/groundtruth/`: a mod that dumps worldgen data from the real game.
-  - The log for seeds 1..1000 matches the harness and the Bend finder exactly. That covers the set pieces and
-    the per-task `PLACE` lines of ChooseSetPieces.
-  - Full world dumps for seeds 1..10 (`data/worlds/`: tasks, per-task set pieces and prefab swaps) also match
-    (`.scratch/world/compare_groundtruth.py`).
-  - The mod's output lands in the dedicated server log
-    (`~/.klei/DoNotStarveTogether/<id>/Cluster_1/Master/server_log.txt`).
+  and matching. Keep each law cheap: the checker evaluates slowly, and a `LevelSummary.summary` of a seed with many
+  boons can need more than 8 GB.
+- Against a harness that runs the real worldgen Lua under Lua 5.1.5 with DST's RNG:
+  - `setpiece`: identical for seeds 1..1,000,000.
+  - `world show` is byte-identical for 1..1,000,000 plus 2^31-50,000..2^31+49,999 and 2^32-100,000..2^32-1. That is
+    1.2M seeds in total.
+  - `world find`: the hit lines (seed, entry, level) and the `done` line agree with an independent evaluation of 9
+    configs over the harness summaries of seeds 1..20,000; `--limit`, wrap-around at 2^32, a whole-space scan,
+    `--threads 1` == `--threads 22`, the `--json` job object, time limits and their continuation, and the config
+    errors of the spec were checked too.
+- Against the real game (`scripts/groundtruth/`, a mod that dumps worldgen data from the dedicated server):
+  - The log for seeds 1..1000 matches the harness and the finder exactly. That covers the set pieces and the
+    per-task `PLACE` lines of ChooseSetPieces.
+  - Full world dumps for seeds 1..10 (tasks, per-task set pieces and prefab swaps) also match.
 
 ## Limits
 

@@ -8,7 +8,7 @@ import ./anchor.bend as Anchor
 import ./dijkstra.bend as Dijkstra
 import ./metric.bend as Metric
 
-# The walk metric of .scratch/search/metric.py (WalkMetric): shortest paths over land tiles between anchors, exact
+# The walk metric (docs/config.md section 5): shortest paths over land tiles between anchors, exact
 # lengths, and (with wormholes) the jumps of every link whose ends both have anchors.
 
 # The world, its cell-array depth, the jumps and, per jump, its wormhole ends.

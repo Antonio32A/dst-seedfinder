@@ -6,7 +6,7 @@ import ./space.bend as LayoutSpace
 import ./hops.bend as LayoutHops
 import ./kk.bend as KK
 
-# Trace stages `hops` and `kk` (.scratch/port/CONVENTIONS.md "Trace mode"). The input is the oracle's graph
+# Trace stages `hops` and `kk`. The input is the oracle's graph
 # stage (`vertex` and `outedge` records of every VoronoiPass); `kk` replays each attempt's passes from
 # InitializeNodePoints (100 runs, then AddNewPositions and 50 runs), `hops` hashes each pass's hop matrix.
 

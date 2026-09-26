@@ -7,7 +7,7 @@ import ./walk.bend as Walk
 import ./world.bend as FilterWorld
 import ../data/search_vocab.bend as SearchVocab
 
-# Witness JSON as .scratch/search/evaluate.py --json prints it (json.dumps with separators (",", ":")).
+# Witness JSON (docs/config.md section 8), without spaces.
 
 def prefab_name(+id: U32) -> String:
   Maybe.default(&2, String, List.get(&2, String, SearchVocab.prefabs(), U32.to_nat(id)), "")

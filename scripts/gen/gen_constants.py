@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Writes data/constants.bend from out/constants_c.json (gen_constants.cpp: KK initial positions, blur kernel),
 out/constants.json (extract_constants.lua: placement circle positions) and the perlin permutation, read out of the
-Linux and Windows dedicated server binaries (the only 512-byte table p[i] = p[i + 256] of a permutation of 0..255
-that both contain; the emulator's perlin_table.inc must agree). `-` prints the module instead."""
+Linux dedicated server binary and, when DST_WINDOWS_EXE names it, the Windows one (the only 512-byte table
+p[i] = p[i + 256] of a permutation of 0..255 that both contain). `-` prints the module instead."""
 import os
 import sys
 from pathlib import Path
@@ -11,10 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 
 GAME = Path(os.environ.get("DST_GAME", Path.home() / ".local/share/Steam/steamapps/common/Don't Starve Together"))
-WINDOWS_EXE = Path(os.environ.get("DST_WINDOWS_EXE",
-                                  blob.ROOT / ".scratch/windows/diag/winbin/dontstarve_dedicated_server_nullrenderer_x64.exe"))
-BINARIES = [GAME / "bin64" / "dontstarve_dedicated_server_nullrenderer_x64"] + ([WINDOWS_EXE] if WINDOWS_EXE.exists() else [])
-EMULATOR_TABLE = blob.ROOT / ".scratch/worldsim/src/perlin_table.inc"
+BINARIES = [GAME / "bin64" / "dontstarve_dedicated_server_nullrenderer_x64"] + (
+    [Path(os.environ["DST_WINDOWS_EXE"])] if "DST_WINDOWS_EXE" in os.environ else [])
 
 
 def permutations_in(data):
@@ -33,11 +31,7 @@ def perlin_permutation():
         found = permutations_in(path.read_bytes())
         tables = found if tables is None else tables & found
     assert len(tables) == 1, f"{len(tables)} permutation tables common to the Linux and Windows binaries"
-    table = list(next(iter(tables)))
-    if EMULATOR_TABLE.exists():
-        emulator = [int(x) for x in EMULATOR_TABLE.read_text().replace("\n", " ").split(",") if x.strip()]
-        assert table == emulator, "perlin_table.inc differs from the game binaries"
-    return table
+    return list(next(iter(tables)))
 
 
 def f64_units(hex_bits):

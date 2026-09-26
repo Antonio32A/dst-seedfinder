@@ -4,7 +4,7 @@ import ../f64/repr.bend as F64Repr
 import ../f64/arith.bend as F64Arith
 import ../f64/cmp.bend as F64Cmp
 
-# An exact walk length q + 4*sqrt(2)*b (search-v1.md section 5): q = the offsets plus 4 per orthogonal step, as a
+# An exact walk length q + 4*sqrt(2)*b (docs/config.md section 5): q = the offsets plus 4 per orthogonal step, as a
 # 96-bit fixed-point number with 64 fraction bits (q2 the integer part, q1 q0 the fraction words), which holds every
 # offset double >= 2^-11 exactly; b the number of diagonal steps.
 type Length is Data:

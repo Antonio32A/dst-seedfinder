@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generates data/catalog.bend (sandbox tables + set piece names) from the worldgen pairs() orders.
 
-Area and item orders come from .scratch/research/worldgen-trace.md (stock Lua 5.1.5 pairs()
-order, confirmed identical to the game binary). Run from the project root:
+Area and item orders are stock Lua 5.1.5 pairs() order (traced under the harness, confirmed
+identical to the game binary). Run from the project root:
     python3 scripts/gen/gen_catalog.py    (writes seedfinder/data/catalog.bend; `-` prints it instead)
 """
 import sys

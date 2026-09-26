@@ -4,16 +4,17 @@
 # reduces each world.json to worlds/<seed>.json and deletes the raw output.
 set -uo pipefail
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
-work="$(cd "$here/../.." && pwd)/.scratch/catalog"
+work="$(cd "$here/../.." && pwd)/build/catalog"
+worldsim="${WORLDSIM_DIR:?set WORLDSIM_DIR to the worldsim emulator}"
 seeds="${1:-$here/seeds.txt}"
 jobs="${2:-8}"
 mkdir -p "$work/worlds" "$work/tmp"
 
 one() {
-    local here="$1" work="$2" seed="$3"
+    local here="$1" work="$2" worldsim="$3" seed="$4"
     local out="$work/tmp/$seed"
     [[ -s "$work/worlds/$seed.json" ]] && return 0
-    (ulimit -v 16000000; timeout 900 "$work/../worldsim/run.sh" "$seed" "$out") > /dev/null 2>&1
+    (ulimit -v 16000000; timeout 900 "$worldsim/run.sh" "$seed" "$out") > /dev/null 2>&1
     local status=$?
     if [[ -s "$out/world.json" ]]; then
         python3 "$here/summarize_world.py" "$out/world.json" "$work/worlds/$seed.json" emulator
@@ -26,5 +27,5 @@ one() {
 }
 export -f one
 
-grep -E '^[0-9]+$' "$seeds" | xargs -P "$jobs" -I{} bash -c 'one "$0" "$1" "$2"' "$here" "$work" {}
+grep -E '^[0-9]+$' "$seeds" | xargs -P "$jobs" -I{} bash -c 'one "$0" "$1" "$2" "$3"' "$here" "$work" "$worldsim" {}
 rmdir "$work/tmp" 2>/dev/null || true

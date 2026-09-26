@@ -2,7 +2,7 @@ import Base
 import ./convert_trace.bend as ConvertTrace
 import ./ocean_trace.bend as OceanPostTrace
 
-# Lane G's ocean trace stages (.scratch/port/status/M10.md): `oconvert` (Ocean_ConvertImpassibleToWater from the
+# Lane G's ocean trace stages: `oconvert` (Ocean_ConvertImpassibleToWater from the
 # oracle's grid after the prefill), `oceanpost` (land_done to the attempt status around the oracle's converted
 # grid) and `ocean` (everything from land_done to the attempt status).
 

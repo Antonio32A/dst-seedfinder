@@ -16,8 +16,8 @@ import ../populate/trace.bend as PopulateTrace
 import ../ocean/trace.bend as OceanTrace
 
 # Lane G (grid) trace stages: `handles` names the stages this file owns, `run` returns their canonical
-# records (.scratch/port/CONVENTIONS.md "Trace mode"). Only lane G edits this file.
-# Input: the `tileinput` records of lane G's oracle stage (.scratch/port/status/M8.md).
+# records. Only lane G edits this file.
+# Input: the `tileinput` records of lane G's oracle stage.
 
 def is_populate(+stage: String) -> Bool:
   String.eq(stage, "populate") || String.eq(stage, "pvoronoi")

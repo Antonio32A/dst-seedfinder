@@ -7,7 +7,7 @@ import ../filters/world.bend as FilterWorld
 import ../f64/repr.bend as F64Repr
 
 # Lane F (filters and search) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: .scratch/port/CONVENTIONS.md "Laws" (tiny U32 golden values, each probed alone first).
+# Rules: tiny U32 golden values, each probed alone first.
 # Golden values: Python (json.loads grammar, world.py tile_coordinate, numpy distances as IEEE bits).
 
 law json_number_grammar_accepts_exponent:

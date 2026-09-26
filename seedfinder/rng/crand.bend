@@ -3,7 +3,7 @@ import ./pcg.bend as Pcg
 
 # Klei's C++ rand(), pcg32_boundedrand and std::random_shuffle. They share the PCG32 stream with math.random.
 # `windows` selects the Windows server build (MSVC 2008: RAND_MAX 0x7fff, VC9 random_shuffle); otherwise the Linux
-# build (glibc RAND_MAX 0x7fffffff, libstdc++ random_shuffle). See .scratch/windows/DIVERGENCE.md.
+# build (glibc RAND_MAX 0x7fffffff, libstdc++ random_shuffle).
 
 def rand_max(+windows: Bool) -> U32:
   Bool.pick(U32, windows, 32767, 2147483647)

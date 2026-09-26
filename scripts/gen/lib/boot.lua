@@ -1,13 +1,12 @@
--- Shared setup for the lua generators in .scratch/port/gen: runs the unmodified worldgen_main.lua (default forest,
+-- Shared setup for the lua generators in scripts/gen: runs the unmodified worldgen_main.lua (default forest,
 -- SURVIVAL_TOGETHER, seed 1) under the harness stubs up to forest_map.Generate and exposes the loaded game state.
 -- usage: local BOOT = dofile(<gen>/lib/boot.lua)
 
 local GEN = debug.getinfo(1, "S").source:match("^@(.*)/lib/[^/]*$")
 local ROOT = GEN .. "/../.."
-local SCRATCH = ROOT .. "/.scratch"
-local BOOT = { gen = GEN, scratch = SCRATCH }
+local BOOT = { gen = GEN }
 
-HARNESS_SCRIPTS_DIR = SCRATCH .. "/game-scripts"
+HARNESS_SCRIPTS_DIR = ROOT .. "/build/deps/game-scripts"
 HARNESS_VERBOSE = false
 
 local SENTINEL = {}
@@ -33,7 +32,7 @@ local function read_file(path)
 end
 BOOT.read_file = read_file
 
-GEN_PARAMETERS = read_file(SCRATCH .. "/harness/gen_parameters_forest.json")
+GEN_PARAMETERS = read_file(ROOT .. "/scripts/harness/gen_parameters_forest.json")
 GEN_MODDATA = '{"index":{}}'
 SEED = 1
 
@@ -45,7 +44,7 @@ assert(err == SENTINEL, "worldgen did not reach forest_map.Generate: " .. tostri
 BOOT.level = captured.level
 BOOT.tasks = captured.tasks
 
-BOOT.tl = assert(package.loadlib(SCRATCH .. "/build/gen/tablelayout.so", "luaopen_tablelayout"))()
+BOOT.tl = assert(package.loadlib(ROOT .. "/build/gen/tablelayout.so", "luaopen_tablelayout"))()
 
 BOOT.PrefabSwaps = require("prefabswaps")
 

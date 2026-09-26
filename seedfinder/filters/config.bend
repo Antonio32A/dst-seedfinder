@@ -312,8 +312,8 @@ def some_active(+entries: List<&2, Entry>) -> Result<&1, &1, U32 & String, Unit>
 def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
   Config{windows, levels_of(entries), laters_of(entries), unsupported_of(entries), or_anything(active_levels(entries))}
 
-# Compiles the JSON text of a search config (.scratch/spec/search-v1.md) into its platform, the part A criteria and
-# parts B-E of every entry, checking in the order of .scratch/search/config.py.
+# Compiles the JSON text of a search config (docs/config.md) into its platform, the part A criteria and
+# parts B-E of every entry.
 def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
   do Result<&1, &1, U32 & String, Config>:
     json : Json.Json <- Json.parse(text)

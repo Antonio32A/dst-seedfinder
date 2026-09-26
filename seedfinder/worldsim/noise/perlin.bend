@@ -175,7 +175,7 @@ def eighths_columns(got: Array<U32> & List<&2, U32>, +yi: U32, +fx: U32, +fy: U3
 # ImprovedNoise(x / 8, y / 8, 0) for integers x, y < 2^24, bit-identical to `noise`: on these inputs every double
 # operation of `noise` is exact, so the value is N / 2^32, with N from wrapping U32 arithmetic on grads in eighths and
 # fades in units of 2^-14. The noise is never below 1/16 here, so N = 0 is the wrapped 2^32 (1.0). Checked over the
-# whole input period by .scratch/port/test/m12/eighths_diff.sh.
+# whole input period.
 def noise_eighths(perm: Array<U32>, +x: U32, +y: U32) -> Array<U32> & F64Repr.F64:
   +xi = ((x >> 3n) .&. 255 : U32)
   eighths_columns(gather(perm, xi, [(xi + 1 : U32)]), ((y >> 3n) .&. 255 : U32), (x .&. 7 : U32), (y .&. 7 : U32))

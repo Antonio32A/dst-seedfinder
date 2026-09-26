@@ -2,7 +2,7 @@ import Base
 
 # Fork-join maps. The runtime spreads a fork tree well when the forked calls carry only small values (index ranges)
 # and read shared inputs at the leaves; forking on split lists keeps the work on about two threads, and forks
-# nested inside a forked task stay on its thread (.scratch/port/exp/lanef/par*.bend). A tree of depth bits(n) with
+# nested inside a forked task stay on its thread. A tree of depth bits(n) with
 # at most one item per leaf balances best.
 
 def bits_of(n: Nat, +k: Nat, +d: Nat) -> Nat:

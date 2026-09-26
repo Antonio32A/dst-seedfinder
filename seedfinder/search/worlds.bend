@@ -290,7 +290,7 @@ def hunt(fuel: Nat, h: Hunt, +ctx: Ctx) -> IO(Unit):
     case _ other:
       report(other, ctx)
 
-# world find --worlds DIR for a config with parts B-E (spec search-v1.md section 8 output).
+# world find --worlds DIR for a config with parts B-E (docs/config.md section 8 output).
 def run(+q: Args.Query, +config: Config.Config, +dir: String) -> IO(Unit):
   match q:
     case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _}:

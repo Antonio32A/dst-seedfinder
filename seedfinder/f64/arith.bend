@@ -172,7 +172,7 @@ def recip_refine(~mulhi: @+a:U32 -> @+b:U32 -> U32, +bh: U32, +bl: U32, +r1: U32
   (r1 + (mulhi(r1, ((e2 << 28n) .|. (e1 >> 4n) : U32)) >> 27n) : U32)
 
 # floor(2^95 / B) or one less, for a 64-bit B = (bh, bl) with its top bit set: a hardware 32/16 seed and two Newton
-# steps (bounds checked exhaustively over bh in .scratch/port/exp/f64m1/recip_scan.c).
+# steps (bounds checked exhaustively over bh).
 def recip(~mulhi: @+a:U32 -> @+b:U32 -> U32, +bh: U32, +bl: U32) -> U32:
   +r0 = ((4294967295 / ((bh >> 16n) + 1)) << 15n : U32)
   +p_lo = (bh * r0 : U32)

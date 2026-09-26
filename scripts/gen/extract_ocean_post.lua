@@ -23,7 +23,7 @@ local function upvalue(fn, wanted)
 end
 
 local function source_of(path)
-    return BOOT.read_file(BOOT.scratch .. "/game-scripts/" .. path)
+    return BOOT.read_file(HARNESS_SCRIPTS_DIR .. "/" .. path)
 end
 
 local function chances(t)

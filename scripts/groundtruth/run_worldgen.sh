@@ -3,12 +3,12 @@
 #   loop  (default): one offline dedicated server launch that generates every seed (first seed fresh, rest looped)
 #   fresh          : one launch per seed, so every world is a genuine fresh generation
 #   seeds          : comma separated seeds or ranges, default 1-10
-# Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder. Logs go to .scratch/groundtruth/logs/worldgen/,
-# worlds to .scratch/groundtruth/data/worlds/ (GT_WORLDS_DIR overrides).
+# Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder. Logs go to build/groundtruth/logs/worldgen/,
+# worlds to build/groundtruth/data/worlds/ (GT_WORLDS_DIR overrides).
 set -euo pipefail
 
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
-work="$(cd "$here/../.." && pwd)/.scratch/groundtruth"
+work="$(cd "$here/../.." && pwd)/build/groundtruth"
 mode="${1:-fresh}"
 seeds="${2:-1-10}"
 default_dst="$HOME/.local/share/Steam/steamapps/common/Don't Starve Together"

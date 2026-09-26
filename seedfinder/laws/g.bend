@@ -21,10 +21,10 @@ import ../ocean/convert_noise.bend as ConvertNoise
 import ../ocean/convert_blend.bend as ConvertBlend
 
 # Lane G (grid) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: .scratch/port/CONVENTIONS.md "Laws" (tiny U32 golden values, each probed alone first).
-# Golden values: .scratch/port/test/tiles/law_goldens.cpp (SameTask verbatim from worldsim/src/tiles.cpp, FNV-1a as
-# the oracle sink computes it) and the game Lua (tile ranges, NoiseTileFunctions via gen/out/*.json; the layout laws:
-# object_layout.ConvertLayoutToEntitylist under the harness, .scratch/port/test/populate/layout_ref.lua).
+# Rules: tiny U32 golden values, each probed alone first.
+# Golden values: the emulator's C++ (SameTask verbatim from worldsim/src/tiles.cpp, FNV-1a as the oracle sink
+# computes it) and the game Lua (tile ranges, NoiseTileFunctions via gen/out/*.json; the layout laws:
+# object_layout.ConvertLayoutToEntitylist under the harness).
 
 law grid_fnv_header_cell:
   {Grid.fnv_u16(Grid.fnv_u32(Grid.fnv_offset(), 425), 1) == Grid.Hash{2769472162, 1664137574} : Grid.Hash}
@@ -83,8 +83,8 @@ law populate_rare_count:
 def populate_rare_count():
   {==}
 
-# M10 (ocean) laws. Goldens: the real functions (.scratch/port/test/ocean/pow_ref.c: host glibc 2.41 pow, the
-# MSVCR90.dll pow mapped and called), the model of .scratch/port/test/ocean/pow_win_model.h, Python doubles
+# M10 (ocean) laws. Goldens: the real functions (host glibc 2.41 pow, the MSVCR90.dll pow mapped and called), a C
+# model of the Windows pow, Python doubles
 # (8 - 8/3; floor(213 + 262.87/4)) and SwapOutWormholeMarkers (3 markers: one pair, the odd one dropped).
 
 law ocean_pow_windows_exception_9218:
@@ -117,7 +117,7 @@ law ocean_wormhole_pairs:
 def ocean_wormhole_pairs():
   {==}
 
-# Ocean_ConvertImpassibleToWater (goldens: .scratch/port/test/ocean/convert_law_goldens.py).
+# Ocean_ConvertImpassibleToWater.
 
 law ocean_convert_gradient_coefs:
   {ConvertNoise.coefs() == ConvertNoise.Coefs{1178993290, 404363545} : ConvertNoise.Coefs}
@@ -151,7 +151,7 @@ def ocean_convert_void_step():
 
 # M12 (lanes G/S performance) laws. Goldens: the oracle's pent record of populate_entity_offset (Entities.tile_entity, the
 # integer-centred path, must give the same entity) and the C ImprovedNoise of worldsim/src/tiles.cpp at (x / 8, y / 8,
-# 0) (.scratch/port/test/tiles/perlin_ref.c; (1092, 516) is a noise value of exactly 1, where the integer sum wraps).
+# 0) ((1092, 516) is a noise value of exactly 1, where the integer sum wraps).
 
 law populate_tile_entity_offset:
   {Entities.tile_entity(0, 197, 185, 425, 425, True{}, Pcg.at_counter(1, 202333))

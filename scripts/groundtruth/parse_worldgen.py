@@ -101,7 +101,7 @@ def report_repeats(worlds_by_seed):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).resolve().parents[2] / ".scratch" / "groundtruth" / "data" / "worlds")
+    parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).resolve().parents[2] / "build" / "groundtruth" / "data" / "worlds")
     parser.add_argument("logs", nargs="+")
     args = parser.parse_args()
 

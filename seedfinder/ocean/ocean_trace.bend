@@ -12,7 +12,7 @@ import ./state.bend as OceanState
 import ./post.bend as OceanPost
 import ./ocean.bend as Ocean
 
-# Lane G's ocean trace stage `oceanpost` (.scratch/port/status/M10.md): from the oracle's land_done state (`oin`,
+# Lane G's ocean trace stage `oceanpost`: from the oracle's land_done state (`oin`,
 # `orow at="land"`, `oent`, `oreq`), the prefill, then the oracle's grid after the conversion (`orow at="void"`,
 # `odig at="void"` for the counter) and everything after it; prints the oracle's `ocean` records of those steps.
 

@@ -6,7 +6,7 @@ import ../f64/cmp.bend as F64Cmp
 import ./parse.bend as Parse
 import ../data/search_vocab.bend as SearchVocab
 
-# Parts B-E of a criteria entry (.scratch/spec/search-v1.md section 4). A prefab set is a list of distinct
+# Parts B-E of a criteria entry (docs/config.md section 4). A prefab set is a list of distinct
 # data/search_vocab.bend prefab ids in first-occurrence order; a tile set is a list of vocabulary tile ids.
 type Metric is Data:
   Metric{walk: Bool, wormholes: Bool}

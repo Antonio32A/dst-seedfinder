@@ -5,8 +5,7 @@
 -- usage: ../harness/bin/lua-dst extract_static.lua > build/static.json
 
 local HERE = arg[0]:match("^(.*)/[^/]*$") or "."
-local SCRATCH = HERE .. "/../../.scratch"
-HARNESS_SCRIPTS_DIR = SCRATCH .. "/game-scripts"
+HARNESS_SCRIPTS_DIR = HERE .. "/../../build/deps/game-scripts"
 HARNESS_VERBOSE = false
 local SAMPLE_TRIALS = tonumber(os.getenv("CATALOG_TRIALS") or "400")
 

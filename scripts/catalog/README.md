@@ -7,11 +7,16 @@ install's `version.txt`).
 
 ## Regenerating after a game update
 
-1. Refresh `.scratch/game-scripts/` from the new install (`data/databundles/scripts.zip`).
-2. If worldgen changed, re-validate the emulator (`.scratch/worldsim/`, see its `STATUS.md`) and rebuild the
-   harness level-table batch `../harness/out/out_1M.txt` (`../harness/batch.sh 1 1000000 8`).
-3. Run `./regen.sh --fresh-worlds` from this directory (without the flag, the cached emulator world summaries in
-   `worlds/` are reused). It runs:
+The regen needs two tools that aren't in the repository, given by environment variables: `WORLDSIM_DIR`, the
+worldsim emulator (its `run.sh SEED OUT` writes `OUT/world.json`; `gt/*/world.json` are real-game dumps), and
+`HARNESS_DIR`, the level-table harness (`harness.lua`, `bin/lua-dst`, and the batch `out/out_1M.txt`).
+`REALGEN_DIR` optionally adds real-game summaries (`out/*/summary.json`). Work files go to `build/catalog/`.
+
+1. Refresh `build/deps/game-scripts/` from the new install (`scripts/setup.sh` after deleting it).
+2. If worldgen changed, re-validate the emulator and rebuild the harness level-table batch
+   `$HARNESS_DIR/out/out_1M.txt` (seeds 1..1000000).
+3. Run `./regen.sh --fresh-worlds` (without the flag, the cached emulator world summaries in
+   `build/catalog/worlds/` are reused). It runs (outputs relative to `build/catalog/`):
 
 | Step | Script | Output |
 |---|---|---|
@@ -50,8 +55,8 @@ tables instead of regex-parsing:
 - prefab swaps (`prefabswaps.lua`), `map/customize.lua` settings, tiles (`GetWorldTileMap`, `TileGroupManager`,
   `worldtiledefs` turf names), `STRINGS.NAMES`.
 
-Empirical worlds are unioned from the real-game dumps (`../groundtruth/data/worlds/`, `../worldsim/gt/*/world.json`,
-`../realgen/out/*/summary.json`) and the emulator worlds (`worlds/`). One entry per seed; real-game sources win, and
+Empirical worlds are unioned from the real-game dumps (`build/groundtruth/data/worlds/`, `$WORLDSIM_DIR/gt/*/world.json`,
+`$REALGEN_DIR/out/*/summary.json`) and the emulator worlds (`build/catalog/worlds/`). One entry per seed; real-game sources win, and
 overlapping sources are compared (`worlds.seed_disagreements`).
 
 ## Top-level fields
@@ -118,14 +123,14 @@ overlapping sources are compared (`worlds.seed_disagreements`).
 - **Default settings only.** Anything behind a non-default option or a special event (Hallowed Nights pumpkins,
   `HalloweenPumpkinCarving`, pig-village `pumpkin_lantern`) is listed with `default: false`. World size, branching,
   touch stones, starting variety and the resource sliders change counts and the RNG stream.
-- **Emulator worlds.** Most of the empirical sample comes from `.scratch/worldsim` (it matches the real game on all
+- **Emulator worlds.** Most of the empirical sample comes from the worldsim emulator (it matches the real game on all
   validated seeds). In the 300-seed run, two seeds crashed the emulator (`114021`, `955923`: `bad_alloc` right after
   `poly.size() == 0` on a `COVE_0:Blank` node, during a retry attempt). The real game generates both (2 and 3
-  attempts), so this is an emulator bug; they were run with realgen instead (`build/realgen/<seed>/`, traces kept for
+  attempts), so this is an emulator bug; they were run with realgen instead (`build/catalog/build/realgen/<seed>/`, traces kept for
   debugging, picked up by `build_catalog.py`). Four seeds (`324837`, `700523`, `728448`, `898441`) give up after 5
-  attempts in the emulator and also in the real game (logs in `build/realgen/`), like seed 11; they are excluded
-  (`worlds.failed`). `regen.sh` doesn't rerun realgen: after a regen, check `build/run_worlds.log` for `no-world`
-  seeds and run `REALGEN_PORT=11001 ../realgen/run.sh <seed> build/realgen/<seed>` for them (one at a time or with
+  attempts in the emulator and also in the real game (logs in `build/catalog/build/realgen/`), like seed 11; they are excluded
+  (`worlds.failed`). `regen.sh` doesn't rerun realgen: after a regen, check `build/catalog/build/run_worlds.log` for `no-world`
+  seeds and run `REALGEN_PORT=11001 $REALGEN_DIR/run.sh <seed> build/catalog/build/realgen/<seed>` for them (one at a time or with
   different ports in 10998..11018; LAN servers fall back to 10999 and clash).
 - **Rare prefabs.** Items only in rare POIs (`skeleton_dapper`, `skeleton_researchlab*`: ~0.03 % of worlds) are
   statically placeable but usually absent from the sample. Their empirical fields are zero.

@@ -7,8 +7,8 @@ import ../worldsim/voronoi/exact.bend as VoronoiExact
 import ../worldsim/voronoi/lazy.bend as VoronoiLazy
 
 # Lane N (Voronoi, M6) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: .scratch/port/CONVENTIONS.md "Laws" (tiny U32 golden values, each probed alone first).
-# Golden values: Boost 1.52 (.scratch/port/test/voronoi/law_goldens.cpp).
+# Rules: tiny U32 golden values, each probed alone first.
+# Golden values: Boost 1.52.
 
 # robust_cross_product(3, 4, 5, 7) = 3 * 7 - 4 * 5.
 law voronoi_cross_small:

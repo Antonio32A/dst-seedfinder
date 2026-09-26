@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generates data/search_vocab.bend: the prefab ids, prefab group names and tile names of catalog.json that parts
-B-E of a search config may use (.scratch/spec/search-v1.md section 3), in catalog order.
+B-E of a search config may use (docs/config.md section 3), in catalog order.
 
 Run from the project root:
     python3 scripts/gen/gen_search_vocab.py    (writes seedfinder/data/search_vocab.bend; `-` prints it instead)

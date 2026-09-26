@@ -6,7 +6,7 @@ import ../f64/arith.bend as F64Arith
 import ../f64/cmp.bend as F64Cmp
 
 # Config reading helpers shared by part A (filters/config.bend) and parts B-E (filters/rules.bend). Every failure is
-# (2, "config: <message>") with the messages of .scratch/search/config.py.
+# (2, "config: <message>") with the messages of docs/config.md section 7.
 
 def failure(+message: String) -> U32 & String:
   (2, "config: " ++ message)

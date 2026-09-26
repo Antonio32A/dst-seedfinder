@@ -9,9 +9,9 @@ import ./space.bend as LayoutSpace
 import ./hops.bend as LayoutHops
 
 # Boost 1.52 kamada_kawai_spring_layout (edge length 10, spring constant 1, unit weights) with Klei's KleiDone
-# stop rule, in Boost's operation order, on the exact caches of the emulator's override
-# (.scratch/worldsim/STATUS.md "KK speedup"): pair partials and distances kept current, mirrored as -pd when
-# that is bit-exact. A Job advances by phase steps under a fuel bound, so a caller can cut a pass into rounds.
+# stop rule, in Boost's operation order, on the exact caches of the emulator's override: pair partials and distances
+# kept current, mirrored as -pd when that is bit-exact. A Job advances by phase steps under a fuel bound, so a caller
+# can cut a pass into rounds.
 
 type Coef is Data:
   Coef{l: F64Repr.F64, k: F64Repr.F64, kl: F64Repr.F64}

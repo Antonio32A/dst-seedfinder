@@ -95,6 +95,6 @@ def run_request(parsed: Result<&1, &1, U32 & String, Request>, +args: List<&2, S
         text : Result<&1, &1, U32 & String, String> <- input_text(Args.flag_value(args, "--input"))
         traced_text(text, stage, seed, windows)
 
-# Prints the canonical records of one stage (see .scratch/port/CONVENTIONS.md "Trace mode").
+# Prints the canonical records of one stage.
 def trace(+args: List<&2, String>) -> IO(Unit):
   run_request(request_of(args), args)

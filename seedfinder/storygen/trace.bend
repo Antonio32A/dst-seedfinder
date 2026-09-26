@@ -9,7 +9,7 @@ import ./story.bend as Story
 # `attempt a ctr` record of the input (the draw counter at the attempt's first WorldSim call), with GetSite answered
 # from the input's `poly a at="VoronoiPass(100)"` records. Prints the oracle's `attempt`, `call` and `lua` records
 # (draws) and `child` and `link` records (graph) of that window, in execution order. Linked into seedfinder by
-# trace/lane_s.bend only when the main build can afford it (see .scratch/port/status/M7.md).
+# trace/lane_s.bend only when the main build can afford it.
 
 def method_name(+m: U32) -> String:
   match m:

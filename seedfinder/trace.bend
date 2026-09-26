@@ -2,8 +2,7 @@ import Base
 import ./cli/args.bend as Args
 import ./trace/command.bend as TraceCommand
 
-# Debug binary with every lane's trace stages (.scratch/port/CONVENTIONS.md "Trace mode"); the production binary is
-# main.bend. Usage:
+# Debug binary with every lane's trace stages; the production binary is main.bend. Usage:
 #   seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
 
 def usage() -> IO(Unit):

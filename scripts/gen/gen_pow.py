@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Writes data/pow.bend, the tables of ocean/pow.bend's pow(r, 0.8) for both platforms. `-` prints the module
-instead; `c` prints the same tables as a C header (for .scratch/port/test/ocean/).
+instead; `c` prints the same tables as a C header.
 
 - Linux (glibc 2.41 __ieee754_pow_fma): `__pow_log_data` and `__exp_data` read from the host /lib64/libm.so.6 .rodata
   (the offsets of glibc-2.41-18.fc42; the digest check fails loudly on any other libm).
 - Windows (MSVCR90 9.00.30729.9635 x87 pow): fixed-point tables of the correctly rounded fyl2x/f2xm1 model, computed
-  here with Python's decimal module, plus the model's exceptions on this CPU (out/pow_windows_exceptions.txt, from the
-  exhaustive run .scratch/port/test/ocean/pow_exceptions.sh against the real DLL).
+  here with Python's decimal module, plus the model's exceptions on this CPU (out/pow_windows_exceptions.txt, from an
+  exhaustive run over 2^32 against the real DLL).
 """
 import struct
 import sys

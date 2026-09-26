@@ -934,7 +934,7 @@ def started(+ctx: Ctx) -> State:
       +book = {Book{Scan{start, total, min_chunk(), Nil{}}, Nil{}, Nil{}, Tally{0, Nil{}, Nil{}, 0n, 0, 0n}, 0, 0, 0, Stats{0n, 0n, 0n, 0n, now}} : Book}
       State{Host{book, free_slots(U32.to_nat(slots))}, False{}, 0n, Out{Nil{}, 0, "search: " ++ U32.show(slots) ++ " slots"}}
 
-# world find on generated worlds for a config with parts B-E (spec search-v1.md section 8 output).
+# world find on generated worlds for a config with parts B-E (docs/config.md section 8 output).
 def run(+q: Args.Query, +config: Config.Config) -> IO(Unit):
   match q:
     case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, +native}:

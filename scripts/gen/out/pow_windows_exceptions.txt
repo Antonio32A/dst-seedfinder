@@ -1,5 +1,5 @@
 # x delta: MSVCR90 9.00.30729.9635 pow(x / 4294967295.0, 0.8) = model + delta ulp on AMD Ryzen 9 5900X 12-Core Processor (x87 fyl2x/f2xm1)
-# written by .scratch/port/test/ocean/pow_exceptions.sh (exhaustive over 2^32, test/ocean/pow_win_model.h vs the real DLL)
+# exhaustive over 2^32: the C model of gen_pow.py vs the real DLL
 9218 1
 21543 1
 25852 -1

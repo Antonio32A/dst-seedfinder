@@ -5,7 +5,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
-src="${LUA_SRC:-$root/.scratch/ref/lua-5.1.5/src}"
+src="${LUA_SRC:-$root/build/deps/lua-5.1.5/src}"
 out="$here/bin"
 mkdir -p "$out"
 core=()

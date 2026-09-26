@@ -8,8 +8,8 @@ import ../worldsim/layout/space.bend as LayoutSpace
 import ../worldsim/layout/kk.bend as KK
 
 # Lane N (numeric) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: .scratch/port/CONVENTIONS.md "Laws" (tiny U32 golden values, each probed alone first).
-# Golden values: x86-64 SSE2 and glibc (.scratch/port/exp/f64m1/golden.c).
+# Rules: tiny U32 golden values, each probed alone first.
+# Golden values: x86-64 SSE2 and glibc.
 
 law f64_add_one_two:
   {F64Arith.add(F64Repr.one(), F64Repr.two()) == F64Repr.F64{1074266112, 0} : F64Repr.F64}
@@ -203,8 +203,8 @@ law f64_ulp_cmp_less:
 def f64_ulp_cmp_less():
   {==}
 
-# Kamada-Kawai pieces (M5): golden values from .scratch/port/test/kk/kk_golden.py (Boost 1.52 formulas in IEEE
-# double). The three-vertex example is the path 0-1-2 at (10, 20), (13, 24.5), (30, 21), moving vertex 1.
+# Kamada-Kawai pieces (M5): golden values from the Boost 1.52 formulas in IEEE double. The three-vertex example is the
+# path 0-1-2 at (10, 20), (13, 24.5), (30, 21), moving vertex 1.
 
 law kk_coef_three_hops:
   {KK.coef_of(3) == KK.Coef{F64Repr.F64{1077805056, 0}, F64Repr.F64{1069314503, 477218588}, F64Repr.F64{1074440874, 2863311530}} : KK.Coef}

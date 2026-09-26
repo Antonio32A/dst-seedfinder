@@ -5,7 +5,7 @@
 //   continues the same stream for the island vertices. Width and height 425 (SetWorldSize(425, 425)).
 // - blur_kernel: GenerateBlendedMap's Gaussian kernel for kernelSize 15, sigma 3.0f (expf, sqrtf, float).
 // expf and sqrtf run at run time (volatile arguments), as in the game, not folded by the compiler.
-// build: g++ -O0 -std=c++17 -ffp-contract=off -isystem .scratch/ref/boost_1_52_0 gen_constants.cpp -o gen_constants
+// build: g++ -O0 -std=c++17 -ffp-contract=off -isystem build/deps/boost_1_52_0 gen_constants.cpp -o gen_constants
 #include <boost/graph/topology.hpp>
 #include <boost/random/linear_congruential.hpp>
 

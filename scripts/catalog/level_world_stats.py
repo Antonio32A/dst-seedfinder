@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Level-table statistics (tasks, prefab swaps, random set pieces) from the harness `world` mode.
 
-Runs ../harness/harness.lua world FROM TO in parallel chunks (each under ulimit -v / timeout), caches the raw
+Runs $HARNESS_DIR/harness.lua world FROM TO in parallel chunks (each under ulimit -v / timeout), caches the raw
 lines in build/harness_world/, and prints the aggregate JSON on stdout.
 usage: python3 level_world_stats.py [FROM] [TO] [JOBS] > build/level_world_stats.json
 """
@@ -13,9 +13,8 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.realpath(__file__))
-SCRATCH = os.path.join(os.path.dirname(os.path.dirname(HERE)), ".scratch")
-HARNESS = os.path.join(SCRATCH, "harness")
-CACHE = os.path.join(SCRATCH, "catalog/build/harness_world")
+HARNESS = os.environ["HARNESS_DIR"]
+CACHE = os.path.join(os.path.dirname(os.path.dirname(HERE)), "build/catalog/build/harness_world")
 
 
 def run_chunk(lo, hi):

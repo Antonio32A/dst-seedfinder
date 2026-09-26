@@ -1,7 +1,7 @@
 import Base
 
-# The canonical text format shared by the oracle dumps and `seedfinder trace` (.scratch/port/CONVENTIONS.md
-# "Canonical records"): one record per line, `kind key=value key=value ...`.
+# The canonical text format shared by the oracle dumps and `seedfinder trace`: one record per line,
+# `kind key=value key=value ...`.
 
 def hex_digit(+d: U32) -> String:
   SCon{Chr{Bool.pick(U32, (d < 10 : U32), (48 + d : U32), (87 + d : U32))}, SNil{}}

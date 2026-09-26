@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # usage: runner/build.sh [--push]
 # env: RUNNER_REPOSITORY (e.g. ghcr.io/<user>/dst-seedfinder-runner; read from website/.dev.vars when unset),
-#      RUNNER_BUILD_DIR (default .scratch/runner-build)
+#      RUNNER_BUILD_DIR (default build/runner)
 set -euo pipefail
 root="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
-build="${RUNNER_BUILD_DIR:-$root/.scratch/runner-build}"
+build="${RUNNER_BUILD_DIR:-$root/build/runner}"
 repo="${RUNNER_REPOSITORY:-}"
 if [[ -z "$repo" && -f "$root/website/.dev.vars" ]]; then
   repo="$(sed -n -E "s/^RUNNER_REPOSITORY=([\"']?)(.*)\1\$/\2/p" "$root/website/.dev.vars" | tail -n 1)"

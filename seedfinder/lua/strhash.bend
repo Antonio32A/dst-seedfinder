@@ -2,7 +2,6 @@ import Base
 
 # Lua 5.1 luaS_hash (lstring.c): h = len; step = (len >> 5) + 1; for l1 = len, len - step, ... while l1 >= step:
 # h ^= (h << 5) + (h >> 2) + byte[l1 - 1]. No seed. Strings are byte sequences (Bend Chars are UTF-8 encoded).
-# Interned strings: see .scratch/port/status/M2.md "String interface".
 
 def mix(+h: U32, +c: U32) -> U32:
   (h .^. (((h << 5n) + (h >> 2n)) + c) : U32)

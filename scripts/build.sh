@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # usage: build.sh [main | trace | ENTRY.bend [OUT]]   (OUT ending in .c emits C only)
-#   (none), main  seedfinder/main.bend  -> .scratch/build/seedfinder        production binary, 16 GB cap, clang with
+#   (none), main  seedfinder/main.bend  -> build/seedfinder        production binary, 16 GB cap, clang with
 #                 -mllvm -inline-threshold=3000 (CCC_OVERRIDE_OPTIONS; same output, ~15-20% faster worldgen)
-#   trace         seedfinder/trace.bend -> .scratch/build/seedfinder_trace  debug binary with every lane's trace stages, 32 GB
+#   trace         seedfinder/trace.bend -> build/seedfinder_trace  debug binary with every lane's trace stages, 32 GB
 #                 cap; refuses to start unless `free -g` shows at least BUILD_MIN_FREE_GB (default 40) available
 #   ENTRY [OUT]   any program (lane test binaries), 16 GB cap
 #
@@ -18,12 +18,12 @@ clang_override="${CCC_OVERRIDE_OPTIONS:-}"
 case "${1:-main}" in
   main)
     entry="$root/seedfinder/main.bend"
-    out="$root/.scratch/build/seedfinder"
+    out="$root/build/seedfinder"
     clang_override="${CCC_OVERRIDE_OPTIONS:-# +-mllvm +-inline-threshold=3000}"
     ;;
   trace)
     entry="$root/seedfinder/trace.bend"
-    out="$root/.scratch/build/seedfinder_trace"
+    out="$root/build/seedfinder_trace"
     vlimit="${BUILD_VLIMIT:-32000000}"
     available=$(free -g | awk '/^Mem:/ {print $7}')
     if (( available < ${BUILD_MIN_FREE_GB:-40} )); then
@@ -33,7 +33,7 @@ case "${1:-main}" in
     ;;
   *)
     entry="$1"
-    out="${2:-$root/.scratch/build/seedfinder}"
+    out="${2:-$root/build/seedfinder}"
     ;;
 esac
 mkdir -p "$(dirname "$out")"

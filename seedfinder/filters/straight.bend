@@ -6,7 +6,7 @@ import ../f32/ops.bend as F32Ops
 import ./world.bend as FilterWorld
 import ./metric.bend as Metric
 
-# The straight metric of .scratch/search/metric.py (StraightMetric) in IEEE doubles, operation for operation: the
+# The straight metric (docs/config.md section 5) in IEEE doubles, operation for operation: the
 # Euclidean distance sqrt(dx*dx + dz*dz), and with wormholes the Floyd-Warshall closure over the link ends (free
 # links, Euclidean flights between ends), any number of jumps.
 

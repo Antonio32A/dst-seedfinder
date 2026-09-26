@@ -11,8 +11,8 @@ import ../storygen/order.bend as StoryOrder
 import ../storygen/mem.bend as StoryMem
 
 # Lane S (story, Lua and data) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: .scratch/port/CONVENTIONS.md "Laws" (tiny U32 golden values, each probed alone first).
-# Golden values: .scratch/port/test/law_goldens.py (stock Lua 5.1.5, lua-dst, g++, the Windows game exe, C doubles).
+# Rules: tiny U32 golden values, each probed alone first.
+# Golden values: stock Lua 5.1.5, lua-dst, g++, the Windows game exe, C doubles.
 
 law lua_strhash_short:
   {StrHash.hash_string("forest") == 2463871799 : U32}

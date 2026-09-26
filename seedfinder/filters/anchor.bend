@@ -5,7 +5,7 @@ import ../f64/cmp.bend as F64Cmp
 import ./walk.bend as Walk
 import ./world.bend as FilterWorld
 
-# Walk anchors (search-v1.md section 5): an instance on a land tile enters there with offset 0; any other instance
+# Walk anchors (docs/config.md section 5): an instance on a land tile enters there with offset 0; any other instance
 # enters at the land tile whose centre is nearest (Euclidean, as world.py computes it in doubles; ties to the lowest
 # ty*W + tx) with that distance as offset. The search scans Chebyshev rings of tiles around the instance with exact
 # integer squared distances (coordinates are hundredths), then breaks exact ties with world.py's doubles.

@@ -184,7 +184,6 @@ static int math_max (lua_State *L) {
 ** Klei replaced libc srand/rand with PCG32 (pcg32_srandom_r / pcg32_random_r)
 ** kept in thread-local storage, and math.random divides the raw 32-bit PCG
 ** output by 4294967295.0 (so r can be exactly 1.0).
-** See .scratch/research/rng.md.
 */
 
 #define DST_PCG_MULT 0x5851f42d4c957f2dULL

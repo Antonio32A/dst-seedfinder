@@ -21,9 +21,8 @@ import ./convert_fills.bend as ConvertFills
 # Exactness: everything that depends on one column or one row alone (nx, the scaled input, each octave's floor,
 # fraction and fade) is computed once in exact soft doubles. Per tile the octave sum runs in F32 from those values
 # (with z = 0 ImprovedNoise is (m0 + 1) / 2, the z-lerp adds an exact zero) and is compared with the threshold on
-# the sum, c = amps * (2 * level - 1). The F32 sum is within 2^-15 of the double one (proof and measurement in
-# .scratch/port/status/M10_convert.md), so a sum more than 2^-12 away from c decides the comparison; a tile inside
-# that band runs the exact soft-double simplexnoise2d, division included.
+# the sum, c = amps * (2 * level - 1). The F32 sum is within 2^-15 of the double one, so a sum more than 2^-12 away from
+# c decides the comparison; a tile inside that band runs the exact soft-double simplexnoise2d, division included.
 
 # The band half-width 2^-12.
 def margin() -> F64Repr.F64:

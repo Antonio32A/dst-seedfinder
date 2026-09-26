@@ -5,8 +5,8 @@ import ../../f64/repr.bend as F64Repr
 import ./table.bend as TileTable
 import ./world.bend as TileWorld
 
-# The tile stages' inputs read back from lane G's oracle `tileinput` records (.scratch/port/status/M8.md): the
-# committed map of one attempt as a TileWorld.World, plus record helpers shared by lane G's trace stages.
+# The tile stages' inputs read back from lane G's oracle `tileinput` records: the committed map of one attempt as a
+# TileWorld.World, plus record helpers shared by lane G's trace stages.
 
 def hex_value(+code: U32) -> U32:
   Bool.pick(U32, (code >= 97 : U32), (code - 87 : U32), (code - 48 : U32))

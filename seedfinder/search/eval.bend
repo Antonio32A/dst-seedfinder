@@ -9,7 +9,7 @@ import ../cli/args.bend as Args
 import ../cli/files.bend as Files
 
 # seedfinder world eval --config CONFIG.json --world WORLD.dstw [--json] [--fast]: one config on one dumped world,
-# printed as .scratch/search/evaluate.py --json --level prints it (the level table comes from the seed). Exit 0 when
+# printed as its level table (from the seed) and the witnesses of docs/config.md section 8. Exit 0 when
 # some entry matches, 1 when none does or the world gave up, 2 on a config or input error.
 
 def usage() -> String:
