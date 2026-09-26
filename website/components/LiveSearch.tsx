@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { timeLimitSeconds } from "@/lib/credits";
-import type { JobStatus, Machine } from "@/lib/job-events";
+import type { JobStatus, Machine, WorldProgress } from "@/lib/job-events";
 import type { LiveJob } from "@/lib/use-job-stream";
 import JobResults, { type JobResultsProps } from "./JobResults";
 
@@ -22,6 +22,14 @@ interface LiveText {
   details: string[];
 }
 
+const worlds = (count: number) => `${COMPACT.format(count)} ${count === 1 ? "world" : "worlds"}`;
+
+const worldDetails = ({ levels, generated, generating }: WorldProgress): string[] => [
+  ...(levels === null ? [] : [`${COMPACT.format(levels)} seeds scanned`]),
+  `generating ${worlds(generating)}`,
+  `${worlds(generated)} generated`,
+];
+
 const finishing = (): LiveText => ({ headline: "Finishing up…", details: [] });
 
 const LIVE_TEXT: Record<JobStatus, (live: LiveJob, maxCost: number) => LiveText> = {
@@ -36,6 +44,7 @@ const LIVE_TEXT: Record<JobStatus, (live: LiveJob, maxCost: number) => LiveText>
   running: ({ progress, machine }, maxCost) => ({
     headline: "Checking seeds…",
     details: [
+      ...(progress?.worlds ? worldDetails(progress.worlds) : []),
       ...(progress ? [`${COMPACT.format(progress.seedsPerSecond)} seeds/s`] : []),
       ...(machine ? [machineText(machine), `up to ${SECONDS.format(timeLimitSeconds(maxCost, machine.dollarsPerHour))} s`] : []),
     ],

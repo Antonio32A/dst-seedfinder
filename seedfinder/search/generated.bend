@@ -737,10 +737,10 @@ type Out is Data:
 type State is Type:
   State{host: Host, idle: Bool, rush: Nat, out: Out}
 
-def progress(+b: Book) -> String:
+def progress(+b: Book, +levels: Nat) -> String:
   match b:
     case Book{_, _, +waiting, Tally{+found, _, _, _, _, +scanned}, +made, +busy, +flying, Stats{+rounds, +cpu, +take, +passes, _}}:
-      "search: scanned " ++ Nat.show(scanned) ++ ", worlds " ++ U32.show(made) ++ ", generating " ++ U32.show(busy)
+      "search: scanned " ++ Nat.show(scanned) ++ ", levels " ++ Nat.show(levels) ++ ", worlds " ++ U32.show(made) ++ ", generating " ++ U32.show(busy)
         ++ " (kk " ++ U32.show(flying) ++ ", passes " ++ Nat.show(passes) ++ "), waiting "
         ++ Nat.show(List.length(&2, SWD.Judged, waiting)) ++ ", hits " ++ U32.show(found) ++ " (rounds " ++ Nat.show(rounds)
         ++ ", cpu " ++ Nat.show(cpu) ++ " ms, take " ++ Nat.show(take) ++ " ms)"
@@ -750,7 +750,7 @@ def worked_round(go: Bool, slots: List<&1, Slot>, +b: Book, +ready: U32, +rush: 
     case True{}:
       +show = due(book_stats(b), now)
       +kept = with_stats(b, Bool.pick(Stats, show, shown_at(book_stats(b), now), book_stats(b)))
-      State{Host{kept, slots}, idle(kept, ready, ctx), rush, Out{lines_of(book_tally(b)), 0, Bool.pick(String, show, progress(kept), "")}}
+      State{Host{kept, slots}, idle(kept, ready, ctx), rush, Out{lines_of(book_tally(b)), 0, Bool.pick(String, show, progress(kept, covered(book_scan(kept), ctx)), "")}}
     case False{}:
       State{Host{b, slots}, False{}, 0n, Out{lines_of(book_tally(b)), code_of(book_tally(b)), ""}}
 

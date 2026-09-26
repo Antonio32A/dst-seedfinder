@@ -511,7 +511,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
   private readonly lineEffects: { [K in OutputLine["kind"]]: (line: Extract<OutputLine, { kind: K }>) => JobEvent | null } = {
     progress: ({ progress }) => {
       const searchSeconds = (Date.now() - ((this.state as RoomState).startedAt ?? Date.now())) / 1000;
-      const seedsPerSecond = progress.seedsPerSecond ?? Math.round(progress.scanned / Math.max(searchSeconds, 1));
+      const seedsPerSecond = progress.seedsPerSecond ?? Math.round((progress.worlds?.levels ?? progress.scanned) / Math.max(searchSeconds, 1));
       this.save({ progress: { ...progress, seedsPerSecond } });
       return null;
     },
