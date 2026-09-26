@@ -93,7 +93,10 @@ export async function destroyInstance(apiKey: string, instanceId: string): Promi
   });
 }
 
-/** Every instance on the account (or only those with exactly this label) with its label, following `next_token` pages. */
+/**
+ * Every instance on the account (or only those with exactly this label) with its label, following `next_token` pages.
+ * The label is checked here too, so instances of other searches are never returned even if vast.ai ignores the filter.
+ */
 export async function listInstances(apiKey: string, label?: string): Promise<VastInstance[]> {
   const instances: VastInstance[] = [];
   let after: string | null = null;
@@ -111,5 +114,5 @@ export async function listInstances(apiKey: string, label?: string): Promise<Vas
     after = typeof body?.next_token === "string" && body.next_token ? body.next_token : null;
     if (after === null) break;
   }
-  return instances;
+  return label === undefined ? instances : instances.filter((instance) => instance.label === label);
 }
