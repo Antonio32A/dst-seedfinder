@@ -1,14 +1,55 @@
 # dst-seedfinder
 
-A seed finder for Don't Starve Together forest worlds. It predicts the level table (tasks, set pieces, prefab swaps)
-of every seed directly, and generates candidate worlds in memory with a port of the whole forest worldgen that is
-bit-identical to the game (build 747465) on Windows and Linux servers. Only the default world settings are supported.
+[![forthebadge](https://forthebadge.com/badges/contains-technical-debt.svg)]()
 
-| Folder | Contents |
-|---|---|
-| `seedfinder/` | The Bend sources. `seedfinder/README.md` documents the CLI, the search config and the code layout. |
-| `scripts/` | Build and proof scripts, the data generators (`gen/`), the prefab catalog (`catalog/`), the Lua harness the generators run under (`harness/`), and the tools that dump real worlds from the game (`groundtruth/`). |
-| `website/` | The web UI (`website/README.md`). |
+A seed finder for Don't Starve Together. Supports forest worlds on version `747465` on Windows and Linux.
+
+This is mostly a toy project, the majority of the code is very sloppy and not production ready. 
+
+## Structure
+
+### seedfinder 
+
+The real deal. This does all the heavy lifting. It's the majority of the game's world geneneration code ported to Bend and
+optimized to generate worlds as fast as possible. 
+
+It uses [Bend](https://github.com/bendlang/bend) as it's a pretty fast language, and I honestly just wanted to fuck 
+around with it. It does not support CUDA/GPU world generation, as when I was testing it, it was unfortunately just
+too slow and not the right job for the GPU. It is still, very fast and will take advantage of your entire CPU. 
+
+A tiny amount of the code is also in C, because Bend currently does not support F64 and the majority of the world
+generation time is spent computing KK layouts, which are very slow with the boxed F64 this project reimplements.
+
+To use it, you define a JSON config which says what you want to search for (e.g., a world with five walking canes 
+and five `MiscBoon` set pieces). You can see the spec for it in [docs/config.md](docs/config.md).
+
+### website
+
+This is a Next.js app that lets users sign in and submit seed searches. Users currently sign in with Discord (it was
+the simplest solution) and are given a set number of credits. Credits are purely used for rate limiting.
+
+All seed searches are run on a different server, currently this comes from Vast.ai. When you press "Find seeds",
+it literally spins up a new server which downloads the runner image, passes the config to it, and then
+starts finding seeds on there. 
+
+This runs on Cloudflare Workers, as I was lazy to properly deploy it anywhere else.
+
+### runner
+
+This is the Docker image that Vast.ai pulls and runs on boot. It runs Alpine Linux with a small script which runs the 
+seedfinder. The script pulls the JSON config from the backend, runs the seedfinder, and pipes all outputs to the backend.
+
+### scripts
+
+This contains a bunch of scripts for building, setting up the build environment and generating other files:
+- `catalog` - Generates the prefab catalog for the website using the game scripts.
+- `gen` - Generates a lot of data for the seedfinder. A lot of the Bend code is auto generated using these scripts, so
+when the game updates this code should still work (unless Klei changes a lot of stuff in the engine). 
+- `groundtruth` - Spins up a dedicated DST with a custom mod to dump world generation data. This was originally used to
+validate to ensure we haven't broken any world generation code, but now it's mostly used to port the tool to newer versions.
+- `harness` - Contains the Lua harness that lets us run some game scripts without actually running the game.
+
+# TODO CONTINUE
 
 # Requirements
 
@@ -26,10 +67,10 @@ Only to regenerate the generated data in `seedfinder/data/` (it is committed, so
 # Building
 
 ```sh
-scripts/build.sh                                   # seedfinder/main.bend -> .scratch/build/seedfinder (5-8 min)
+scripts/build.sh                                   # seedfinder/main.bend -> build/seedfinder (5-8 min)
 scripts/proof.sh -j 3                              # the laws (seedfinder/LAWS.bend, seedfinder/laws/); run before committing
 bend seedfinder/main.bend --check-only             # type-check only
-scripts/build.sh trace                             # debug binary with the worldgen trace stages -> .scratch/build/seedfinder_trace
+scripts/build.sh trace                             # debug binary with the worldgen trace stages -> build/seedfinder_trace
 ```
 
 Use `scripts/build.sh` rather than a plain `bend seedfinder/main.bend -o ...`. It caps the compiler's heap
@@ -43,7 +84,7 @@ A binary built on a new distribution needs a recent glibc (2.38 on Fedora 42). T
 source and compile it on the target:
 
 ```sh
-scripts/build.sh seedfinder/main.bend .scratch/build/seedfinder.c
+scripts/build.sh seedfinder/main.bend build/seedfinder.c
 # on the target, with clang 14+:
 CCC_OVERRIDE_OPTIONS='# +-mllvm +-inline-threshold=3000' clang -std=c11 -O3 seedfinder.c -lpthread -lm -o seedfinder
 ```
@@ -55,16 +96,16 @@ and `gen` to the Bend reference port (`seedfinder/worldsim/layout/kk.bend`, same
 # Running
 
 ```sh
-.scratch/build/seedfinder --threads 16 -- world find --limit 5 --time-limit 120 --config config.json
-.scratch/build/seedfinder --threads 16 -- world find --start-seed 123456 --limit 1 --json --config config.json
-.scratch/build/seedfinder world show 123456 --config config.json
-.scratch/build/seedfinder --threads 16 -- setpiece find 0 4294967295 MiscBoon:7
-.scratch/build/seedfinder --threads 1 gen 123456 --platform windows
+build/seedfinder --threads 16 -- world find --limit 5 --time-limit 120 --config config.json
+build/seedfinder --threads 16 -- world find --start-seed 123456 --limit 1 --json --config config.json
+build/seedfinder world show 123456 --config config.json
+build/seedfinder --threads 16 -- setpiece find 0 4294967295 MiscBoon:7
+build/seedfinder --threads 1 gen 123456 --platform windows
 ```
 
 - **Config format:** `seedfinder/README.md` describes it and has examples.
 - **Search speed:** the level table is scanned at millions of seeds per second. Every seed that passes it and has
-  count, distance, tile or route filters costs one full worldgen, about 0.5 s of one thread (about 11 worlds/s
+  count, distance, tile, or route filters costs one full worldgen, about 0.5 s of one thread (about 11 worlds/s
   on 14 threads).
 - **Continuing a search:** `--time-limit` stops the search, and `--start-seed` with the printed `next_seed`
   continues it.
@@ -74,21 +115,22 @@ and `gen` to the Bend reference port (`seedfinder/worldsim/layout/kk.bend`, same
 # Regenerating the data
 
 ```sh
-scripts/setup.sh              # once: game scripts from the local install, Lua 5.1.5 and Boost 1.52 into .scratch/, builds lua-dst
-scripts/gen/regen.sh          # rewrites seedfinder/data/*.bend from the game scripts
+scripts/setup.sh              # once: game scripts from the local install, Lua 5.1.5 and Boost 1.52 into build/deps/, builds lua-dst
+scripts/gen/regen.sh          # rewrites seedfinder/data/*.bend and config.schema.json
 scripts/gen/regen.sh --check  # fails if any generated file is stale
 ```
 
 Regenerate after a game update, then rebuild and re-run the proofs. `scripts/gen/out/pow_windows_exceptions.txt` is
 committed because it comes from an exhaustive run against the Windows server's MSVCR90 `pow` and can't be regenerated
 from the Linux install. `DST_WINDOWS_EXE` optionally points at the Windows server exe, which adds a cross-check of the
-Perlin table.
+Perlin table. The config spec is [`docs/config.md`](docs/config.md); `scripts/gen/gen_schema.py` generates
+`config.schema.json` from its caps and the catalog.
 
 `scripts/catalog/catalog.json` is the prefab catalog behind `seedfinder/data/catalog.bend`, `world_catalog.bend` and
 the website's prefab lists. `python3 scripts/catalog/build_catalog.py` rebuilds it from the game install plus the
 snapshot in `scripts/catalog/inputs/`: the static extraction of the game scripts, level-table statistics and per-world
-prefab summaries. Refreshing that snapshot (`scripts/catalog/regen.sh`) needs the validation emulator, which is not
-part of this repository.
+prefab summaries. Refreshing that snapshot (`scripts/catalog/regen.sh`) needs the validation emulator and the
+level-table harness (`WORLDSIM_DIR`, `HARNESS_DIR`), which are not part of this repository.
 
 # Dumping real worlds
 
@@ -97,6 +139,6 @@ update or to feed `seedfinder world find --worlds` / `world eval`:
 
 ```sh
 ln -s "$PWD/scripts/groundtruth/groundtruth-worldgen" "<DST install>/mods/"   # once
-scripts/groundtruth/run_worldgen.sh fresh 1-10          # one server launch per seed -> .scratch/groundtruth/data/worlds/<seed>.json
-python3 scripts/groundtruth/world_dump.py --platform linux .scratch/groundtruth/data/worlds/1.json 1.dstw
+scripts/groundtruth/run_worldgen.sh fresh 1-10          # one server launch per seed -> build/groundtruth/data/worlds/<seed>.json
+python3 scripts/groundtruth/world_dump.py --platform linux build/groundtruth/data/worlds/1.json 1.dstw
 ```
