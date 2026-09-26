@@ -25,7 +25,9 @@ def blocker(+g: U32, +entrance: U32, +i: U32) -> GG.Info:
     0, GG.none(), GG.none(), g, GG.none(), 0, 1}
 
 def attached(+added: GG.Got, +node: U32) -> GG.St:
-  GG.link(GG.st(added), GG.val(added), node)
+  match added:
+    case GG.Got{+n, +s}:
+      GG.link(s, n, node)
 
 def bg_loop(n: Nat, +s: GG.St, +g: U32, +node: U32, +room: U32, +idx: U32) -> GG.Got:
   match n:
@@ -35,33 +37,43 @@ def bg_loop(n: Nat, +s: GG.St, +g: U32, +node: U32, +room: U32, +idx: U32) -> GG
       +added = GG.add_node(GT.extras(s, room), g, background_room(GG.id_bg(), g, idx, room))
       bg_loop(p, attached(added, node), g, node, room, (idx + 1 : U32))
 
+def blocker_linked(+node: U32, +added: GG.Got) -> GG.St:
+  match added:
+    case GG.Got{+n, +s}:
+      GG.link(s, node, n)
+
 def blocked(+s: GG.St, +g: U32, +node: U32, +i: U32) -> GG.St:
-  +added = GG.add_node(s, g, blocker(g, node, i))
-  GG.link(GG.st(added), node, GG.val(added))
+  blocker_linked(node, GG.add_node(s, g, blocker(g, node, i)))
+
+def bg_counted(+count: GG.Got, +g: U32, +node: U32, +room: U32, +idx: U32) -> GG.Got:
+  match count:
+    case GG.Got{+n, +s}:
+      bg_loop(U32.to_nat(n), s, g, node, room, idx)
 
 def background_of(entrance: Bool, +s: GG.St, +g: U32, +node: U32, +room: U32, +idx: U32) -> GG.Got:
   match entrance:
     case True{}:
       GG.Got{idx, blocked(blocked(s, g, node, 1), g, node, 2)}
     case False{}:
-      +count = GG.range(s, 0, 2)
-      bg_loop(U32.to_nat(GG.val(count)), GG.st(count), g, node, room, idx)
+      bg_counted(GG.range(s, 0, 2), g, node, room, idx)
 
 def bg_nodes(nodes: List<&2, U32>, +walk: GG.Got, +g: U32, +room: U32) -> GG.Got:
   match nodes:
     case Nil{}:
       walk
     case Con{+node, rest}:
-      +s = GG.st(walk)
-      bg_nodes(rest, background_of(GG.is_entrance(s, node), s, g, node, room, GG.val(walk)), g, room)
+      match walk:
+        case GG.Got{+idx, +s}:
+          bg_nodes(rest, background_of(GG.is_entrance(s, node), s, g, node, room, idx), g, room)
 
 def bg_graphs(graphs: List<&2, U32>, +walk: GG.Got) -> GG.Got:
   match graphs:
     case Nil{}:
       walk
     case Con{+g, rest}:
-      +s = GG.st(walk)
-      bg_graphs(rest, bg_nodes(GG.copy_order(s, g), walk, g, GG.gf(s, g, GG.g_background())))
+      match walk:
+        case GG.Got{+idx, +s}:
+          bg_graphs(rest, bg_nodes(GG.copy_order(s, g), GG.Got{idx, s}, g, GG.gf(s, g, GG.g_background())))
 
 # Story:AddBGNodes(0, 2) over pairs(root.children): 0-2 background rooms per node (math.random(0, 2)), two blocker
 # blanks per entrance node; bg_idx runs across all graphs.
@@ -87,7 +99,9 @@ def cove_added(hit: Bool, +s: GG.St, +g: U32, +node: U32, +room: U32, +idx: U32)
       GG.Got{idx, s}
 
 def cove_rolled(+hit: GG.Got, +g: U32, +node: U32, +room: U32, +idx: U32) -> GG.Got:
-  cove_added(U32.is_eq(GG.val(hit), 1), GG.st(hit), g, node, room, idx)
+  match hit:
+    case GG.Got{+h, +s}:
+      cove_added(U32.is_eq(h, 1), s, g, node, room, idx)
 
 def cove_of(eligible: Bool, +s: GG.St, +g: U32, +node: U32, +task: U32, +idx: U32) -> GG.Got:
   match eligible:
@@ -101,8 +115,9 @@ def cove_nodes(nodes: List<&2, U32>, +walk: GG.Got, +g: U32, +task: U32) -> GG.G
     case Nil{}:
       walk
     case Con{+node, rest}:
-      +s = GG.st(walk)
-      cove_nodes(rest, cove_of(cove_eligible(s, node, cove_max_edges(task)), s, g, node, task, GG.val(walk)), g, task)
+      match walk:
+        case GG.Got{+idx, +s}:
+          cove_nodes(rest, cove_of(cove_eligible(s, node, cove_max_edges(task)), s, g, node, task, idx), g, task)
 
 def cove_graph(task_graph: Bool, +s: GG.St, +g: U32) -> GG.St:
   match task_graph:
@@ -147,13 +162,14 @@ def loop_sub(+n: U32) -> GG.Info:
     GG.none(), GG.none(), GG.none(), GG.none(), 0, 0}
 
 def blank_locked(+added: GG.Got, +from: U32, +to: U32) -> GG.St:
-  +blank = GG.val(added)
-  +s = GG.st(added)
-  GG.lock(GG.lock(GG.bump(s, GG.s_loop_blanks()), from, blank), to, blank)
+  match added:
+    case GG.Got{+blank, +s}:
+      GG.lock(GG.lock(GG.bump(s, GG.s_loop_blanks()), from, blank), to, blank)
 
 def blank_graph(+made: GG.Got, +n: U32, +from: U32, +to: U32) -> GG.St:
-  +g = GG.val(made)
-  blank_locked(GG.add_node(GG.graph_child(GG.st(made), g), g, loop_sub(n)), from, to)
+  match made:
+    case GG.Got{+g, +s}:
+      blank_locked(GG.add_node(GG.graph_child(s, g), g, loop_sub(n)), from, to)
 
 # Story:SeperateStoryByBlanks(from, to): a LOOP_BLANK graph with one blank node, locked to both nodes.
 def separate_by_blanks(+s: GG.St, +from: U32, +to: U32) -> GG.St:

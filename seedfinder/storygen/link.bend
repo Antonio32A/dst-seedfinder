@@ -102,10 +102,14 @@ def first_unlocked(tasks: List<&2, U32>, +s: GG.St, +keys: List<&2, U32>, +holde
   +g = unlocked_task(tasks, False{}, s, keys, GG.none())
   unlocked_list(U32.is_eq(g, GG.none()), g, s, keys, holders)
 
+def item_of(+order: List<&2, U32>, +d: GG.Got) -> GG.Got:
+  match d:
+    case GG.Got{+k, +s}:
+      GG.Got{GO.nth_or_last(order, (k - 1 : U32), GG.none()), s}
+
 # GetRandomItem / GetRandomNodeFromTasks over a pairs() order: math.random(n), clamped to the last entry.
 def random_item(+s: GG.St, +order: List<&2, U32>) -> GG.Got:
-  +d = GG.upto(s, GO.count(order, 0))
-  GG.Got{GO.nth_or_last(order, (GG.val(d) - 1 : U32), GG.none()), GG.st(d)}
+  item_of(order, GG.upto(s, GO.count(order, 0)))
 
 def entrance_picked(random: Bool, +s: GG.St, +g: U32, +fixed: U32) -> GG.Got:
   match random:
@@ -118,11 +122,19 @@ def entrance_or_random(+s: GG.St, +g: U32) -> GG.Got:
   +fixed = GG.gf(s, g, GG.g_entrance())
   entrance_picked(U32.is_eq(fixed, GG.none()), s, g, fixed)
 
+def locked_to(+exit: U32, +entrance: GG.Got) -> GG.St:
+  match entrance:
+    case GG.Got{+n, +s}:
+      GG.lock(s, exit, n)
+
+def exit_locked(+current: U32, +exit: GG.Got) -> GG.St:
+  match exit:
+    case GG.Got{+x, +s}:
+      locked_to(x, entrance_or_random(s, current))
+
 # The LockGraph edge of a new connection: the parent's exit node to the task's entrance node.
 def connected(+s: GG.St, +parent: U32, +current: U32, +depth: U32) -> GG.St:
-  +exit = GN.exit_node(GG.set_gf(s, current, GG.g_depth(), depth), parent)
-  +entrance = entrance_or_random(GG.st(exit), current)
-  GG.lock(GG.st(entrance), GG.val(exit), GG.val(entrance))
+  exit_locked(current, GN.exit_node(GG.set_gf(s, current, GG.g_depth(), depth), parent))
 
 def new_keys(given: List<&2, U32>, +keys: List<&2, U32>) -> List<&2, U32>:
   match given:
@@ -148,17 +160,25 @@ def linked(+l: Linking, +parent: U32, +current: U32, +s: GG.St) -> Linking:
       Linking{connected(s, parent, current, depth), inserted, List.append(&2, U32, removed, [current]), new_keys(given, keys),
         new_holders(given, holders, current), current, (depth + 1 : U32)}
 
+def linked_pick(+l: Linking, +parent: U32, +picked: GG.Got) -> Linking:
+  match picked:
+    case GG.Got{+current, +s}:
+      linked(l, parent, current, s)
+
+def linked_parent(+l: Linking, +current: U32, +picked: GG.Got) -> Linking:
+  match picked:
+    case GG.Got{+parent, +s}:
+      linked(l, parent, current, s)
+
 def link_random(+l: Linking, +s: GG.St, +order: List<&2, U32>, +last: U32) -> Linking:
-  +picked = random_item(s, order)
-  linked(l, last, GG.val(picked), GG.st(picked))
+  linked_pick(l, last, random_item(s, order))
 
 def link_unlocked(found: List<&2, U32>, +l: Linking, +s: GG.St, +order: List<&2, U32>, +last: U32) -> Linking:
   match found:
     case Nil{}:
       link_random(l, s, order, last)
     case Con{+current, parents}:
-      +parent = random_item(s, parents)
-      linked(l, GG.val(parent), current, GG.st(parent))
+      linked_parent(l, current, random_item(s, parents))
 
 def link_step(+l: Linking) -> Linking:
   match l:
@@ -258,11 +278,15 @@ def append_all(order: List<&2, U32>, +r: Restricting, +cs: List<&2, Candidate>) 
     case Con{+task, rest}:
       append_all(rest, appended(r, task, parents_of(cs, task)), cs)
 
+def appended_pick(+r: Restricting, +parents: List<&2, U32>, +picked: GG.Got) -> Restricting:
+  match picked:
+    case GG.Got{+n, +s}:
+      appended(with_st(r, s), n, parents)
+
 def append_any(+cs: List<&2, Candidate>, +r: Restricting, +order: List<&2, U32>) -> Restricting:
   match cs:
     case Nil{}:
-      +picked = random_item(st_of(r), order)
-      appended(with_st(r, GG.st(picked)), GG.val(picked), used_order_of(r))
+      appended_pick(r, used_order_of(r), random_item(st_of(r), order))
     case Con{_, _}:
       append_all(GG.graph_table_order(st_of(r), candidate_tasks(cs)), r, cs)
 
@@ -319,8 +343,9 @@ def start_within(inside: Bool, +k: U32, +s: GG.St, +starts: List<&2, U32>, +orde
       random_item(s, order)
 
 def start_picked(+d: GG.Got, +starts: List<&2, U32>, +order: List<&2, U32>) -> GG.Got:
-  +k = GG.val(d)
-  start_within((k <= GO.count(starts, 0) : U32), k, GG.st(d), starts, order)
+  match d:
+    case GG.Got{+k, +s}:
+      start_within((k <= GO.count(starts, 0) : U32), k, s, starts, order)
 
 def start_of(empty: Bool, +s: GG.St, +starts: List<&2, U32>, +order: List<&2, U32>) -> GG.Got:
   match empty:
@@ -364,44 +389,48 @@ def separated(split: Bool, +s: GG.St, +entrance: U32, +final: U32) -> GG.St:
     case False{}:
       s
 
+def rolled(+roll: GG.Got, +entrance: U32, +final: U32) -> GG.St:
+  match roll:
+    case GG.Got{+r, +s}:
+      separated(U32.is_eq(r, 1), s, entrance, final)
+
 def looped(different: Bool, +s: GG.St, +entrance: U32, +final: U32) -> GG.St:
   match different:
     case True{}:
-      +roll = GG.below(s, SY.half_threshold())
-      separated(U32.is_eq(GG.val(roll), 1), GG.st(roll), entrance, final)
+      rolled(GG.below(s, SY.half_threshold()), entrance, final)
     case False{}:
       s
 
+def finished_at(+start: U32, +f: U32, +entrance: GG.Got) -> Region:
+  match entrance:
+    case GG.Got{+e, +s1}:
+      Region{looped(U32.is_ne(GG.nf(s1, e, GG.f_task()), GG.nf(s1, f, GG.f_task())), s1, e, f), start, e, f}
+
 def finished(+start: U32, +final: GG.Got) -> Region:
-  +s = GG.st(final)
-  +entrance = GN.entrance_node(s, start)
-  +e = GG.val(entrance)
-  +f = GG.val(final)
-  +s1 = GG.st(entrance)
-  Region{looped(U32.is_ne(GG.nf(s1, e, GG.f_task()), GG.nf(s1, f, GG.f_task())), s1, e, f), start, e, f}
+  match final:
+    case GG.Got{+f, +s}:
+      finished_at(start, f, GN.entrance_node(s, start))
 
 def laid_out(restricted: Bool, +s: GG.St, +start: U32, +graphs: List<&2, U32>) -> GG.Got:
   match restricted:
     case True{}:
       +before = GG.rng_of(s)
-      +final = restrict_by_key(GG.say(s), start, graphs)
-      GG.Got{GG.val(final), GG.returned(GG.st(final), GG.f_restrict_nodes_by_key(), before)}
+      GG.returned_got(restrict_by_key(GG.say(s), start, graphs), GG.f_restrict_nodes_by_key(), before)
     case False{}:
       +before = GG.rng_of(s)
-      +final = link_by_keys(GG.say(s), start, graphs)
-      GG.Got{GG.val(final), GG.returned(GG.st(final), GG.f_link_nodes_by_keys(), before)}
+      GG.returned_got(link_by_keys(GG.say(s), start, graphs), GG.f_link_nodes_by_keys(), before)
 
 def started(+found: GG.Got, +graphs: List<&2, U32>, +restricted: Bool) -> Region:
-  +start = GG.val(found)
-  finished(start, laid_out(restricted, GG.say(GG.st(found)), start, graphs))
+  match found:
+    case GG.Got{+start, +s}:
+      finished(start, laid_out(restricted, GG.say(s), start, graphs))
 
-def generated(tasks: List<&2, U32>, +s: GG.St, +graphs: List<&2, U32>) -> GG.Got:
+def generated(tasks: List<&2, U32>, +s: GG.St) -> GG.St:
   match tasks:
     case Nil{}:
-      GG.Got{0, s}
+      s
     case Con{+task, rest}:
-      +made = GN.generate_task(s, task)
-      generated(rest, GG.st(made), List.append(&2, U32, graphs, [GG.val(made)]))
+      generated(rest, GG.st(GN.generate_task(s, task)))
 
 def graphs_after(tasks: List<&2, U32>, +first: U32) -> List<&2, U32>:
   match tasks:
@@ -414,7 +443,7 @@ def graphs_after(tasks: List<&2, U32>, +first: U32) -> List<&2, U32>:
 # entrance node and the loop blank (math.random() < 0.5) when entrance and final node are in different tasks.
 def generate_region(+s: GG.St, +tasks: List<&2, U32>, +restricted: Bool) -> Region:
   +graphs = graphs_after(tasks, GG.get(s, GG.s_graphs()))
-  +made = GG.st(generated(tasks, s, Nil{}))
+  +made = generated(tasks, s)
   started(find_starting_task(made, GG.graph_table_order(made, graphs)), graphs, restricted)
 
 def start_room() -> GG.Info:
@@ -430,9 +459,15 @@ def graph_of_task(order: List<&2, U32>, +s: GG.St, +task: U32) -> U32:
       +hit = U32.is_eq(GG.gf(s, g, GG.g_kind()), GG.k_task()) && U32.is_eq(task_of(s, g), task)
       Bool.pick(U32, hit, g, graph_of_task(rest, s, task))
 
+def start_joined(+entrance: U32, +added: GG.Got) -> GG.St:
+  match added:
+    case GG.Got{+n, +s}:
+      GG.link(s, n, entrance)
+
 def start_linked(+s: GG.St, +g: U32, +entry: GG.Got) -> GG.St:
-  +added = GG.add_node(GG.say(GG.st(entry)), g, start_room())
-  GG.link(GG.st(added), GG.val(added), GG.val(entry))
+  match entry:
+    case GG.Got{+e, +es}:
+      start_joined(e, GG.add_node(GG.say(es), g, start_room()))
 
 def start_in(found: Bool, +s: GG.St, +g: U32, +fallback: U32) -> GG.St:
   match found:
@@ -451,8 +486,11 @@ def start_named(named: Bool, +s: GG.St, +task: U32, +fallback: U32) -> GG.St:
 
 # Story:_AddPlayerStartNode: valid_start_tasks[math.random(#valid_start_tasks)], the START node (the start_node room
 # with AddStartingSetPiece's countstaticlayouts) linked to that task's entrance pick.
+def start_drawn(+valid: List<&2, U32>, +fallback: U32, +d: GG.Got) -> GG.St:
+  match d:
+    case GG.Got{+k, +s}:
+      start_named((k <= GO.count(valid, 0) : U32), s, GO.nth_or_last(valid, (k - 1 : U32), 0), fallback)
+
 def add_start_node(+s: GG.St, +fallback: U32) -> GG.St:
   +valid = TK.lists(2)
-  +d = GG.upto(s, GO.count(valid, 0))
-  +k = GG.val(d)
-  start_named((k <= GO.count(valid, 0) : U32), GG.st(d), GO.nth_or_last(valid, (k - 1 : U32), 0), fallback)
+  start_drawn(valid, fallback, GG.upto(s, GO.count(valid, 0)))

@@ -250,10 +250,10 @@ def best_nodes(+points: List<&2, Pt>, +s: GG.St, +bucket: U32, +count: U32, +w: 
 def found(+frame: Frame, +picked: GG.Got) -> Ends & GG.St:
   match frame:
     case Frame{+points, +w}:
-      +bucket = GG.val(picked)
-      +s = GG.st(picked)
-      +counts = counted(points, w, [0, 0, 0, 0, 0, 0, 0, 0, 0])
-      (best_nodes(points, s, bucket, GO.nth_or_last(counts, bucket, 0), w), s)
+      match picked:
+        case GG.Got{+bucket, +s}:
+          +counts = counted(points, w, [0, 0, 0, 0, 0, 0, 0, 0, 0])
+          (best_nodes(points, s, bucket, GO.nth_or_last(counts, bucket, 0), w), s)
 
 def framed_counts(+frame: Frame) -> List<&2, U32>:
   match frame:
@@ -274,22 +274,30 @@ def region_sub(+i: U32) -> GG.Info:
   GG.NodeData{GG.id_region_sub(), 0, i, GG.none(), EN.node_type_background(), EN.tile_ocean_coastal(), EN.connection_edge_site(), 0,
     GG.none(), GG.none(), GG.none(), GG.none(), 0, 0}
 
-def link_nodes(n: Nat, +s: GG.St, +g: U32, +i: U32, +prev: U32) -> GG.St:
+def region_added(+prev: U32, +added: GG.Got) -> GG.Got:
+  match added:
+    case GG.Got{+node, +s}:
+      GG.Got{node, GG.link_if(U32.is_ne(prev, GG.none()), s, prev, node)}
+
+# n region sub nodes of graph g, each linked to the one before; `walk` holds the last node and the state.
+def link_nodes(n: Nat, +walk: GG.Got, +g: U32, +i: U32) -> GG.St:
   match n:
     case 0n:
-      s
+      GG.st(walk)
     case 1n+p:
-      +added = GG.add_node(GG.graph_child(s, g), g, region_sub(i))
-      +node = GG.val(added)
-      +s1 = GG.link_if(U32.is_ne(prev, GG.none()), GG.st(added), prev, node)
-      link_nodes(p, s1, g, (i + 1 : U32), node)
+      match walk:
+        case GG.Got{+prev, +s}:
+          link_nodes(p, region_added(prev, GG.add_node(GG.graph_child(s, g), g, region_sub(i))), g, (i + 1 : U32))
 
-def region_linked(+made: GG.Got, +from: U32, +to: U32) -> GG.St:
-  +g = GG.val(made)
-  +s = link_nodes(4n, GG.graph_child(GG.st(made), g), g, 1, GG.none())
+def region_joined(+s: GG.St, +g: U32, +from: U32, +to: U32) -> GG.St:
   +first = GG.gf(s, g, GG.g_first())
   +third = GG.nf(s, GG.nf(s, first, GG.f_next()), GG.f_next())
   GG.bump(GG.lock(GG.lock(GG.link(s, first, GG.gf(s, g, GG.g_last())), from, first), third, to), GG.s_region_links())
+
+def region_linked(+made: GG.Got, +from: U32, +to: U32) -> GG.St:
+  match made:
+    case GG.Got{+g, +m}:
+      region_joined(link_nodes(4n, GG.Got{GG.none(), GG.graph_child(m, g)}, g, 1), g, from, to)
 
 # Story:LinkRegions(from, to): a REGION_LINK graph of four OCEAN_COASTAL nodes in a ring, locked to both ends.
 def link_regions(+s: GG.St, +from: U32, +to: U32) -> GG.St:

@@ -107,24 +107,36 @@ def place_one(+p: Picks, +piece: U32, +random: Bool) -> GG.Got:
       +node = choice(order, s, random)
       GG.Got{node, placed(node, s, piece)}
 
-def place_all(pieces: List<&2, U32>, stopped: Bool, +s: GG.St, +order: List<&2, U32>, +random: Bool) -> GG.St:
+# Placing set pieces: the state and whether a piece found no node (which ends the pass).
+type Placing is Data:
+  Placing{st: GG.St, stopped: Bool}
+
+def placing_of(+g: GG.Got) -> Placing:
+  match g:
+    case GG.Got{+v, +s}:
+      Placing{s, U32.is_eq(v, GG.none())}
+
+def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random: Bool) -> GG.St:
   match pieces:
     case Nil{}:
-      s
-    case Con{+piece, rest}:
-      match stopped:
-        case True{}:
+      match p:
+        case Placing{+s, _}:
           s
-        case False{}:
-          +g = place_one(shuffled(s, order), piece, random)
-          place_all(rest, U32.is_eq(GG.val(g), GG.none()), GG.st(g), order, random)
+    case Con{+piece, rest}:
+      match p:
+        case Placing{+s, +stopped}:
+          match stopped:
+            case True{}:
+              s
+            case False{}:
+              place_all(rest, placing_of(place_one(shuffled(s, order), piece, random)), order, random)
 
 def pieces_of_graph(task_graph: Bool, +s: GG.St, +g: U32, +level: W.Summary) -> GG.St:
   match task_graph:
     case True{}:
       +task = GG.gf(s, g, GG.g_part())
       +order = GG.node_order(s, g)
-      place_all(random_set_pieces(level, task), False{}, place_all(set_pieces(level, task), False{}, s, order, False{}), order, True{})
+      place_all(random_set_pieces(level, task), Placing{place_all(set_pieces(level, task), Placing{s, False{}}, order, False{}), False{}}, order, True{})
     case False{}:
       s
 

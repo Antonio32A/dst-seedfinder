@@ -41,7 +41,9 @@ def candidates(+s: GG.St, nodes: List<&2, U32>, +field: U32) -> List<&2, U32>:
       Bool.pick(List<&2, U32>, exit_candidate(s, n, field), n <> tail, tail)
 
 def picked_from(+picks: List<&2, U32>, +g: GG.Got) -> GG.Got:
-  GG.Got{GO.nth_or_last(picks, GO.unit_weight_pick(GG.val(g), GO.count(picks, 0)), GG.none()), GG.st(g)}
+  match g:
+    case GG.Got{+x, +s}:
+      GG.Got{GO.nth_or_last(picks, GO.unit_weight_pick(x, GO.count(picks, 0)), GG.none()), s}
 
 def weighted_node(+s: GG.St, +g: U32, +field: U32) -> GG.Got:
   +picks = GG.node_table_order(s, candidates(s, GG.node_order(s, g), field))
@@ -55,45 +57,71 @@ def exit_node(+s: GG.St, +g: U32) -> GG.Got:
 def entrance_node(+s: GG.St, +g: U32) -> GG.Got:
   weighted_node(s, g, GG.f_entrance_weight())
 
-def random_node_loop(n: Nat, done: Bool, +got: GG.Got, +order: List<&2, U32>, +size: U32) -> GG.Got:
+# A random node pick in progress: the node so far, the state and whether it is no entrance.
+type Picking is Data:
+  Picking{node: U32, st: GG.St, done: Bool}
+
+def picked_node(+order: List<&2, U32>, +d: GG.Got) -> Picking:
+  match d:
+    case GG.Got{+k, +s}:
+      +node = GO.nth_or_last(order, (k - 1 : U32), GG.none())
+      Picking{node, s, Bool.not(GG.is_entrance(s, node))}
+
+def random_node_loop(n: Nat, +r: Picking, +order: List<&2, U32>, +size: U32) -> GG.Got:
   match n:
     case 0n:
-      got
+      match r:
+        case Picking{+node, +s, _}:
+          GG.Got{node, s}
     case 1n+p:
-      match done:
-        case True{}:
-          got
-        case False{}:
-          +d = GG.upto(GG.st(got), size)
-          +node = GO.nth_or_last(order, (GG.val(d) - 1 : U32), GG.none())
-          random_node_loop(p, Bool.not(GG.is_entrance(GG.st(d), node)), GG.Got{node, GG.st(d)}, order, size)
+      match r:
+        case Picking{+node, +s, +done}:
+          match done:
+            case True{}:
+              GG.Got{node, s}
+            case False{}:
+              random_node_loop(p, picked_node(order, GG.upto(s, size)), order, size)
 
 # Graph:GetRandomNode over pairs(graph.nodes) = order: math.random(#nodes) until the pick is no entrance.
 def random_node(+s: GG.St, +order: List<&2, U32>, +size: U32) -> GG.Got:
-  random_node_loop(256n, False{}, GG.Got{GG.none(), s}, order, size)
+  random_node_loop(256n, Picking{GG.none(), s, False{}}, order, size)
 
-def cross_loop(n: Nat, done: Bool, +s: GG.St, +g: U32, +order: List<&2, U32>, +size: U32, +factor: U32) -> GG.St:
+# A crosslink try in progress: the state, the links still allowed and whether the tries are over.
+type Cross is Data:
+  Cross{st: GG.St, left: U32, done: Bool}
+
+def crossed_to(+g: U32, +x: U32, +factor: U32, +b: GG.Got) -> Cross:
+  match b:
+    case GG.Got{+y, +s}:
+      +linked = U32.is_ne(x, y) && Bool.not(GG.connected(s, g, x, y))
+      +left = (factor - Bool.to_u32(linked) : U32)
+      Cross{GG.link_if(linked, s, x, y), left, U32.is_zero(left)}
+
+def crossed(+g: U32, +order: List<&2, U32>, +size: U32, +factor: U32, +a: GG.Got) -> Cross:
+  match a:
+    case GG.Got{+x, +s}:
+      crossed_to(g, x, factor, random_node(s, order, size))
+
+def cross_loop(n: Nat, +c: Cross, +g: U32, +order: List<&2, U32>, +size: U32) -> GG.St:
   match n:
     case 0n:
-      s
-    case 1n+p:
-      match done:
-        case True{}:
+      match c:
+        case Cross{+s, _, _}:
           s
-        case False{}:
-          +a = random_node(s, order, size)
-          +b = random_node(GG.st(a), order, size)
-          +x = GG.val(a)
-          +y = GG.val(b)
-          +linked = U32.is_ne(x, y) && Bool.not(GG.connected(GG.st(b), g, x, y))
-          +left = (factor - Bool.to_u32(linked) : U32)
-          cross_loop(p, U32.is_zero(left), GG.link_if(linked, GG.st(b), x, y), g, order, size, left)
+    case 1n+p:
+      match c:
+        case Cross{+s, +left, +done}:
+          match done:
+            case True{}:
+              s
+            case False{}:
+              cross_loop(p, crossed(g, order, size, left, random_node(s, order, size)), g, order, size)
 
 # Graph:CrosslinkRandom(factor): up to 20 tries of two random nodes, linking unconnected pairs.
 def crosslink(+s: GG.St, +g: U32, +factor: U32) -> GG.St:
   +order = GG.node_order(s, g)
   +size = GO.count(order, 0)
-  cross_loop(20n, (size <= 2 : U32) || U32.is_zero(factor), s, g, order, size, factor)
+  cross_loop(20n, Cross{s, factor, (size <= 2 : U32) || U32.is_zero(factor)}, g, order, size)
 
 def singles(+s: GG.St, order: List<&2, U32>) -> List<&2, U32>:
   match order:
@@ -128,13 +156,22 @@ def repeat(n: Nat, +room: U32, +stack: List<&2, U32>) -> List<&2, U32>:
     case 1n+p:
       repeat(p, room, room <> stack)
 
+def added_to(+add: U32, +random: GG.Got) -> GG.Got:
+  match random:
+    case GG.Got{+r, +s}:
+      GG.Got{(add + r : U32), s}
+
+def hit_count(+row: List<&2, U32>, +hit: GG.Got) -> GG.Got:
+  match hit:
+    case GG.Got{+h, +s}:
+      GG.Got{Bool.pick(U32, U32.is_eq(h, 1), B.at(row, 3), B.at(row, 4)), s}
+
 def counted_upto(fixed: Bool, +s: GG.St, +add: U32, +n: U32) -> GG.Got:
   match fixed:
     case True{}:
       GG.Got{add, s}
     case False{}:
-      +random = GG.upto(s, n)
-      GG.Got{(add + GG.val(random) : U32), GG.st(random)}
+      added_to(add, GG.upto(s, n))
 
 def closure_count(shape: U32, +s: GG.St, +row: List<&2, U32>) -> GG.Got:
   match shape:
@@ -142,8 +179,7 @@ def closure_count(shape: U32, +s: GG.St, +row: List<&2, U32>) -> GG.Got:
       +n = B.at(row, 2)
       counted_upto(U32.is_zero(n), s, (B.at(row, 1) - B.at(row, 3) : U32), n)
     case _:
-      +hit = GG.below(s, B.word(row, 1))
-      GG.Got{Bool.pick(U32, U32.is_eq(GG.val(hit), 1), B.at(row, 3), B.at(row, 4)), GG.st(hit)}
+      hit_count(row, GG.below(s, B.word(row, 1)))
 
 def room_count(kind: U32, +s: GG.St, +value: U32) -> GG.Got:
   match kind:
@@ -156,22 +192,31 @@ def room_count(kind: U32, +s: GG.St, +value: U32) -> GG.Got:
 type Pushed is Data:
   Pushed{stack: List<&2, U32>, st: GG.St}
 
+def pushed_count(+room: U32, +stack: List<&2, U32>, +c: GG.Got) -> Pushed:
+  match c:
+    case GG.Got{+n, +s}:
+      Pushed{repeat(U32.to_nat(n), room, stack), s}
+
+def pushed_room(kind: U32, +room: U32, +value: U32, +p: Pushed) -> Pushed:
+  match p:
+    case Pushed{+stack, +s}:
+      pushed_count(room, stack, room_count(kind, s, value))
+
 # room_choices in pairs() order: each count (a number or a count closure), then that many rooms on the stack.
-def push_choices(triples: List<&2, U32>, +s: GG.St, +stack: List<&2, U32>) -> Pushed:
+def push_choices(triples: List<&2, U32>, +p: Pushed) -> Pushed:
   match triples:
     case Nil{}:
-      Pushed{stack, s}
+      p
     case Con{+room, rest}:
       match rest:
         case Nil{}:
-          Pushed{stack, s}
+          p
         case Con{+kind, more}:
           match more:
             case Nil{}:
-              Pushed{stack, s}
+              p
             case Con{+value, tail}:
-              +c = room_count(kind, s, value)
-              push_choices(tail, GG.st(c), repeat(U32.to_nat(GG.val(c)), room, stack))
+              push_choices(tail, pushed_room(kind, room, value, p))
 
 def entrance_bit() -> U32:
   65536
@@ -179,15 +224,21 @@ def entrance_bit() -> U32:
 def chained(+s: GG.St, +n: U32, +prev: U32) -> GG.St:
   GG.link_if(U32.is_ne(prev, GG.none()), s, n, prev)
 
-def pop_rooms(stack: List<&2, U32>, +s: GG.St, +g: U32, +task: U32, +id: U32, +prev: U32) -> GG.St:
+def chained_added(+prev: U32, +added: GG.Got) -> GG.Got:
+  match added:
+    case GG.Got{+n, +s}:
+      GG.Got{n, chained(s, n, prev)}
+
+# The rooms on the stack as nodes of graph g, each linked to the one before; `walk` holds the last node and the state.
+def pop_rooms(stack: List<&2, U32>, +walk: GG.Got, +g: U32, +task: U32, +id: U32) -> GG.St:
   match stack:
     case Nil{}:
-      s
+      GG.st(walk)
     case Con{+entry, rest}:
-      +room = (entry .&. 65535 : U32)
-      +added = GG.add_node(GT.extras(s, room), g, task_room(g, task, id, room, (entry >> 16n : U32)))
-      +n = GG.val(added)
-      pop_rooms(rest, chained(GG.st(added), n, prev), g, task, (id + 1 : U32), n)
+      match walk:
+        case GG.Got{+prev, +s}:
+          +room = (entry .&. 65535 : U32)
+          pop_rooms(rest, chained_added(prev, GG.add_node(GT.extras(s, room), g, task_room(g, task, id, room, (entry >> 16n : U32)))), g, task, (id + 1 : U32))
 
 def entrance_drawn(has: Bool, +s: GG.St, +task: U32) -> Pushed:
   match has:
@@ -195,16 +246,6 @@ def entrance_drawn(has: Bool, +s: GG.St, +task: U32) -> Pushed:
       Pushed{[(TK.entrance_room(task) .|. entrance_bit() : U32)], GG.st(GG.draw(s))}
     case False{}:
       Pushed{Nil{}, s}
-
-def stack_of(+p: Pushed) -> List<&2, U32>:
-  match p:
-    case Pushed{+stack, _}:
-      stack
-
-def st_of(+p: Pushed) -> GG.St:
-  match p:
-    case Pushed{_, +s}:
-      s
 
 def looped_if(loop: Bool, +s: GG.St, +g: U32) -> GG.St:
   match loop:
@@ -221,12 +262,16 @@ def cross_factor(+task: U32) -> U32:
   Bool.pick(U32, B.is_none(f), 1, f)
 
 def built(+task: U32, +stack: List<&2, U32>, +made: GG.Got) -> GG.Got:
-  +g = GG.val(made)
-  +s = pop_rooms(stack, GG.graph_child(GG.st(made), g), g, task, 0, GG.none())
-  GG.Got{g, crosslink(looped(s, g, task), g, cross_factor(task))}
+  match made:
+    case GG.Got{+g, +m}:
+      +s = pop_rooms(stack, GG.Got{GG.none(), GG.graph_child(m, g)}, g, task, 0)
+      GG.Got{g, crosslink(looped(s, g, task), g, cross_factor(task))}
+
+def built_from(+task: U32, +p: Pushed) -> GG.Got:
+  match p:
+    case Pushed{+stack, +s}:
+      built(task, stack, GG.new_graph(s, GG.k_task(), task, TK.room_bg(task), TK.background_room(task)))
 
 # Story:GenerateNodesFromTask(task): the task's graph (the entrance room's math.random() is always drawn).
 def generate_task(+s: GG.St, +task: U32) -> GG.Got:
-  +entrance = entrance_drawn(Bool.not(B.is_none(TK.entrance_room(task))), s, task)
-  +pushed = push_choices(TK.task_room_choices(task), st_of(entrance), stack_of(entrance))
-  built(task, stack_of(pushed), GG.new_graph(st_of(pushed), GG.k_task(), task, TK.room_bg(task), TK.background_room(task)))
+  built_from(task, push_choices(TK.task_room_choices(task), entrance_drawn(Bool.not(B.is_none(TK.entrance_room(task))), s, task)))

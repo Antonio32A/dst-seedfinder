@@ -23,11 +23,15 @@ def record(+s: GG.St, +node: U32, +row: List<&2, U32>, +k: U32) -> GG.St:
   +kind = B.at(row, 2)
   recorded((k < B.at(row, 4) : U32) && is_extra(kind), s, node, kind, row, k)
 
+def chosen_pick(+node: U32, +row: List<&2, U32>, +g: GG.Got) -> GG.St:
+  match g:
+    case GG.Got{+k, +s}:
+      record(s, node, row, (k - 1 : U32))
+
 def chosen(several: Bool, +s: GG.St, +node: U32, +row: List<&2, U32>) -> GG.St:
   match several:
     case True{}:
-      +g = GG.upto(s, B.at(row, 4))
-      record(GG.st(g), node, row, (GG.val(g) - 1 : U32))
+      chosen_pick(node, row, GG.upto(s, B.at(row, 4)))
     case False{}:
       record(s, node, row, 0)
 

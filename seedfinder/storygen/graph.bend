@@ -314,6 +314,12 @@ def say(+s: St) -> St:
 def returned(+s: St, +func: U32, +before: R.Rng) -> St:
   emit(s, ELua{func, before, rng_of(s)})
 
+# `returned` on the state of a result, keeping its value.
+def returned_got(+g: Got, +func: U32, +before: R.Rng) -> Got:
+  match g:
+    case Got{+v, +s}:
+      Got{v, returned(s, func, before)}
+
 def drawn(+x: U32, +rng: R.Rng, +s: St) -> Got:
   Got{x, with_rng(s, rng)}
 
