@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes data/tasks.bend from out/story.json: the 25 tasks of task set "default" (after Level:EnqueueATask's
+"""Writes data/tasks.bend from out/story.json: the tasks of task set "default" (after Level:EnqueueATask's
 deepcopy, which is what storygen iterates), LOCKS_KEYS, the task set lists and the level fields storygen reads.
 `-` prints the module instead."""
 import sys

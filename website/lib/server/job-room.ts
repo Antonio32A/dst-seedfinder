@@ -148,9 +148,9 @@ function randomHex(bytes: number): string {
 }
 
 /**
- * One search's whole lifecycle: waits for a Dispatcher slot, boots a vast.ai instance (3 offers, 3 minutes each, 10
- * minutes in all), serves the runner its config and takes its output, streams events to browsers, settles D1 exactly
- * once when it ends, and only frees its slot once every instance it rented is gone.
+ * One search's whole lifecycle: waits for a Dispatcher slot, boots a vast.ai instance, serves the runner its config
+ * and takes its output, streams events to browsers, settles D1 exactly once when it ends, and only frees its slot once
+ * every instance it rented is gone.
  */
 export class JobRoom extends DurableObject<Cloudflare.Env> {
     private job: JobSpec | null;

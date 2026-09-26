@@ -34,7 +34,7 @@ export interface JobProgress {
 
 /**
  * One message of `GET /api/jobs/<id>/events`, sent as `data: <JSON>\n\n`. `status` has the 1-based queue position
- * (1 = next in line) while queued, and the machine and attempt (1 to 3) once one is picked; `end` carries the settled
+ * (1 = next in line) while queued, and the machine and 1-based attempt once one is picked; `end` carries the settled
  * job and closes the stream.
  */
 export type JobEvent =

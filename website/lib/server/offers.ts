@@ -72,9 +72,9 @@ const speedPerDollar = ({ cores, ghz, dollarsPerHour }: Machine) =>
     (Math.min(cores, MAX_FINDER_THREADS) * ghz) / dollarsPerHour;
 
 /**
- * The offers a search tries, best first, from a `/bundles/` response: verified offers with at least 200 MB of RAM per
- * effective core, ranked by min(cores, 128) × GHz ÷ $/h (the finder runs at most 128 threads), top 3. Anything malformed is skipped. Pure, so it can be swapped for another
- * algorithm without touching the lifecycle.
+ * The offers a search tries, best first, from a `/bundles/` response: verified offers with at least
+ * `MIN_RAM_MB_PER_CORE` of RAM per effective core, ranked by speed per dollar (cores beyond `MAX_FINDER_THREADS` don't
+ * count), at most `OFFER_ATTEMPTS` of them. Anything malformed is skipped.
  */
 export function pickOffers(response: unknown): Offer[] {
     const offers = (response as { offers?: unknown } | null)?.offers;

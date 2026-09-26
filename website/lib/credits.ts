@@ -27,7 +27,7 @@ export function roundCredits(credits: number): number {
     return unitsToCredits(creditsToUnits(credits));
 }
 
-/** Credits one second of search costs on a machine at this price ($/h): 10 at `MAX_DOLLARS_PER_HOUR`. */
+/** Credits one second of search costs on a machine at this price ($/h). */
 export function creditsPerSecond(dollarsPerHour: number): number {
     return CREDITS_PER_DOLLAR_HOUR_SECOND * dollarsPerHour;
 }

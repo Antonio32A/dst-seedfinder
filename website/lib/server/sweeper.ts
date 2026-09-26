@@ -24,12 +24,18 @@ function deadlineOf(row: SweptRow): number | null {
     return row.started_at + timeLimitSeconds(unitsToCredits(row.max_cost), machine.dollarsPerHour) * 1000 + DEADLINE_GRACE_MS;
 }
 
-/** When an active search counts as quiet (its room gets poked): past its time limit if running, else after 5 minutes. */
+/**
+ * When an active search counts as quiet (its room gets poked): past its time limit if running, else `QUIET_MS` after
+ * its last update.
+ */
 function staleAt(row: SweptRow): number {
     return deadlineOf(row) ?? row.updated_at + QUIET_MS;
 }
 
-/** When an active search counts as stuck whatever its room says: 10 minutes past its time limit, else after 30 minutes. */
+/**
+ * When an active search counts as stuck whatever its room says: `STUCK_RUNNING_MS` past its time limit, else
+ * `STUCK_WAITING_MS` after its last update.
+ */
 function stuckAt(row: SweptRow): number {
     const deadline = deadlineOf(row);
     return deadline === null ? row.updated_at + STUCK_WAITING_MS : deadline + STUCK_RUNNING_MS;
@@ -104,10 +110,10 @@ async function superviseActiveJobs(env: Cloudflare.Env): Promise<void> {
 }
 
 /**
- * The five-minute cron: destroys this Worker's `dst-seedfinder:<job id>` instances whose search is over or gone (never
- * those of an active search, which its room cleans up) and logs each one, stops and settles searches that are stuck
- * (whatever their room says), lets the Dispatcher drop slots of searches that aren't active any more, and pokes rooms
- * of searches that have been quiet too long (settling the ones whose room holds nothing).
+ * The cron: destroys this Worker's `dst-seedfinder:<job id>` instances whose search is over or gone (never those of
+ * an active search, which its room cleans up) and logs each one, stops and settles searches that are stuck (whatever
+ * their room says), lets the Dispatcher drop slots of searches that aren't active any more, and pokes rooms of
+ * searches that have been quiet too long (settling the ones whose room holds nothing).
  */
 export async function sweep(env: Cloudflare.Env): Promise<void> {
     const outcomes = await Promise.allSettled([destroyStrays(env), superviseActiveJobs(env)]);

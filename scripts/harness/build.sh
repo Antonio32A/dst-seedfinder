@@ -15,5 +15,5 @@ for f in "$src"/*.c; do
     *) core+=("$f") ;;
   esac
 done
-gcc -O2 -DLUA_USE_POSIX -DLUA_USE_DLOPEN -I"$src" -o "$out/lua-dst" "$src/lua.c" "${core[@]}" "$here/lmathlib_dst.c" -lm -ldl -Wl,-E
+clang -O2 -DLUA_USE_POSIX -DLUA_USE_DLOPEN -I"$src" -o "$out/lua-dst" "$src/lua.c" "${core[@]}" "$here/lmathlib_dst.c" -lm -ldl -Wl,-E
 echo "built $out/lua-dst" >&2

@@ -23,8 +23,8 @@ if [[ "$check" == "--check" ]]; then
   trap 'rm -rf "$out"' EXIT
 fi
 
-gcc -O2 -shared -fPIC -I"$lua_src" -o "$build/tablelayout.so" "$gen/lib/tablelayout.c"
-g++ -O0 -std=c++17 -ffp-contract=off -w -isystem "$boost" -o "$build/gen_constants" "$gen/gen_constants.cpp"
+clang -O2 -shared -fPIC -I"$lua_src" -o "$build/tablelayout.so" "$gen/lib/tablelayout.c"
+clang++ -O0 -std=c++17 -ffp-contract=off -w -isystem "$boost" -o "$build/gen_constants" "$gen/gen_constants.cpp"
 
 sidecars=(
   "story.json:$lua $gen/extract_story.lua"
