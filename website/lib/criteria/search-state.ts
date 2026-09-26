@@ -66,7 +66,7 @@ export interface Preset {
 
 export const MAX_BIOME_CHOICES = 5;
 export const WANTED_OPTIONS = [1, 10, 25, 50, 100];
-export const DEFAULT_WANTED = 25;
+export const DEFAULT_WANTED = 1;
 export const STORAGE_KEY = "dst-seedfinder:search:v1";
 
 export const SETTINGS_DROPPED_NOTICE = "Custom world settings were dropped, only default settings are supported.";
