@@ -19,7 +19,6 @@ export type OutputLine =
     | { kind: "done"; summary: DoneSummary }
     | { kind: "error"; error: string };
 
-/** The finder's job object (`--json`, § 8 of the search spec), assembled from line mode. */
 export interface JobObject extends DoneSummary {
     version: 1;
     platform: Platform;
@@ -28,13 +27,12 @@ export interface JobObject extends DoneSummary {
 
 export type ChunkPlacement = { kind: "gap"; expected: number } | { kind: "append"; skip: number };
 
-/** The unterminated end of the output so far; `skipping` while the line it belongs to is too long to keep. */
+/** `skipping` while the current line is too long to keep. */
 export interface LineTail {
     bytes: Uint8Array;
     skipping: boolean;
 }
 
-/** How a finished runner's search ended, from its exit code and what it printed. */
 export type ExitKind = "done" | "config-error" | "crash";
 
 const PROGRESS_LINE = /^scanned (\d+)\/\d+ matches (\d+) \((\d+) seeds\/s\)$/;
@@ -103,7 +101,6 @@ const LINE_PARSERS: [RegExp, LineParser][] = [
     ]
 ];
 
-/** What one line of the runner's merged stdout/stderr means, or `null` for anything the site ignores. */
 export function parseOutputLine(line: string): OutputLine | null {
     const trimmed = line.replace(/\r$/, "");
     for (const [pattern, parse] of LINE_PARSERS) {
@@ -113,10 +110,6 @@ export function parseOutputLine(line: string): OutputLine | null {
     return null;
 }
 
-/**
- * Splits newly arrived bytes (after the unterminated tail of the previous chunks) into whole lines and a new tail. Lines
- * longer than `MAX_LINE_BYTES` are dropped, and an unterminated one that grows past it is discarded as it arrives.
- */
 export function splitLines(tail: LineTail, bytes: Uint8Array): { lines: string[]; tail: LineTail } {
     const joined = new Uint8Array(tail.bytes.length + bytes.length);
     joined.set(tail.bytes);
@@ -135,31 +128,22 @@ export function splitLines(tail: LineTail, bytes: Uint8Array): { lines: string[]
     return { lines, tail: { bytes: overlong ? new Uint8Array() : rest.slice(), skipping: overlong } };
 }
 
-/** The runner's `X-Exit` header as an exit code, or `null` when it is missing or not an integer. */
 export function parseExitHeader(header: string | null): number | null {
     const text = header?.trim() ?? "";
     return /^-?\d{1,10}$/.test(text) ? Number(text) : null;
 }
 
-/**
- * How a search ended: `done` when the finder exited 0 (hits) or 1 (no hits) after printing its `done` summary, a
- * config error on exit 2 after a config error line, and a crash otherwise.
- */
+/** The finder exits 0 with hits, 1 without and 2 on a config error. */
 export function exitKind(exit: number, summary: DoneSummary | null, configError: string | null): ExitKind {
     const finished = (exit === 0 || exit === 1) && summary !== null;
     const rejected = exit === 2 && configError !== null;
     return finished ? "done" : rejected ? "config-error" : "crash";
 }
 
-/**
- * Where a chunk POSTed at `offset` fits given `received` bytes so far: a gap when it starts past the end, otherwise how
- * many of its leading bytes are already stored (resends are harmless).
- */
 export function placeChunk(received: number, offset: number): ChunkPlacement {
     return offset > received ? { kind: "gap", expected: received } : { kind: "append", skip: received - offset };
 }
 
-/** The scan position after `scanned` seeds from `start`, the way the finder reports it (§ 8). */
 export function scanPosition(start: number, scanned: number): Omit<DoneSummary, "stopped"> {
     const next = (start + scanned) % SEED_SPACE;
     return {
@@ -170,8 +154,8 @@ export function scanPosition(start: number, scanned: number): Omit<DoneSummary, 
 }
 
 /**
- * The job object for a search: the done line's summary when the finder printed one, otherwise (cancelled, dead, over
- * time) the position of the latest progress line with `stopped: "time"`, so a follow-up search can continue from it.
+ * Without a done summary (cancelled, dead or out of time), the latest progress becomes `stopped: "time"` so a follow-up
+ * search can continue from it.
  */
 export function jobObject(
     platform: Platform,

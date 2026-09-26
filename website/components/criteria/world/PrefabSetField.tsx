@@ -13,7 +13,6 @@ interface PrefabSetFieldProps {
     autoOpen?: boolean;
 }
 
-/** A prefab set shown as removable chips, with one-click common places while empty and a picker for everything else. */
 export default function PrefabSetField({
                                            label,
                                            ids,

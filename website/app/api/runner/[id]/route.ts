@@ -9,7 +9,6 @@ const refused = (status: number, body: string) => new Response(body, {
     headers: { "Cache-Control": "no-store" }
 });
 
-/** The request body, read chunk by chunk and abandoned as soon as it passes `MAX_CHUNK_BYTES` (then 413). */
 async function readChunk(request: Request): Promise<Uint8Array | Response> {
     if (request.body === null) return new Uint8Array();
     const reader = request.body.getReader();

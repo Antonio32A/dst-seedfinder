@@ -9,7 +9,6 @@ export interface ToastMessage {
 
 const TOAST_DURATION_MS = 4000;
 
-/** A short-lived status popup in the corner of the screen, announced to screen readers. */
 export default function Toast({ message, onDismiss }: { message: ToastMessage | null; onDismiss: () => void }) {
     useEffect(() => {
         if (!message) return;

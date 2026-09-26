@@ -17,7 +17,6 @@ interface SegmentedControlProps<T extends string | number> {
     hideLegend?: boolean;
 }
 
-/** A radio group styled as a row of connected segments; arrow keys move between options. */
 export default function SegmentedControl<T extends string | number>({
                                                                         legend,
                                                                         options,

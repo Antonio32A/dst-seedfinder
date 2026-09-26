@@ -7,7 +7,6 @@ const MAX_CHUNK = 1 << 24;
 const MAX_GROWTH = 8;
 const TARGET_CHUNK_MS = 5000;
 
-/** One range of seeds handed to a single finder run: `size` seeds from `from`, never wrapping past the last seed. */
 export interface Chunk {
     position: number;
     from: number;
@@ -18,9 +17,8 @@ export interface Chunk {
 }
 
 /**
- * A local search's seed space from its start seed, split into chunks that finder runs claim in order. The chunk size
- * adapts so a chunk takes about `TARGET_CHUNK_MS`. The search is decided up to the first unfinished chunk's progress,
- * and done once that decided prefix holds `wanted` hits or covers every seed.
+ * Seeds are decided up to the first unfinished chunk's progress; the search is done once that decided prefix holds
+ * `wanted` hits or covers every seed.
  */
 export class LocalScan {
     private readonly chunks: Chunk[] = [];
@@ -33,7 +31,6 @@ export class LocalScan {
     ) {
     }
 
-    /** The next unclaimed chunk, or `null` once every seed is claimed. */
     claim(): Chunk | null {
         if (this.claimed >= SEED_SPACE) return null;
         const from = (this.startSeed + this.claimed) % SEED_SPACE;
@@ -51,7 +48,6 @@ export class LocalScan {
         return chunk;
     }
 
-    /** Records a finished run of `chunk` that checked its first `scanned` seeds in `elapsedMs`, and resizes later chunks. */
     finish(chunk: Chunk, scanned: number, elapsedMs: number): void {
         chunk.scanned = scanned;
         chunk.finished = true;
@@ -60,22 +56,16 @@ export class LocalScan {
         this.chunkSize = Math.max(MIN_CHUNK, Math.min(fitted, this.chunkSize * MAX_GROWTH, MAX_CHUNK));
     }
 
-    /** Seeds checked by every run so far, decided or not. */
     totalScanned(): number {
         return this.chunks.reduce((total, chunk) => total + chunk.scanned, 0);
     }
 
-    /** Why the search is over, or `null` while it still needs seeds checked. */
     stopReason(): StopReason | null {
         const { hits, scanned } = this.decided();
         if (hits.length >= this.wanted) return "limit";
         return scanned >= SEED_SPACE ? "end" : null;
     }
 
-    /**
-     * The search so far as a finder job object: the first `wanted` hits once it is done by limit, otherwise every hit
-     * found (in seed order from the start seed), with the scan position of the decided prefix.
-     */
     output(): SearchOutput {
         const decided = this.decided();
         const reason = this.stopReason();

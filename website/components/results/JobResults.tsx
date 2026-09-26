@@ -16,7 +16,6 @@ import {
     type WitnessSection
 } from "@/lib/jobs/job-result";
 
-/** The parts of a search its results are drawn from, whether it ran on a server or in this browser. */
 export type ShownJob = Pick<JobView, "status" | "config" | "result" | "error">;
 
 export interface JobResultsProps {

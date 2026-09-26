@@ -4,7 +4,7 @@ import type { SearchOutput } from "@/lib/jobs/job-result";
 import { type DoneSummary, exitKind, parseOutputLine } from "@/lib/jobs/runner-output";
 import { type Chunk, LocalScan } from "./local-scan";
 
-/** Cores one finder instance keeps busy: its search thread plus the layout helper threads. */
+/** The search thread plus its share of the layout helper threads. */
 export const CORES_PER_THREAD = 1.35;
 export const MEMORY_PER_THREAD_MB = 300;
 
@@ -15,7 +15,6 @@ export const DEFAULT_SEARCH_TARGET: SearchTarget = "browser";
 const WASM_URL = "/wasm/seedfinder.wasm";
 const UPDATE_MS = 200;
 
-/** One finder run a worker is asked to do. */
 export interface LocalRun {
     module: WebAssembly.Module;
     from: number;
@@ -24,7 +23,7 @@ export interface LocalRun {
     config: string;
 }
 
-/** What a worker reports about its run: each output line, then how it exited (`-1` when it crashed or failed to load). */
+/** `code` is -1 when the worker crashed or failed to load. */
 export type WorkerMessage = { type: "line"; line: string; stderr: boolean } | {
     type: "exit";
     code: number;
@@ -38,10 +37,6 @@ export interface LocalSearchRequest {
     threads: number;
 }
 
-/**
- * A browser search as the page shows it. `search` is the finder's job object so far, and `generatesWorlds` is set once
- * the finder reports generating worlds.
- */
 export interface LocalSearchState {
     request: LocalSearchRequest;
     status: Extract<JobStatus, "starting" | "running" | "done" | "failed" | "cancelled">;
@@ -73,20 +68,17 @@ const compileSeedfinder = () => {
     return compiled;
 };
 
-/** Whether this page can run the finder: WebAssembly with threads, which needs a cross-origin isolated page. */
 export function canSearchLocally(): boolean {
     return typeof WebAssembly === "object" && typeof SharedArrayBuffer === "function" && globalThis.crossOriginIsolated === true;
 }
 
-/** The CPU threads to search with by default: as many instances as the logical cores keep busy, at least one. */
 export function defaultThreads(cores: number): number {
     return Math.max(1, Math.floor(cores / CORES_PER_THREAD));
 }
 
 /**
- * Runs a search in this browser with one finder instance per thread, each in its own worker on its own seed chunk, and
- * reports every change through `onChange` (at most every `UPDATE_MS`, and at once when it ends). Returns a function that
- * stops the search, keeping what was found.
+ * `onChange` fires at most every `UPDATE_MS` and once at the end. The returned function stops the search, keeping its
+ * hits.
  */
 export function startLocalSearch(request: LocalSearchRequest, onChange: (state: LocalSearchState) => void): () => void {
     const scan = new LocalScan(request.startSeed, request.wanted);

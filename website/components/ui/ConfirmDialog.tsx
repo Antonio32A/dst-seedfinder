@@ -12,7 +12,6 @@ interface ConfirmDialogProps {
     onCancel: () => void;
 }
 
-/** A modal yes/no prompt that focuses [cancel] first; Esc, the backdrop and [cancel] all dismiss it. */
 export default function ConfirmDialog({
                                           open,
                                           title,

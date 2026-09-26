@@ -221,10 +221,7 @@ const search = shape<Pick<SearchOutput, "hits" | "last_scanned" | "next_seed">, 
     { scanned: seedCount, stopped: oneOf<StopReason>(["limit", "time", "end"]) }
 );
 
-/**
- * Reads a job's stored result (the finder's job object, § 8 of the search spec) without trusting it: junk fields are
- * dropped, and anything that is neither a job object nor `{"error": ...}` gives `null`. Never throws.
- */
+/** Never throws; `null` when the result is neither a job object nor `{"error": ...}`. */
 export function parseJobResult(result: unknown): JobResult | null {
     const error = text(asRecord(result)?.error);
     if (error !== undefined) return { kind: "error", error };
@@ -232,7 +229,7 @@ export function parseJobResult(result: unknown): JobResult | null {
     return parsed ? { kind: "search", search: parsed } : null;
 }
 
-/** The first and last seed a partial scan covered (the scan wraps around the seed space), or `null` if unknown or whole. */
+/** The scan may wrap around the seed space. */
 export function scannedRange({ scanned, last_scanned: last }: SearchOutput): [number, number] | null {
     const partial = scanned !== undefined && scanned > 0 && scanned < SEED_SPACE && last !== null;
     return partial ? [(((last - scanned + 1) % SEED_SPACE) + SEED_SPACE) % SEED_SPACE, last] : null;

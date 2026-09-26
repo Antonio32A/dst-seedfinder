@@ -20,7 +20,6 @@ export function discordAuthorizeUrl(redirectUri: string, state: string): string 
     return `https://discord.com/oauth2/authorize?${params}`;
 }
 
-/** Exchanges an OAuth2 authorization code for the user's Discord profile. Throws on any Discord error. */
 export async function fetchDiscordProfile(code: string, redirectUri: string): Promise<DiscordProfile> {
     const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
         method: "POST",

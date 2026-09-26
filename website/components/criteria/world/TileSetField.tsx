@@ -11,7 +11,6 @@ interface TileSetFieldProps {
     onChange: (names: string[]) => void;
 }
 
-/** A multi-select of land turfs as checkbox chips; turfs that default worlds never have are behind a toggle. */
 export default function TileSetField({ label, names, onChange }: TileSetFieldProps) {
     const [showAll, setShowAll] = useState(false);
     const full = names.length >= MAX_TILE_NAMES;

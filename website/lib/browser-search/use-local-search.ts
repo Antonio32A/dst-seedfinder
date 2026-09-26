@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type LocalSearchRequest, type LocalSearchState, startLocalSearch } from "./local-search";
 
-/** The page's one browser search: starting another stops the previous, and leaving the page while it runs asks first. */
 export function useLocalSearch() {
     const [state, setState] = useState<LocalSearchState | null>(null);
     const stopCurrent = useRef<(() => void) | null>(null);

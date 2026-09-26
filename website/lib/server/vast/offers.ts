@@ -1,7 +1,6 @@
 import { MAX_DOLLARS_PER_HOUR } from "@/lib/jobs/credits";
 import type { Machine } from "@/lib/jobs/job-events";
 
-/** A vast.ai offer a search can be started on: the machine and the ask id to rent it with. */
 export interface Offer extends Machine {
     askId: number;
 }
@@ -12,10 +11,6 @@ export const MIN_RAM_MB_PER_CORE = 200;
 export const MAX_FINDER_THREADS = 128;
 export const OFFER_ATTEMPTS = 3;
 
-/**
- * The `POST /api/v0/bundles/` body: rentable, verified on-demand amd64 machines with enough cores at or below the price cap,
- * cheapest first so the CPU-heavy bargains fit in the page.
- */
 export const OFFER_QUERY = {
     type: "ondemand",
     rentable: { eq: true },
@@ -71,11 +66,6 @@ function toOffer(bundle: BundleOffer): Offer | null {
 const speedPerDollar = ({ cores, ghz, dollarsPerHour }: Machine) =>
     (Math.min(cores, MAX_FINDER_THREADS) * ghz) / dollarsPerHour;
 
-/**
- * The offers a search tries, best first, from a `/bundles/` response: verified offers with at least
- * `MIN_RAM_MB_PER_CORE` of RAM per effective core, ranked by speed per dollar (cores beyond `MAX_FINDER_THREADS` don't
- * count), at most `OFFER_ATTEMPTS` of them. Anything malformed is skipped.
- */
 export function pickOffers(response: unknown): Offer[] {
     const offers = (response as { offers?: unknown } | null)?.offers;
     if (!Array.isArray(offers)) return [];

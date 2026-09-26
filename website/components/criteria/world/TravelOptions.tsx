@@ -20,7 +20,6 @@ interface TravelOptionsProps {
     onChange: (travel: Travel) => void;
 }
 
-/** How a distance is measured: straight or walking, and whether wormhole jumps are allowed. */
 export default function TravelOptions({ travel, onChange }: TravelOptionsProps) {
     return (
             <div className="travel">

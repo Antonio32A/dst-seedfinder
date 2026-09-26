@@ -8,7 +8,6 @@ interface RuleFrameProps {
     children: ReactNode;
 }
 
-/** The bordered list item every rule row sits in, with its title and a remove button. */
 export default function RuleFrame({ title, onRemove, children }: RuleFrameProps) {
     return (
             <li className="rule">

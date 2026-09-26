@@ -4,7 +4,6 @@ const DEFAULT_MAX_INSTANCES = 15;
 
 export const MAX_WAITING = 200;
 
-/** Whether a search holds an instance slot, or else its 1-based place in the queue. */
 export interface Admission {
     granted: boolean;
     position: number | null;
@@ -15,19 +14,17 @@ interface EntryRow extends Record<string, SqlStorageValue> {
     holding: number;
 }
 
-/** The Dispatcher singleton every JobRoom talks to. */
 export function dispatcherStub(env: Cloudflare.Env): DurableObjectStub<Dispatcher> {
     return env.DISPATCHER.get(env.DISPATCHER.idFromName("global"));
 }
 
-/** The JobRoom Durable Object that owns one search. */
 export function jobRoomStub(env: Cloudflare.Env, jobId: string) {
     return env.JOB_ROOM.get(env.JOB_ROOM.idFromName(jobId));
 }
 
 /**
- * Caps live vast.ai instances at `MAX_INSTANCES`: searches wait in a FIFO queue, take a slot when one frees up, and
- * queued JobRooms are told their admission whenever it changes.
+ * Caps live vast.ai instances at `MAX_INSTANCES` with a FIFO queue, telling queued JobRooms whenever their admission
+ * changes.
  */
 export class Dispatcher extends DurableObject<Cloudflare.Env> {
     constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
@@ -43,10 +40,6 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
         );
     }
 
-    /**
-     * Queues a search (a no-op if it is already queued or holding a slot) and returns its current admission. Other rooms
-     * are only told when theirs changed.
-     */
     async enqueue(jobId: string): Promise<Admission> {
         await this.change(() => {
             this.ctx.storage.sql.exec("INSERT OR IGNORE INTO entries (job_id, added_at) VALUES (?, ?)", jobId, Date.now());
@@ -54,19 +47,17 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
         return this.admissions().get(jobId) ?? { granted: false, position: null };
     }
 
-    /** How many searches are waiting for a slot. */
     async waiting(): Promise<number> {
         return this.ctx.storage.sql.exec<{
             count: number
         }>("SELECT COUNT(*) AS count FROM entries WHERE holding = 0").one().count;
     }
 
-    /** Frees a search's slot or takes it out of the queue, then lets the next searches in. */
     async release(jobId: string): Promise<void> {
         await this.change(() => this.ctx.storage.sql.exec("DELETE FROM entries WHERE job_id = ?", jobId));
     }
 
-    /** Drops entries older than `before` whose search is no longer active in D1, in case a JobRoom never released. */
+    /** A safety net for JobRooms that never released their entry. */
     async reconcile(activeJobIds: string[], before: number): Promise<void> {
         const active = new Set(activeJobIds);
         const stale = this.ctx.storage.sql
@@ -91,11 +82,6 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
         jobIds.forEach((jobId) => this.ctx.storage.sql.exec("DELETE FROM entries WHERE job_id = ?", jobId));
     }
 
-    /**
-     * Applies a change to the entries, hands free slots to the head of the queue, and tells every room other than
-     * `callerId` whose admission moved. Rooms that answer that they no longer want a slot are dropped, which may move
-     * others again.
-     */
     private async change(apply: () => void, callerId?: string): Promise<void> {
         const before = this.admissions();
         apply();

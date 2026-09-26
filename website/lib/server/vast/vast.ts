@@ -20,7 +20,6 @@ export interface NewInstance {
     env: Record<string, string>;
 }
 
-/** A non-2xx vast.ai response. */
 export class VastError extends Error {
     constructor(
         readonly status: number,
@@ -30,10 +29,6 @@ export class VastError extends Error {
     }
 }
 
-/**
- * Calls the vast.ai REST API and returns the parsed JSON body. Throws a `VastError` on a non-2xx status or a body with
- * `success: false`, and whatever `fetch` throws on a network error or timeout.
- */
 async function vastRequest(apiKey: string, method: string, path: string, body?: unknown): Promise<unknown> {
     const response = await fetch(`${VAST_API}${path}`, {
         method,
@@ -52,25 +47,19 @@ async function vastRequest(apiKey: string, method: string, path: string, body?: 
     return parsed;
 }
 
-/**
- * Whether vast.ai definitely turned a request down (a 4xx other than 408 and 429, or `success: false`), so retrying
- * the same request won't help. Anything else (429, 5xx, a timeout, a network error) may be transient.
- */
+/** Whether vast.ai definitely turned the request down, so retrying it won't help. */
 export function isRefusal(error: unknown): boolean {
     return error instanceof VastError && error.status < 500 && error.status !== 408 && error.status !== 429;
 }
 
-/** Whether a failed create might still have rented an instance: anything but a refusal or a 429. */
 export function mayHaveCreated(error: unknown): boolean {
     return !isRefusal(error) && !(error instanceof VastError && error.status === 429);
 }
 
-/** The raw `/bundles/` response for the search offer query; `pickOffers` ranks it. */
 export async function searchOffers(apiKey: string): Promise<unknown> {
     return vastRequest(apiKey, "POST", "/v0/bundles/", OFFER_QUERY);
 }
 
-/** Rents an offer for a search's runner and returns the new instance id. Throws when vast.ai refuses or fails. */
 export async function createInstance(apiKey: string, instance: NewInstance): Promise<string> {
     const created = (await vastRequest(apiKey, "PUT", `/v0/asks/${instance.askId}/`, {
         image: instance.image,
@@ -86,17 +75,13 @@ export async function createInstance(apiKey: string, instance: NewInstance): Pro
     return String(id);
 }
 
-/** Destroys an instance. One that is already gone (404) counts as destroyed; `success: false` does not. */
 export async function destroyInstance(apiKey: string, instanceId: string): Promise<void> {
     await vastRequest(apiKey, "DELETE", `/v0/instances/${encodeURIComponent(instanceId)}/`).catch((error: unknown) => {
         if (!(error instanceof VastError && error.status === 404)) throw error;
     });
 }
 
-/**
- * Every instance on the account (or only those with exactly this label) with its label, following `next_token` pages.
- * The label is checked here too, so instances of other searches are never returned even if vast.ai ignores the filter.
- */
+/** Also filters by label here, so other searches' instances never come back even if vast.ai ignores the filter. */
 export async function listInstances(apiKey: string, label?: string): Promise<VastInstance[]> {
     const instances: VastInstance[] = [];
     let after: string | null = null;

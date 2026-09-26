@@ -11,11 +11,7 @@ export interface Account {
     logOut: () => Promise<void>;
 }
 
-/**
- * Loads the logged-in Discord user and their searches; `jobEnded` swaps in a search its live stream reports settled.
- * Only the newest refresh is applied, a failed one keeps what is shown (unless it says the session ended), and unchanged
- * jobs keep their identity so memoised results don't re-render.
- */
+/** Unchanged jobs keep their identity so memoised results don't re-render. */
 export function useAccount(): Account {
     const [user, setUser] = useState<SessionUser | null>(null);
     const [loading, setLoading] = useState(true);

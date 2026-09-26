@@ -287,19 +287,13 @@ function creditsIn(value: unknown, context: string, min: number, max: number): n
 }
 
 /**
- * Strictly validates an untrusted search config against search format v1 (`version` defaults to 1, `platform` to
- * `"windows"`, `settings` must all be `"default"`). Errors read like the finder's (`config: <message>`). The value is
- * normalized: `version` and `platform` are always set, `settings` is dropped and every other key is kept as written,
- * so it is safe to forward to the finder.
+ * Validates against search format v1. `version` and `platform` are filled in, every `settings` level must be
+ * `"default"` and `settings` is dropped; errors read like the finder's.
  */
 export function validateConfig(config: unknown): Validation<SeedfinderConfig> {
     return validated(() => parseConfig(config));
 }
 
-/**
- * Strictly validates an untrusted job submission: its config (see `validateConfig`), `wanted`, `maxCost` and the
- * optional `startSeed` (uint32, the finder's `--start-seed`).
- */
 export function validateJobRequest(body: unknown): Validation<JobRequest> {
     return validated(() => {
         const fields = recordAt(body, "the request");

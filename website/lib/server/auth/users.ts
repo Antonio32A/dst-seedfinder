@@ -21,20 +21,15 @@ export interface DiscordProfile {
     avatar: string | null;
 }
 
-/** Today's date in UTC as YYYY-MM-DD, the unit of the daily credit reset. */
 function utcDay(date: Date = new Date()): string {
     return date.toISOString().slice(0, 10);
 }
 
-/** The instant (ISO string) the next daily credit reset happens: the coming UTC midnight. */
 export function nextResetAt(now: Date = new Date()): string {
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
 }
 
-/**
- * Loads a user, first applying the lazy daily credit top-up atomically: the balance, counting the credits reserved by
- * unsettled searches, is raised to the daily grant, and a larger balance is kept.
- */
+/** Applies the lazy daily top-up first: the balance rises to the daily grant minus what unsettled searches reserved. */
 export async function loadUser(db: D1Database, id: string): Promise<UserRow | null> {
     const today = utcDay();
     const [, selected] = await db.batch<UserRow>([
@@ -51,7 +46,6 @@ export async function loadUser(db: D1Database, id: string): Promise<UserRow | nu
     return selected.results[0] ?? null;
 }
 
-/** Creates or refreshes a user from their Discord profile. New users start with the daily credits. */
 export async function upsertUser(db: D1Database, profile: DiscordProfile, ip: string | null): Promise<void> {
     const now = Date.now();
     await db

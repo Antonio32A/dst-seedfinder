@@ -13,7 +13,6 @@ interface StepperProps {
     wide?: boolean;
 }
 
-/** A number input with − / + buttons (±1) that never leaves [min, max]; values are rounded to multiples of `precision`. */
 export default function Stepper({ label, value, min, max, onChange, precision = 1, wide = false }: StepperProps) {
     const [draft, setDraft] = useState(() => String(value));
     const [shown, setShown] = useState(value);

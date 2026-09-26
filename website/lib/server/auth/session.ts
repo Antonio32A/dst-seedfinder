@@ -12,13 +12,12 @@ export const SESSION_COOKIE_OPTIONS = {
     path: "/"
 } as const;
 
-/** Hex SHA-256 of a session token: the session table only ever stores this, never the raw token. */
+/** Sessions are stored by this hash, never by the raw token. */
 async function hashToken(token: string): Promise<string> {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
     return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** A URL-safe random token with 256 bits of entropy. */
 export function randomToken(): string {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
     return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -44,7 +43,6 @@ export async function deleteSession(token: string): Promise<void> {
     await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await hashToken(token)).run();
 }
 
-/** The signed-in user for the current request (credits already reset for today), or null. */
 export async function getCurrentUser(): Promise<UserRow | null> {
     const token = (await cookies()).get(SESSION_COOKIE)?.value;
     if (!token) return null;

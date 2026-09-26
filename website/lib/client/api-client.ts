@@ -11,7 +11,7 @@ export interface SessionUser {
     resetsAt: string;
 }
 
-/** A failed API call; `jobId` names a search that is already going when a new one is refused (409). */
+/** `jobId` is the search already going when a new one is refused (409). */
 export class ApiError extends Error {
     constructor(
         message: string,
@@ -44,12 +44,11 @@ async function request<T extends object>(path: string, init?: RequestInit): Prom
     throw new ApiError(message ?? `Something went wrong (error ${response.status}). Try again.`, response.status, jobId);
 }
 
-/** The Discord login URL; navigate to it rather than fetching it. */
+/** Navigate to it; don't fetch it. */
 export function loginUrl(returnTo = "/"): string {
     return `/api/auth/login?return=${encodeURIComponent(returnTo)}`;
 }
 
-/** The live event stream of a search, for an `EventSource`. */
 export function jobEventsUrl(jobId: string): string {
     return `/api/jobs/${encodeURIComponent(jobId)}/events`;
 }
@@ -62,7 +61,6 @@ export async function fetchJobs(): Promise<JobView[]> {
     return (await request<{ jobs: JobView[] }>("/api/jobs")).jobs;
 }
 
-/** Starts a search. Throws an `ApiError` with status 409 when `MAX_ACTIVE_SEARCHES` searches are already going. */
 export async function createJob(job: JobRequest): Promise<JobView> {
     const created = await request<{ job: JobView }>("/api/jobs", {
         method: "POST",

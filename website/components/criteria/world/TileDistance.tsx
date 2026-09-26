@@ -13,7 +13,6 @@ interface TileDistanceProps {
 
 const toTiles = (units: number) => units / WORLD_UNITS_PER_TILE;
 
-/** A distance typed in tiles (quarter tiles allowed) and stored in world units, with the units as a muted hint. */
 export default function TileDistance({
                                          label,
                                          units,

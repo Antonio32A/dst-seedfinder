@@ -3,10 +3,7 @@ import type { JobEvent, JobProgress, JobStatus, JobView, Machine } from "@/lib/j
 import type { SearchHit } from "@/lib/jobs/job-result";
 import { jobEventsUrl } from "./api-client";
 
-/**
- * What the live stream has said so far about one search. `runningSince` is when this page first saw it running (ms), and
- * `offline` is set while the stream is reconnecting.
- */
+/** `runningSince` is when this page first saw the search running, not when it started. */
 export interface LiveJob {
     id: string;
     status: JobStatus;
@@ -19,7 +16,6 @@ export interface LiveJob {
     offline: boolean;
 }
 
-/** What `useJobStream` tells its caller: the settled job after `end`, and each time the stream is dropped for good. */
 export interface JobStreamHandlers {
     onEnd: (job: JobView) => void;
     onLost: () => void;
@@ -49,7 +45,6 @@ const APPLY: Appliers = {
 const FIRST_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30_000;
 
-/** What is known of a search before its stream has said anything. */
 export function liveJobOf({ id, status, machine }: Pick<JobView, "id" | "status" | "machine">): LiveJob {
     return {
         id,
@@ -64,7 +59,6 @@ export function liveJobOf({ id, status, machine }: Pick<JobView, "id" | "status"
     };
 }
 
-/** Parses one `data:` payload of the event stream, or `null` if it isn't a known `JobEvent`. */
 export function readJobEvent(data: unknown): StreamEvent | null {
     try {
         const event: unknown = JSON.parse(String(data));
@@ -75,16 +69,11 @@ export function readJobEvent(data: unknown): StreamEvent | null {
     }
 }
 
-/** Folds one event into what is known of a search. Replayed hits (same seed) are ignored, so a reconnect is harmless. */
 export function applyJobEvent(live: LiveJob, event: StreamEvent): LiveJob {
     return (APPLY[event.type] as (live: LiveJob, event: StreamEvent) => LiveJob)(live, event);
 }
 
-/**
- * Follows a search's live events (`GET /api/jobs/<id>/events`) while `jobId` is set. The browser reconnects a dropped
- * stream by itself; one it gives up on is reopened with backoff (after `onLost`) until the search ends, and `onEnd` gets
- * the settled job.
- */
+/** EventSource reconnects by itself; a stream it gives up on is reopened with backoff until the search ends. */
 export function useJobStream(jobId: string | null, handlers: JobStreamHandlers): LiveJob | null {
     const [live, setLive] = useState<LiveJob | null>(null);
     const latestHandlers = useRef(handlers);

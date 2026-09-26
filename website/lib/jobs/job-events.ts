@@ -4,14 +4,13 @@ import type { SearchHit } from "./job-result";
 export const ACTIVE_JOB_STATUSES = ["queued", "starting", "running"] as const;
 export const FINISHED_JOB_STATUSES = ["done", "failed", "cancelled"] as const;
 
-/** How many searches one user may have queued, starting or running at once, and how many of their searches are kept. */
+/** Caps both a user's active searches and the finished searches kept for them. */
 export const MAX_ACTIVE_SEARCHES = 3;
 
 export type ActiveJobStatus = (typeof ACTIVE_JOB_STATUSES)[number];
 export type FinishedJobStatus = (typeof FINISHED_JOB_STATUSES)[number];
 export type JobStatus = ActiveJobStatus | FinishedJobStatus;
 
-/** The vast.ai machine a search runs on. */
 export interface Machine {
     cpuName: string;
     cores: number;
@@ -19,7 +18,6 @@ export interface Machine {
     dollarsPerHour: number;
 }
 
-/** How far a world-filter search is: worlds fully generated so far, and worlds being generated right now. */
 export interface WorldProgress {
     generated: number;
     generating: number;
@@ -47,11 +45,7 @@ export interface JobView {
     error: string | null;
 }
 
-/**
- * One message of `GET /api/jobs/<id>/events`, sent as `data: <JSON>\n\n`. `status` has the 1-based queue position
- * (1 = next in line) while queued, and the machine and 1-based attempt once one is picked; `end` carries the settled
- * job and closes the stream.
- */
+/** Sent as `data: <JSON>\n\n`. `queuePosition` and `attempt` are 1-based, and `end` closes the stream. */
 export type JobEvent =
     | {
     type: "status";
@@ -64,7 +58,6 @@ export type JobEvent =
     | { type: "hit"; hit: SearchHit }
     | { type: "end"; job: JobView };
 
-/** Whether a search is still waiting, booting or running. */
 export function isActiveStatus(status: JobStatus): status is ActiveJobStatus {
     return (ACTIVE_JOB_STATUSES as readonly JobStatus[]).includes(status);
 }

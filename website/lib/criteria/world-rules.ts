@@ -119,7 +119,6 @@ export const newNear = (): NearRow => ({ ...DEFAULT_TRAVEL, prefabs: [SPAWN_PORT
 
 export const newRouteStop = (prefabs: string[] = []): RouteStop => ({ key: newKey(), prefabs });
 
-/** New, not yet filled-in rows for each world section; the user picks their prefabs and tiles next. */
 export const NEW_WORLD_ROW: { [S in WorldSection]: () => WorldRows[S][number] } = {
     counts: () => ({ key: newKey(), prefabs: [], mode: "atLeast", min: 1, max: 1, near: null }),
     distances: () => ({
@@ -219,7 +218,6 @@ function nonEmpty<T>(items: T[]): T[] | undefined {
     return items.length > 0 ? items : undefined;
 }
 
-/** The world sections of a criteria entry (parts B-E of search format v1); unfinished rows and empty sections are left out. */
 export function worldSections(rows: WorldRows): Pick<Criterion, "counts" | "distances" | "tiles" | "routes"> {
     return {
         counts: nonEmpty(rows.counts.flatMap(countRule)),
@@ -323,7 +321,6 @@ function routeRowOf(value: unknown): RouteRow[] {
 const rowsOf = <T>(value: unknown, parse: (item: unknown) => T[]): T[] =>
     asArray(value).slice(0, MAX_RULES_PER_SECTION).flatMap(parse);
 
-/** Rebuilds world rows from an untrusted criteria entry, dropping rules with unknown ids or bad values. */
 export function worldRowsOf(criterion: Record<string, unknown>): WorldRows {
     return {
         counts: rowsOf(criterion.counts, countRowOf),
@@ -377,7 +374,6 @@ const ROUTE_CHECKS: RowCheck<RouteRow>[] = [
 const checkRows = <T>(rows: T[], noun: string, checks: RowCheck<T>[]): WorldIssue[] =>
     rows.flatMap((row, index) => checks.flatMap((check) => check(row, `${noun} ${index + 1}`) ?? []));
 
-/** Problems in a group's world rows: unfinished rules, rules that can't match, and hints from the sample worlds. */
 export function worldIssues(rows: WorldRows): WorldIssue[] {
     return [
         ...checkRows(rows.counts, "count", COUNT_CHECKS),
@@ -387,7 +383,7 @@ export function worldIssues(rows: WorldRows): WorldIssue[] {
     ];
 }
 
-/** Why an id can't join one part of a route (start/end or a stop), given every other part; undefined when it can. */
+/** Why `id` can't join `part` of the route, or undefined when it can. */
 export function routeConflict(row: RouteRow, part: "ends" | number): (id: string) => string | undefined {
     const parts = [
         { ids: [...row.from, ...routeEnd(row)], name: "the start or end", own: part === "ends" },

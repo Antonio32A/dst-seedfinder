@@ -96,7 +96,7 @@ const REQUIREMENT: Record<CountMode, (rule: PieceRule) => SetPieceBound> = {
 
 const TASK_IDS = TASKS.map((task) => task.id);
 
-/** A group with nothing picked; `passive` groups are only checked on seeds the other groups already pick. */
+/** `passive` groups only check seeds the other groups already pick. */
 export function emptyGroup(passive = false): CriteriaGroup {
     return { key: newKey(), passive, biomes: {}, swaps: {}, rules: [], ...emptyWorldRows() };
 }
@@ -118,7 +118,6 @@ export function newRule(pieceId: string): PieceRule {
     };
 }
 
-/** The realistic maximum count for a rule on default world settings. */
 export function ruleMax(rule: PieceRule): number {
     const piece = SET_PIECE_BY_ID[rule.pieceId];
     if (!piece) return 0;
@@ -127,7 +126,6 @@ export function ruleMax(rule: PieceRule): number {
     return Math.min(piece.maxCount, KIND_TOTALS[piece.kind]?.most ?? Infinity, onePerBiome);
 }
 
-/** The rule as searched and shown: its counts clamped into the realistic range for its mode, with min never above max. */
 export function effectiveRule(rule: PieceRule): PieceRule {
     const hi = Math.max(ruleMax(rule), MODE_FLOOR[rule.mode]);
     const min = clamp(rule.min, MODE_FLOOR[rule.mode], hi);
@@ -143,7 +141,7 @@ function nonEmpty<T>(items: T[]): T[] | undefined {
     return items.length > 0 ? items : undefined;
 }
 
-/** The known tasks a rule is limited to, once each and in catalog order; empty means the whole world. */
+/** Empty means the whole world. */
 export function ruleScope(rule: PieceRule): string[] {
     return rule.scopeMode === "only" ? TASK_IDS.filter((id) => rule.scopeTasks.includes(id)) : [];
 }
@@ -179,7 +177,6 @@ function groupToCriterion(group: CriteriaGroup): Criterion | undefined {
     return sections && { passive: group.passive, ...sections };
 }
 
-/** Builds the strict seedfinder JSON config, omitting empty parts. */
 export function toSeedfinderConfig(state: SearchState): SeedfinderConfig {
     const criteria = nonEmpty(state.groups.flatMap((group) => groupToCriterion(group) ?? []));
     return {
@@ -233,7 +230,6 @@ function criterionToGroup(criterion: unknown): CriteriaGroup {
     };
 }
 
-/** Rebuilds UI state from a (possibly old, hand-written or untrusted) seedfinder config, dropping unknown ids and settings. */
 export function fromSeedfinderConfig(config: unknown): SearchState {
     const record = asRecord(config);
     const groups = asArray(record.criteria).slice(0, MAX_CRITERIA).map(criterionToGroup);
@@ -243,12 +239,10 @@ export function fromSeedfinderConfig(config: unknown): SearchState {
     };
 }
 
-/** Whether an (older) config asked for world settings other than the defaults, which importing it drops. */
 export function hasCustomSettings(config: unknown): boolean {
     return Object.values(asRecord(asRecord(config).settings)).some((level) => level !== "default");
 }
 
-/** Brings an older config up to the current format: the missing version is filled in and world settings are dropped. */
 export function upgradeConfig(config: unknown): unknown {
     if (typeof config !== "object" || config === null || Array.isArray(config)) return config;
     return { version: CONFIG_VERSION, ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== "settings")) };
@@ -256,7 +250,6 @@ export function upgradeConfig(config: unknown): unknown {
 
 const levelTableChoices = (group: CriteriaGroup) => Object.keys(group.biomes).length + Object.keys(group.swaps).length + group.rules.length;
 
-/** Whether a group asks for nothing (and so is left out of the config). */
 export function isEmptyGroup(group: CriteriaGroup): boolean {
     return levelTableChoices(group) + worldRowCount(group) === 0;
 }
@@ -320,7 +313,7 @@ const GROUP_CHECKS: GroupCheck[] = [
     worldIssues
 ];
 
-/** Problems the user should see before searching; errors mean the search can never match. */
+/** An error means the search can never match. */
 export function validateSearch(state: SearchState): Issue[] {
     const multiple = state.groups.length > 1;
     const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -355,14 +348,12 @@ export function validateSearch(state: SearchState): Issue[] {
     }];
 }
 
-/** Encodes a config as base64url for the `?c=` share parameter. */
 export function encodeShareParam(config: SeedfinderConfig): string {
     const bytes = new TextEncoder().encode(JSON.stringify(config));
     const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
     return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** Decodes a `?c=` share parameter into the (possibly old) config it holds, or null when it is malformed. */
 export function decodeShareParam(param: string): unknown {
     try {
         const binary = atob(param.replace(/-/g, "+").replace(/_/g, "/"));

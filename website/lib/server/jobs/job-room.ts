@@ -61,7 +61,6 @@ const CANCELLED = "The search was cancelled. Unused credits were refunded.";
 const RESULT_TOO_LARGE = "The search found more than can be saved. Unused credits were refunded.";
 const FLOODED = "The search printed more output than expected. Unused credits were refunded.";
 
-/** What a JobRoom needs to know about its search, handed over by `POST /api/jobs`. */
 export interface JobSpec {
     id: string;
     userId: string;
@@ -137,7 +136,7 @@ async function sha256Hex(text: string): Promise<string> {
     return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Compares two equal-length hex digests in constant time. */
+/** Constant time, so token checks don't leak timing. */
 function sameHex(given: string, expected: string): boolean {
     const difference = Array.from(expected).reduce((bits, char, index) => bits | (char.charCodeAt(0) ^ given.charCodeAt(index)), 0);
     return given.length === expected.length && difference === 0;
@@ -148,9 +147,8 @@ function randomHex(bytes: number): string {
 }
 
 /**
- * One search's whole lifecycle: waits for a Dispatcher slot, boots a vast.ai instance, serves the runner its config
- * and takes its output, streams events to browsers, settles D1 exactly once when it ends, and only frees its slot once
- * every instance it rented is gone.
+ * One search's lifecycle: waits for a Dispatcher slot, boots a vast.ai instance, feeds the runner and streams its
+ * output to browsers, settles D1 once, and frees its slot only after every rented instance is gone.
  */
 export class JobRoom extends DurableObject<Cloudflare.Env> {
     private job: JobSpec | null;
@@ -175,7 +173,6 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         this.state = ctx.storage.kv.get<RoomState>("state") ?? null;
     }
 
-    /** Takes over a freshly reserved search and queues it. Repeated calls are no-ops. */
     async start(job: JobSpec): Promise<void> {
         if (this.state !== null) return;
         this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS hits (seq INTEGER PRIMARY KEY AUTOINCREMENT, seed INTEGER UNIQUE, hit TEXT NOT NULL)");
@@ -210,7 +207,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         await this.requeue().catch(() => undefined);
     }
 
-    /** The Dispatcher's word on this search. Returns false when the search no longer wants a slot. */
+    /** Returns false when the search no longer wants a slot. */
     async admit(admission: Admission): Promise<boolean> {
         const state = this.state;
         if (state === null || !isActiveStatus(state.status)) return false;
@@ -226,7 +223,6 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         return true;
     }
 
-    /** Stops the search and settles it: charges the starting fee once a machine was rented, and the search time so far. */
     async cancel(): Promise<void> {
         const state = this.state;
         if (state === null) return;
@@ -238,14 +234,13 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         });
     }
 
-    /** Makes sure an active search has an alarm pending. Returns false when this room holds no search at all. */
+    /** False when this room holds no search. */
     async poke(): Promise<boolean> {
         if (this.state === null) return false;
         if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now());
         return true;
     }
 
-    /** The browser event stream: replays the status, the latest progress and every hit, then follows live until `end`. */
     async events(): Promise<Response> {
         const state = this.state;
         if (state === null) return plain(404, "Search not found.");
@@ -264,7 +259,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         return new Response(readable, { headers: SSE_HEADERS });
     }
 
-    /** `GET /api/runner/<id>`: the config, once the bearer token checks out. The first call starts the billed search. */
+    /** `GET /api/runner/<id>`. The first call starts the billed search. */
     async runnerConfig(authorization: string | null): Promise<Response> {
         const refusal = await this.refuseRunner(authorization, RUNNER_GET_STATUSES);
         if (refusal !== null) return refusal;
@@ -278,7 +273,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         });
     }
 
-    /** `POST /api/runner/<id>`: appends output at `X-Offset`, and ends the search on the chunk with `X-Exit`. */
+    /** `POST /api/runner/<id>`. The chunk with `X-Exit` ends the search. */
     async runnerOutput(authorization: string | null, offsetHeader: string | null, exitHeader: string | null, body: Uint8Array): Promise<Response> {
         const refusal = await this.refuseRunner(authorization, RUNNER_POST_STATUSES);
         if (refusal !== null) return refusal;
@@ -379,10 +374,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         await this.tryNextOffer();
     }
 
-    /**
-     * One boot attempt on the best offer not tried yet, from a fresh offer search. A vast.ai hiccup leaves it to the
-     * pending alarm to try again; only a definite refusal of the offer uses up the attempt.
-     */
+    /** A vast.ai hiccup leaves the retry to the pending alarm; only a definite refusal uses up the attempt. */
     private async tryNextOffer(): Promise<void> {
         const row = await loadJob(this.env.DB, this.spec.id);
         if (row === null || row.cost !== null) return this.record(failed(BOOT_FAILED, "none", false), Date.now());
@@ -468,8 +460,8 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     }
 
     /**
-     * Destroys every instance of this search but the current one: those it gave up on, and any vast.ai lists with its
-     * label (a create that failed may have rented one anyway). True when none is left; failures stay queued for later.
+     * Also destroys whatever vast.ai lists under this search's label, since a failed create may still have rented one.
+     * True when none is left.
      */
     private async clearStrays(): Promise<boolean> {
         const apiKey = this.env.VAST_API_KEY ?? "";
@@ -577,14 +569,12 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         await this.record(EXIT_ENDINGS[exitKind(exit, summary, configError)], endedAt);
     }
 
-    /** Marks an active search as ended and leaves the teardown and settlement to an immediate alarm. */
     private async record(kind: EndingKind, endedAt: number): Promise<void> {
         if (!isActiveStatus((this.state as RoomState).status)) return;
         this.save({ status: kind.status, ending: { ...kind, endedAt }, queuePosition: null });
         await this.ctx.storage.setAlarm(Date.now());
     }
 
-    /** Records the ending (if the search is still active) and waits for the settlement, joining one already under way. */
     private async end(kind: EndingKind): Promise<void> {
         await this.record(kind, Date.now());
         await this.wrapUpOnce();
@@ -613,7 +603,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         }
     }
 
-    /** Sends `end` with the settled D1 row when it can be read, and closes every stream either way (a reconnect replays from D1). */
+    /** Closes every stream even when the row can't be read; a reconnect replays from D1. */
     private async announce(): Promise<void> {
         try {
             const row = await loadJob(this.env.DB, this.spec.id).catch(() => null);
@@ -635,7 +625,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         if (settled && tornDown) await this.ctx.storage.setAlarm(Date.now() + KEEP_FINISHED_MS);
     }
 
-    /** Destroys the search's instances, then frees its Dispatcher slot (after an hour of failed destroys, the sweeper takes over). */
+    /** After `DESTROY_RETRY_WINDOW_MS` of failed destroys the slot is freed anyway and the sweeper takes over. */
     private async tearDown(ending: Ending): Promise<void> {
         this.abandonInstance();
         const cleared = await this.clearStrays();

@@ -67,7 +67,6 @@ export async function loadJob(db: D1Database, id: string): Promise<JobRow | null
     return db.prepare("SELECT * FROM jobs WHERE id = ?").bind(id).first<JobRow>();
 }
 
-/** Records a search moving between its active statuses. A no-op once the search is settled. */
 export async function updateActiveJob(db: D1Database, id: string, update: ActiveJobUpdate): Promise<void> {
     await db
         .prepare(
@@ -87,10 +86,8 @@ export async function updateActiveJob(db: D1Database, id: string, update: Active
 }
 
 /**
- * Settles a job exactly once: refunds the unused part of its reservation and records
- * the outcome, both only while the job is still unsettled (`cost IS NULL`), then deletes the user's settled searches
- * other than the `MAX_ACTIVE_SEARCHES` last finished ones. Runs as one D1 batch, so it is atomic and a repeated call is
- * a no-op.
+ * Refunds the unused reservation, records the outcome and prunes old searches in one D1 batch. A repeated call is a
+ * no-op.
  */
 export async function settleJob(
     db: D1Database,

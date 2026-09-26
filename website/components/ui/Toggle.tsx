@@ -10,7 +10,6 @@ interface ToggleProps {
     children: ReactNode;
 }
 
-/** A checkbox and its label as one bordered, clickable chip. */
 export default function Toggle({ checked, onChange, disabled, title, children }: ToggleProps) {
     return (
             <label className="toggle" title={title}>

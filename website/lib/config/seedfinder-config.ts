@@ -100,7 +100,6 @@ export interface Criterion {
     routes?: RouteRule[];
 }
 
-/** A search config in the form the site writes and stores: `version` always set, `settings` left out (defaults only), `platform` always written. */
 export interface SeedfinderConfig {
     version: typeof CONFIG_VERSION;
     platform?: Platform;

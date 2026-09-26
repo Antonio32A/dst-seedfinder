@@ -20,7 +20,6 @@ import { isActiveStatus, MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { SEED_SPACE } from "@/lib/jobs/job-result";
 import MaxCostField from "./MaxCostField";
 
-/** What the page knows about searching in this browser. `supported` is `null` until the page has checked. */
 export interface BrowserSearchOptions {
     supported: boolean | null;
     cores: number;
