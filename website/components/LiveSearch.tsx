@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { timeLimitSeconds } from "@/lib/credits";
+import { formatDuration, timeLimitSeconds } from "@/lib/credits";
 import type { JobStatus, Machine, WorldProgress } from "@/lib/job-events";
 import type { LiveJob } from "@/lib/use-job-stream";
 import JobResults, { type JobResultsProps } from "./JobResults";
@@ -10,7 +10,6 @@ const MAX_ATTEMPTS = 3;
 
 const COMPACT = new Intl.NumberFormat("en", { notation: "compact", maximumSignificantDigits: 3 });
 const PRICE = new Intl.NumberFormat("en", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 3 });
-const SECONDS = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 
 /** A machine in plain words, like "64 cores, $0.18/h". */
 export function machineText({ cores, dollarsPerHour }: Machine): string {
@@ -46,7 +45,7 @@ const LIVE_TEXT: Record<JobStatus, (live: LiveJob, maxCost: number) => LiveText>
     details: [
       ...(progress?.worlds ? worldDetails(progress.worlds) : []),
       ...(progress ? [`${COMPACT.format(progress.seedsPerSecond)} seeds/s`] : []),
-      ...(machine ? [machineText(machine), `up to ${SECONDS.format(timeLimitSeconds(maxCost, machine.dollarsPerHour))} s`] : []),
+      ...(machine ? [machineText(machine), `up to ${formatDuration(timeLimitSeconds(maxCost, machine.dollarsPerHour))}`] : []),
     ],
   }),
   done: finishing,

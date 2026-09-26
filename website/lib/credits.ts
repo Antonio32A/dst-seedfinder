@@ -8,7 +8,9 @@ export const MIN_MAX_COST = 20;
 export const MAX_MAX_COST = 1_000_000;
 export const MAX_COST_OPTIONS = [50, 100, 250, 500, 1000];
 export const STARTING_FEE = 10;
-export const MAX_SEARCH_SECONDS = 600;
+export const MAX_SEARCH_SECONDS = 4 * 60 * 60;
+
+const SECONDS = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 
 /** Credits (a decimal with at most 2 places) as the integer hundredths D1 stores. */
 export function creditsToUnits(credits: number): number {
@@ -41,6 +43,15 @@ export function creditsToSeconds(credits: number, dollarsPerHour: number = MAX_D
  */
 export function timeLimitSeconds(maxCost: number, dollarsPerHour: number): number {
   return Math.min(MAX_SEARCH_SECONDS, creditsToSeconds(maxCost - STARTING_FEE, dollarsPerHour));
+}
+
+/** A search time for display in its two largest units: "9.6 s", "12 min 30 s", "4 h", "1 h 5 min". */
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${SECONDS.format(seconds)} s`;
+  const [unit, unitSeconds, smallUnit, smallUnitSeconds] = seconds < 3600 ? (["min", 60, "s", 1] as const) : (["h", 3600, "min", 60] as const);
+  const large = Math.floor(seconds / unitSeconds);
+  const small = Math.floor((seconds % unitSeconds) / smallUnitSeconds);
+  return small === 0 ? `${large} ${unit}` : `${large} ${unit} ${small} ${smallUnit}`;
 }
 
 /** Whether a number has no more than 2 decimal places (tolerating binary float noise). */

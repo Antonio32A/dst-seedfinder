@@ -58,7 +58,7 @@ JITI_ALIAS='{"@/":"'"$PWD"'/"}' ./node_modules/.bin/jiti .scratch/verify-spec.ts
 
 Every user is topped up to 1000 credits a day at 00:00 UTC (`loadUser`): the balance plus the credits reserved by
 unsettled searches is raised to 1000, and a larger balance (granted by hand in D1) is kept. Refunds are not capped. D1 stores credits as integer hundredths
-(`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1000 credits, default 100)
+(`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1,000,000 credits, default 100)
 up front, atomically with the "one active search per user" check (a partial unique index on `jobs.user_id` over the
 active statuses).
 
@@ -66,7 +66,7 @@ Credits follow the machine's price: `credits = 40 × seconds × $/h`, so 1000 cr
 (`MAX_DOLLARS_PER_HOUR`, the most an offer may cost) and 400 s on a $0.10/h one. On top of that there is a starting
 fee of 10 credits (`STARTING_FEE`), part of the max cost, charged once a machine has been rented for the search (also
 when it is cancelled while starting), but not when no machine could be found or none would boot. The runner's
-`--time-limit` is `(maxCost − 10) ÷ (40 × $/h)`, worked out for each offer tried and capped at 10 minutes
+`--time-limit` is `(maxCost − 10) ÷ (40 × $/h)`, worked out for each offer tried and capped at 4 hours
 (`MAX_SEARCH_SECONDS`), so 100 credits buy 9 s at $0.25/h. A search is charged the fee plus its search time, from the
 runner's first config GET to its final POST (or the cancel, the deadline, or its last POST when contact is lost),
 rounded up to a hundredth and capped at the max cost; queueing and booting are free apart from the fee. The rest is
