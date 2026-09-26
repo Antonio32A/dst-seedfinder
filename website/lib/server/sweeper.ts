@@ -2,7 +2,7 @@ import { chargeUnits, MAX_DOLLARS_PER_HOUR, timeLimitSeconds, unitsToCredits } f
 import { isActiveStatus, type Machine } from "@/lib/job-events";
 import { dispatcherStub, jobRoomStub } from "./dispatcher";
 import { ACTIVE_STATUS_SQL, settleJob, type JobRow } from "./jobs";
-import { destroyInstance, INSTANCE_LABEL_PREFIX, listInstances, type VastInstance } from "./vast";
+import { destroyInstance, INSTANCE_LABEL_PREFIX, listInstances } from "./vast";
 
 const QUIET_MS = 5 * 60_000;
 const DEADLINE_GRACE_MS = 10_000;
@@ -13,10 +13,7 @@ const STUCK_JOB = "The search got stuck and was stopped. Unused credits were ref
 
 type SweptRow = Pick<JobRow, "id" | "user_id" | "max_cost" | "status" | "instance_id" | "machine" | "started_at" | "updated_at">;
 
-function isStray(instance: VastInstance & { jobId: string }, row: SweptRow | undefined): boolean {
-  if (row === undefined || !isActiveStatus(row.status)) return true;
-  return row.status === "running" && row.instance_id !== null && row.instance_id !== instance.id;
-}
+const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const machineOf = (row: SweptRow) => (row.machine === null ? null : (JSON.parse(row.machine) as Machine));
 
@@ -49,7 +46,11 @@ async function destroyStrays(env: Cloudflare.Env): Promise<void> {
     .bind(JSON.stringify(ours.map(({ jobId }) => jobId)))
     .all<SweptRow>();
   const rows = new Map(results.map((row) => [row.id, row]));
-  const strays = ours.filter((instance) => isStray(instance, rows.get(instance.jobId)));
+  const strays = ours.flatMap((instance) => {
+    const status = rows.get(instance.jobId)?.status ?? "gone";
+    return JOB_ID.test(instance.jobId) && (status === "gone" || !isActiveStatus(status)) ? [{ ...instance, status }] : [];
+  });
+  strays.forEach(({ id, jobId, status }) => console.warn(`sweeper: destroying instance ${id}, its search ${jobId} is ${status}`));
   await Promise.allSettled(strays.map(({ id }) => destroyInstance(apiKey, id)));
 }
 
@@ -61,6 +62,7 @@ async function destroyStrays(env: Cloudflare.Env): Promise<void> {
 async function stopStuckJob(env: Cloudflare.Env, row: SweptRow, now: number): Promise<void> {
   const apiKey = env.VAST_API_KEY ?? "";
   const instances = await listInstances(apiKey, `${INSTANCE_LABEL_PREFIX}${row.id}`).catch(() => []);
+  console.warn(`sweeper: stopping stuck search ${row.id} (${row.status}), destroying instances [${instances.map(({ id }) => id).join(", ")}]`);
   await Promise.allSettled(instances.map(({ id }) => destroyInstance(apiKey, id)));
   const searchMs = row.started_at === null ? null : now - row.started_at;
   const fee = row.instance_id !== null || row.started_at !== null;
@@ -93,9 +95,10 @@ async function superviseActiveJobs(env: Cloudflare.Env): Promise<void> {
 }
 
 /**
- * The five-minute cron: destroys this Worker's `dst-seedfinder:*` instances whose search is over or unknown, stops and
- * settles searches that are stuck (whatever their room says), lets the Dispatcher drop slots of searches that aren't
- * active any more, and pokes rooms of searches that have been quiet too long (settling the ones whose room holds nothing).
+ * The five-minute cron: destroys this Worker's `dst-seedfinder:<job id>` instances whose search is over or gone (never
+ * those of an active search, which its room cleans up) and logs each one, stops and settles searches that are stuck
+ * (whatever their room says), lets the Dispatcher drop slots of searches that aren't active any more, and pokes rooms
+ * of searches that have been quiet too long (settling the ones whose room holds nothing).
  */
 export async function sweep(env: Cloudflare.Env): Promise<void> {
   const outcomes = await Promise.allSettled([destroyStrays(env), superviseActiveJobs(env)]);
