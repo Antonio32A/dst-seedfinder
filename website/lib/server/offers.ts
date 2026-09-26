@@ -13,7 +13,7 @@ export const MAX_FINDER_THREADS = 128;
 export const OFFER_ATTEMPTS = 3;
 
 /**
- * The `POST /api/v0/bundles/` body: rentable on-demand amd64 machines with enough cores at or below the price cap,
+ * The `POST /api/v0/bundles/` body: rentable, verified on-demand amd64 machines with enough cores at or below the price cap,
  * cheapest first so the CPU-heavy bargains fit in the page.
  */
 export const OFFER_QUERY = {
@@ -22,6 +22,7 @@ export const OFFER_QUERY = {
   cpu_cores_effective: { gte: MIN_CORES },
   dph_total: { lte: MAX_DOLLARS_PER_HOUR },
   reliability: { gte: MIN_RELIABILITY },
+  verified: { eq: true },
   cpu_arch: { in: ["amd64"] },
   order: [["dph_total", "asc"]],
   limit: 256,
@@ -36,6 +37,7 @@ interface BundleOffer {
   cpu_ram?: unknown;
   dph_total?: unknown;
   reliability?: unknown;
+  verification?: unknown;
   cpu_arch?: unknown;
 }
 
@@ -51,6 +53,7 @@ const OFFER_CHECKS: ((bundle: BundleOffer) => boolean)[] = [
   (bundle) => positive(bundle.cpu_ram) && bundle.cpu_ram / Number(bundle.cpu_cores_effective) >= MIN_RAM_MB_PER_CORE,
   (bundle) => bundle.reliability === undefined || atLeast(bundle.reliability, MIN_RELIABILITY),
   (bundle) => bundle.cpu_arch === undefined || bundle.cpu_arch === "amd64",
+  (bundle) => bundle.verification === "verified",
 ];
 
 function toOffer(bundle: BundleOffer): Offer | null {
@@ -69,8 +72,8 @@ const speedPerDollar = ({ cores, ghz, dollarsPerHour }: Machine) =>
   (Math.min(cores, MAX_FINDER_THREADS) * ghz) / dollarsPerHour;
 
 /**
- * The offers a search tries, best first, from a `/bundles/` response: offers with at least 200 MB of RAM per effective
- * core, ranked by min(cores, 128) × GHz ÷ $/h (the finder runs at most 128 threads), top 3. Anything malformed is skipped. Pure, so it can be swapped for another
+ * The offers a search tries, best first, from a `/bundles/` response: verified offers with at least 200 MB of RAM per
+ * effective core, ranked by min(cores, 128) × GHz ÷ $/h (the finder runs at most 128 threads), top 3. Anything malformed is skipped. Pure, so it can be swapped for another
  * algorithm without touching the lifecycle.
  */
 export function pickOffers(response: unknown): Offer[] {
