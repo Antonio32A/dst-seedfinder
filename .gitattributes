@@ -1,0 +1,2 @@
+# Bend is not in GitHub Linguist yet, so we just use Python as it's close enough
+*.bend linguist-language=Python linguist-detectable=false
