@@ -30,9 +30,9 @@ const WHOLE = new Intl.NumberFormat();
 const DISTANCE = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
 const STOP_TEXT: Record<StopReason, string> = {
-  limit: "stopped: found as many as wanted",
-  time: "stopped: max cost reached",
-  end: "stopped: every seed checked",
+  limit: "Stopped: found as many as wanted",
+  time: "Stopped: max cost reached",
+  end: "Stopped: every seed checked",
 };
 
 const NO_HITS_TEXT: Record<StopReason, string> = {
@@ -61,7 +61,7 @@ const plural = (count: number, one: string, many = `${one}s`) => `${WHOLE.format
 const distance = (units: number) => `${DISTANCE.format(units)} units (${DISTANCE.format(units / UNITS_PER_TILE)} tiles)`;
 
 const chain = (instances: (WitnessInstance | undefined)[]) =>
-  instances.map((instance) => instance?.prefab ?? "?").join(" → ");
+  instances.map((instance) => instance?.prefab ?? "?").join(" -> ");
 
 const jumps = (count: number) => (count > 0 ? `, ${plural(count, "wormhole jump")}` : "");
 
@@ -101,7 +101,7 @@ function PieceList({ level }: { level: LevelTable }) {
       {pieces.map(({ piece, count }) => (
         <li key={piece.id}>
           {piece.name}
-          {count > 1 && ` ×${count}`}
+          {count > 1 && ` x${count}`}
           {piece.rare && <span className="tag tag--accent">rare</span>}
         </li>
       ))}
@@ -138,7 +138,7 @@ function WorldSummary({ hit: { level, results }, id }: { hit: SearchHit; id: str
       <dt>Biomes</dt>
       <dd>{biomes.length > 0 ? biomes.join(", ") : <span className="muted">none of the optional ones</span>}</dd>
       <dt>Resources</dt>
-      <dd>{swaps.length > 0 ? swaps.join(" · ") : <span className="muted">unknown</span>}</dd>
+      <dd>{swaps.length > 0 ? swaps.join(", ") : <span className="muted">unknown</span>}</dd>
       <dt>Set pieces</dt>
       <dd>
         <PieceList level={level} />
@@ -196,16 +196,18 @@ function ScanSummary({ search }: { search: SearchOutput }) {
   const { hits, scanned, stopped } = search;
   const range = scannedRange(search);
   return (
-    <p className="job__meta">
-      <strong>{plural(hits.length, "seed")} found</strong>
-      {stopped && <span>{STOP_TEXT[stopped]}</span>}
+    <div className="results__summary">
+      <p>
+        <strong>{plural(hits.length, "seed")} found</strong>
+      </p>
+      {stopped && <p>{STOP_TEXT[stopped]}</p>}
       {scanned !== undefined && (
-        <span>
-          checked {COMPACT.format(scanned)} of {COMPACT.format(SEED_SPACE)} seeds
-          {range && <span className="muted"> (seeds {range.join("–")})</span>}
-        </span>
+        <p>
+          Checked {COMPACT.format(scanned)} of {COMPACT.format(SEED_SPACE)} seeds
+          {range && <span className="muted"> (seeds {range.join("-")})</span>}
+        </p>
       )}
-    </p>
+    </div>
   );
 }
 
@@ -239,7 +241,7 @@ function SearchFurther({ startSeed, further }: { startSeed: number; further: Job
   return (
     <div className="results__further">
       <button type="button" className="link-button" disabled={further.busy || further.blocked !== undefined} onClick={() => further.onStart(startSeed)}>
-        {further.busy ? "starting…" : "search further"}
+        {further.busy ? "starting..." : "search further"}
       </button>
       <span className="hint">{further.blocked ?? `continues from seed ${startSeed}`}</span>
     </div>

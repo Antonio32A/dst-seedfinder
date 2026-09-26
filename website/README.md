@@ -13,10 +13,10 @@ Wrangler needs Node 22 or newer.
    - optional: `DISCORD_REDIRECT_URI` (defaults to `<origin>/api/auth/callback`)
    - `VAST_API_KEY` (a vast.ai API key), `GHCR_USER` and `GHCR_PULL_TOKEN` (a GitHub user and a token with
      `read:packages`, used as the instances' `image_login`)
-   - `RUNNER_IMAGE`: the `<RUNNER_REPOSITORY>@sha256:…` digest printed by `../runner/build.sh --push`
+   - `RUNNER_IMAGE`: the `<RUNNER_REPOSITORY>@sha256:...` digest printed by `../runner/build.sh --push`
    - optional: `PUBLIC_ORIGIN`, the origin runners call back on (defaults to the origin of the request that starts
      the search; it has to be reachable without Cloudflare Access)
-   - optional: `MAX_INSTANCES`, live instances at once (default 10)
+   - optional: `MAX_INSTANCES`, live instances at once (default 15)
 
    Until `VAST_API_KEY`, `GHCR_USER`, `GHCR_PULL_TOKEN` and `RUNNER_IMAGE` are all set, searches are refused with 503.
 3. `npm run build && npm run deploy`. The first deploy creates the `dst-seedfinder` D1 database and binds it. The
@@ -59,8 +59,8 @@ JITI_ALIAS='{"@/":"'"$PWD"'/"}' ./node_modules/.bin/jiti .scratch/verify-spec.ts
 Every user is topped up to 1000 credits a day at 00:00 UTC (`loadUser`): the balance plus the credits reserved by
 unsettled searches is raised to 1000, and a larger balance (granted by hand in D1) is kept. Refunds are not capped. D1 stores credits as integer hundredths
 (`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1,000,000 credits, default 100)
-up front, atomically with the "one active search per user" check (a partial unique index on `jobs.user_id` over the
-active statuses).
+up front, atomically with the check that the user has fewer than 3 active searches (`MAX_ACTIVE_SEARCHES`, counted
+inside the reservation's `INSERT ... SELECT`).
 
 Credits follow the machine's price: `credits = 40 × seconds × $/h`, so 1000 credits buy 100 s on a $0.25/h machine
 (`MAX_DOLLARS_PER_HOUR`, the most an offer may cost) and 400 s on a $0.10/h one. On top of that there is a starting
@@ -92,8 +92,9 @@ that owns the whole lifecycle, and a singleton `Dispatcher` caps live instances 
 - `POST /api/jobs/<id>/cancel` destroys the instance and charges the fee (once rented) and the time since the config
   GET.
 
-Every end settles D1 once (`settleJob`), destroys every instance labelled with the search (including ones a failed
-create may have rented) and only then frees the slot. Browsers follow a search on
+Every end settles D1 once (`settleJob`, which also deletes the user's settled searches other than the 3 last
+finished, so a user has at most their active searches and 3 finished ones), destroys every instance labelled with the
+search (including ones a failed create may have rented) and only then frees the slot. Browsers follow a search on
 `GET /api/jobs/<id>/events` (server-sent `data: <JobEvent JSON>` messages, `lib/job-events.ts`), which replays the
 status, the latest progress and every hit on connect and closes after `end`. The runner token is 32 random bytes per
 attempt; the room keeps only its SHA-256.

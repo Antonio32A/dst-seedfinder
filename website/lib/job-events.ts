@@ -4,6 +4,9 @@ import type { JobView } from "@/lib/server/jobs";
 export const ACTIVE_JOB_STATUSES = ["queued", "starting", "running"] as const;
 export const FINISHED_JOB_STATUSES = ["done", "failed", "cancelled"] as const;
 
+/** How many searches one user may have queued, starting or running at once, and how many of their searches are kept. */
+export const MAX_ACTIVE_SEARCHES = 3;
+
 export type ActiveJobStatus = (typeof ACTIVE_JOB_STATUSES)[number];
 export type FinishedJobStatus = (typeof FINISHED_JOB_STATUSES)[number];
 export type JobStatus = ActiveJobStatus | FinishedJobStatus;

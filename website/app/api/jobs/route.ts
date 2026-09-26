@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { creditsToUnits, formatCredits, unitsToCredits } from "@/lib/credits";
+import { MAX_ACTIVE_SEARCHES } from "@/lib/job-events";
 import { dispatcherStub, jobRoomStub, MAX_WAITING } from "@/lib/server/dispatcher";
 import { clientIp, isCrossOrigin, json, jsonError } from "@/lib/server/http";
 import { ACTIVE_STATUS_SQL, loadJob, settleJob, toJobView, type JobRow } from "@/lib/server/jobs";
@@ -10,7 +11,7 @@ import { validateJobRequest } from "@/lib/validate-config";
 const RECENT_JOBS = 20;
 const MAX_BODY_BYTES = 512 * 1024;
 const DISPATCH_FAILED = "Couldn't start the search. Your credits were refunded.";
-const ALREADY_ACTIVE = "You already have a search going. Wait for it to finish or cancel it.";
+const TOO_MANY_ACTIVE = `You already have ${MAX_ACTIVE_SEARCHES} searches going. Wait for one to finish or stop one.`;
 const QUEUE_FULL = "Too many searches are waiting right now. Try again in a few minutes.";
 
 export async function GET() {
@@ -22,14 +23,12 @@ export async function GET() {
   return json({ jobs: results.map(toJobView) });
 }
 
-async function activeJobId(userId: string): Promise<string | null> {
-  const row = await env.DB.prepare(`SELECT id FROM jobs WHERE user_id = ? AND status IN (${ACTIVE_STATUS_SQL}) LIMIT 1`)
-    .bind(userId)
-    .first<{ id: string }>();
-  return row?.id ?? null;
-}
+const ACTIVE_COUNT_SQL = `SELECT COUNT(*) AS active FROM jobs WHERE user_id = ?1 AND status IN (${ACTIVE_STATUS_SQL})`;
 
-const alreadyActive = (jobId: string | null) => json({ error: ALREADY_ACTIVE, jobId }, 409);
+async function atActiveLimit(userId: string): Promise<boolean> {
+  const row = await env.DB.prepare(ACTIVE_COUNT_SQL).bind(userId).first<{ active: number }>();
+  return (row?.active ?? 0) >= MAX_ACTIVE_SEARCHES;
+}
 
 export async function POST(request: Request) {
   if (isCrossOrigin(request)) return jsonError(403, "Requests from other sites aren't allowed.");
@@ -45,8 +44,7 @@ export async function POST(request: Request) {
   const live = [env.VAST_API_KEY, env.GHCR_USER, env.GHCR_PULL_TOKEN, env.RUNNER_IMAGE].every(Boolean);
   if (!live) return jsonError(503, "Seed searches aren't live yet.");
 
-  const active = await activeJobId(user.id);
-  if (active !== null) return alreadyActive(active);
+  if (await atActiveLimit(user.id)) return jsonError(409, TOO_MANY_ACTIVE);
   if ((await dispatcherStub(env).waiting()) >= MAX_WAITING) return jsonError(503, QUEUE_FULL);
 
   const job = validation.value;
@@ -56,16 +54,14 @@ export async function POST(request: Request) {
   const reservation = await env.DB.batch([
     env.DB.prepare(
       `INSERT INTO jobs (id, user_id, status, config, wanted, max_cost, created_at, updated_at)
-       SELECT ?1, id, 'queued', ?2, ?3, ?4, ?5, ?5 FROM users WHERE id = ?6 AND credit_units >= ?4`,
-    ).bind(id, JSON.stringify(job.config), job.wanted, reserved, now, user.id),
+       SELECT ?7, id, 'queued', ?2, ?3, ?4, ?5, ?5 FROM users
+       WHERE id = ?1 AND credit_units >= ?4 AND (${ACTIVE_COUNT_SQL}) < ?6`,
+    ).bind(user.id, JSON.stringify(job.config), job.wanted, reserved, now, MAX_ACTIVE_SEARCHES, id),
     env.DB.prepare("UPDATE users SET credit_units = credit_units - ? WHERE id = ? AND EXISTS (SELECT 1 FROM jobs WHERE id = ?)")
       .bind(reserved, user.id, id),
-  ]).catch((error: unknown) => {
-    if (String(error).includes("UNIQUE constraint failed")) return null;
-    throw error;
-  });
-  if (reservation === null) return alreadyActive(await activeJobId(user.id));
+  ]);
   if (reservation[0].meta.changes === 0) {
+    if (await atActiveLimit(user.id)) return jsonError(409, TOO_MANY_ACTIVE);
     return jsonError(
       402,
       `Max cost is ${formatCredits(job.maxCost)} credits but you have ${formatCredits(unitsToCredits(user.credit_units))}. Lower it or wait for the 00:00 UTC refill.`,

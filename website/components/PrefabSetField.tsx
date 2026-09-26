@@ -37,7 +37,7 @@ export default function PrefabSetField({ label, ids, onChange, blocked = () => u
           </span>
         ))}
         <button ref={opener} type="button" className="link-button" onClick={() => setPicking(true)}>
-          {ids.length === 0 ? "choose…" : "change…"}
+          {ids.length === 0 ? "choose..." : "change..."}
         </button>
       </span>
       {ids.length === 0 && anchors.length > 0 && (

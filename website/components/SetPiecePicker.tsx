@@ -75,7 +75,7 @@ export default function SetPiecePicker({ open, onPick, onClose }: SetPiecePicker
         />
       </div>
       <div className="picker__body">
-        {kinds.length === 0 && <p className="muted">Nothing matches &ldquo;{query}&rdquo;.</p>}
+        {kinds.length === 0 && <p className="muted">Nothing matches &quot;{query}&quot;.</p>}
         {kinds.map(({ kind, pieces }) => (
           <section key={kind.id} className="picker__kind">
             <h4>{kind.name}</h4>

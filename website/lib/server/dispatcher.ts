@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
-const DEFAULT_MAX_INSTANCES = 10;
+const DEFAULT_MAX_INSTANCES = 15;
 
 export const MAX_WAITING = 200;
 

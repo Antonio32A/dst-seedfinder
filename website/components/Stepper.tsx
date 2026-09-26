@@ -33,7 +33,7 @@ export default function Stepper({ label, value, min, max, onChange, precision = 
   return (
     <span className={wide ? "stepper stepper--wide" : "stepper"}>
       <button type="button" aria-label={`Fewer: ${label}`} disabled={value <= min} onClick={() => onChange(fit(value - 1))}>
-        −
+        -
       </button>
       <input
         type="number"

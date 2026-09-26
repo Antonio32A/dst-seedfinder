@@ -48,7 +48,7 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
           disabled={state.groups.length >= MAX_CRITERIA}
           onClick={() => setGroups((groups) => [...groups, emptyGroup()])}
         >
-          Or also accept…
+          Or also accept...
         </button>{" "}
         <span className="hint">Add another set of requirements. A world can match either.</span>
       </p>

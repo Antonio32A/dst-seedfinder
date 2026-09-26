@@ -98,11 +98,11 @@ export function sampleCounts(ids: string[]): [number, number, number] {
   );
 }
 
-/** A plain-words hint of how many a world usually has, e.g. "sample worlds have 3–67 (typically 20)". */
+/** A plain-words hint of how many a world usually has, e.g. "sample worlds have 3-67 (typically 20)". */
 export function countHint(ids: string[]): string {
   const [min, median, max] = sampleCounts(ids);
   if (max === 0) return `not seen in ${SAMPLE_WORLDS} sample worlds`;
-  return min === max ? `every sample world has ${min}` : `sample worlds have ${min}–${max} (typically ${median})`;
+  return min === max ? `every sample world has ${min}` : `sample worlds have ${min}-${max} (typically ${median})`;
 }
 
 /** Whether every sampled world has the same number of the set, so a plain count rule can't tell worlds apart. */
@@ -129,5 +129,5 @@ export function prefabTags(prefab: WorldPrefab): string[] {
 export function prefabCountText(prefab: WorldPrefab): string {
   const [min, median, max] = prefab.counts ?? [0, 0, 0];
   if (max <= 1) return "";
-  return min === max ? `always ${min}` : `${min}–${max}, typically ${median}`;
+  return min === max ? `always ${min}` : `${min}-${max}, typically ${median}`;
 }

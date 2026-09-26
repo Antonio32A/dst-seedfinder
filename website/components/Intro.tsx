@@ -19,10 +19,10 @@ export default function Intro() {
               </a>{" "}
               on the Steam Workshop.
             </li>
-            <li>When creating a world, enable the mod in the &ldquo;Mods&rdquo; section.</li>
-            <li>Go to &ldquo;Forest&rdquo; -&gt; &ldquo;World Generation&rdquo; and set it under the world seed.</li>
+            <li>When creating a world, enable the mod in the &quot;Mods&quot; section.</li>
+            <li>Go to &quot;Forest&quot; -&gt; &quot;World Generation&quot; and set it under the world seed.</li>
             <li>
-              Do not tweak any other &ldquo;World Generation&rdquo; settings that are unsupported, changing any of these settings will result in a
+              Do not tweak any other &quot;World Generation&quot; settings that are unsupported, changing any of these settings will result in a
               completely different world.
             </li>
           </ol>

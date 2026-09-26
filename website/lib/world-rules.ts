@@ -199,7 +199,7 @@ function nonEmpty<T>(items: T[]): T[] | undefined {
   return items.length > 0 ? items : undefined;
 }
 
-/** The world sections of a criteria entry (parts B–E of search format v1); unfinished rows and empty sections are left out. */
+/** The world sections of a criteria entry (parts B-E of search format v1); unfinished rows and empty sections are left out. */
 export function worldSections(rows: WorldRows): Pick<Criterion, "counts" | "distances" | "tiles" | "routes"> {
   return {
     counts: nonEmpty(rows.counts.flatMap(countRule)),
@@ -314,7 +314,7 @@ const COUNT_CHECKS: RowCheck<CountRow>[] = [
     const fixed = fixedCount(row.prefabs);
     const name = setLabel(row.prefabs);
     if (min > sampleMax || max < sampleMin)
-      return warning(`${label} rarely matches: sample worlds have ${sampleMin === sampleMax ? sampleMin : `${sampleMin}–${sampleMax}`} ${name}.`);
+      return warning(`${label} rarely matches: sample worlds have ${sampleMin === sampleMax ? sampleMin : `${sampleMin}-${sampleMax}`} ${name}.`);
     return fixed !== undefined ? warning(`every sample world has exactly ${fixed} ${name}, so ${label} always matches. Remove it or count only ones near something.`) : undefined;
   },
 ];

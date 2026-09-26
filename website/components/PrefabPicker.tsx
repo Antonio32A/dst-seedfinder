@@ -185,7 +185,7 @@ export default function PrefabPicker({ title, selected, blocked = () => undefine
         </div>
       </div>
       <div className="picker__body">
-        {groups.length === 0 && anchors.length === 0 && <p className="muted">Nothing matches &ldquo;{query}&rdquo;.</p>}
+        {groups.length === 0 && anchors.length === 0 && <p className="muted">Nothing matches &quot;{query}&quot;.</p>}
         {anchors.length > 0 && (
           <section className="picker__kind">
             <h4>Common places</h4>

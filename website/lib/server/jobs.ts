@@ -1,5 +1,5 @@
 import { unitsToCredits } from "@/lib/credits";
-import { ACTIVE_JOB_STATUSES, type ActiveJobStatus, type FinishedJobStatus, type JobStatus, type Machine } from "@/lib/job-events";
+import { ACTIVE_JOB_STATUSES, MAX_ACTIVE_SEARCHES, type ActiveJobStatus, type FinishedJobStatus, type JobStatus, type Machine } from "@/lib/job-events";
 import type { SeedfinderConfig } from "@/lib/seedfinder-config";
 
 export type { JobStatus };
@@ -97,8 +97,9 @@ export async function updateActiveJob(db: D1Database, id: string, update: Active
 
 /**
  * Settles a job exactly once: refunds the unused part of its reservation and records
- * the outcome, both only while the job is still unsettled (`cost IS NULL`). Runs as one D1 batch, so it is atomic and
- * a repeated call is a no-op.
+ * the outcome, both only while the job is still unsettled (`cost IS NULL`), then deletes the user's settled searches
+ * other than the `MAX_ACTIVE_SEARCHES` last finished ones. Runs as one D1 batch, so it is atomic and a repeated call is
+ * a no-op.
  */
 export async function settleJob(
   db: D1Database,
@@ -117,5 +118,12 @@ export async function settleJob(
         "UPDATE jobs SET status = ?, cost = ?, result = ?, error = ?, updated_at = ?, finished_at = ? WHERE id = ? AND cost IS NULL",
       )
       .bind(settlement.status, settlement.costUnits, settlement.result, settlement.error, now, now, job.id),
+    db
+      .prepare(
+        `DELETE FROM jobs WHERE user_id = ?1 AND cost IS NOT NULL AND id NOT IN (
+           SELECT id FROM jobs WHERE user_id = ?1 AND cost IS NOT NULL ORDER BY finished_at DESC LIMIT ?2
+         )`,
+      )
+      .bind(job.user_id, MAX_ACTIVE_SEARCHES),
   ]);
 }

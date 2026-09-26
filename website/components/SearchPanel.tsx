@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError, createJob, loginUrl, type JobView, type SessionUser } from "@/lib/api-client";
+import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/api-client";
 import { creditsToUnits, formatCredits } from "@/lib/credits";
-import { isActiveStatus } from "@/lib/job-events";
+import { isActiveStatus, MAX_ACTIVE_SEARCHES } from "@/lib/job-events";
+import { SEED_SPACE } from "@/lib/job-result";
 import { WANTED_OPTIONS, type Issue } from "@/lib/search-state";
 import {
+  DEFAULT_START_SEED,
   PLATFORM_LABELS,
   PLATFORMS,
   type Platform,
@@ -29,8 +31,11 @@ interface SearchPanelProps {
   onNotify: (text: string) => void;
 }
 
-function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number): string | undefined {
+const START_SEED_PROBLEM = `The start seed has to be a whole number from 0 to ${SEED_SPACE - 1}.`;
+
+function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number, startSeed: number | null): string | undefined {
   if (issues.some((issue) => issue.severity === "error")) return "Fix the errors above first.";
+  if (startSeed === null) return START_SEED_PROBLEM;
   if (credits !== undefined && creditsToUnits(credits) < creditsToUnits(maxCost)) {
     return `Max cost is ${formatCredits(maxCost)} credits but you have ${formatCredits(credits)}. Lower it or wait for the 00:00 UTC refill.`;
   }
@@ -39,13 +44,13 @@ function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: 
 
 interface SearchActionProps {
   user: SessionUser | null;
-  activeJob: JobView | undefined;
+  atLimit: boolean;
   submitting: boolean;
   blocked: boolean;
   onSubmit: () => void;
 }
 
-function SearchAction({ user, activeJob, submitting, blocked, onSubmit }: SearchActionProps) {
+function SearchAction({ user, atLimit, submitting, blocked, onSubmit }: SearchActionProps) {
   if (!user) {
     return (
       <a className="button" href={loginUrl()}>
@@ -53,16 +58,16 @@ function SearchAction({ user, activeJob, submitting, blocked, onSubmit }: Search
       </a>
     );
   }
-  if (activeJob) {
+  if (atLimit) {
     return (
-      <a className="button" href={`#job-${activeJob.id}`}>
-        Watch your search
+      <a className="button" href="#jobs">
+        Watch your searches
       </a>
     );
   }
   return (
     <button type="button" disabled={submitting || blocked} onClick={onSubmit}>
-      {submitting ? "Starting…" : "Find seeds"}
+      {submitting ? "Starting..." : "Find seeds"}
     </button>
   );
 }
@@ -81,12 +86,15 @@ export default function SearchPanel({
 }: SearchPanelProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [startSeedDraft, setStartSeedDraft] = useState("");
   const { user, jobs } = account;
-  const activeJob = jobs.find((job) => isActiveStatus(job.status));
-  const problem = activeJob ? undefined : blockingProblem(issues, user?.credits, maxCost);
+  const startSeedText = startSeedDraft.trim() || String(DEFAULT_START_SEED);
+  const startSeed = /^\d+$/.test(startSeedText) && Number(startSeedText) < SEED_SPACE ? Number(startSeedText) : null;
+  const atLimit = jobs.filter((job) => isActiveStatus(job.status)).length >= MAX_ACTIVE_SEARCHES;
+  const problem = atLimit ? undefined : blockingProblem(issues, user?.credits, maxCost, startSeed);
 
   const submit = async () => {
-    const checked = validateJobRequest({ config, wanted, maxCost });
+    const checked = validateJobRequest({ config, wanted, maxCost, startSeed });
     if (!checked.ok) {
       setError(`This search can't be sent: ${checked.error}`);
       return;
@@ -95,9 +103,8 @@ export default function SearchPanel({
     setError("");
     try {
       await createJob(checked.value);
-      onNotify("Search started. Follow it under “Your searches”.");
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 409) onNotify("You already have a search going. It's under “Your searches”.");
+      if (caught instanceof ApiError && caught.status === 409) onNotify(`You already have ${MAX_ACTIVE_SEARCHES} searches going. They're under "Your searches".`);
       else setError(caught instanceof Error ? caught.message : "Something went wrong. Try again.");
     } finally {
       setSubmitting(false);
@@ -135,11 +142,24 @@ export default function SearchPanel({
         onChange={onWantedChange}
       />
       <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange} />
+      <div>
+        <label className="start-seed">
+          <span className="seg__legend">Start seed</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder={String(DEFAULT_START_SEED)}
+            value={startSeedDraft}
+            onChange={(event) => setStartSeedDraft(event.target.value)}
+          />
+        </label>
+        <p className="hint">Seeds are checked in order from this one, wrapping around after {SEED_SPACE - 1}.</p>
+      </div>
       <div className="search__actions">
-        <SearchAction user={user} activeJob={activeJob} submitting={submitting} blocked={problem !== undefined} onSubmit={() => void submit()} />
+        <SearchAction user={user} atLimit={atLimit} submitting={submitting} blocked={problem !== undefined} onSubmit={() => void submit()} />
         <span className="search__cost">
-          {activeJob ? (
-            "You can run one search at a time."
+          {atLimit ? (
+            `You can run up to ${MAX_ACTIVE_SEARCHES} searches at once.`
           ) : (
             <>
               Reserves <strong>{formatCredits(maxCost)}</strong> credits{user ? ` (you have ${formatCredits(user.credits)})` : ""}.

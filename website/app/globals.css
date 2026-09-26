@@ -995,6 +995,19 @@ details[open] > summary::before {
   gap: 8px 12px;
 }
 
+.start-seed,
+.start-seed > span {
+  display: block;
+}
+
+.start-seed input {
+  display: block;
+  width: 14ch;
+  max-width: 100%;
+  padding: 4px 8px;
+  font-size: 0.9em;
+}
+
 .max-cost__custom input {
   width: 10ch;
   padding: 4px 8px;
@@ -1020,6 +1033,12 @@ details[open] > summary::before {
 .job {
   padding: 12px 0;
   border-bottom: 1px solid var(--separator);
+}
+
+.job__details > summary {
+  width: auto;
+  color: inherit;
+  font-weight: normal;
 }
 
 .job__meta > *:not(:first-child)::before {
@@ -1070,17 +1089,41 @@ details[open] > summary::before {
 }
 
 .live__details {
+  margin: 4px 0 0;
   font-size: 0.85em;
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+.live__stats {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 2ch;
+  margin: 6px 0 0;
+  font-size: 0.85em;
+}
+
+.live__stats dt {
+  color: var(--muted);
+}
+
+.live__stats dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 .results {
   margin-top: 8px;
 }
 
-.results > .job__meta {
+.results__summary p {
   margin: 0;
+}
+
+.results__summary p + p {
+  font-size: 0.9em;
+  color: var(--muted);
 }
 
 .hits {

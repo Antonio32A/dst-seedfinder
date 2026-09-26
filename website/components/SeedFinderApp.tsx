@@ -117,7 +117,7 @@ export default function SeedFinderApp() {
       <ConfirmDialog
         open={pendingPreset !== null}
         title="Replace your search?"
-        message={`Loading “${pendingPreset?.name ?? ""}” replaces everything you've picked.`}
+        message={`Loading "${pendingPreset?.name ?? ""}" replaces everything you've picked.`}
         confirmLabel="Replace"
         onConfirm={() => {
           if (pendingPreset) setState({ ...pendingPreset.build(), platform: state.platform });

@@ -9,7 +9,7 @@ import TaskChecklist from "./TaskChecklist";
 
 const SCOPE_OPTIONS: { value: ScopeMode; label: string }[] = [
   { value: "anywhere", label: "Anywhere" },
-  { value: "only", label: "Only in these biomes…" },
+  { value: "only", label: "Only in these biomes..." },
 ];
 
 const SINGLE_COUNT_MODES = new Set<CountMode>(["atLeast", "exactly"]);

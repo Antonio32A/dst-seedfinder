@@ -21,7 +21,7 @@ export default function CriteriaGroupCard({ group, index, total, onChange, onRem
     <section className="framed group" aria-labelledby={titleId}>
       <div className="group__header">
         <h3 id={titleId} className="group__title">
-          {total > 1 ? `Option ${index + 1}` : "The world must have…"}
+          {total > 1 ? `Option ${index + 1}` : "The world must have..."}
         </h3>
         {total > 1 && (
           <button type="button" className="link-button link-button--danger" onClick={onRemove}>

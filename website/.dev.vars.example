@@ -6,5 +6,5 @@ DISCORD_CLIENT_SECRET=your-discord-client-secret
 # GHCR_PULL_TOKEN=
 RUNNER_REPOSITORY=ghcr.io/antonio32a/dst-seedfinder-runner
 # RUNNER_IMAGE=ghcr.io/antonio32a/dst-seedfinder-runner:<git sha>
-# MAX_INSTANCES=10
+# MAX_INSTANCES=15
 # PUBLIC_ORIGIN=https://your-tunnel.example.com

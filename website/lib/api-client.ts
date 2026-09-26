@@ -1,3 +1,4 @@
+import { MAX_ACTIVE_SEARCHES } from "./job-events";
 import type { JobRequest } from "./seedfinder-config";
 import type { JobView } from "./server/jobs";
 
@@ -13,7 +14,7 @@ export interface SessionUser {
 
 export type { JobView };
 
-/** A failed API call; `jobId` names the search that is already going when a new one is refused (409). */
+/** A failed API call; `jobId` names a search that is already going when a new one is refused (409). */
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -27,7 +28,7 @@ export class ApiError extends Error {
 const FRIENDLY_ERRORS: Record<number, string> = {
   401: "You've been logged out. Log in again to search.",
   402: "Not enough credits for this max cost. Credits refill at 00:00 UTC.",
-  409: "You already have a search going.",
+  409: `You already have ${MAX_ACTIVE_SEARCHES} searches going.`,
   429: "Too many requests. Wait a bit and try again.",
 };
 
@@ -61,7 +62,7 @@ export async function fetchJobs(): Promise<JobView[]> {
   return (await request<{ jobs: JobView[] }>("/api/jobs")).jobs;
 }
 
-/** Starts a search. Throws an `ApiError` with status 409 and the active search's `jobId` when one is already going. */
+/** Starts a search. Throws an `ApiError` with status 409 when `MAX_ACTIVE_SEARCHES` searches are already going. */
 export async function createJob(job: JobRequest): Promise<JobView> {
   const created = await request<{ job: JobView }>("/api/jobs", {
     method: "POST",
