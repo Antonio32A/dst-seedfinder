@@ -18,10 +18,11 @@ interface ToolsPanelProps {
     config: SeedfinderConfig;
     onImport: (state: SearchState) => void;
     onReset: () => void;
+    onCopy: (text: string, what: string) => unknown;
     onNotify: (text: string) => void;
 }
 
-export default function ToolsPanel({ config, onImport, onReset, onNotify }: ToolsPanelProps) {
+export default function ToolsPanel({ config, onImport, onReset, onCopy, onNotify }: ToolsPanelProps) {
     const [shared, setShared] = useState<{ json: string; url: string } | null>(null);
     const [confirmingReset, setConfirmingReset] = useState(false);
     const [pasted, setPasted] = useState("");
@@ -93,7 +94,7 @@ export default function ToolsPanel({ config, onImport, onReset, onNotify }: Tool
           </pre>
                         <p>
                             <button type="button" className="link-button"
-                                    onClick={() => void copyText(json).then((ok) => onNotify(ok ? "JSON copied." : "Couldn't copy. Select the text instead."))}>
+                                    onClick={() => onCopy(json, "JSON")}>
                                 Copy JSON
                             </button>
                         </p>

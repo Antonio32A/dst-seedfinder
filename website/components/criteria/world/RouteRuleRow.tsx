@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Toggle from "@/components/ui/Toggle";
 import { MAX_ROUTE_STOPS } from "@/lib/config/seedfinder-config";
+import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import { newRouteStop, routeConflict, type RouteRow } from "@/lib/criteria/world-rules";
 import PrefabSetField from "./PrefabSetField";
 import RuleFrame from "./RuleFrame";
@@ -50,14 +51,8 @@ function StopActions({ row, index, update, onRemove }: {
 
 function Stops({ row, update }: { row: RouteRow; update: Update }) {
     const addStop = useRef<HTMLButtonElement>(null);
-    const setStop = (key: string, prefabs: string[]) => update({
-        stops: row.stops.map((stop) => (stop.key === key ? {
-            ...stop,
-            prefabs
-        } : stop))
-    });
     const removeStop = (key: string) => {
-        update({ stops: row.stops.filter((stop) => stop.key !== key) });
+        update({ stops: withoutKey(row.stops, key) });
         setTimeout(() => addStop.current?.focus());
     };
     return (
@@ -69,7 +64,7 @@ function Stops({ row, update }: { row: RouteRow; update: Update }) {
                     {row.stops.map((stop, index) => (
                             <li key={stop.key} className="route-stop">
                                 <PrefabSetField label={`Stop ${index + 1}`} ids={stop.prefabs}
-                                                onChange={(prefabs) => setStop(stop.key, prefabs)}
+                                                onChange={(prefabs) => update({ stops: replaceByKey(row.stops, { ...stop, prefabs }) })}
                                                 blocked={routeConflict(row, index)} autoOpen/>
                                 <StopActions row={row} index={index} update={update}
                                              onRemove={() => removeStop(stop.key)}/>

@@ -6,7 +6,7 @@ import {
     OAUTH_STATE_COOKIE_OPTIONS,
     sameOriginPath
 } from "@/lib/server/auth/oauth-state";
-import { randomToken } from "@/lib/server/auth/session";
+import { randomToken } from "@/lib/server/tokens";
 
 export function GET(request: NextRequest) {
     const returnPath = sameOriginPath(request.nextUrl.searchParams.get("return") ?? "/", request.nextUrl.origin);

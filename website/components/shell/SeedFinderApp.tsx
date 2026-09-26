@@ -8,13 +8,13 @@ import SearchPanel from "@/components/search/SearchPanel";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast, { type ToastMessage } from "@/components/ui/Toast";
 import {
-    canSearchLocally,
+    CORES_PER_THREAD,
     DEFAULT_SEARCH_TARGET,
-    defaultThreads,
     SEARCH_TARGETS,
     type SearchTarget
 } from "@/lib/browser-search/local-search";
 import { useLocalSearch } from "@/lib/browser-search/use-local-search";
+import { copyText } from "@/lib/client/clipboard";
 import { useAccount } from "@/lib/client/use-account";
 import {
     decodeShareParam,
@@ -88,6 +88,10 @@ export default function SeedFinderApp() {
 
     const notify = useCallback((text: string) => setToast({ id: Date.now(), text }), []);
     const dismissToast = useCallback(() => setToast(null), []);
+    const copy = useCallback(
+            async (text: string, what: string) => notify((await copyText(text)) ? `${what} copied.` : "Couldn't copy. Select the text instead."),
+            [notify]
+    );
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -97,9 +101,9 @@ export default function SeedFinderApp() {
         if (initial) setState(fromSeedfinderConfig(initial));
         if (hasCustomSettings(initial)) notify(`Search loaded. ${SETTINGS_DROPPED_NOTICE}`);
         const logicalCores = Math.max(1, navigator.hardwareConcurrency || 1);
-        const supported = canSearchLocally();
+        const supported = typeof WebAssembly === "object" && typeof SharedArrayBuffer === "function" && globalThis.crossOriginIsolated === true;
         setCores(logicalCores);
-        setThreads(clamp(stored?.threads ?? defaultThreads(logicalCores), 1, logicalCores));
+        setThreads(clamp(stored?.threads ?? Math.floor(logicalCores / CORES_PER_THREAD), 1, logicalCores));
         setBrowserSupported(supported);
         setTarget(supported ? (stored?.target ?? DEFAULT_SEARCH_TARGET) : "cloud");
         if (stored) {
@@ -163,12 +167,12 @@ export default function SeedFinderApp() {
                                         ...localSearch.state.request,
                                         startSeed
                                     })}
-                                    onNotify={notify}
+                                    onCopy={copy}
                             />
                     )}
-                    {account.user && <JobsList account={account} onNotify={notify}/>}
+                    {account.user && <JobsList account={account} onCopy={copy} onNotify={notify}/>}
                     <ToolsPanel config={config} onImport={setState} onReset={() => setState(defaultState())}
-                                onNotify={notify}/>
+                                onCopy={copy} onNotify={notify}/>
                 </main>
                 <ConfirmDialog
                         open={pendingPreset !== null}

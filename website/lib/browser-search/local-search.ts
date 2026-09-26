@@ -68,14 +68,6 @@ const compileSeedfinder = () => {
     return compiled;
 };
 
-export function canSearchLocally(): boolean {
-    return typeof WebAssembly === "object" && typeof SharedArrayBuffer === "function" && globalThis.crossOriginIsolated === true;
-}
-
-export function defaultThreads(cores: number): number {
-    return Math.max(1, Math.floor(cores / CORES_PER_THREAD));
-}
-
 /**
  * `onChange` fires at most every `UPDATE_MS` and once at the end. The returned function stops the search, keeping its
  * hits.

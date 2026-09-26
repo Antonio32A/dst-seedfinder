@@ -7,6 +7,8 @@ const MAX_INSTANCE_PAGES = 40;
 
 export const INSTANCE_LABEL_PREFIX = "dst-seedfinder:";
 
+export const instanceLabel = (jobId: string) => `${INSTANCE_LABEL_PREFIX}${jobId}`;
+
 export interface VastInstance {
     id: string;
     label: string | null;
@@ -50,10 +52,6 @@ async function vastRequest(apiKey: string, method: string, path: string, body?: 
 /** Whether vast.ai definitely turned the request down, so retrying it won't help. */
 export function isRefusal(error: unknown): boolean {
     return error instanceof VastError && error.status < 500 && error.status !== 408 && error.status !== 429;
-}
-
-export function mayHaveCreated(error: unknown): boolean {
-    return !isRefusal(error) && !(error instanceof VastError && error.status === 429);
 }
 
 export async function searchOffers(apiKey: string): Promise<unknown> {

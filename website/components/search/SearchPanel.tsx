@@ -15,8 +15,8 @@ import {
 } from "@/lib/config/seedfinder-config";
 import { validateJobRequest } from "@/lib/config/validate-config";
 import { type Issue, WANTED_OPTIONS } from "@/lib/criteria/search-state";
-import { creditsToUnits, formatCredits } from "@/lib/jobs/credits";
-import { isActiveStatus, MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
+import { creditsToUnits, formatCredits, notEnoughCredits } from "@/lib/jobs/credits";
+import { MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { SEED_SPACE } from "@/lib/jobs/job-result";
 import MaxCostField from "./MaxCostField";
 
@@ -57,10 +57,7 @@ const TARGET_HINTS: Record<SearchTarget, string> = {
 function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number, startSeed: number | null): string | undefined {
     if (issues.some((issue) => issue.severity === "error")) return "Fix the errors above first.";
     if (startSeed === null) return START_SEED_PROBLEM;
-    if (credits !== undefined && creditsToUnits(credits) < creditsToUnits(maxCost)) {
-        return `Max cost is ${formatCredits(maxCost)} credits but you have ${formatCredits(credits)}. Lower it or wait for the 00:00 UTC refill.`;
-    }
-    return undefined;
+    return credits !== undefined && creditsToUnits(credits) < creditsToUnits(maxCost) ? notEnoughCredits(maxCost, credits) : undefined;
 }
 
 interface CloudActionProps {
@@ -176,11 +173,11 @@ export default function SearchPanel({
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [startSeedDraft, setStartSeedDraft] = useState("");
-    const { user, jobs } = account;
+    const { user } = account;
     const inBrowser = target === "browser";
     const startSeedText = startSeedDraft.trim() || String(DEFAULT_START_SEED);
     const startSeed = /^\d+$/.test(startSeedText) && Number(startSeedText) < SEED_SPACE ? Number(startSeedText) : null;
-    const atLimit = !inBrowser && jobs.filter((job) => isActiveStatus(job.status)).length >= MAX_ACTIVE_SEARCHES;
+    const atLimit = !inBrowser && account.atLimit;
     const problem = atLimit ? undefined : blockingProblem(issues, inBrowser ? undefined : user?.credits, maxCost, startSeed);
 
     const checkedRequest = () => {

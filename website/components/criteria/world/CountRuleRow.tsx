@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
 import Toggle from "@/components/ui/Toggle";
 import { countCap, countHint } from "@/lib/catalog/prefab-sets";
@@ -98,16 +99,7 @@ export default function CountRuleRow({ row, index, onChange, onRemove }: CountRu
                 <PrefabSetField label="What to count" ids={row.prefabs} onChange={(prefabs) => update({ prefabs })}
                                 blocked={alwaysOne} autoOpen/>
                 <div className="rule__controls">
-                    <label>
-                        <span className="field-label">How many</span>
-                        <select value={row.mode} onChange={(event) => setMode(event.target.value as WorldCountMode)}>
-                            {WORLD_COUNT_MODES.map((mode) => (
-                                    <option key={mode.id} value={mode.id}>
-                                        {mode.label}
-                                    </option>
-                            ))}
-                        </select>
-                    </label>
+                    <Select label="How many" options={WORLD_COUNT_MODES} value={row.mode} onChange={setMode}/>
                     <CountBounds row={row} update={update}/>
                     {row.prefabs.length > 0 && <span className="hint">{countHint(row.prefabs)}</span>}
                 </div>

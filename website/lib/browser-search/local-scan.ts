@@ -72,7 +72,8 @@ export class LocalScan {
         if (reason === "limit") {
             const hits = decided.hits.slice(0, this.wanted);
             const last = hits[hits.length - 1].seed;
-            return { hits, ...scanPosition(this.startSeed, this.positionOf(last) + 1), stopped: reason };
+            const position = (last - this.startSeed + SEED_SPACE) % SEED_SPACE;
+            return { hits, ...scanPosition(this.startSeed, position + 1), stopped: reason };
         }
         const hits = this.chunks.flatMap((chunk) => chunk.hits);
         return { hits, ...scanPosition(this.startSeed, decided.scanned), ...(reason ? { stopped: reason } : {}) };
@@ -85,9 +86,5 @@ export class LocalScan {
             hits: prefix.flatMap((chunk) => chunk.hits),
             scanned: prefix.reduce((total, chunk) => total + chunk.scanned, 0)
         };
-    }
-
-    private positionOf(seed: number): number {
-        return (seed - this.startSeed + SEED_SPACE) % SEED_SPACE;
     }
 }

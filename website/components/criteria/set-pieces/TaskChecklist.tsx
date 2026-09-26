@@ -2,6 +2,7 @@
 
 import Toggle from "@/components/ui/Toggle";
 import type { TaskInfo, TaskKind } from "@/lib/catalog/level-types";
+import { toggled } from "@/lib/criteria/state-helpers";
 
 const KIND_LABELS: Record<TaskKind, string> = {
     required: "In every world",
@@ -19,7 +20,6 @@ interface TaskChecklistProps {
 }
 
 export default function TaskChecklist({ label, tasks, selected, onChange }: TaskChecklistProps) {
-    const toggle = (id: string, checked: boolean) => onChange(checked ? [...selected, id] : selected.filter((item) => item !== id));
     const groups = KIND_ORDER.map((kind) => ({
         kind,
         tasks: tasks.filter((task) => task.kind === kind)
@@ -35,7 +35,7 @@ export default function TaskChecklist({ label, tasks, selected, onChange }: Task
                                 {group.tasks.map((task) => (
                                         <Toggle key={task.id} title={task.description || undefined}
                                                 checked={selected.includes(task.id)}
-                                                onChange={(checked) => toggle(task.id, checked)}>
+                                                onChange={(checked) => onChange(toggled(selected, task.id, checked))}>
                                             {task.name}
                                         </Toggle>
                                 ))}

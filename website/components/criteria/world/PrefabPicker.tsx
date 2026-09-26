@@ -125,14 +125,12 @@ function GroupToggle({ ids, draft }: { ids: string[]; draft: Draft }) {
     );
 }
 
-const entryText = (entry: PickerEntry) =>
-        entry.family ? [entry.family.label, ...entry.members.flatMap((member) => [member.name, member.id])] : [prefabName(entry.prefab.id), entry.prefab.name, entry.prefab.id];
-
 function visibleEntries(entries: PickerEntry[], needle: string, groupName: string, listed: (prefab: WorldPrefab) => boolean): PickerEntry[] {
     return entries.flatMap((entry) => {
         const members = entry.family ? entry.members : [entry.prefab];
+        const label = entry.family ? entry.family.label : prefabName(entry.prefab.id);
         const reachable = members.filter(listed);
-        if (reachable.length === 0 || !matches(needle, groupName, ...entryText(entry))) return [];
+        if (reachable.length === 0 || !matches(needle, groupName, label, ...members.flatMap((member) => [member.name, member.id]))) return [];
         if (!entry.family || reachable.length === entry.members.length) return [entry];
         return reachable.length > 1 ? [{ ...entry, members: reachable }] : [{ prefab: reachable[0] }];
     });

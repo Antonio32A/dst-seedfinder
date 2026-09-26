@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { useModal } from "@/components/ui/use-modal";
 import { SET_PIECE_KINDS, SET_PIECES } from "@/lib/catalog/level";
 import type { SetPieceInfo } from "@/lib/catalog/level-types";
 
@@ -28,19 +29,10 @@ function PieceButton({ piece, onPick }: { piece: SetPieceInfo; onPick: (pieceId:
 }
 
 export default function SetPiecePicker({ open, onPick, onClose }: SetPiecePickerProps) {
-    const dialog = useRef<HTMLDialogElement>(null);
     const search = useRef<HTMLInputElement>(null);
+    const dialog = useModal(open, search);
     const titleId = useId();
     const [query, setQuery] = useState("");
-
-    useEffect(() => {
-        const element = dialog.current;
-        if (open && element && !element.open) {
-            element.showModal();
-            search.current?.focus();
-        }
-        if (!open && element?.open) element.close();
-    }, [open]);
 
     const kinds = useMemo(() => {
         const needle = query.trim().toLowerCase();

@@ -3,6 +3,7 @@
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { OPTIONAL_TASKS } from "@/lib/catalog/level";
 import { type BiomeChoice, MAX_BIOME_CHOICES } from "@/lib/criteria/search-state";
+import { withEntry } from "@/lib/criteria/state-helpers";
 
 type BiomeValue = BiomeChoice | "any";
 
@@ -20,11 +21,6 @@ interface BiomeSectionProps {
 export default function BiomeSection({ biomes, onChange }: BiomeSectionProps) {
     const counts: Record<BiomeValue, number> = { any: 0, include: 0, exclude: 0 };
     Object.values(biomes).forEach((choice) => (counts[choice] += 1));
-
-    const set = (id: string, value: BiomeValue) => {
-        const { [id]: _removed, ...rest } = biomes;
-        onChange(value === "any" ? rest : { ...rest, [id]: value });
-    };
 
     return (
             <div className="subsection">
@@ -54,7 +50,7 @@ export default function BiomeSection({ biomes, onChange }: BiomeSectionProps) {
                   {task.description && <span className="biome__description">{task.description}</span>}
               </span>
                                     <SegmentedControl legend={task.name} hideLegend options={options} value={current}
-                                                      onChange={(value) => set(task.id, value)}/>
+                                                      onChange={(value) => onChange(withEntry(biomes, task.id, value === "any" ? undefined : value))}/>
                                 </li>
                         );
                     })}

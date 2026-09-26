@@ -14,9 +14,9 @@ import {
     WORLD_UNITS_PER_TILE
 } from "@/lib/config/seedfinder-config";
 import { validateConfig } from "@/lib/config/validate-config";
-import { asArray, asRecord, asStrings, clamp, newKey } from "./state-helpers";
+import { asRecord, isRecord } from "@/lib/records";
+import { asArray, asStrings, clamp, newKey, nonEmpty } from "./state-helpers";
 import {
-    emptyWorldRows,
     NEW_WORLD_ROW,
     worldIssues,
     worldRowCount,
@@ -98,7 +98,7 @@ const TASK_IDS = TASKS.map((task) => task.id);
 
 /** `passive` groups only check seeds the other groups already pick. */
 export function emptyGroup(passive = false): CriteriaGroup {
-    return { key: newKey(), passive, biomes: {}, swaps: {}, rules: [], ...emptyWorldRows() };
+    return { key: newKey(), passive, biomes: {}, swaps: {}, rules: [], counts: [], distances: [], tiles: [], routes: [] };
 }
 
 export function defaultState(): SearchState {
@@ -135,10 +135,6 @@ export function effectiveRule(rule: PieceRule): PieceRule {
 function compact<T extends object>(value: T): T | undefined {
     const entries = Object.entries(value).filter(([, item]) => item !== undefined);
     return entries.length > 0 ? (Object.fromEntries(entries) as T) : undefined;
-}
-
-function nonEmpty<T>(items: T[]): T[] | undefined {
-    return items.length > 0 ? items : undefined;
 }
 
 /** Empty means the whole world. */
@@ -244,7 +240,7 @@ export function hasCustomSettings(config: unknown): boolean {
 }
 
 export function upgradeConfig(config: unknown): unknown {
-    if (typeof config !== "object" || config === null || Array.isArray(config)) return config;
+    if (!isRecord(config)) return config;
     return { version: CONFIG_VERSION, ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== "settings")) };
 }
 
@@ -316,9 +312,8 @@ const GROUP_CHECKS: GroupCheck[] = [
 /** An error means the search can never match. */
 export function validateSearch(state: SearchState): Issue[] {
     const multiple = state.groups.length > 1;
-    const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
     const perGroup = state.groups.flatMap((group, index) => {
-        const label = (message: string) => (multiple ? `Option ${index + 1}: ${message}` : capitalize(message));
+        const label = (message: string) => (multiple ? `Option ${index + 1}: ${message}` : message.charAt(0).toUpperCase() + message.slice(1));
         const emptyWarning: Issue[] =
             multiple && isEmptyGroup(group) ? [{
                 severity: "warning",

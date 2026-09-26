@@ -1,5 +1,6 @@
 import type { JobRequest } from "@/lib/config/seedfinder-config";
 import { type JobView, MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
+import { isRecord } from "@/lib/records";
 
 export interface SessionUser {
     id: string;
@@ -34,10 +35,7 @@ async function request<T extends object>(path: string, init?: RequestInit): Prom
         throw new ApiError("Couldn't reach the server. Check your connection and try again.", 0);
     });
     const parsed: unknown = await response.json().catch(() => null);
-    const body = typeof parsed === "object" && parsed !== null ? (parsed as T & {
-        error?: unknown;
-        jobId?: unknown
-    }) : null;
+    const body = isRecord(parsed) ? (parsed as T & { error?: unknown; jobId?: unknown }) : null;
     if (response.ok && body !== null) return body;
     const message = typeof body?.error === "string" ? body.error : FRIENDLY_ERRORS[response.status];
     const jobId = typeof body?.jobId === "string" ? body.jobId : null;

@@ -44,8 +44,6 @@ export interface ActiveJobUpdate {
     startedAt?: number;
 }
 
-const isoOrNull = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
-
 export function toJobView(row: JobRow): JobView {
     return {
         id: row.id,
@@ -56,7 +54,7 @@ export function toJobView(row: JobRow): JobView {
         cost: row.cost === null ? null : unitsToCredits(row.cost),
         createdAt: new Date(row.created_at).toISOString(),
         updatedAt: new Date(row.updated_at).toISOString(),
-        startedAt: isoOrNull(row.started_at),
+        startedAt: row.started_at === null ? null : new Date(row.started_at).toISOString(),
         machine: row.machine === null ? null : (JSON.parse(row.machine) as Machine),
         result: row.result === null ? null : JSON.parse(row.result),
         error: row.error
@@ -65,6 +63,10 @@ export function toJobView(row: JobRow): JobView {
 
 export async function loadJob(db: D1Database, id: string): Promise<JobRow | null> {
     return db.prepare("SELECT * FROM jobs WHERE id = ?").bind(id).first<JobRow>();
+}
+
+export async function loadUserJob(db: D1Database, id: string, userId: string): Promise<JobRow | null> {
+    return db.prepare("SELECT * FROM jobs WHERE id = ? AND user_id = ?").bind(id, userId).first<JobRow>();
 }
 
 export async function updateActiveJob(db: D1Database, id: string, update: ActiveJobUpdate): Promise<void> {

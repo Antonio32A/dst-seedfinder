@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
+import { useModal } from "./use-modal";
 
 interface ConfirmDialogProps {
     open: boolean;
@@ -21,19 +22,10 @@ export default function ConfirmDialog({
                                           onConfirm,
                                           onCancel
                                       }: ConfirmDialogProps) {
-    const dialog = useRef<HTMLDialogElement>(null);
     const cancelButton = useRef<HTMLButtonElement>(null);
+    const dialog = useModal(open, cancelButton);
     const titleId = useId();
     const messageId = useId();
-
-    useEffect(() => {
-        const element = dialog.current;
-        if (open && element && !element.open) {
-            element.showModal();
-            cancelButton.current?.focus();
-        }
-        if (!open && element?.open) element.close();
-    }, [open]);
 
     return (
             <dialog

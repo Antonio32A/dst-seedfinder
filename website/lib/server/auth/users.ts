@@ -25,10 +25,6 @@ function utcDay(date: Date = new Date()): string {
     return date.toISOString().slice(0, 10);
 }
 
-export function nextResetAt(now: Date = new Date()): string {
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
-}
-
 /** Applies the lazy daily top-up first: the balance rises to the daily grant minus what unsettled searches reserved. */
 export async function loadUser(db: D1Database, id: string): Promise<UserRow | null> {
     const today = utcDay();

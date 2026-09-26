@@ -21,7 +21,8 @@ import {
     type TileRule,
     WORLD_UNITS_PER_TILE
 } from "@/lib/config/seedfinder-config";
-import { asArray, asRecord, asStrings, newKey } from "./state-helpers";
+import { asRecord } from "@/lib/records";
+import { asArray, asStrings, newKey, nonEmpty } from "./state-helpers";
 
 export type WorldCountMode = "atLeast" | "atMost" | "exactly" | "between" | "none";
 export type DistanceMode = "within" | "atLeast" | "between";
@@ -112,8 +113,6 @@ export const DISTANCE_MODES: { id: DistanceMode; label: string }[] = [
 
 const tiles = (count: number) => count * WORLD_UNITS_PER_TILE;
 const DEFAULT_TRAVEL: Travel = { metric: DEFAULT_METRIC, wormholes: DEFAULT_WORMHOLES };
-
-export const emptyWorldRows = (): WorldRows => ({ counts: [], distances: [], tiles: [], routes: [] });
 
 export const newNear = (): NearRow => ({ ...DEFAULT_TRAVEL, prefabs: [SPAWN_PORTAL], within: tiles(100) });
 
@@ -213,10 +212,6 @@ const routeRule = (row: RouteRow): RouteRule[] => {
         }
     ];
 };
-
-function nonEmpty<T>(items: T[]): T[] | undefined {
-    return items.length > 0 ? items : undefined;
-}
 
 export function worldSections(rows: WorldRows): Pick<Criterion, "counts" | "distances" | "tiles" | "routes"> {
     return {

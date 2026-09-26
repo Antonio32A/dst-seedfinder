@@ -29,12 +29,8 @@ export function creditsPerSecond(dollarsPerHour: number): number {
     return CREDITS_PER_DOLLAR_HOUR_SECOND * dollarsPerHour;
 }
 
-export function creditsToSeconds(credits: number, dollarsPerHour: number = MAX_DOLLARS_PER_HOUR): number {
-    return credits / creditsPerSecond(dollarsPerHour);
-}
-
 export function timeLimitSeconds(maxCost: number, dollarsPerHour: number): number {
-    return Math.min(MAX_SEARCH_SECONDS, creditsToSeconds(maxCost - STARTING_FEE, dollarsPerHour));
+    return Math.min(MAX_SEARCH_SECONDS, (maxCost - STARTING_FEE) / creditsPerSecond(dollarsPerHour));
 }
 
 export function formatDuration(seconds: number): string {
@@ -64,14 +60,14 @@ export function formatCredits(credits: number): string {
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
 }
 
-export function searchCostUnits(reservedUnits: number, searchMs: number, dollarsPerHour: number): number {
-    const valid = Number.isFinite(searchMs) && searchMs >= 0;
-    const units = (searchMs / 1000) * creditsPerSecond(dollarsPerHour) * UNITS_PER_CREDIT;
-    return valid ? Math.min(reservedUnits, Math.max(0, Math.ceil(units - 1e-9))) : reservedUnits;
-}
-
 export function chargeUnits(reservedUnits: number, feeCharged: boolean, searchMs: number | null, dollarsPerHour: number): number {
     const fee = feeCharged ? creditsToUnits(STARTING_FEE) : 0;
-    const search = searchMs === null ? 0 : searchCostUnits(reservedUnits, searchMs, dollarsPerHour);
-    return Math.min(reservedUnits, fee + search);
+    if (searchMs === null) return Math.min(reservedUnits, fee);
+    if (!Number.isFinite(searchMs) || searchMs < 0) return reservedUnits;
+    const searchUnits = Math.ceil((searchMs / 1000) * creditsPerSecond(dollarsPerHour) * UNITS_PER_CREDIT - 1e-9);
+    return Math.min(reservedUnits, fee + Math.max(0, searchUnits));
+}
+
+export function notEnoughCredits(maxCost: number, credits: number): string {
+    return `Max cost is ${formatCredits(maxCost)} credits but you have ${formatCredits(credits)}. Lower it or wait for the 00:00 UTC refill.`;
 }

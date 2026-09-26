@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/ui/Select";
 import { DISTANCE_MODES, type DistanceMode, type DistanceRow } from "@/lib/criteria/world-rules";
 import PrefabSetField from "./PrefabSetField";
 import RuleFrame from "./RuleFrame";
@@ -45,16 +46,7 @@ export default function DistanceRuleRow({ row, index, onChange, onRemove }: Dist
                 <PrefabSetField label="From" ids={row.from} onChange={(from) => update({ from })}/>
                 <PrefabSetField label="To" ids={row.to} onChange={(to) => update({ to })} autoOpen/>
                 <div className="rule__controls">
-                    <label>
-                        <span className="field-label">Closest pair is</span>
-                        <select value={row.mode} onChange={(event) => setMode(event.target.value as DistanceMode)}>
-                            {DISTANCE_MODES.map((mode) => (
-                                    <option key={mode.id} value={mode.id}>
-                                        {mode.label}
-                                    </option>
-                            ))}
-                        </select>
-                    </label>
+                    <Select label="Closest pair is" options={DISTANCE_MODES} value={row.mode} onChange={setMode}/>
                     <DistanceBounds row={row} update={update}/>
                 </div>
                 <TravelOptions travel={row} onChange={(travel) => update(travel)}/>

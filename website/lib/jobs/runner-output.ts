@@ -1,4 +1,5 @@
 import type { Platform } from "@/lib/config/seedfinder-config";
+import { isRecord } from "@/lib/records";
 import type { JobProgress } from "./job-events";
 import { type SearchHit, SEED_SPACE, type StopReason } from "./job-result";
 
@@ -25,8 +26,6 @@ export interface JobObject extends DoneSummary {
     hits: SearchHit[];
 }
 
-export type ChunkPlacement = { kind: "gap"; expected: number } | { kind: "append"; skip: number };
-
 /** `skipping` while the current line is too long to keep. */
 export interface LineTail {
     bytes: Uint8Array;
@@ -45,7 +44,7 @@ const ERROR_OBJECT_LINE = /^\{.*"error".*\}$/;
 const asObject = (text: string): Record<string, unknown> | null => {
     try {
         const value: unknown = JSON.parse(text);
-        return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+        return isRecord(value) ? value : null;
     } catch {
         return null;
     }
@@ -138,10 +137,6 @@ export function exitKind(exit: number, summary: DoneSummary | null, configError:
     const finished = (exit === 0 || exit === 1) && summary !== null;
     const rejected = exit === 2 && configError !== null;
     return finished ? "done" : rejected ? "config-error" : "crash";
-}
-
-export function placeChunk(received: number, offset: number): ChunkPlacement {
-    return offset > received ? { kind: "gap", expected: received } : { kind: "append", skip: received - offset };
 }
 
 export function scanPosition(start: number, scanned: number): Omit<DoneSummary, "stopped"> {

@@ -1,6 +1,7 @@
 import { SET_PIECE_BY_ID, SWAPS, TASK_BY_ID } from "@/lib/catalog/level";
 import { LAND_TILES, NON_LAND_TILE_NAMES, PREFAB_BY_ID, PREFAB_GROUP_IDS, PREFAB_VARIANTS } from "@/lib/catalog/world";
 import { hasAtMostTwoDecimals, MAX_MAX_COST, MIN_MAX_COST, roundCredits } from "@/lib/jobs/credits";
+import { isRecord } from "@/lib/records";
 import {
     CONFIG_VERSION,
     DEFAULT_PLATFORM,
@@ -55,7 +56,7 @@ const required = (parse: Parse) => ({ parse, required: true });
 const optional = (parse: Parse) => ({ parse, required: false });
 
 function recordAt(value: unknown, path: string): Record<string, unknown> {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) fail(`${path} must be an object`);
+    if (!isRecord(value)) fail(`${path} must be an object`);
     return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
 }
 
@@ -63,11 +64,6 @@ function listAt(value: unknown, path: string, cap: number, noun: string, min = 0
     if (!Array.isArray(value)) fail(`${path} must be a list`);
     if (value.length < min) fail(`${path} must not be empty`);
     if (value.length > cap) fail(`${path} has ${value.length} ${noun} (at most ${cap})`);
-    return value;
-}
-
-function stringAt(value: unknown, path: string): string {
-    if (typeof value !== "string") fail(`${path} must be a string`);
     return value;
 }
 
@@ -112,7 +108,7 @@ function choiceOf(options: readonly string[]): Parse<string> {
 function namesOf(check: (name: string, path: string) => void, cap: number, noun: string, min = 0): Parse<string[]> {
     return (value, path) =>
         listAt(value, path, cap, noun, min).map((item, index) => {
-            const name = stringAt(item, `${path}[${index}]`);
+            const name = typeof item === "string" ? item : fail(`${path}[${index}] must be a string`);
             check(name, path);
             return name;
         });
@@ -151,17 +147,17 @@ const tileSet = nameSetOf(
     "must be a tile name or a list of tile names"
 );
 
-const setPieceBound: Parse = (value, path) => {
-    const valid = Array.isArray(value) ? value.length === 2 && value.every(isUint32) : isUint32(value);
-    return valid ? value : fail(`${path} must be an integer in 0..${MAX_UINT32} or [min, max]`);
-};
-
 const setPieceBounds: Parse = (value, path) => {
     const pieces = Object.entries(recordAt(value, path));
     if (pieces.length > MAX_SET_PIECES_PER_RULE) fail(`${path} has ${pieces.length} set pieces (at most ${MAX_SET_PIECES_PER_RULE})`);
     const unknown = pieces.find(([name]) => !SET_PIECE_NAMES.has(name));
     if (unknown) fail(`unknown set piece ${quoted(unknown[0])} in ${path}`);
-    return Object.fromEntries(pieces.map(([name, bound]) => [name, setPieceBound(bound, `${path}[${quoted(name)}]`)]));
+    return Object.fromEntries(
+        pieces.map(([name, bound]) => {
+            const valid = Array.isArray(bound) ? bound.length === 2 && bound.every(isUint32) : isUint32(bound);
+            return [name, valid ? bound : fail(`${path}[${quoted(name)}] must be an integer in 0..${MAX_UINT32} or [min, max]`)];
+        })
+    );
 };
 
 const prefabSwaps: Parse = (value, path) => {

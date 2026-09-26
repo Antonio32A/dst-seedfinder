@@ -1,4 +1,5 @@
 import type { SwapCategory } from "@/lib/catalog/level-types";
+import { asRecord, isRecord } from "@/lib/records";
 
 export const SEED_SPACE = 2 ** 32;
 
@@ -101,12 +102,8 @@ export interface SearchOutput {
 
 export type JobResult = { kind: "search"; search: SearchOutput } | { kind: "error"; error: string };
 
-type Fields = Record<string, unknown>;
 type Parser<T> = (value: unknown) => T | undefined;
 type Parsers<T> = { [K in keyof T]-?: Parser<T[K]> };
-
-const asRecord = (value: unknown): Fields | undefined =>
-    typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Fields) : undefined;
 
 const text: Parser<string> = (value) => (typeof value === "string" ? value : undefined);
 
@@ -141,17 +138,16 @@ const listOf =
         (value) =>
             Array.isArray(value) ? value.map(parse).filter((item): item is T => item !== undefined) : [];
 
-function parseFields(fields: Fields, parsers: Record<string, Parser<unknown>>): [string, unknown][] {
+function parseFields(fields: Record<string, unknown>, parsers: Record<string, Parser<unknown>>): [string, unknown][] {
     return Object.entries(parsers).map(([key, parse]) => [key, parse(fields[key])]);
 }
 
 function shape<R extends object, O extends object = object>(required: Parsers<R>, optional?: Parsers<O>): Parser<R & Partial<O>> {
     return (value) => {
-        const fields = asRecord(value);
-        if (fields === undefined) return undefined;
-        const needed = parseFields(fields, required as Record<string, Parser<unknown>>);
+        if (!isRecord(value)) return undefined;
+        const needed = parseFields(value, required as Record<string, Parser<unknown>>);
         if (needed.some(([, parsed]) => parsed === undefined)) return undefined;
-        const extra = parseFields(fields, (optional ?? {}) as Record<string, Parser<unknown>>).filter(([, parsed]) => parsed !== undefined);
+        const extra = parseFields(value, (optional ?? {}) as Record<string, Parser<unknown>>).filter(([, parsed]) => parsed !== undefined);
         return Object.fromEntries([...needed, ...extra]) as R & Partial<O>;
     };
 }
@@ -185,7 +181,7 @@ const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> 
 const witnessSection = oneOf(Object.keys(WITNESS_PARSERS) as WitnessSection[]);
 
 const witness: Parser<Witness> = (value) => {
-    const section = witnessSection(asRecord(value)?.section);
+    const section = witnessSection(asRecord(value).section);
     const parsed = section && WITNESS_PARSERS[section](value);
     return parsed ? ({ ...parsed, section } as Witness) : undefined;
 };
@@ -193,7 +189,7 @@ const witness: Parser<Witness> = (value) => {
 const SWAP_CATEGORIES: SwapCategory[] = ["grass", "twigs", "berries"];
 
 const prefabSwaps: Parser<LevelTable["prefab_swaps"]> = (value) => {
-    const fields = asRecord(value) ?? {};
+    const fields = asRecord(value);
     return Object.fromEntries(SWAP_CATEGORIES.map((category) => [category, text(fields[category])]).filter(([, option]) => option !== undefined));
 };
 
@@ -223,7 +219,7 @@ const search = shape<Pick<SearchOutput, "hits" | "last_scanned" | "next_seed">, 
 
 /** Never throws; `null` when the result is neither a job object nor `{"error": ...}`. */
 export function parseJobResult(result: unknown): JobResult | null {
-    const error = text(asRecord(result)?.error);
+    const error = text(asRecord(result).error);
     if (error !== undefined) return { kind: "error", error };
     const parsed = search(result);
     return parsed ? { kind: "search", search: parsed } : null;

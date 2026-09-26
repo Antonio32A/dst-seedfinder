@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { MAX_RULES_PER_SECTION } from "@/lib/config/seedfinder-config";
+import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import { MAP_SIZE_TILES, NEW_WORLD_ROW, type WorldRows, type WorldSection as Section } from "@/lib/criteria/world-rules";
 import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
@@ -50,8 +51,8 @@ function RowList<S extends Section>({ section, rows, onChange }: {
                                 key={row.key}
                                 row={row}
                                 index={index}
-                                onChange={(changed) => onChange(items.map((item) => (item.key === changed.key ? changed : item)) as WorldRows[S])}
-                                onRemove={() => onChange(items.filter((item) => item.key !== row.key) as WorldRows[S])}
+                                onChange={(changed) => onChange(replaceByKey(items, changed) as WorldRows[S])}
+                                onRemove={() => onChange(withoutKey(items, row.key) as WorldRows[S])}
                         />
                 ))}
             </ul>

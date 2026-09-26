@@ -1,6 +1,7 @@
 "use client";
 
 import SegmentedControl from "@/components/ui/SegmentedControl";
+import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
 import { SET_PIECE_BY_ID, SET_PIECE_KIND_BY_ID, TASKS } from "@/lib/catalog/level";
 import type { SetPieceInfo, TaskInfo } from "@/lib/catalog/level-types";
@@ -60,16 +61,7 @@ interface CountControlsProps {
 function CountControls({ rule, name, max, hint, update }: CountControlsProps) {
     return (
             <div className="rule__controls">
-                <label>
-                    <span className="field-label">How many</span>
-                    <select value={rule.mode} onChange={(event) => update({ mode: event.target.value as CountMode })}>
-                        {COUNT_MODES.map((mode) => (
-                                <option key={mode.id} value={mode.id}>
-                                    {mode.label}
-                                </option>
-                        ))}
-                    </select>
-                </label>
+                <Select label="How many" options={COUNT_MODES} value={rule.mode} onChange={(mode) => update({ mode })}/>
                 {SINGLE_COUNT_MODES.has(rule.mode) && (
                         <Stepper label={`${name} count`} value={rule.min} min={1} max={max}
                                  onChange={(min) => update({ min })}/>

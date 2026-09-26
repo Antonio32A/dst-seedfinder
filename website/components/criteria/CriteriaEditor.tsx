@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import { MAX_CRITERIA } from "@/lib/config/seedfinder-config";
 import { type CriteriaGroup, emptyGroup, type SearchState } from "@/lib/criteria/search-state";
+import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import CriteriaGroupCard from "./CriteriaGroupCard";
 
 interface CriteriaEditorProps {
@@ -38,10 +39,10 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
                                     index={index}
                                     total={state.groups.length}
                                     onlyActive={onlyActive}
-                                    onChange={(changed) => setGroups((groups) => groups.map((item) => (item.key === changed.key ? changed : item)))}
+                                    onChange={(changed) => setGroups((groups) => replaceByKey(groups, changed))}
                                     onRemove={() =>
                                             setGroups((groups) => {
-                                                const kept = groups.filter((item) => item.key !== group.key);
+                                                const kept = withoutKey(groups, group.key);
                                                 return kept.some((item) => !item.passive) ? kept : kept.map((item, at) => (at === 0 ? {
                                                     ...item,
                                                     passive: false

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MAX_RULES_PER_SECTION } from "@/lib/config/seedfinder-config";
 import { newRule, type PieceRule } from "@/lib/criteria/search-state";
+import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import SetPiecePicker from "./SetPiecePicker";
 import SetPieceRuleRow from "./SetPieceRuleRow";
 
@@ -25,8 +26,8 @@ export default function SetPieceSection({ rules, onChange }: SetPieceSectionProp
                                     <SetPieceRuleRow
                                             key={rule.key}
                                             rule={rule}
-                                            onChange={(changed) => onChange(rules.map((item) => (item.key === changed.key ? changed : item)))}
-                                            onRemove={() => onChange(rules.filter((item) => item.key !== rule.key))}
+                                            onChange={(changed) => onChange(replaceByKey(rules, changed))}
+                                            onRemove={() => onChange(withoutKey(rules, rule.key))}
                                     />
                             ))}
                         </ul>

@@ -1,10 +1,9 @@
 "use client";
 
-import { Fragment, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import type { LocalSearchState } from "@/lib/browser-search/local-search";
-import { copyText } from "@/lib/client/clipboard";
-import JobResults, { type ShownJob } from "./JobResults";
-import { checkedNote } from "./checked-note";
+import JobResults, { type JobResultsProps, type ShownJob } from "./JobResults";
+import LiveStats, { checkedNote } from "./LiveStats";
 
 const COMPACT = new Intl.NumberFormat("en", { notation: "compact", maximumSignificantDigits: 3 });
 
@@ -17,18 +16,13 @@ interface LocalSearchProps {
     state: LocalSearchState;
     onStop: () => void;
     onSearchFurther: (startSeed: number) => void;
-    onNotify: (text: string) => void;
+    onCopy: JobResultsProps["onCopy"];
 }
 
-export default function LocalSearch({ state, onStop, onSearchFurther, onNotify }: LocalSearchProps) {
+export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: LocalSearchProps) {
     const { request, status, search, seedsPerSecond, generatesWorlds, error } = state;
     const headline = HEADLINES[status];
     const scanned = search.scanned ?? 0;
-
-    const copy = useCallback(
-            async (text: string, what: string) => onNotify((await copyText(text)) ? `${what} copied.` : "Couldn't copy. Select the text instead."),
-            [onNotify]
-    );
 
     const job = useMemo<ShownJob>(() => {
         const empty = status === "starting" || (status === "failed" && search.hits.length === 0);
@@ -63,19 +57,7 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onNotify }
                             </div>
                             <p className="live__details">Keep this tab open. Closing or reloading it stops the
                                 search.</p>
-                            {status === "running" && (
-                                    <dl className="live__stats">
-                                        {rows.map(({ label, value, note }) => (
-                                                <Fragment key={label}>
-                                                    <dt>{label}</dt>
-                                                    <dd>
-                                                        {value}
-                                                        {note && <span className="muted"> - {note}</span>}
-                                                    </dd>
-                                                </Fragment>
-                                        ))}
-                                    </dl>
-                            )}
+                            {status === "running" && <LiveStats rows={rows}/>}
                         </div>
                 )}
                 {status === "cancelled" && <p className="muted">You stopped this search.</p>}
@@ -84,7 +66,7 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onNotify }
                             {error}
                         </p>
                 )}
-                <JobResults job={job} onCopy={copy} further={{ busy: false, onStart: onSearchFurther }}/>
+                <JobResults job={job} onCopy={onCopy} further={{ busy: false, onStart: onSearchFurther }}/>
             </section>
     );
 }

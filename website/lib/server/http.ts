@@ -7,6 +7,10 @@ export function jsonError(status: number, error: string): Response {
     return json({ error }, status);
 }
 
+export function text(status: number, body: string, headers: Record<string, string> = {}): Response {
+    return new Response(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
+}
+
 export function clientIp(request: Request): string | null {
     return request.headers.get("CF-Connecting-IP");
 }

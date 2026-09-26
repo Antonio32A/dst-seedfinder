@@ -21,18 +21,19 @@ import {
     type OutputLine,
     parseExitHeader,
     parseOutputLine,
-    placeChunk,
     splitLines
 } from "@/lib/jobs/runner-output";
+import { text } from "@/lib/server/http";
+import { randomToken, sha256Hex } from "@/lib/server/tokens";
 import { type Offer, OFFER_ATTEMPTS, pickOffers } from "@/lib/server/vast/offers";
 import {
     createInstance,
     destroyInstance,
-    INSTANCE_LABEL_PREFIX,
+    instanceLabel,
     isRefusal,
     listInstances,
-    mayHaveCreated,
-    searchOffers
+    searchOffers,
+    VastError
 } from "@/lib/server/vast/vast";
 import { type Admission, dispatcherStub } from "./dispatcher";
 import { closedEventStream, finishedEvents, SSE_HEADERS, SSE_HEARTBEAT, sseFrame } from "./job-stream";
@@ -40,7 +41,7 @@ import { type JobSettlement, loadJob, settleJob, toJobView, updateActiveJob } fr
 
 const BOOT_TIMEOUT_MS = 3 * 60_000;
 const STARTING_LIMIT_MS = 10 * 60_000;
-const DEADLINE_GRACE_MS = 10_000;
+export const DEADLINE_GRACE_MS = 10_000;
 const SILENCE_MS = 60_000;
 const QUEUE_POLL_MS = 60_000;
 const VAST_RETRY_MS = 20_000;
@@ -128,22 +129,10 @@ const EXIT_ENDINGS: Record<ExitKind, EndingKind> = {
 const RUNNER_GET_STATUSES = new Set<JobStatus>(["starting", "running"]);
 const RUNNER_POST_STATUSES = new Set<JobStatus>(["running"]);
 
-const plain = (status: number, body: string, headers: Record<string, string> = {}) =>
-    new Response(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
-
-async function sha256Hex(text: string): Promise<string> {
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 /** Constant time, so token checks don't leak timing. */
 function sameHex(given: string, expected: string): boolean {
     const difference = Array.from(expected).reduce((bits, char, index) => bits | (char.charCodeAt(0) ^ given.charCodeAt(index)), 0);
     return given.length === expected.length && difference === 0;
-}
-
-function randomHex(bytes: number): string {
-    return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -226,12 +215,13 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     async cancel(): Promise<void> {
         const state = this.state;
         if (state === null) return;
-        await this.end({
+        await this.record({
             status: "cancelled",
             error: CANCELLED,
             result: state.startedAt === null ? "none" : "search",
             fee: true
-        });
+        }, Date.now());
+        await this.wrapUpOnce();
     }
 
     /** False when this room holds no search. */
@@ -243,7 +233,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
 
     async events(): Promise<Response> {
         const state = this.state;
-        if (state === null) return plain(404, "Search not found.");
+        if (state === null) return text(404, "Search not found.");
         const row = state.settled ? await loadJob(this.env.DB, this.spec.id) : null;
         if (row !== null) return closedEventStream(finishedEvents(row));
         const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -263,14 +253,9 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     async runnerConfig(authorization: string | null): Promise<Response> {
         const refusal = await this.refuseRunner(authorization, RUNNER_GET_STATUSES);
         if (refusal !== null) return refusal;
-        if ((this.state as RoomState).received > 0) return plain(409, "The search already started.");
+        if ((this.state as RoomState).received > 0) return text(409, "The search already started.");
         if ((this.state as RoomState).status === "starting") await this.begin();
-        return new Response(this.spec.config, {
-            headers: {
-                "Content-Type": "application/json",
-                "Cache-Control": "no-store"
-            }
-        });
+        return text(200, this.spec.config, { "Content-Type": "application/json" });
     }
 
     /** `POST /api/runner/<id>`. The chunk with `X-Exit` ends the search. */
@@ -278,23 +263,23 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         const refusal = await this.refuseRunner(authorization, RUNNER_POST_STATUSES);
         if (refusal !== null) return refusal;
         const offset = Number(offsetHeader ?? Number.NaN);
-        if (!Number.isSafeInteger(offset) || offset < 0) return plain(400, "Bad X-Offset.");
-        if (body.byteLength > MAX_CHUNK_BYTES) return plain(413, "Chunk too large.");
-        const placement = placeChunk((this.state as RoomState).received, offset);
-        if (placement.kind === "gap") return plain(409, "Gap.", { "X-Offset": String(placement.expected) });
+        if (!Number.isSafeInteger(offset) || offset < 0) return text(400, "Bad X-Offset.");
+        if (body.byteLength > MAX_CHUNK_BYTES) return text(413, "Chunk too large.");
+        const before = (this.state as RoomState).received;
+        if (offset > before) return text(409, "Gap.", { "X-Offset": String(before) });
 
         const now = Date.now();
-        const fresh = body.subarray(placement.skip);
-        if ((this.state as RoomState).received + fresh.byteLength > MAX_OUTPUT_BYTES) {
+        const fresh = body.subarray(before - offset);
+        if (before + fresh.byteLength > MAX_OUTPUT_BYTES) {
             await this.record(failed(FLOODED, "search"), now);
-            return plain(410, "Gone.");
+            return text(410, "Gone.");
         }
         this.append(fresh);
         this.save({ lastPostAt: now });
         const exit = parseExitHeader(exitHeader);
         const received = (this.state as RoomState).received;
         if (exit !== null && offset + body.byteLength >= received) await this.exited(exit, now);
-        return plain(200, "OK", { "X-Offset": String(received) });
+        return text(200, "OK", { "X-Offset": String(received) });
     }
 
     async alarm(): Promise<void> {
@@ -347,9 +332,9 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     private async refuseRunner(authorization: string | null, statuses: Set<JobStatus>): Promise<Response | null> {
         const digest = await sha256Hex(authorization?.match(/^Bearer (\S+)$/)?.[1] ?? "");
         const state = this.state;
-        if (state === null || state.tokenHash === null) return plain(410, "Gone.");
-        if (!sameHex(digest, state.tokenHash)) return plain(401, "Bad token.");
-        return statuses.has(state.status) ? null : plain(410, "Gone.");
+        if (state === null || state.tokenHash === null) return text(410, "Gone.");
+        if (!sameHex(digest, state.tokenHash)) return text(401, "Bad token.");
+        return statuses.has(state.status) ? null : text(410, "Gone.");
     }
 
     private async requeue(): Promise<void> {
@@ -393,7 +378,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         const state = this.state as RoomState;
         const job = this.spec;
         const { askId, ...machine } = offer;
-        const token = randomHex(32);
+        const token = randomToken();
         const timeLimitMs = Math.floor(timeLimitSeconds(job.maxCost, machine.dollarsPerHour) * 1000);
         const before = { attempt: state.attempt, triedAsks: state.triedAsks };
         this.save({
@@ -405,7 +390,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         });
         const created = await createInstance(this.env.VAST_API_KEY ?? "", {
             askId,
-            label: `${INSTANCE_LABEL_PREFIX}${job.id}`,
+            label: instanceLabel(job.id),
             image: this.env.RUNNER_IMAGE ?? "",
             imageLogin: `-u ${this.env.GHCR_USER} -p ${this.env.GHCR_PULL_TOKEN} ghcr.io`,
             env: {
@@ -422,7 +407,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         if (created.instanceId !== null) return this.adopt(created.instanceId);
         if (this.state?.status !== "starting") return;
         const refused = isRefusal(created.error);
-        const unsure = mayHaveCreated(created.error);
+        const unsure = !refused && !(created.error instanceof VastError && created.error.status === 429);
         this.save({
             ...(refused ? {} : before),
             machine: null,
@@ -465,7 +450,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
      */
     private async clearStrays(): Promise<boolean> {
         const apiKey = this.env.VAST_API_KEY ?? "";
-        const listed = await listInstances(apiKey, `${INSTANCE_LABEL_PREFIX}${this.spec.id}`).then(
+        const listed = await listInstances(apiKey, instanceLabel(this.spec.id)).then(
             (instances) => instances.map(({ id }) => id),
             () => null
         );
@@ -575,11 +560,6 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         await this.ctx.storage.setAlarm(Date.now());
     }
 
-    private async end(kind: EndingKind): Promise<void> {
-        await this.record(kind, Date.now());
-        await this.wrapUpOnce();
-    }
-
     private wrapUpOnce(): Promise<void> {
         if ((this.state as RoomState).settled) return this.wrapping ?? Promise.resolve();
         this.wrapping ??= this.wrapUp().finally(() => {
@@ -617,7 +597,13 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     }
 
     private async finish(state: RoomState): Promise<void> {
-        if (state.settled && state.tornDown) return this.forget();
+        if (state.settled && state.tornDown) {
+            await this.ctx.storage.deleteAlarm();
+            await this.ctx.storage.deleteAll();
+            this.state = null;
+            this.job = null;
+            return;
+        }
         await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
         if (!state.settled) await this.wrapUpOnce().catch(() => undefined);
         if (!state.tornDown) await this.tearDown(state.ending as Ending);
@@ -632,13 +618,6 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         if (!cleared && Date.now() < ending.endedAt + DESTROY_RETRY_WINDOW_MS) return;
         await dispatcherStub(this.env).release(this.spec.id);
         this.save({ tornDown: true });
-    }
-
-    private async forget(): Promise<void> {
-        await this.ctx.storage.deleteAlarm();
-        await this.ctx.storage.deleteAll();
-        this.state = null;
-        this.job = null;
     }
 
     private settlement(state: RoomState, ending: Ending): JobSettlement {

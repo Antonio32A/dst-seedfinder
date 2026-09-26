@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LiveJob } from "@/lib/client/use-job-stream";
 import { formatDuration, timeLimitSeconds } from "@/lib/jobs/credits";
 import type { JobProgress, JobStatus, JobView, Machine } from "@/lib/jobs/job-events";
 import JobResults, { type JobResultsProps } from "./JobResults";
-import { checkedNote } from "./checked-note";
+import LiveStats, { checkedNote, type LiveRow } from "./LiveStats";
 
 const MAX_ATTEMPTS = 3;
 
@@ -17,12 +17,6 @@ const PRICE = new Intl.NumberFormat("en", {
     maximumFractionDigits: 3
 });
 const GHZ = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
-
-interface LiveRow {
-    label: string;
-    value: string;
-    note?: string;
-}
 
 interface LiveText {
     headline: string;
@@ -140,19 +134,7 @@ export default function LiveSearch({ job, live, stopping, onStop, ...results }: 
                                 {note}
                             </p>
                     ))}
-                    {rows.length > 0 && (
-                            <dl className="live__stats">
-                                {rows.map(({ label, value, note }) => (
-                                        <Fragment key={label}>
-                                            <dt>{label}</dt>
-                                            <dd>
-                                                {value}
-                                                {note && <span className="muted"> - {note}</span>}
-                                            </dd>
-                                        </Fragment>
-                                ))}
-                            </dl>
-                    )}
+                    {rows.length > 0 && <LiveStats rows={rows}/>}
                     {live.offline && <p className="hint">Connection lost, reconnecting...</p>}
                 </div>
                 <JobResults job={shown} {...results} />

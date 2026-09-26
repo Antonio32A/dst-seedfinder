@@ -31,15 +31,13 @@ const SWAP_OPTION_NAMES: ReadonlyMap<string, string> = new Map(
     SWAPS.flatMap((swap) => swap.options.map((option) => [option.id, option.name] as const))
 );
 
-const baseName = (name: string) => name.replace(/\s*\(.*\)$/, "");
-
 export function prefabName(id: string): string {
     return ANCHOR_LABELS.get(id) ?? PREFAB_BY_ID.get(id)?.name ?? id;
 }
 
 function familyLabel(members: WorldPrefab[]): string | undefined {
     const tally = members.reduce((counts, member) => {
-        const base = baseName(member.name);
+        const base = member.name.replace(/\s*\(.*\)$/, "");
         return counts.set(base, (counts.get(base) ?? 0) + 1);
     }, new Map<string, number>());
     const [base, count] = [...tally].sort((a, b) => b[1] - a[1])[0];

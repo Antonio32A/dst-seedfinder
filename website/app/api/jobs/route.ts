@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { DEFAULT_PLATFORM, DEFAULT_START_SEED } from "@/lib/config/seedfinder-config";
 import { validateJobRequest } from "@/lib/config/validate-config";
-import { creditsToUnits, formatCredits, unitsToCredits } from "@/lib/jobs/credits";
+import { creditsToUnits, notEnoughCredits, unitsToCredits } from "@/lib/jobs/credits";
 import { MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { getCurrentUser } from "@/lib/server/auth/session";
 import { clientIp, isCrossOrigin, json, jsonError } from "@/lib/server/http";
@@ -62,10 +62,7 @@ export async function POST(request: Request) {
     ]);
     if (reservation[0].meta.changes === 0) {
         if (await atActiveLimit(user.id)) return jsonError(409, TOO_MANY_ACTIVE);
-        return jsonError(
-            402,
-            `Max cost is ${formatCredits(job.maxCost)} credits but you have ${formatCredits(unitsToCredits(user.credit_units))}. Lower it or wait for the 00:00 UTC refill.`
-        );
+        return jsonError(402, notEnoughCredits(job.maxCost, unitsToCredits(user.credit_units)));
     }
 
     const started = await jobRoomStub(env, id)

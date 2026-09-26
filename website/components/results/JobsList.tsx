@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { cancelJob, createJob } from "@/lib/client/api-client";
-import { copyText } from "@/lib/client/clipboard";
 import type { Account } from "@/lib/client/use-account";
 import { liveJobOf, useJobStream } from "@/lib/client/use-job-stream";
 import { creditsToUnits, formatCredits, STARTING_FEE } from "@/lib/jobs/credits";
@@ -86,21 +85,16 @@ function JobItem({ job, onEnded, onLost, stopping, onStop, failure, ...results }
 
 interface JobsListProps {
     account: Account;
+    onCopy: JobResultsProps["onCopy"];
     onNotify: (text: string) => void;
 }
 
-export default function JobsList({ account, onNotify }: JobsListProps) {
-    const { jobs, user } = account;
+export default function JobsList({ account, onCopy, onNotify }: JobsListProps) {
+    const { jobs, user, atLimit } = account;
     const [pending, setPending] = useState<Continuation | null>(null);
     const [stopRequest, setStopRequest] = useState<StopRequest | null>(null);
     const [busyJobId, setBusyJobId] = useState<string | null>(null);
     const [failure, setFailure] = useState<{ jobId: string; message: string } | null>(null);
-    const atLimit = jobs.filter((job) => isActiveStatus(job.status)).length >= MAX_ACTIVE_SEARCHES;
-
-    const copy = useCallback(
-            async (text: string, what: string) => onNotify((await copyText(text)) ? `${what} copied.` : "Couldn't copy. Select the text instead."),
-            [onNotify]
-    );
 
     const runFor = async (jobId: string, action: () => Promise<string | void>) => {
         setBusyJobId(jobId);
@@ -156,7 +150,7 @@ export default function JobsList({ account, onNotify }: JobsListProps) {
                                     onLost={() => void account.refresh()}
                                     stopping={busyJobId === job.id}
                                     onStop={setStopRequest}
-                                    onCopy={copy}
+                                    onCopy={onCopy}
                                     further={{
                                         busy: busyJobId === job.id,
                                         blocked: blockedReason(job),

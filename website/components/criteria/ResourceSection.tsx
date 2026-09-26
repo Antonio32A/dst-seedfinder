@@ -2,8 +2,8 @@
 
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { SWAPS } from "@/lib/catalog/level";
-import type { SwapCategory } from "@/lib/catalog/level-types";
 import type { CriteriaGroup } from "@/lib/criteria/search-state";
+import { withEntry } from "@/lib/criteria/state-helpers";
 
 const ANY = "";
 
@@ -13,11 +13,6 @@ interface ResourceSectionProps {
 }
 
 export default function ResourceSection({ swaps, onChange }: ResourceSectionProps) {
-    const set = (category: SwapCategory, value: string) => {
-        const { [category]: _removed, ...rest } = swaps;
-        onChange(value === ANY ? rest : { ...rest, [category]: value });
-    };
-
     return (
             <div className="subsection">
                 <h4 className="subsection__title">Resource variety</h4>
@@ -36,7 +31,7 @@ export default function ResourceSection({ swaps, onChange }: ResourceSectionProp
                                             title: option.description
                                         }))]}
                                         value={swaps[swap.id] ?? ANY}
-                                        onChange={(value) => set(swap.id, value)}
+                                        onChange={(value) => onChange(withEntry(swaps, swap.id, value === ANY ? undefined : value))}
                                 />
                                 {swap.description && <p className="hint">{swap.description}</p>}
                             </div>

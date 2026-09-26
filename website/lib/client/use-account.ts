@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { JobView } from "@/lib/jobs/job-events";
+import { isActiveStatus, type JobView, MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { ApiError, fetchJobs, fetchMe, logout, type SessionUser } from "./api-client";
 
 export interface Account {
     user: SessionUser | null;
     loading: boolean;
     jobs: JobView[];
+    atLimit: boolean;
     refresh: () => Promise<void>;
     jobEnded: (job: JobView) => void;
     logOut: () => Promise<void>;
@@ -57,5 +58,6 @@ export function useAccount(): Account {
         [refresh]
     );
 
-    return { user, loading, jobs, refresh, jobEnded, logOut };
+    const atLimit = jobs.filter((job) => isActiveStatus(job.status)).length >= MAX_ACTIVE_SEARCHES;
+    return { user, loading, jobs, atLimit, refresh, jobEnded, logOut };
 }

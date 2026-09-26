@@ -4,6 +4,7 @@ import { useState } from "react";
 import Toggle from "@/components/ui/Toggle";
 import { LAND_TILES } from "@/lib/catalog/world";
 import { MAX_TILE_NAMES } from "@/lib/config/seedfinder-config";
+import { toggled } from "@/lib/criteria/state-helpers";
 
 interface TileSetFieldProps {
     label: string;
@@ -15,7 +16,6 @@ export default function TileSetField({ label, names, onChange }: TileSetFieldPro
     const [showAll, setShowAll] = useState(false);
     const full = names.length >= MAX_TILE_NAMES;
     const shown = LAND_TILES.filter((tile) => showAll || tile.inDefaultWorlds || names.includes(tile.name));
-    const toggle = (name: string, on: boolean) => onChange(on ? [...names, name] : names.filter((item) => item !== name));
 
     return (
             <fieldset className="seg tile-set">
@@ -25,7 +25,7 @@ export default function TileSetField({ label, names, onChange }: TileSetFieldPro
                         const checked = names.includes(tile.name);
                         return (
                                 <Toggle key={tile.name} checked={checked} disabled={!checked && full}
-                                        onChange={(on) => toggle(tile.name, on)}>
+                                        onChange={(on) => onChange(toggled(names, tile.name, on))}>
                                     {tile.displayName}
                                 </Toggle>
                         );

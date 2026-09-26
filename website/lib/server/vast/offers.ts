@@ -1,5 +1,6 @@
 import { MAX_DOLLARS_PER_HOUR } from "@/lib/jobs/credits";
 import type { Machine } from "@/lib/jobs/job-events";
+import { isRecord } from "@/lib/records";
 
 export interface Offer extends Machine {
     askId: number;
@@ -38,30 +39,16 @@ interface BundleOffer {
 
 const positive = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value > 0;
 
-const atLeast = (value: unknown, min: number) => typeof value === "number" && value >= min;
-
 const OFFER_CHECKS: ((bundle: BundleOffer) => boolean)[] = [
     (bundle) => Number.isInteger(bundle.ask_contract_id ?? bundle.id),
     (bundle) => positive(bundle.cpu_ghz),
     (bundle) => positive(bundle.cpu_cores_effective) && bundle.cpu_cores_effective >= MIN_CORES,
     (bundle) => positive(bundle.dph_total) && bundle.dph_total <= MAX_DOLLARS_PER_HOUR,
     (bundle) => positive(bundle.cpu_ram) && bundle.cpu_ram / Number(bundle.cpu_cores_effective) >= MIN_RAM_MB_PER_CORE,
-    (bundle) => bundle.reliability === undefined || atLeast(bundle.reliability, MIN_RELIABILITY),
+    (bundle) => bundle.reliability === undefined || (typeof bundle.reliability === "number" && bundle.reliability >= MIN_RELIABILITY),
     (bundle) => bundle.cpu_arch === undefined || bundle.cpu_arch === "amd64",
     (bundle) => bundle.verification === "verified"
 ];
-
-function toOffer(bundle: BundleOffer): Offer | null {
-    if (!OFFER_CHECKS.every((check) => check(bundle))) return null;
-    const cpuName = typeof bundle.cpu_name === "string" ? bundle.cpu_name.trim() : "";
-    return {
-        askId: Number(bundle.ask_contract_id ?? bundle.id),
-        cpuName: cpuName || "Unknown CPU",
-        cores: Math.floor(Number(bundle.cpu_cores_effective)),
-        ghz: Number(bundle.cpu_ghz),
-        dollarsPerHour: Number(bundle.dph_total)
-    };
-}
 
 const speedPerDollar = ({ cores, ghz, dollarsPerHour }: Machine) =>
     (Math.min(cores, MAX_FINDER_THREADS) * ghz) / dollarsPerHour;
@@ -70,8 +57,14 @@ export function pickOffers(response: unknown): Offer[] {
     const offers = (response as { offers?: unknown } | null)?.offers;
     if (!Array.isArray(offers)) return [];
     return offers
-        .map((bundle: BundleOffer) => (typeof bundle === "object" && bundle !== null ? toOffer(bundle) : null))
-        .filter((offer): offer is Offer => offer !== null)
+        .filter((bundle): bundle is BundleOffer => isRecord(bundle) && OFFER_CHECKS.every((check) => check(bundle)))
+        .map((bundle): Offer => ({
+            askId: Number(bundle.ask_contract_id ?? bundle.id),
+            cpuName: (typeof bundle.cpu_name === "string" && bundle.cpu_name.trim()) || "Unknown CPU",
+            cores: Math.floor(Number(bundle.cpu_cores_effective)),
+            ghz: Number(bundle.cpu_ghz),
+            dollarsPerHour: Number(bundle.dph_total)
+        }))
         .sort((a, b) => speedPerDollar(b) - speedPerDollar(a))
         .slice(0, OFFER_ATTEMPTS);
 }
