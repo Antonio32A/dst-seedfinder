@@ -1,7 +1,6 @@
 import { unitsToCredits } from "@/lib/credits";
 import { ACTIVE_JOB_STATUSES, type ActiveJobStatus, type FinishedJobStatus, type JobStatus, type Machine } from "@/lib/job-events";
 import type { SeedfinderConfig } from "@/lib/seedfinder-config";
-import { DAILY_CREDIT_UNITS } from "./users";
 
 export type { JobStatus };
 
@@ -97,7 +96,7 @@ export async function updateActiveJob(db: D1Database, id: string, update: Active
 }
 
 /**
- * Settles a job exactly once: refunds the unused part of its reservation (never above the daily grant) and records
+ * Settles a job exactly once: refunds the unused part of its reservation and records
  * the outcome, both only while the job is still unsettled (`cost IS NULL`). Runs as one D1 batch, so it is atomic and
  * a repeated call is a no-op.
  */
@@ -110,9 +109,9 @@ export async function settleJob(
   await db.batch([
     db
       .prepare(
-        "UPDATE users SET credit_units = MIN(?, credit_units + ?) WHERE id = ? AND EXISTS (SELECT 1 FROM jobs WHERE id = ? AND cost IS NULL)",
+        "UPDATE users SET credit_units = credit_units + ? WHERE id = ? AND EXISTS (SELECT 1 FROM jobs WHERE id = ? AND cost IS NULL)",
       )
-      .bind(DAILY_CREDIT_UNITS, job.max_cost - settlement.costUnits, job.user_id, job.id),
+      .bind(job.max_cost - settlement.costUnits, job.user_id, job.id),
     db
       .prepare(
         "UPDATE jobs SET status = ?, cost = ?, result = ?, error = ?, updated_at = ?, finished_at = ? WHERE id = ? AND cost IS NULL",

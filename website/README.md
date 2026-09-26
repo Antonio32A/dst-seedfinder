@@ -56,7 +56,8 @@ JITI_ALIAS='{"@/":"'"$PWD"'/"}' ./node_modules/.bin/jiti .scratch/verify-spec.ts
 
 ## Credits
 
-Every user gets 1000 credits a day (reset at 00:00 UTC). D1 stores credits as integer hundredths
+Every user is topped up to 1000 credits a day at 00:00 UTC (`loadUser`): the balance plus the credits reserved by
+unsettled searches is raised to 1000, and a larger balance (granted by hand in D1) is kept. Refunds are not capped. D1 stores credits as integer hundredths
 (`users.credit_units`, `jobs.max_cost`, `jobs.cost`). A search reserves its max cost (20 to 1000 credits, default 100)
 up front, atomically with the "one active search per user" check (a partial unique index on `jobs.user_id` over the
 active statuses).

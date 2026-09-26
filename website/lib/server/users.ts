@@ -31,13 +31,21 @@ export function nextResetAt(now: Date = new Date()): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
 }
 
-/** Loads a user, first applying the lazy daily credit reset atomically. */
+/**
+ * Loads a user, first applying the lazy daily credit top-up atomically: the balance, counting the credits reserved by
+ * unsettled searches, is raised to the daily grant, and a larger balance is kept.
+ */
 export async function loadUser(db: D1Database, id: string): Promise<UserRow | null> {
   const today = utcDay();
   const [, selected] = await db.batch<UserRow>([
     db
-      .prepare("UPDATE users SET credit_units = ?, credits_reset_day = ? WHERE id = ? AND credits_reset_day < ?")
-      .bind(DAILY_CREDIT_UNITS, today, id, today),
+      .prepare(
+        `UPDATE users SET
+           credit_units = MAX(credit_units, ?1 - (SELECT COALESCE(SUM(max_cost), 0) FROM jobs WHERE user_id = users.id AND cost IS NULL)),
+           credits_reset_day = ?2
+         WHERE id = ?3 AND credits_reset_day < ?2`,
+      )
+      .bind(DAILY_CREDIT_UNITS, today, id),
     db.prepare("SELECT * FROM users WHERE id = ?").bind(id),
   ]);
   return selected.results[0] ?? null;
