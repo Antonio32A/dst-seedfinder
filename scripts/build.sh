@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# usage: build.sh [main | trace | ENTRY.bend [OUT]]   (OUT ending in .c emits C only)
+# usage: build.sh [main | trace | wasm | ENTRY.bend [OUT]]   (OUT ending in .c emits C only, .wasm WebAssembly)
 #   (none), main  seedfinder/main.bend  -> build/seedfinder        production binary, 16 GB cap, clang with
 #                 -mllvm -inline-threshold=3000 (CCC_OVERRIDE_OPTIONS; same output, ~15-20% faster worldgen)
 #   trace         seedfinder/trace.bend -> build/seedfinder_trace  debug binary with every lane's trace stages, 32 GB
 #                 cap; refuses to start unless `free -g` shows at least BUILD_MIN_FREE_GB (default 40) available
+#   wasm          seedfinder/main.bend  -> build/wasm/seedfinder.wasm and its ES module seedfinder.mjs, for browsers
+#                 (Emscripten 3.1.35+: emcc on PATH, or EMCC)
 #   ENTRY [OUT]   any program (lane test binaries), 16 GB cap
 #
-# Builds a Bend program with the compiler's JavaScriptCore heap sized for a 4 GB machine. The bend CLI is a Bun
-# executable; JSC sizes its GC heap from physical RAM, so on this 94 GB box codegen keeps several times its live set
-# as garbage and exceeds `ulimit -v`. The emitted C is byte-identical at every setting.
+# Builds a Bend program with the pinned compiler (scripts/bend.sh), its JavaScriptCore heap sized for a 4 GB machine.
+# The compiler runs on Bun; JSC sizes its GC heap from physical RAM, so on this 94 GB box codegen keeps several times
+# its live set as garbage and exceeds `ulimit -v`. The emitted C is byte-identical at every setting.
 # Env: BUILD_RAM (bytes, default 4000000000), BUILD_VLIMIT (KB, default 16000000, trace 32000000), BUILD_TIMEOUT (s,
 # default 1800), BUILD_MIN_FREE_GB (trace only, default 40).
 set -euo pipefail
@@ -31,6 +33,10 @@ case "${1:-main}" in
       exit 1
     fi
     ;;
+  wasm)
+    entry="$root/seedfinder/main.bend"
+    out="$root/build/wasm/seedfinder.wasm"
+    ;;
   *)
     entry="$1"
     out="${2:-$root/build/seedfinder}"
@@ -41,7 +47,7 @@ start=$(date +%s)
 (
   ulimit -v "$vlimit"
   [[ -n "$clang_override" ]] && export CCC_OVERRIDE_OPTIONS="$clang_override"
-  BUN_JSC_forceRAMSize="${BUILD_RAM:-4000000000}" BEND_NO_TELEMETRY=1 \
-    timeout "${BUILD_TIMEOUT:-1800}" bend "$entry" -o "$out"
+  BUN_JSC_forceRAMSize="${BUILD_RAM:-4000000000}" \
+    timeout "${BUILD_TIMEOUT:-1800}" "$root/scripts/bend.sh" "$entry" -o "$out"
 )
 echo "build.sh: $entry -> $out in $(( $(date +%s) - start )) s"

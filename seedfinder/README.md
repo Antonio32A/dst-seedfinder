@@ -18,6 +18,7 @@ settings are supported (forest, preset SURVIVAL_TOGETHER, every world generation
 
 ```sh
 scripts/build.sh                               # bend main.bend -o build/seedfinder; needs clang 14+
+scripts/build.sh wasm                          # bend main.bend -o build/wasm/seedfinder.wasm; needs Emscripten
 build/seedfinder --threads 22 -- setpiece find [FROM] [TO] [filters...]
 build/seedfinder setpiece show FROM [TO]
 build/seedfinder --threads 22 -- world find [--start-seed S] [--limit N] [--time-limit T] [--json] [--config filters.json] [--platform windows|linux] [--kk native|bend]
@@ -29,7 +30,9 @@ scripts/build.sh trace                         # debug binary: bend trace.bend -
 build/seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
 ```
 
-`scripts/build.sh` runs `bend main.bend -o` with the compiler's JavaScriptCore heap sized for a 4 GB machine
+The compiler is pinned to Bend 2.0.27, the fork in the `bend/` submodule at the repository root (it adds the
+WebAssembly target); `scripts/bend.sh` runs it with the same arguments as the `bend` CLI. `scripts/build.sh` runs
+`bend main.bend -o` with the compiler's JavaScriptCore heap sized for a 4 GB machine
 (`BUN_JSC_forceRAMSize`): a plain `bend main.bend -o` on a large-memory machine lets the compiler's garbage grow
 past 32 GB, while the script needs about 10 GB and emits the same C. For `main` it also passes
 `-mllvm -inline-threshold=3000` to clang (`CCC_OVERRIDE_OPTIONS`): same output, ~15-20% faster worldgen, a longer
@@ -233,7 +236,7 @@ from the seed alone, every attempt).
 
 ## Validation
 
-- `bend PROOF.bend` (~50-65 s, 2.2 GB; `scripts/proof.sh` checks the same law files one by one with
+- `scripts/bend.sh PROOF.bend` (~50-65 s, 2.2 GB; `scripts/proof.sh` checks the same law files one by one with
   their times): golden values from the Lua reference harness and the port lanes' references. The root laws cover set pieces
   (edge seeds 0 / 1 / 2^31 / 2^32-1), the seed-1 prefix (prefab swaps, the task shuffle and the PCG state), the
   whole level table of seed 1, and config parsing (including the default-only settings and `version` checks)

@@ -2,7 +2,8 @@
 # usage: proof.sh [-j JOBS]
 # The proof gate, file by file: checks LAWS.bend and every laws/*.bend on its own (JOBS at a time, default 1, each
 # under a 16 GB cap), prints each file's wall time and peak RSS, and fails when any file fails. It also fails when
-# PROOF.bend holds anything but imports or misses a law file, so `bend PROOF.bend` checks exactly the same laws.
+# PROOF.bend holds anything but imports or misses a law file, so `scripts/bend.sh PROOF.bend` checks exactly the same
+# laws.
 # Budgets: PROOF_FILE_SECS (30) and PROOF_FILE_MB (2000) per file, flagged "over budget".
 set -uo pipefail
 root="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
@@ -23,7 +24,8 @@ trap 'rm -rf "$logs"' EXIT
 start=$(date +%s.%N)
 for i in "${!files[@]}"; do
   while (( $(jobs -rp | wc -l) >= parallel )); do wait -n; done
-  ( ulimit -v 16000000; timeout 900 /usr/bin/time -o "$logs/$i.time" -f '%e %M' bend "${files[$i]}" > "$logs/$i.out" 2>&1
+  ( ulimit -v 16000000
+    timeout 900 /usr/bin/time -o "$logs/$i.time" -f '%e %M' "$root/scripts/bend.sh" "${files[$i]}" > "$logs/$i.out" 2>&1
     echo $? > "$logs/$i.exit" ) &
 done
 wait

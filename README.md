@@ -39,6 +39,10 @@ This runs on Cloudflare Workers, as I was lazy to properly deploy it anywhere el
 This is the Docker image that Vast.ai pulls and runs on boot. It runs Alpine Linux with a small script which runs the 
 seedfinder. The script pulls the JSON config from the backend, runs the seedfinder, and pipes all outputs to the backend.
 
+### bend
+
+We use a custom version of Bend which has WebAssembly support. This is used so users can find seeds in their browser.
+
 ### scripts
 
 This contains a bunch of scripts for building, setting up the build environment and generating other files:
@@ -55,8 +59,13 @@ validate to ensure we haven't broken any world generation code, but now it's mos
 
 To build and run:
 - Linux x86-64.
-- [Bend](https://bend-lang.com) 2.0.27 or newer: `curl -fsSL https://bend-lang.com/install.sh | sh`.
+- Bend 2.0.27, pinned: the compiler is the `bend/` submodule, a Bend 2.0.27 fork with a WebAssembly target
+  ([Antonio32A/bend-wasm](https://github.com/Antonio32A/bend-wasm), branch `wasm-2.0.27`). Fetch it with
+  `git submodule update --init`. `scripts/bend.sh` runs it on the Bun runtime inside an installed
+  [Bend](https://bend-lang.com) CLI (`curl -fsSL https://bend-lang.com/install.sh | sh`). Later Bend versions do not
+  build a correct seedfinder yet (2.0.29 generates wrong worlds).
 - clang 14 or newer.
+- Only for the WebAssembly build: [Emscripten](https://emscripten.org) 3.1.35 or newer (`emcc` on `PATH`, or `EMCC`).
 - About 12 GB of free RAM to build the production binary, 40 GB for the debug (trace) binary.
 
 Only to regenerate the generated data in `seedfinder/data/` (it is committed, so a normal build does not need this):
@@ -69,11 +78,12 @@ Only to regenerate the generated data in `seedfinder/data/` (it is committed, so
 ```sh
 scripts/build.sh                                   # seedfinder/main.bend -> build/seedfinder (5-8 min)
 scripts/proof.sh -j 3                              # the laws (seedfinder/LAWS.bend, seedfinder/laws/); run before committing
-bend seedfinder/main.bend --check-only             # type-check only
+scripts/bend.sh seedfinder/main.bend --check-only  # type-check only
 scripts/build.sh trace                             # debug binary with the worldgen trace stages -> build/seedfinder_trace
+scripts/build.sh wasm                              # browser build -> build/wasm/seedfinder.{wasm,mjs}
 ```
 
-Use `scripts/build.sh` rather than a plain `bend seedfinder/main.bend -o ...`. It caps the compiler's heap
+Use `scripts/build.sh` rather than a plain `scripts/bend.sh seedfinder/main.bend -o ...`. It caps the compiler's heap
 (`BUN_JSC_forceRAMSize`), otherwise the build can grow past 32 GB. It also passes an inline threshold to clang, which
 makes worldgen about 15-20% faster with identical output. Under load the build sometimes fails with "machine stack
 overflowed"; a retry passes.
@@ -92,6 +102,23 @@ CCC_OVERRIDE_OPTIONS='# +-mllvm +-inline-threshold=3000' clang -std=c11 -O3 seed
 The seed finder runs on the CPU only. The worldgen layout (Kamada-Kawai, most of a world's time) is native C
 (`seedfinder/native/`), a foreign IO effect that bend compiles into the same binary; `--kk bend` switches `world find`
 and `gen` to the Bend reference port (`seedfinder/worldsim/layout/kk.bend`, same output, several times slower).
+
+## WebAssembly
+
+`scripts/build.sh wasm` builds the same seedfinder for browsers with Emscripten: `build/wasm/seedfinder.wasm` and
+`seedfinder.mjs`, an ES module whose default export is the Emscripten module factory. The .mjs is also the script of
+the runtime's worker threads, so serve both files side by side, with the .wasm as `application/wasm`. The page that
+loads them must be cross-origin isolated (`Cross-Origin-Opener-Policy: same-origin`,
+`Cross-Origin-Embedder-Policy: require-corp`), because the threads share memory.
+
+The module takes the same arguments as the binary (`arguments`), and the config file goes into its in-memory
+filesystem (`FS.writeFile` in `preRun`). The seedfinder reads `--threads` from `/proc/self/cmdline` to size its
+parallel rounds, so write the NUL-separated argument list there as well. Stdout and stderr arrive through `print`
+and `printErr`. Each instance reserves 2 GiB of memory. Per core it runs at about 90% of the native speed, and
+several `--threads 1` instances on separate seed ranges are faster than one instance with several threads.
+
+The website's local search runs this build, so run `scripts/build.sh wasm` before building the website: its
+`npm run build` copies `build/wasm/` into `website/public/wasm/`.
 
 # Running
 
