@@ -1,24 +1,58 @@
 #!/usr/bin/env python3
-"""Writes config.schema.json (JSON Schema 2020-12 for search config v1, docs/config.md) from the caps of the spec
-and the names of scripts/catalog/catalog.json. `-` prints it instead.
+"""Writes config.schema.json (JSON Schema 2020-12 for search config v1, docs/config.md) from the caps the finder
+enforces (seedfinder/filters/) and the names of scripts/catalog/catalog.json. `-` prints it instead. Fails when the caps
+table of docs/config.md (its rows in the order of WEBSITE_CAPS) or the website's caps disagree with the finder.
 
 Run from the project root (regen.sh runs it after the catalog modules):
     python3 scripts/gen/gen_schema.py
 """
 import json
+import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "scripts" / "catalog" / "catalog.json"
 OUTPUT = ROOT / "config.schema.json"
+FILTERS = ROOT / "seedfinder" / "filters"
+SPEC = ROOT / "docs" / "config.md"
+WEBSITE_CONFIG = ROOT / "website" / "lib" / "seedfinder-config.ts"
 METRICS = ("straight", "walk")
 ORDERS = ("any", "fixed")
 PLATFORMS = ("windows", "linux")
 DEFAULT_PLATFORM = "windows"
 MAX_INTEGER = 4294967295
 MAX_DISTANCE = 1000000
-CAPS = {"entries": 8, "rules": 16, "prefab ids": 16, "set pieces": 16, "tasks": 25, "stops": 6, "tiles": 16}
+WEBSITE_CAPS = {"entries": "MAX_CRITERIA", "rules": "MAX_RULES_PER_SECTION", "prefab ids": "MAX_PREFAB_IDS",
+                "set pieces": "MAX_SET_PIECES_PER_RULE", "tasks": "MAX_TASKS_PER_LIST", "stops": "MAX_ROUTE_STOPS",
+                "tiles": "MAX_TILE_NAMES"}
+
+
+def caps():
+    found = {}
+    for path in sorted(FILTERS.glob("*.bend")):
+        for cap, noun in re.findall(r'capped\([^,]+, (\d+), "([^"]+)"', path.read_text(encoding="utf-8")):
+            found.setdefault(noun, set()).add(int(cap))
+    if found.keys() != WEBSITE_CAPS.keys() or any(len(values) != 1 for values in found.values()):
+        sys.exit(f"gen_schema.py: the caps in {FILTERS.relative_to(ROOT)} are not one per {list(WEBSITE_CAPS)}: "
+                 f"{found}")
+    finder = {noun: min(found[noun]) for noun in WEBSITE_CAPS}
+    section = SPEC.read_text(encoding="utf-8").split("\n## 6. Caps\n", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("|")][2:]
+    spec = dict(zip(WEBSITE_CAPS, (int(re.search(r"\d+", row.split("|")[-2]).group()) for row in rows)))
+    if len(rows) != len(WEBSITE_CAPS):
+        spec["rows"] = len(rows)
+    website_text = WEBSITE_CONFIG.read_text(encoding="utf-8")
+    website = {noun: int(re.search(rf"export const {name} = (\d+);", website_text).group(1))
+               for noun, name in WEBSITE_CAPS.items()}
+    for source, got in ((SPEC, spec), (WEBSITE_CONFIG, website)):
+        if got != finder:
+            sys.exit(f"gen_schema.py: the caps of {source.relative_to(ROOT)} ({got}) differ from the finder's "
+                     f"({finder})")
+    return finder
+
+
+CAPS = caps()
 
 
 def ref(name):

@@ -88,5 +88,3 @@ ln -s "$PWD/scripts/groundtruth/groundtruth-worldgen" "<DST install>/mods/"  # o
 scripts/groundtruth/run_worldgen.sh fresh 1-10  # one launch per seed -> build/groundtruth/data/worlds/<seed>.json
 python3 scripts/groundtruth/world_dump.py --platform linux build/groundtruth/data/worlds/1.json 1.dstw
 ```
-
-`run_worldgen.sh` reads the install path from `DST_DIR`.

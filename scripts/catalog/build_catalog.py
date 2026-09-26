@@ -23,7 +23,7 @@ INPUTS = os.path.join(HERE, "inputs")
 SCRIPTS = os.path.join(ROOT, "build/deps/game-scripts")
 WORLDSIM = os.environ.get("WORLDSIM_DIR", "")
 REALGEN = os.environ.get("REALGEN_DIR", "")
-GAME_DIR = os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together")
+GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together"))
 
 sys.path.insert(0, HERE)
 import names as handnames  # noqa: E402

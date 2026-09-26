@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # usage: run_worldgen.sh [loop|fresh] [seeds]
-#   loop  (default): one offline dedicated server launch that generates every seed (first seed fresh, rest looped)
-#   fresh          : one launch per seed, so every world is a genuine fresh generation
+#   loop           : one offline dedicated server launch that generates every seed (first seed fresh, rest looped)
+#   fresh (default): one launch per seed, so every world is a genuine fresh generation
 #   seeds          : comma separated seeds or ranges, default 1-10
 # Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder. Logs go to build/groundtruth/logs/worldgen/,
 # worlds to build/groundtruth/data/worlds/ (GT_WORLDS_DIR overrides).
@@ -12,7 +12,7 @@ work="$(cd "$here/../.." && pwd)/build/groundtruth"
 mode="${1:-fresh}"
 seeds="${2:-1-10}"
 default_dst="$HOME/.local/share/Steam/steamapps/common/Don't Starve Together"
-dst="${DST_DIR:-$default_dst}"
+dst="${DST_GAME:-$default_dst}"
 storage="$work/storage"
 cluster_dir="$storage/DoNotStarveTogether/Cluster_GTW"
 server_log="$cluster_dir/Master/server_log.txt"

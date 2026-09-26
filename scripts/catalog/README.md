@@ -4,9 +4,8 @@ Generates `catalog.json`: the settings, prefab swaps, tasks, set pieces, prefabs
 (`SURVIVAL_TOGETHER`), used by the seedfinder data generators and the website. It's built from the game scripts plus
 statistics over a sample of generated worlds.
 
-Everything here needs `scripts/setup.sh` to have been run, and the game installed at
-`~/.local/share/Steam/steamapps/common/Don't Starve Together` (without it the catalog silently loses its icons and
-game build).
+Everything here needs `scripts/setup.sh` to have been run, and the game installed through Steam (`DST_GAME` overrides
+the install path; without the game the catalog silently loses its icons and game build).
 
 ## Rebuilding from the committed inputs
 

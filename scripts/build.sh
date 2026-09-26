@@ -1,18 +1,12 @@
 #!/usr/bin/env bash
 # usage: build.sh [main | trace | wasm | ENTRY.bend [OUT]]   (OUT ending in .c emits C only, .wasm WebAssembly)
-#   (none), main  seedfinder/main.bend  -> build/seedfinder        production binary, 16 GB cap, clang with
-#                 -mllvm -inline-threshold=3000 (CCC_OVERRIDE_OPTIONS; same output, ~15-20% faster worldgen)
-#   trace         seedfinder/trace.bend -> build/seedfinder_trace  debug binary with every lane's trace stages, 32 GB
-#                 cap; refuses to start unless `free -g` shows at least BUILD_MIN_FREE_GB (default 40) available
-#   wasm          seedfinder/main.bend  -> build/wasm/seedfinder.wasm and its ES module seedfinder.mjs, for browsers
-#                 (Emscripten 3.1.35+: emcc on PATH, or EMCC)
-#   ENTRY [OUT]   any program (lane test binaries), 16 GB cap
-#
-# Builds a Bend program with the pinned compiler (scripts/bend.sh), its JavaScriptCore heap sized for a 4 GB machine.
-# The compiler runs on Bun; JSC sizes its GC heap from physical RAM, so on this 94 GB box codegen keeps several times
-# its live set as garbage and exceeds `ulimit -v`. The emitted C is byte-identical at every setting.
-# Env: BUILD_RAM (bytes, default 4000000000), BUILD_VLIMIT (KB, default 16000000, trace 32000000), BUILD_TIMEOUT (s,
-# default 1800), BUILD_MIN_FREE_GB (trace only, default 40).
+#   (none), main  seedfinder/main.bend  -> build/seedfinder
+#   trace         seedfinder/trace.bend -> build/seedfinder_trace, the debug binary with the trace stages (needs
+#                 BUILD_MIN_FREE_GB of free RAM)
+#   wasm          seedfinder/main.bend  -> build/wasm/seedfinder.{wasm,mjs} (emcc on PATH, or EMCC)
+#   ENTRY [OUT]   any program
+# The compiler's JavaScriptCore heap is capped (BUILD_RAM) because JSC sizes it from physical RAM, and on a big machine
+# the build then outgrows its `ulimit -v` (BUILD_VLIMIT). BUILD_TIMEOUT bounds the build.
 set -euo pipefail
 root="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
 vlimit="${BUILD_VLIMIT:-16000000}"

@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # usage: proof.sh [-j JOBS]
-# The proof gate, file by file: checks LAWS.bend and every laws/*.bend on its own (JOBS at a time, default 1, each
-# under a 16 GB cap), prints each file's wall time and peak RSS, and fails when any file fails. It also fails when
-# PROOF.bend holds anything but imports or misses a law file, so `scripts/bend.sh PROOF.bend` checks exactly the same
-# laws.
-# Budgets: PROOF_FILE_SECS (30) and PROOF_FILE_MB (2000) per file, flagged "over budget".
+# Checks LAWS.bend and every laws/*.bend on its own, JOBS at a time, and fails when any of them fails or when PROOF.bend
+# does not import exactly them. Files over PROOF_FILE_SECS or PROOF_FILE_MB are flagged "over budget".
 set -uo pipefail
 root="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
 parallel=1

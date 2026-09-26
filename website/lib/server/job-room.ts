@@ -278,10 +278,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         });
     }
 
-    /**
-     * `POST /api/runner/<id>`: appends output at `X-Offset`, and ends the search on the chunk with `X-Exit` (replying at
-     * once; the teardown and settlement follow in the alarm). Output past `MAX_OUTPUT_BYTES` ends it as failed.
-     */
+    /** `POST /api/runner/<id>`: appends output at `X-Offset`, and ends the search on the chunk with `X-Exit`. */
     async runnerOutput(authorization: string | null, offsetHeader: string | null, exitHeader: string | null, body: Uint8Array): Promise<Response> {
         const refusal = await this.refuseRunner(authorization, RUNNER_POST_STATUSES);
         if (refusal !== null) return refusal;
