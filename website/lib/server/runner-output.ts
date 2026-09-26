@@ -38,7 +38,7 @@ export interface LineTail {
 export type ExitKind = "done" | "config-error" | "crash";
 
 const PROGRESS_LINE = /^scanned (\d+)\/\d+ matches (\d+) \((\d+) seeds\/s\)$/;
-const WORLDGEN_PROGRESS_LINE = /^search: scanned (\d+), (?:levels (\d+), )?worlds (\d+), generating (\d+)\b.*\bhits (\d+)\b/;
+const WORLDGEN_PROGRESS_LINE = /^search: scanned (\d+), (?:levels \d+, )?worlds (\d+), generating (\d+)\b.*\bhits (\d+)\b/;
 const HIT_LINE = /^(\d+) (\{.*\})$/;
 const DONE_LINE = /^done (\{.*\})$/;
 const CONFIG_ERROR_LINE = /^config: (.*)$/;
@@ -65,13 +65,13 @@ const LINE_PARSERS: [RegExp, LineParser][] = [
   ],
   [
     WORLDGEN_PROGRESS_LINE,
-    ([, scanned, levels, generated, generating, hits]) => ({
+    ([, scanned, generated, generating, hits]) => ({
       kind: "progress",
       progress: {
         scanned: Number(scanned),
         hits: Number(hits),
         seedsPerSecond: null,
-        worlds: { levels: levels === undefined ? null : Number(levels), generated: Number(generated), generating: Number(generating) },
+        worlds: { generated: Number(generated), generating: Number(generating) },
       },
     }),
   ],

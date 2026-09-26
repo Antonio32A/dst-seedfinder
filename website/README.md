@@ -62,12 +62,12 @@ unsettled searches is raised to 1000, and a larger balance (granted by hand in D
 up front, atomically with the check that the user has fewer than 3 active searches (`MAX_ACTIVE_SEARCHES`, counted
 inside the reservation's `INSERT ... SELECT`).
 
-Credits follow the machine's price: `credits = 40 × seconds × $/h`, so 1000 credits buy 100 s on a $0.25/h machine
-(`MAX_DOLLARS_PER_HOUR`, the most an offer may cost) and 400 s on a $0.10/h one. On top of that there is a starting
+Credits follow the machine's price: `credits = 40 × seconds × $/h`, so 1000 credits buy 50 s on a $0.50/h machine
+(`MAX_DOLLARS_PER_HOUR`, the most an offer may cost) and 250 s on a $0.10/h one. On top of that there is a starting
 fee of 10 credits (`STARTING_FEE`), part of the max cost, charged once a machine has been rented for the search (also
 when it is cancelled while starting), but not when no machine could be found or none would boot. The runner's
 `--time-limit` is `(maxCost − 10) ÷ (40 × $/h)`, worked out for each offer tried and capped at 4 hours
-(`MAX_SEARCH_SECONDS`), so 100 credits buy 9 s at $0.25/h. A search is charged the fee plus its search time, from the
+(`MAX_SEARCH_SECONDS`), so 100 credits buy 4.5 s at $0.50/h. A search is charged the fee plus its search time, from the
 runner's first config GET to its final POST (or the cancel, the deadline, or its last POST when contact is lost),
 rounded up to a hundredth and capped at the max cost; queueing and booting are free apart from the fee. The rest is
 refunded when the search settles.
@@ -80,8 +80,8 @@ that owns the whole lifecycle, and a singleton `Dispatcher` caps live instances 
 - `queued`: waiting for a Dispatcher slot; the room is told its 1-based queue position. At 200 waiting searches,
   `POST /api/jobs` answers 503 before reserving anything.
 - `starting`: before each of up to 3 attempts the room searches `/bundles/` again; `lib/server/offers.ts`
-  (`pickOffers`, the replaceable offer algorithm) ranks the offers by cores × GHz ÷ $/h (at least 200 MB of RAM per
-  core) and the room rents the best one it hasn't tried, giving it 3 minutes to fetch its config. Only a definite
+  (`pickOffers`, the replaceable offer algorithm) ranks the offers by cores × GHz ÷ $/h (verified machines only, at least
+  200 MB of RAM per core) and the room rents the best one it hasn't tried, giving it 3 minutes to fetch its config. Only a definite
   refusal of an offer (vast.ai 4xx) or a boot timeout uses up an attempt; vast.ai hiccups (429, 5xx, timeouts) are
   retried every 20 s. Nothing boots within 3 attempts or 10 minutes → `failed`, charged 0.
 - `running`: from the runner's first `GET /api/runner/<id>`. The runner POSTs its output every second with `X-Offset`

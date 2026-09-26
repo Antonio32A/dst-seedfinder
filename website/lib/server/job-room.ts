@@ -48,6 +48,7 @@ const RETRY_MS = 30_000;
 const KEEP_FINISHED_MS = 24 * 60 * 60_000;
 const DESTROY_RETRY_WINDOW_MS = 60 * 60_000;
 const HEARTBEAT_MS = 20_000;
+const SPEED_WINDOW_MS = 30_000;
 const MAX_RESULT_BYTES = 1_000_000;
 
 const NO_MACHINE = "No machine was free for the search. Your credits were refunded.";
@@ -152,6 +153,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
   private readonly subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private wrapping: Promise<void> | null = null;
+  private speedSamples: { at: number; scanned: number }[] = [];
 
   private readonly alarmSteps: Record<JobStatus, (state: RoomState) => Promise<void>> = {
     queued: () => this.requeue(),
@@ -455,6 +457,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     );
     const { doomed, instanceId } = this.state as RoomState;
     const targets = [...new Set([...doomed, ...(listed ?? [])])].filter((id) => id !== instanceId);
+    if (targets.length > 0) console.warn(`search ${this.spec.id}: destroying instances [${targets.join(", ")}], keeping ${instanceId ?? "none"}`);
     const outcomes = await Promise.allSettled(targets.map((id) => destroyInstance(apiKey, id)));
     const survivors = targets.filter((_, index) => outcomes[index].status === "rejected");
     this.save({ doomed: survivors, leaked: (this.state as RoomState).leaked && listed === null });
@@ -510,8 +513,11 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
 
   private readonly lineEffects: { [K in OutputLine["kind"]]: (line: Extract<OutputLine, { kind: K }>) => JobEvent | null } = {
     progress: ({ progress }) => {
-      const searchSeconds = (Date.now() - ((this.state as RoomState).startedAt ?? Date.now())) / 1000;
-      const seedsPerSecond = progress.seedsPerSecond ?? Math.round((progress.worlds?.levels ?? progress.scanned) / Math.max(searchSeconds, 1));
+      const now = Date.now();
+      this.speedSamples = [...this.speedSamples.filter(({ at }) => at >= now - SPEED_WINDOW_MS), { at: now, scanned: progress.scanned }];
+      const [oldest] = this.speedSamples;
+      const since = oldest.at < now ? oldest : { at: (this.state as RoomState).startedAt ?? now, scanned: 0 };
+      const seedsPerSecond = progress.seedsPerSecond ?? Math.round(((progress.scanned - since.scanned) * 1000) / Math.max(now - since.at, 1000));
       this.save({ progress: { ...progress, seedsPerSecond } });
       return null;
     },

@@ -19,12 +19,8 @@ export interface Machine {
   dollarsPerHour: number;
 }
 
-/**
- * How far a world-filter search is: seeds through the cheap level-table scan (`null` from finders that don't print it),
- * worlds fully generated so far, and worlds being generated right now.
- */
+/** How far a world-filter search is: worlds fully generated so far, and worlds being generated right now. */
 export interface WorldProgress {
-  levels: number | null;
   generated: number;
   generating: number;
 }

@@ -27,7 +27,7 @@ interface LiveText {
 const count = (amount: number, noun: string) => `${COMPACT.format(amount)} ${amount === 1 ? noun : `${noun}s`}`;
 
 const progressRows = ({ scanned, seedsPerSecond, worlds }: JobProgress): LiveRow[] => [
-  { label: "Scanned", value: count(worlds?.levels ?? scanned, "seed"), note: "quick check of biomes and set pieces" },
+  { label: "Checked", value: count(scanned, "seed"), note: "every seed from the start seed up to here is decided" },
   ...(worlds
     ? [
         { label: "Generating", value: count(worlds.generating, "world"), note: "built in full to check distances and turfs" },
