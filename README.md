@@ -45,7 +45,7 @@ This contains a bunch of scripts for building, setting up the build environment 
 - `catalog` - Generates the prefab catalog for the website using the game scripts.
 - `gen` - Generates a lot of data for the seedfinder. A lot of the Bend code is auto generated using these scripts, so
 when the game updates this code should still work (unless Klei changes a lot of stuff in the engine). 
-- `groundtruth` - Spins up a dedicated DST with a custom mod to dump world generation data. This was originally used to
+- `groundtruth` - Spins up a dedicated DST server with a custom mod to dump world generation data. This was originally used to
 validate to ensure we haven't broken any world generation code, but now it's mostly used to port the tool to newer versions.
 - `harness` - Contains the Lua harness that lets us run some game scripts without actually running the game.
 
