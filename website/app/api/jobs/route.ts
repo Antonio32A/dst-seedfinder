@@ -1,12 +1,12 @@
 import { env } from "cloudflare:workers";
-import { creditsToUnits, formatCredits, unitsToCredits } from "@/lib/credits";
-import { MAX_ACTIVE_SEARCHES } from "@/lib/job-events";
-import { dispatcherStub, jobRoomStub, MAX_WAITING } from "@/lib/server/dispatcher";
+import { DEFAULT_PLATFORM, DEFAULT_START_SEED } from "@/lib/config/seedfinder-config";
+import { validateJobRequest } from "@/lib/config/validate-config";
+import { creditsToUnits, formatCredits, unitsToCredits } from "@/lib/jobs/credits";
+import { MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
+import { getCurrentUser } from "@/lib/server/auth/session";
 import { clientIp, isCrossOrigin, json, jsonError } from "@/lib/server/http";
-import { ACTIVE_STATUS_SQL, type JobRow, loadJob, settleJob, toJobView } from "@/lib/server/jobs";
-import { getCurrentUser } from "@/lib/server/session";
-import { DEFAULT_PLATFORM, DEFAULT_START_SEED } from "@/lib/seedfinder-config";
-import { validateJobRequest } from "@/lib/validate-config";
+import { dispatcherStub, jobRoomStub, MAX_WAITING } from "@/lib/server/jobs/dispatcher";
+import { ACTIVE_STATUS_SQL, type JobRow, loadJob, settleJob, toJobView } from "@/lib/server/jobs/jobs";
 
 const RECENT_JOBS = 20;
 const MAX_BODY_BYTES = 512 * 1024;

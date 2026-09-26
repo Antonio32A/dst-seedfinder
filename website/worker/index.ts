@@ -1,9 +1,9 @@
 import handler from "vinext/server/fetch-handler";
-import { CROSS_ORIGIN_ISOLATION } from "../lib/server/http";
-import { sweep } from "../lib/server/sweeper";
+import { CROSS_ORIGIN_ISOLATION } from "@/lib/server/http";
+import { sweep } from "@/lib/server/jobs/sweeper";
 
-export { Dispatcher } from "../lib/server/dispatcher";
-export { JobRoom } from "../lib/server/job-room";
+export { Dispatcher } from "@/lib/server/jobs/dispatcher";
+export { JobRoom } from "@/lib/server/jobs/job-room";
 
 export default {
     fetch: async (request, env, ctx) => {

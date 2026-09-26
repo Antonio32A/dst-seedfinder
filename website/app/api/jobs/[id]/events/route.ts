@@ -1,9 +1,9 @@
 import { env } from "cloudflare:workers";
-import { jobRoomStub } from "@/lib/server/dispatcher";
+import { getCurrentUser } from "@/lib/server/auth/session";
 import { jsonError } from "@/lib/server/http";
-import { closedEventStream, finishedEvents } from "@/lib/server/job-stream";
-import type { JobRow } from "@/lib/server/jobs";
-import { getCurrentUser } from "@/lib/server/session";
+import { jobRoomStub } from "@/lib/server/jobs/dispatcher";
+import { closedEventStream, finishedEvents } from "@/lib/server/jobs/job-stream";
+import type { JobRow } from "@/lib/server/jobs/jobs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
     const user = await getCurrentUser();

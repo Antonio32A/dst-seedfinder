@@ -1,0 +1,55 @@
+.search {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.issues {
+    list-style: none;
+    margin: 12px 0 0;
+}
+
+.search__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px 32px;
+}
+
+.max-cost {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 12px;
+}
+
+.start-seed,
+.start-seed > span,
+.threads > .seg__legend {
+    display: block;
+}
+
+.start-seed input {
+    display: block;
+    width: 14ch;
+    max-width: 100%;
+    padding: 4px 8px;
+    font-size: 0.9em;
+}
+
+.max-cost__custom input {
+    width: 10ch;
+    padding: 4px 8px;
+    font-size: 0.9em;
+}
+
+.search__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+}
+
+.search__cost strong {
+    color: var(--accent);
+}

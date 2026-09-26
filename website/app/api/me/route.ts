@@ -1,8 +1,8 @@
-import { DAILY_CREDITS, unitsToCredits } from "@/lib/credits";
-import { discordAvatarUrl } from "@/lib/server/discord";
+import { DAILY_CREDITS, unitsToCredits } from "@/lib/jobs/credits";
+import { discordAvatarUrl } from "@/lib/server/auth/discord";
+import { getCurrentUser } from "@/lib/server/auth/session";
+import { nextResetAt } from "@/lib/server/auth/users";
 import { json } from "@/lib/server/http";
-import { getCurrentUser } from "@/lib/server/session";
-import { nextResetAt } from "@/lib/server/users";
 
 export async function GET() {
     const user = await getCurrentUser();

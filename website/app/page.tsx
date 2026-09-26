@@ -1,4 +1,4 @@
-import SeedFinderApp from "@/components/SeedFinderApp";
+import SeedFinderApp from "@/components/shell/SeedFinderApp";
 
 export default function Home() {
     return <SeedFinderApp/>;

@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
 import { type NextRequest, NextResponse } from "next/server";
-import { discordRedirectUri, fetchDiscordProfile } from "@/lib/server/discord";
+import { discordRedirectUri, fetchDiscordProfile } from "@/lib/server/auth/discord";
+import { decodeOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_COOKIE_OPTIONS } from "@/lib/server/auth/oauth-state";
+import { createSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS, SESSION_TTL_SECONDS } from "@/lib/server/auth/session";
+import { upsertUser } from "@/lib/server/auth/users";
 import { clientIp, jsonError } from "@/lib/server/http";
-import { decodeOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_COOKIE_OPTIONS } from "@/lib/server/oauth-state";
-import { createSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS, SESSION_TTL_SECONDS } from "@/lib/server/session";
-import { upsertUser } from "@/lib/server/users";
 
 export async function GET(request: NextRequest) {
     const { origin, searchParams } = request.nextUrl;

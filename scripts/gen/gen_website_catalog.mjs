@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const catalogPath = process.argv[2] ?? path.join(root, "scripts", "catalog", "catalog.json");
-const outPath = path.join(root, "website", "lib", "world-catalog.ts");
+const outPath = path.join(root, "website", "lib", "catalog", "world.ts");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
 
 const GROUP_ORDER = [

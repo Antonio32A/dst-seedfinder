@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { deleteSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from "@/lib/server/auth/session";
 import { isCrossOrigin, jsonError } from "@/lib/server/http";
-import { deleteSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from "@/lib/server/session";
 
 export async function POST(request: NextRequest) {
     if (isCrossOrigin(request)) return jsonError(403, "Requests from other sites aren't allowed.");

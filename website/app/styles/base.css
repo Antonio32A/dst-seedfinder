@@ -1,0 +1,302 @@
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrainsMono-Italic.woff2") format("woff2");
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrainsMono-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrainsMono-BoldItalic.woff2") format("woff2");
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap;
+}
+
+:root {
+    --radius: 0;
+    --font-size: 18px;
+    --line-height: 1.54em;
+    --background: #f5f5fa;
+    --foreground: #000000;
+    --accent: #fc5821;
+    --danger: #d0312d;
+    --surface: color-mix(in srgb, var(--foreground) 5%, transparent);
+    --border: color-mix(in srgb, var(--foreground) 25%, transparent);
+    --muted: color-mix(in srgb, var(--foreground) 65%, transparent);
+    --separator: color-mix(in srgb, var(--foreground) 10%, transparent);
+    --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+    --danger-soft: color-mix(in srgb, var(--danger) 15%, transparent);
+    --disabled-opacity: 0.45;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not(.light):not(.dark) {
+        --background: #121212;
+        --foreground: #eeeeee;
+        --accent: #7eddfa;
+        --danger: #ff7b72;
+        color-scheme: dark;
+    }
+}
+
+html.dark {
+    --background: #121212;
+    --foreground: #eeeeee;
+    --accent: #7eddfa;
+    --danger: #ff7b72;
+    color-scheme: dark;
+}
+
+html {
+    box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: inherit;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    font-family: "JetBrains Mono", Monaco, Consolas, "Ubuntu Mono", monospace;
+    font-size: var(--font-size);
+    font-weight: 400;
+    line-height: var(--line-height);
+    background-color: var(--background);
+    color: var(--foreground);
+    text-rendering: optimizeLegibility;
+    font-variant-ligatures: contextual;
+    -webkit-text-size-adjust: 100%;
+}
+
+h1 {
+    font-size: calc(var(--font-size) * 1.45);
+}
+
+h2 {
+    font-size: calc(var(--font-size) * 1.35);
+}
+
+h3 {
+    font-size: calc(var(--font-size) * 1.15);
+}
+
+h4,
+h5,
+h6 {
+    font-size: var(--font-size);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+button,
+.button {
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+p {
+    margin: 10px 0;
+}
+
+a {
+    color: var(--accent);
+}
+
+ul,
+ol {
+    margin-left: 4ch;
+}
+
+li::marker {
+    color: var(--accent);
+}
+
+code {
+    font-family: inherit;
+    background: var(--surface);
+    color: color-mix(in srgb, var(--foreground) 5%, var(--accent));
+    border: 1px solid var(--border);
+    padding: 0 6px;
+    margin: 0 2px;
+    font-size: 0.95em;
+}
+
+pre {
+    tab-size: 2;
+    background: var(--surface);
+    color: color-mix(in srgb, var(--foreground) 5%, var(--accent));
+    padding: 20px 10px;
+    font-size: 0.85em;
+    overflow: auto;
+    max-height: 420px;
+    border: 1px solid var(--border);
+}
+
+pre code {
+    background: none;
+    border: none;
+    margin: 0;
+    padding: 0;
+    font-size: inherit;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: var(--disabled-opacity);
+}
+
+button:focus-visible,
+.button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+    background: transparent;
+    color: var(--foreground);
+    border: 1px solid var(--foreground);
+    border-radius: var(--radius);
+    padding: 10px;
+    font: inherit;
+    appearance: none;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    border-color: var(--accent);
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+    opacity: var(--disabled-opacity);
+}
+
+select {
+    background-image: linear-gradient(45deg, transparent 50%, var(--foreground) 50%),
+    linear-gradient(135deg, var(--foreground) 50%, transparent 50%);
+    background-position: calc(100% - 20px), calc(100% - 15px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+}
+
+select option {
+    background: var(--background);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+    flex: 0 0 auto;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    box-shadow: inset 0 0 0 3px var(--background);
+    cursor: pointer;
+}
+
+input[type="radio"] {
+    border-radius: 20px;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+    background: var(--accent);
+}
+
+input[type="checkbox"]:indeterminate {
+    background: linear-gradient(var(--accent), var(--accent)) center / 50% 4px no-repeat;
+}
+
+input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+textarea {
+    width: 100%;
+    min-height: 140px;
+    resize: vertical;
+    font-size: 0.85em;
+}
+
+details > summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    list-style: none;
+    width: fit-content;
+}
+
+details > summary::-webkit-details-marker {
+    display: none;
+}
+
+details > summary::before {
+    content: "+ ";
+}
+
+details[open] > summary::before {
+    content: "- ";
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+@media (max-width: 684px) {
+    :root {
+        --font-size: 15px;
+    }
+}

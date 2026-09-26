@@ -62,7 +62,7 @@ database. Apply new migrations (`migrations/`) with the last command whenever on
 
 ## Prefab catalog
 
-`lib/world-catalog.ts` is generated from `scripts/catalog/catalog.json`. Regenerate it from the repository root after
+`lib/catalog/world.ts` is generated from `scripts/catalog/catalog.json`. Regenerate it from the repository root after
 the catalog changes:
 
 ```sh

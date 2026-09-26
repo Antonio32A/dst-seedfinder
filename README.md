@@ -4,13 +4,13 @@
 
 A seed finder for Don't Starve Together. Supports forest worlds on version `747465` on Windows and Linux.
 
-This is mostly a toy project, the majority of the code is very sloppy and not production ready. 
+This is mostly a toy project, the majority of the code is very sloppy and not production ready.
 
 ## Structure
 
 ### seedfinder 
 
-The real deal. This does all the heavy lifting. It's the majority of the game's world geneneration code ported to Bend and
+The real deal. This does all the heavy lifting. It's the majority of the game's world generation code ported to Bend and
 optimized to generate worlds as fast as possible. 
 
 It uses [Bend](https://github.com/bendlang/bend) as it's a pretty fast language, and I honestly just wanted to fuck 

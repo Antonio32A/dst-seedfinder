@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
-import { jobRoomStub } from "@/lib/server/dispatcher";
-import { MAX_CHUNK_BYTES } from "@/lib/server/runner-output";
+import { MAX_CHUNK_BYTES } from "@/lib/jobs/runner-output";
+import { jobRoomStub } from "@/lib/server/jobs/dispatcher";
 
 const RUNNER_AUTHORIZATION = /^Bearer [0-9a-f]{64}$/;
 
