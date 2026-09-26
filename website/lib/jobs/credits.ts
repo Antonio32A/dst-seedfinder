@@ -2,12 +2,12 @@ const UNITS_PER_CREDIT = 100;
 const CREDITS_PER_DOLLAR_HOUR_SECOND = 40;
 
 export const MAX_DOLLARS_PER_HOUR = 0.5;
-export const DAILY_CREDITS = 1000;
+export const DAILY_CREDITS = 5000;
 export const DEFAULT_MAX_COST = 100;
 export const MIN_MAX_COST = 20;
 export const MAX_MAX_COST = 1_000_000;
 export const MAX_COST_OPTIONS = [50, 100, 250, 500, 1000];
-export const STARTING_FEE = 10;
+export const STARTING_FEE = 100;
 export const MAX_SEARCH_SECONDS = 4 * 60 * 60;
 
 const SECONDS = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
