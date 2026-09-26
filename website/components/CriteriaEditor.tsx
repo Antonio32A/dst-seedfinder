@@ -36,7 +36,6 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
             group={group}
             index={index}
             total={state.groups.length}
-            platform={state.platform}
             onChange={(changed) => setGroups((groups) => groups.map((item) => (item.key === changed.key ? changed : item)))}
             onRemove={() => setGroups((groups) => groups.filter((item) => item.key !== group.key))}
           />

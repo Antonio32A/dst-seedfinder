@@ -161,7 +161,7 @@ export default function JobsList({ account, onNotify }: JobsListProps) {
         title="Search further?"
         message={
           pending
-            ? `Same search, starting at seed ${pending.startSeed}, for up to ${pending.job.wanted} more seeds. Reserves ${formatCredits(pending.job.maxCost)} credits, unused ones are refunded.`
+            ? `Same search, starting at seed ${pending.startSeed}, for up to ${pending.job.wanted} more ${pending.job.wanted === 1 ? "seed" : "seeds"}. Reserves ${formatCredits(pending.job.maxCost)} credits, unused ones are refunded.`
             : ""
         }
         confirmLabel="Search further"

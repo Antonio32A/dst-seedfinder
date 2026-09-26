@@ -8,8 +8,6 @@ import { WANTED_OPTIONS, type Issue } from "@/lib/search-state";
 import {
   PLATFORM_LABELS,
   PLATFORMS,
-  usesWorldFilters,
-  worldFiltersUnavailable,
   type Platform,
   type SeedfinderConfig,
 } from "@/lib/seedfinder-config";
@@ -31,10 +29,8 @@ interface SearchPanelProps {
   onNotify: (text: string) => void;
 }
 
-function blockingProblem(issues: Issue[], config: SeedfinderConfig, credits: number | undefined, maxCost: number): string | undefined {
+function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number): string | undefined {
   if (issues.some((issue) => issue.severity === "error")) return "Fix the errors above first.";
-  const unavailable = usesWorldFilters(config) ? worldFiltersUnavailable(config.platform) : undefined;
-  if (unavailable) return `${unavailable} Remove the world details to search.`;
   if (credits !== undefined && creditsToUnits(credits) < creditsToUnits(maxCost)) {
     return `Max cost is ${formatCredits(maxCost)} credits but you have ${formatCredits(credits)}. Lower it or wait for the 00:00 UTC refill.`;
   }
@@ -87,7 +83,7 @@ export default function SearchPanel({
   const [error, setError] = useState("");
   const { user, jobs } = account;
   const activeJob = jobs.find((job) => isActiveStatus(job.status));
-  const problem = activeJob ? undefined : blockingProblem(issues, config, user?.credits, maxCost);
+  const problem = activeJob ? undefined : blockingProblem(issues, user?.credits, maxCost);
 
   const submit = async () => {
     const checked = validateJobRequest({ config, wanted, maxCost });

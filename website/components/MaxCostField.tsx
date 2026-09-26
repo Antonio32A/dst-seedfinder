@@ -67,7 +67,7 @@ export default function MaxCostField({ value, wanted, onChange }: MaxCostFieldPr
       </div>
       <p className="hint">
         {STARTING_FEE} credits to start a server, then up to {SECONDS.format(timeLimitSeconds(value, MAX_DOLLARS_PER_HOUR))} s of search on a $
-        {MAX_DOLLARS_PER_HOUR}/h server, longer on cheaper ones. Stops at {wanted} seeds or when the credits run out. Unused
+        {MAX_DOLLARS_PER_HOUR}/h server, longer on cheaper ones. Stops at {wanted} {wanted === 1 ? "seed" : "seeds"} or when the credits run out. Unused
         credits are refunded.
       </p>
     </div>

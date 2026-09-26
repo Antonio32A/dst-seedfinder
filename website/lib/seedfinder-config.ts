@@ -28,15 +28,11 @@ export const ROUTE_ORDERS = ["any", "fixed"] as const;
 export type RouteOrder = (typeof ROUTE_ORDERS)[number];
 export const DEFAULT_ROUTE_ORDER: RouteOrder = "any";
 
-export const WORLD_FILTER_SECTIONS = ["counts", "distances", "tiles", "routes"] as const;
-
 export const PLATFORMS = ["windows", "linux"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export const DEFAULT_PLATFORM: Platform = "windows";
 export const PLATFORM_LABELS: Record<Platform, string> = { windows: "Windows", linux: "Linux" };
 
-export const WORLD_FILTERS_LIVE: Record<Platform, boolean> = { windows: false, linux: false };
-export const WORLD_FILTERS_UNAVAILABLE = "World filters can't be searched yet.";
 
 export type PrefabSet = string | string[];
 export type TileSet = string | string[];
@@ -115,19 +111,4 @@ export interface JobRequest {
   wanted: number;
   maxCost: number;
   startSeed?: number;
-}
-
-/** Whether any criteria entry has a world filter (`counts`, `distances`, `tiles`, `routes`), which needs generated worlds. */
-export function usesWorldFilters(config: SeedfinderConfig): boolean {
-  return (config.criteria ?? []).some((criterion) =>
-    WORLD_FILTER_SECTIONS.some((section) => (criterion[section]?.length ?? 0) > 0),
-  );
-}
-
-/** Why world filters can't be searched for worlds made on `platform`, or undefined when they can. */
-export function worldFiltersUnavailable(platform: Platform = DEFAULT_PLATFORM): string | undefined {
-  if (WORLD_FILTERS_LIVE[platform]) return undefined;
-  return PLATFORMS.some((other) => WORLD_FILTERS_LIVE[other])
-    ? `World filters can't be searched for ${PLATFORM_LABELS[platform]} worlds yet.`
-    : WORLD_FILTERS_UNAVAILABLE;
 }

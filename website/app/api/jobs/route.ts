@@ -4,7 +4,7 @@ import { dispatcherStub, jobRoomStub, MAX_WAITING } from "@/lib/server/dispatche
 import { clientIp, isCrossOrigin, json, jsonError } from "@/lib/server/http";
 import { ACTIVE_STATUS_SQL, loadJob, settleJob, toJobView, type JobRow } from "@/lib/server/jobs";
 import { getCurrentUser } from "@/lib/server/session";
-import { DEFAULT_PLATFORM, DEFAULT_START_SEED, usesWorldFilters, worldFiltersUnavailable } from "@/lib/seedfinder-config";
+import { DEFAULT_PLATFORM, DEFAULT_START_SEED } from "@/lib/seedfinder-config";
 import { validateJobRequest } from "@/lib/validate-config";
 
 const RECENT_JOBS = 20;
@@ -41,8 +41,6 @@ export async function POST(request: Request) {
   const validation = validateJobRequest(await request.json().catch(() => undefined));
   if (!validation.ok) return jsonError(400, validation.error);
   const { config } = validation.value;
-  const unavailable = usesWorldFilters(config) ? worldFiltersUnavailable(config.platform) : undefined;
-  if (unavailable) return jsonError(503, unavailable);
 
   const live = [env.VAST_API_KEY, env.GHCR_USER, env.GHCR_PULL_TOKEN, env.RUNNER_IMAGE].every(Boolean);
   if (!live) return jsonError(503, "Seed searches aren't live yet.");

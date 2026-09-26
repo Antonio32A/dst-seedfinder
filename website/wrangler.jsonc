@@ -38,10 +38,6 @@
 	"triggers": {
 		"crons": ["*/5 * * * *"]
 	},
-	"vars": {
-		"RUNNER_IMAGE": "",
-		"MAX_INSTANCES": "10"
-	},
 	"secrets": {
 		"required": ["DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET"]
 	}

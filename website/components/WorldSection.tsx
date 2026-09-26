@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MAX_RULES_PER_SECTION, worldFiltersUnavailable, type Platform } from "@/lib/seedfinder-config";
+import { MAX_RULES_PER_SECTION } from "@/lib/seedfinder-config";
 import { MAP_SIZE_TILES, NEW_WORLD_ROW, type WorldRows, type WorldSection as Section } from "@/lib/world-rules";
 import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
@@ -28,7 +28,6 @@ const SECTIONS: { id: Section; title: string; add: string }[] = [
 
 interface WorldSectionProps {
   rows: WorldRows;
-  platform: Platform;
   onChange: (rows: Partial<WorldRows>) => void;
 }
 
@@ -50,8 +49,7 @@ function RowList<S extends Section>({ section, rows, onChange }: { section: S; r
   );
 }
 
-export default function WorldSection({ rows, platform, onChange }: WorldSectionProps) {
-  const unavailable = worldFiltersUnavailable(platform);
+export default function WorldSection({ rows, onChange }: WorldSectionProps) {
   const full = SECTIONS.filter(({ id }) => rows[id].length >= MAX_RULES_PER_SECTION);
   const add = (section: Section) => onChange({ [section]: [...rows[section], NEW_WORLD_ROW[section]()] });
 
@@ -61,9 +59,8 @@ export default function WorldSection({ rows, platform, onChange }: WorldSectionP
         World details <span className="tag tag--accent">slow</span>
       </h4>
       <p className="muted small">
-        These need each seed&apos;s world generated, which takes 10 s to 2 min per seed. Narrow the search with biomes, resources or set pieces first. Distances are in tiles, and the map is about {MAP_SIZE_TILES} tiles across.
+        These need each seed&apos;s world generated, about a second of CPU time per seed, so far fewer seeds are checked than with the other filters. Narrow the search with biomes, resources or set pieces first. Distances are in tiles, and the map is about {MAP_SIZE_TILES} tiles across.
       </p>
-      {unavailable && <p className="notice notice--warning">{unavailable} You can still set them up and share the search.</p>}
       {SECTIONS.filter(({ id }) => rows[id].length > 0).map(({ id, title }) => (
         <div key={id} className="world-area__section">
           <h5 className="world-area__title">{title}</h5>

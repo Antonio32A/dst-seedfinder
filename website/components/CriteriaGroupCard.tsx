@@ -2,7 +2,6 @@
 
 import { useId } from "react";
 import type { CriteriaGroup } from "@/lib/search-state";
-import type { Platform } from "@/lib/seedfinder-config";
 import BiomeSection from "./BiomeSection";
 import ResourceSection from "./ResourceSection";
 import SetPieceSection from "./SetPieceSection";
@@ -12,12 +11,11 @@ interface CriteriaGroupCardProps {
   group: CriteriaGroup;
   index: number;
   total: number;
-  platform: Platform;
   onChange: (group: CriteriaGroup) => void;
   onRemove: () => void;
 }
 
-export default function CriteriaGroupCard({ group, index, total, platform, onChange, onRemove }: CriteriaGroupCardProps) {
+export default function CriteriaGroupCard({ group, index, total, onChange, onRemove }: CriteriaGroupCardProps) {
   const titleId = useId();
   return (
     <section className="framed group" aria-labelledby={titleId}>
@@ -34,7 +32,7 @@ export default function CriteriaGroupCard({ group, index, total, platform, onCha
       <BiomeSection biomes={group.biomes} onChange={(biomes) => onChange({ ...group, biomes })} />
       <ResourceSection swaps={group.swaps} onChange={(swaps) => onChange({ ...group, swaps })} />
       <SetPieceSection rules={group.rules} onChange={(rules) => onChange({ ...group, rules })} />
-      <WorldSection rows={group} platform={platform} onChange={(rows) => onChange({ ...group, ...rows })} />
+      <WorldSection rows={group} onChange={(rows) => onChange({ ...group, ...rows })} />
     </section>
   );
 }

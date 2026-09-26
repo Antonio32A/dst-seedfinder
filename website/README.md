@@ -7,20 +7,22 @@ A vinext (Next.js on Vite) app on Cloudflare Workers with D1 and Discord login.
 Wrangler needs Node 22 or newer.
 
 1. `npx wrangler login`
-2. Set the secrets (this creates the Worker if it doesn't exist yet):
-   - `npx wrangler secret put DISCORD_CLIENT_ID`
-   - `npx wrangler secret put DISCORD_CLIENT_SECRET`
+2. Set the secrets (this creates the Worker if it doesn't exist yet), one by one with `npx wrangler secret put <NAME>`
+   or all at once with `npx wrangler secret bulk <file>` from a `KEY=VALUE` file with the production values:
+   - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`
    - optional: `DISCORD_REDIRECT_URI` (defaults to `<origin>/api/auth/callback`)
    - `VAST_API_KEY` (a vast.ai API key), `GHCR_USER` and `GHCR_PULL_TOKEN` (a GitHub user and a token with
-     `read:packages`, used as the instances' `image_login`). Until all three are set, searches are refused with 503.
+     `read:packages`, used as the instances' `image_login`)
+   - `RUNNER_IMAGE`: the `<RUNNER_REPOSITORY>@sha256:…` digest printed by `../runner/build.sh --push`
    - optional: `PUBLIC_ORIGIN`, the origin runners call back on (defaults to the origin of the request that starts
-     the search). Put it in `vars` instead if you prefer.
-3. Set the vars in `wrangler.jsonc`: `RUNNER_IMAGE` (`<RUNNER_REPOSITORY>:<git sha>`, pushed by `../runner/build.sh --push`;
-   empty refuses searches) and `MAX_INSTANCES` (live instances at once, default 10).
-4. `npm run build && npm run deploy`. The first deploy creates the `dst-seedfinder` D1 database and binds it. The
+     the search; it has to be reachable without Cloudflare Access)
+   - optional: `MAX_INSTANCES`, live instances at once (default 10)
+
+   Until `VAST_API_KEY`, `GHCR_USER`, `GHCR_PULL_TOKEN` and `RUNNER_IMAGE` are all set, searches are refused with 503.
+3. `npm run build && npm run deploy`. The first deploy creates the `dst-seedfinder` D1 database and binds it. The
    `JobRoom` and `Dispatcher` Durable Objects (SQLite-backed) and the `*/5 * * * *` sweeper cron come with it.
-5. `npx wrangler d1 migrations apply dst-seedfinder --remote`
-6. Add `<origin>/api/auth/callback` as a redirect in the Discord application's OAuth2 settings.
+4. `npx wrangler d1 migrations apply dst-seedfinder --remote`
+5. Add `<origin>/api/auth/callback` as a redirect in the Discord application's OAuth2 settings.
 
 ### Testing
 
@@ -38,9 +40,7 @@ Run `npm run cf-typegen` after changing `wrangler.jsonc`.
 ## Search configs
 
 Configs follow search format v1 (`../.scratch/spec/search-v1.md`). `lib/seedfinder-config.ts` has the types and caps,
-and `lib/validate-config.ts` validates them strictly with the finder's error messages (`config: <message>`). World
-filters (`counts`, `distances`, `tiles`, `routes`) are validated but refused by `POST /api/jobs` while
-`WORLD_FILTERS_LIVE` is false for the config's platform, because the Bend finder doesn't run them yet.
+and `lib/validate-config.ts` validates them strictly with the finder's error messages (`config: <message>`).
 
 `platform` (`"windows"` or `"linux"`, the OS that generates the world) defaults to `"windows"`. The level table is the
 same on both, but generated worlds differ. The site always writes `platform`, and `validateConfig` fills it in when

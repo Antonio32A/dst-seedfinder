@@ -5,5 +5,7 @@ declare namespace Cloudflare {
     GHCR_USER?: string;
     GHCR_PULL_TOKEN?: string;
     PUBLIC_ORIGIN?: string;
+    RUNNER_IMAGE?: string;
+    MAX_INSTANCES?: string;
   }
 }
