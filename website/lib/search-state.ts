@@ -5,6 +5,7 @@ import {
   MAX_CRITERIA,
   MAX_RULES_PER_SECTION,
   PLATFORMS,
+  WORLD_UNITS_PER_TILE,
   type Criterion,
   type Platform,
   type SeedfinderConfig,
@@ -14,7 +15,7 @@ import {
 import { OPTIONAL_TASK_IDS, SET_PIECE_BY_ID, SWAPS, TASKS } from "./catalog";
 import { asArray, asRecord, asStrings, clamp, newKey } from "./state-helpers";
 import { validateConfig } from "./validate-config";
-import { emptyWorldRows, worldIssues, worldRowCount, worldRowsOf, worldSections, type WorldRows } from "./world-rules";
+import { emptyWorldRows, NEW_WORLD_ROW, worldIssues, worldRowCount, worldRowsOf, worldSections, type WorldRows } from "./world-rules";
 
 export type BiomeChoice = "include" | "exclude";
 export type CountMode = "atLeast" | "exactly" | "between" | "none";
@@ -329,7 +330,25 @@ function presetState(...groups: Partial<CriteriaGroup>[]): SearchState {
   return { platform: DEFAULT_PLATFORM, groups: groups.map((group) => ({ ...emptyGroup(), ...group })) };
 }
 
+const atLeast = (pieceId: string, min: number): PieceRule => ({ ...newRule(pieceId), min });
+
 export const PRESETS: Preset[] = [
+  {
+    id: "walking-cane",
+    name: "Guaranteed Walking Cane",
+    description: "World will contain a walking cane.",
+    build: () => presetState({ rules: [atLeast("MiscBoon", 5)], counts: [{ ...NEW_WORLD_ROW.counts(), prefabs: ["cane"] }] }),
+  },
+  {
+    id: "dark-sword-at-spawn",
+    name: "Dark Sword at spawn",
+    description: "Dark Sword within 15 tiles of the world spawn. Will take a few minutes.",
+    build: () =>
+      presetState({
+        rules: [atLeast("Level4Boon", 4)],
+        distances: [{ ...NEW_WORLD_ROW.distances(), to: ["nightsword"], max: 15 * WORLD_UNITS_PER_TILE }],
+      }),
+  },
   {
     id: "twiggy-juicy",
     name: "Twiggy trees + juicy berries",

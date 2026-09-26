@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { formatDuration, timeLimitSeconds } from "@/lib/credits";
 import type { JobProgress, JobStatus, Machine } from "@/lib/job-events";
 import type { JobView } from "@/lib/api-client";
@@ -27,42 +27,59 @@ interface LiveText {
 
 const count = (amount: number, noun: string) => `${COMPACT.format(amount)} ${amount === 1 ? noun : `${noun}s`}`;
 
+/** What "Checked" means for a search: whether seeds are only judged before worldgen, or some worlds get generated too. */
+export function checkedNote(generatesWorlds: boolean): string {
+  return generatesWorlds
+    ? "total seeds, most are ruled out by biomes, resources and set pieces"
+    : "total seeds, all decided by biomes, resources and set pieces";
+}
+
+interface Clock {
+  maxCost: number;
+  runningSince: number | null;
+  now: number;
+}
+
 const progressRows = ({ scanned, seedsPerSecond, worlds }: JobProgress): LiveRow[] => [
-  { label: "Checked", value: count(scanned, "seed"), note: "every seed from the start seed up to here is decided" },
+  { label: "Checked", value: count(scanned, "seed"), note: checkedNote(worlds !== undefined) },
   ...(worlds
     ? [
-        { label: "Generating", value: count(worlds.generating, "world"), note: "built in full to check distances and turfs" },
+        { label: "Generating", value: count(worlds.generating, "world"), note: "generated to check distances and turfs" },
         { label: "Generated", value: count(worlds.generated, "world") },
       ]
     : []),
   { label: "Speed", value: `${COMPACT.format(seedsPerSecond)} seeds/s` },
 ];
 
-const machineRows = ({ cpuName, cores, ghz, dollarsPerHour }: Machine, maxCost: number): LiveRow[] => [
-  { label: "Server", value: `${cpuName}, ${cores} cores at ${GHZ.format(ghz)} GHz, ${PRICE.format(dollarsPerHour)}/h` },
-  { label: "Time limit", value: `up to ${formatDuration(timeLimitSeconds(maxCost, dollarsPerHour))}` },
-];
+const machineRows = ({ cpuName, cores, ghz, dollarsPerHour }: Machine, { maxCost, runningSince, now }: Clock): LiveRow[] => {
+  const limit = timeLimitSeconds(maxCost, dollarsPerHour);
+  const left = runningSince === null ? `up to ${formatDuration(limit)}` : formatDuration(Math.max(0, Math.ceil(limit - (now - runningSince) / 1000)));
+  return [
+    { label: "Server", value: `${cpuName}, ${cores} cores at ${GHZ.format(ghz)} GHz, ${PRICE.format(dollarsPerHour)}/h` },
+    { label: "Time left", value: left },
+  ];
+};
 
 const finishing = (): LiveText => ({ headline: "Finishing up...", notes: [], rows: [] });
 
-const LIVE_TEXT: Record<JobStatus, (live: LiveJob, maxCost: number) => LiveText> = {
+const LIVE_TEXT: Record<JobStatus, (live: LiveJob, clock: Clock) => LiveText> = {
   queued: ({ queuePosition }) => ({
     headline: "Waiting for a free server",
     notes: queuePosition === null ? [] : [queuePosition <= 1 ? "you're next" : `${queuePosition - 1} ahead of you`],
     rows: [],
   }),
-  starting: ({ attempt, machine }, maxCost) => ({
+  starting: ({ attempt, machine }, clock) => ({
     headline: "Starting a server...",
     notes: [
       "This can take a few minutes, but usually takes about 30 seconds.",
       ...(attempt !== null && attempt > 1 ? [`trying another server (${attempt}/${MAX_ATTEMPTS})`] : []),
     ],
-    rows: machine ? machineRows(machine, maxCost) : [],
+    rows: machine ? machineRows(machine, clock) : [],
   }),
-  running: ({ progress, machine }, maxCost) => ({
+  running: ({ progress, machine }, clock) => ({
     headline: "Checking seeds...",
     notes: [],
-    rows: [...(progress ? progressRows(progress) : []), ...(machine ? machineRows(machine, maxCost) : [])],
+    rows: [...(progress ? progressRows(progress) : []), ...(machine ? machineRows(machine, clock) : [])],
   }),
   done: finishing,
   failed: finishing,
@@ -77,7 +94,16 @@ interface LiveSearchProps extends Omit<JobResultsProps, "job"> {
 }
 
 export default function LiveSearch({ job, live, stopping, onStop, ...results }: LiveSearchProps) {
-  const { headline, notes, rows } = LIVE_TEXT[live.status](live, job.maxCost);
+  const [now, setNow] = useState(Date.now);
+  const runningSince = job.startedAt === null ? live.runningSince : Date.parse(job.startedAt);
+  const ticking = live.status === "running" && runningSince !== null;
+  const { headline, notes, rows } = LIVE_TEXT[live.status](live, { maxCost: job.maxCost, runningSince, now });
+
+  useEffect(() => {
+    if (!ticking) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [ticking]);
   const { status, progress, hits } = live;
   const shown = useMemo(
     () => ({ ...job, status, result: progress || hits.length > 0 ? { hits, last_scanned: null, next_seed: null } : null }),

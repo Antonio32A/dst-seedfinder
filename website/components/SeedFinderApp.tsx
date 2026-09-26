@@ -95,10 +95,10 @@ export default function SeedFinderApp() {
     setCores(logicalCores);
     setThreads(clamp(stored?.threads ?? defaultThreads(logicalCores), 1, logicalCores));
     setBrowserSupported(supported);
+    setTarget(supported ? (stored?.target ?? DEFAULT_SEARCH_TARGET) : "cloud");
     if (stored) {
       setWanted(stored.wanted);
       setMaxCost(stored.maxCost);
-      setTarget(supported ? stored.target : "cloud");
     }
     if (shared !== null) {
       url.searchParams.delete("c");

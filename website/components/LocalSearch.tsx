@@ -4,6 +4,7 @@ import { Fragment, useCallback, useMemo } from "react";
 import { copyText } from "@/lib/clipboard";
 import type { LocalSearchState } from "@/lib/local-search";
 import JobResults, { type ShownJob } from "./JobResults";
+import { checkedNote } from "./LiveSearch";
 
 const COMPACT = new Intl.NumberFormat("en", { notation: "compact", maximumSignificantDigits: 3 });
 
@@ -20,7 +21,7 @@ interface LocalSearchProps {
 }
 
 export default function LocalSearch({ state, onStop, onSearchFurther, onNotify }: LocalSearchProps) {
-  const { request, status, search, seedsPerSecond, error } = state;
+  const { request, status, search, seedsPerSecond, generatesWorlds, error } = state;
   const headline = HEADLINES[status];
   const scanned = search.scanned ?? 0;
 
@@ -36,7 +37,7 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onNotify }
   }, [headline, status, request.config, search, error]);
 
   const rows = [
-    { label: "Checked", value: `${COMPACT.format(scanned)} ${scanned === 1 ? "seed" : "seeds"}`, note: "every seed from the start seed up to here is decided" },
+    { label: "Checked", value: `${COMPACT.format(scanned)} ${scanned === 1 ? "seed" : "seeds"}`, note: checkedNote(generatesWorlds) },
     { label: "Speed", value: `${COMPACT.format(seedsPerSecond)} seeds/s` },
     { label: "Threads", value: String(request.threads) },
   ];

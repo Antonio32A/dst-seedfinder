@@ -8,9 +8,9 @@ import { exitKind, parseOutputLine, type DoneSummary } from "./server/runner-out
 export const CORES_PER_THREAD = 1.35;
 export const MEMORY_PER_THREAD_MB = 300;
 
-export const SEARCH_TARGETS = ["cloud", "browser"] as const;
+export const SEARCH_TARGETS = ["browser", "cloud"] as const;
 export type SearchTarget = (typeof SEARCH_TARGETS)[number];
-export const DEFAULT_SEARCH_TARGET: SearchTarget = "cloud";
+export const DEFAULT_SEARCH_TARGET: SearchTarget = "browser";
 
 const WASM_URL = "/wasm/seedfinder.wasm";
 const UPDATE_MS = 200;
@@ -34,12 +34,16 @@ export interface LocalSearchRequest {
   threads: number;
 }
 
-/** A browser search as the page shows it. `search` is the finder's job object so far. */
+/**
+ * A browser search as the page shows it. `search` is the finder's job object so far, and `generatesWorlds` is set once
+ * the finder reports generating worlds.
+ */
 export interface LocalSearchState {
   request: LocalSearchRequest;
   status: Extract<JobStatus, "starting" | "running" | "done" | "failed" | "cancelled">;
   search: SearchOutput;
   seedsPerSecond: number;
+  generatesWorlds: boolean;
   error: string | null;
 }
 
@@ -88,11 +92,12 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
   let status: LocalSearchState["status"] = "starting";
   let error: string | null = null;
   let runningSince = 0;
+  let generatesWorlds = false;
   let updateTimer = 0;
 
   const state = (): LocalSearchState => {
     const seconds = runningSince === 0 ? 0 : (performance.now() - runningSince) / 1000;
-    return { request, status, search: scan.output(), seedsPerSecond: seconds > 0 ? scan.totalScanned() / seconds : 0, error };
+    return { request, status, search: scan.output(), seedsPerSecond: seconds > 0 ? scan.totalScanned() / seconds : 0, generatesWorlds, error };
   };
 
   const flush = () => {
@@ -124,7 +129,10 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
   const readLine = (slot: Slot, chunk: Chunk, { line, stderr }: Extract<WorkerMessage, { type: "line" }>) => {
     const parsed = parseOutputLine(line);
     if (parsed?.kind === "hit") chunk.hits.push(parsed.hit);
-    if (parsed?.kind === "progress") chunk.scanned = parsed.progress.scanned;
+    if (parsed?.kind === "progress") {
+      chunk.scanned = parsed.progress.scanned;
+      generatesWorlds ||= parsed.progress.worlds !== undefined;
+    }
     if (parsed?.kind === "done") slot.summary = parsed.summary;
     if (parsed?.kind === "error") slot.configError = parsed.error;
     if (stderr && parsed === null) slot.lastError = line;

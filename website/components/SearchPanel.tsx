@@ -5,7 +5,7 @@ import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/api-clien
 import { creditsToUnits, formatCredits } from "@/lib/credits";
 import { isActiveStatus, MAX_ACTIVE_SEARCHES } from "@/lib/job-events";
 import { SEED_SPACE } from "@/lib/job-result";
-import { CORES_PER_THREAD, MEMORY_PER_THREAD_MB, type LocalSearchRequest, type SearchTarget } from "@/lib/local-search";
+import { MEMORY_PER_THREAD_MB, type LocalSearchRequest, type SearchTarget } from "@/lib/local-search";
 import { WANTED_OPTIONS, type Issue } from "@/lib/search-state";
 import {
   DEFAULT_START_SEED,
@@ -51,8 +51,8 @@ const UNSUPPORTED = "This browser can't run the seedfinder: it needs WebAssembly
 const MEMORY = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
 
 const TARGET_HINTS: Record<SearchTarget, string> = {
-  cloud: "A rented server with 64+ cores searches for you. Fast, but it costs credits and needs a Discord login.",
-  browser: "Your computer searches, for free and without logging in. Slower than a server, and it stops if you close this tab.",
+  cloud: "Server that spends my money, but is usually faster. Uses credits and requires you to log in.",
+  browser: "Runs on your computer in the browser, but slightly slower and stops if you close the tab.",
 };
 
 function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number, startSeed: number | null): string | undefined {
@@ -122,9 +122,7 @@ function ThreadsField({ browser }: { browser: BrowserSearchOptions }) {
         <Stepper label="CPU threads" value={threads} min={1} max={cores} onChange={onThreadsChange} />
       </div>
       <p className="hint">
-        Your computer has {cores} logical {cores === 1 ? "core" : "cores"}. Each thread keeps about {CORES_PER_THREAD} of them busy and uses about{" "}
-        {MEMORY_PER_THREAD_MB} MB of memory, so {threads} {threads === 1 ? "thread needs" : "threads need"} about{" "}
-        {MEMORY.format((threads * MEMORY_PER_THREAD_MB) / 1024)} GB.
+        {threads} {threads === 1 ? "thread" : "threads"} will consume ~{MEMORY.format((threads * MEMORY_PER_THREAD_MB) / 1024)}GB of RAM.
       </p>
     </div>
   );
@@ -232,8 +230,8 @@ export default function SearchPanel({
         <SegmentedControl
           legend="Search with"
           options={[
+            { value: "browser", label: "Your browser", disabled: browser.supported === false, title: browser.supported === false ? UNSUPPORTED : undefined },
             { value: "cloud", label: "Cloud server" },
-            { value: "browser", label: "Your browser (free)", disabled: browser.supported === false, title: browser.supported === false ? UNSUPPORTED : undefined },
           ]}
           value={target}
           onChange={onTargetChange}
@@ -243,23 +241,13 @@ export default function SearchPanel({
           {browser.supported === false && ` ${UNSUPPORTED}`}
         </p>
       </div>
-      <div>
+      <div className="search__row">
         <SegmentedControl
-          legend="Platform"
-          options={PLATFORMS.map((value) => ({ value, label: PLATFORM_LABELS[value] }))}
-          value={platform}
-          onChange={onPlatformChange}
+          legend="Seeds to find"
+          options={WANTED_OPTIONS.map((value) => ({ value, label: String(value) }))}
+          value={wanted}
+          onChange={onWantedChange}
         />
-        <p className="hint">The OS of the computer or server that creates the world. Only world details differ between them.</p>
-      </div>
-      <SegmentedControl
-        legend="Seeds to find"
-        options={WANTED_OPTIONS.map((value) => ({ value, label: String(value) }))}
-        value={wanted}
-        onChange={onWantedChange}
-      />
-      {inBrowser ? <ThreadsField browser={browser} /> : <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange} />}
-      <div>
         <label className="start-seed">
           <span className="seg__legend">Start seed</span>
           <input
@@ -270,8 +258,17 @@ export default function SearchPanel({
             onChange={(event) => setStartSeedDraft(event.target.value)}
           />
         </label>
-        <p className="hint">Seeds are checked in order from this one, wrapping around after {SEED_SPACE - 1}.</p>
       </div>
+      <div>
+        <SegmentedControl
+          legend="Platform"
+          options={PLATFORMS.map((value) => ({ value, label: PLATFORM_LABELS[value] }))}
+          value={platform}
+          onChange={onPlatformChange}
+        />
+        <p className="hint">The OS of the computer that generates the world.</p>
+      </div>
+      {inBrowser ? <ThreadsField browser={browser} /> : <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange} />}
       <div className="search__actions">
         {inBrowser ? (
           <BrowserAction browser={browser} blocked={problem !== undefined} wanted={wanted} onStart={startInBrowser} />

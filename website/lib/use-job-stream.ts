@@ -3,10 +3,14 @@ import { jobEventsUrl, type JobView } from "./api-client";
 import type { JobEvent, JobProgress, JobStatus, Machine } from "./job-events";
 import type { SearchHit } from "./job-result";
 
-/** What the live stream has said so far about one search. `offline` is set while the stream is reconnecting. */
+/**
+ * What the live stream has said so far about one search. `runningSince` is when this page first saw it running (ms), and
+ * `offline` is set while the stream is reconnecting.
+ */
 export interface LiveJob {
   id: string;
   status: JobStatus;
+  runningSince: number | null;
   queuePosition: number | null;
   machine: Machine | null;
   attempt: number | null;
@@ -26,7 +30,14 @@ type StreamEvent = Exclude<JobEvent, { type: "end" }> | { type: "end"; job: JobV
 type Appliers = { [T in StreamEvent["type"]]: (live: LiveJob, event: Extract<StreamEvent, { type: T }>) => LiveJob };
 
 const APPLY: Appliers = {
-  status: (live, { status, queuePosition, machine, attempt }) => ({ ...live, status, queuePosition, machine, attempt }),
+  status: (live, { status, queuePosition, machine, attempt }) => ({
+    ...live,
+    status,
+    queuePosition,
+    machine,
+    attempt,
+    runningSince: live.runningSince ?? (status === "running" ? Date.now() : null),
+  }),
   progress: (live, { progress }) => ({ ...live, progress }),
   hit: (live, { hit }) => (live.hits.some((known) => known.seed === hit.seed) ? live : { ...live, hits: [...live.hits, hit] }),
   end: (live, { job }) => ({ ...live, status: job.status }),
@@ -37,7 +48,7 @@ const MAX_RETRY_MS = 30_000;
 
 /** What is known of a search before its stream has said anything. */
 export function liveJobOf({ id, status, machine }: Pick<JobView, "id" | "status" | "machine">): LiveJob {
-  return { id, status, queuePosition: null, machine, attempt: null, progress: null, hits: [], offline: false };
+  return { id, status, runningSince: null, queuePosition: null, machine, attempt: null, progress: null, hits: [], offline: false };
 }
 
 /** Parses one `data:` payload of the event stream, or `null` if it isn't a known `JobEvent`. */

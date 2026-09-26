@@ -992,6 +992,13 @@ details[open] > summary::before {
   margin: 12px 0 0;
 }
 
+.search__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 32px;
+}
+
 .max-cost {
   display: flex;
   flex-wrap: wrap;
