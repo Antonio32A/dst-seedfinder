@@ -1,4 +1,4 @@
 [submodule "bend"]
 	path = bend
 	url = https://github.com/Antonio32A/bend-wasm.git
-	branch = wasm-2.0.27
+	branch = wasm-2.0.29

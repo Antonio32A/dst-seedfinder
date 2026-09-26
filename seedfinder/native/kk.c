@@ -224,5 +224,5 @@ Term native_kk_run(Env e, Term* f, IoWork* w) {
 }
 
 static void __attribute__((constructor)) native_kk_use(void) {
-  io_eff(CID_NATIVE_KK, native_kk_run, 0);
+  io_eff(CID(native_kk), native_kk_run, 0);
 }

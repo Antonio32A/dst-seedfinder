@@ -7,7 +7,7 @@ WORKDIR /src
 COPY --from=csrc seedfinder.c .
 RUN clang -std=c11 -O3 -mllvm -inline-threshold=3000 -march=x86-64 -mtune=generic \
         -static -Wl,-z,stack-size=8388608 -s seedfinder.c -lpthread -lm -o seedfinder \
-    && ./seedfinder --help >/dev/null
+    && ./seedfinder --bend-help >/dev/null
 
 FROM ${ALPINE}
 RUN apk add --no-cache ca-certificates-bundle ssl_client

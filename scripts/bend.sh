@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # usage: bend.sh ARGS...   (same arguments as the bend CLI)
-# Runs the pinned compiler, the bend/ submodule (Bend 2.0.27 with the WebAssembly target), on the Bun runtime inside
+# Runs the pinned compiler, the bend/ submodule (Bend 2.0.29 with the WebAssembly target), on the Bun runtime inside
 # the installed bend CLI (BUN_BE_BUN), whatever version that CLI is.
 set -euo pipefail
 root="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"

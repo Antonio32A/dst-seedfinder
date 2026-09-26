@@ -30,8 +30,9 @@ scripts/build.sh trace                         # debug binary: bend trace.bend -
 build/seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
 ```
 
-The compiler is pinned to Bend 2.0.27, the fork in the `bend/` submodule at the repository root (it adds the
-WebAssembly target); `scripts/bend.sh` runs it with the same arguments as the `bend` CLI. `scripts/build.sh` runs
+The compiler is pinned to Bend 2.0.29, the fork in the `bend/` submodule at the repository root (it adds the
+WebAssembly target and the fix for bendlang/bend#1093); `scripts/bend.sh` runs it with the same arguments as the
+`bend` CLI. `scripts/build.sh` runs
 `bend main.bend -o` with the compiler's JavaScriptCore heap sized for a 4 GB machine
 (`BUN_JSC_forceRAMSize`): a plain `bend main.bend -o` on a large-memory machine lets the compiler's garbage grow
 past 32 GB, while the script needs about 10 GB and emits the same C. For `main` it also passes

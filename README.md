@@ -59,11 +59,12 @@ validate to ensure we haven't broken any world generation code, but now it's mos
 
 To build and run:
 - Linux x86-64.
-- Bend 2.0.27, pinned: the compiler is the `bend/` submodule, a Bend 2.0.27 fork with a WebAssembly target
-  ([Antonio32A/bend-wasm](https://github.com/Antonio32A/bend-wasm), branch `wasm-2.0.27`). Fetch it with
+- Bend 2.0.29, pinned: the compiler is the `bend/` submodule, a Bend 2.0.29 fork with a WebAssembly target and the
+  fix for [bendlang/bend#1093](https://github.com/bendlang/bend/issues/1093)
+  ([Antonio32A/bend-wasm](https://github.com/Antonio32A/bend-wasm), branch `wasm-2.0.29`). Fetch it with
   `git submodule update --init`. `scripts/bend.sh` runs it on the Bun runtime inside an installed
-  [Bend](https://bend-lang.com) CLI (`curl -fsSL https://bend-lang.com/install.sh | sh`). Later Bend versions do not
-  build a correct seedfinder yet (2.0.29 generates wrong worlds).
+  [Bend](https://bend-lang.com) CLI (`curl -fsSL https://bend-lang.com/install.sh | sh`). A stock Bend 2.0.29 builds
+  a wrong seedfinder (#1093: every double reads as NaN).
 - clang 14 or newer.
 - Only for the WebAssembly build: [Emscripten](https://emscripten.org) 3.1.35 or newer (`emcc` on `PATH`, or `EMCC`).
 - About 12 GB of free RAM to build the production binary, 40 GB for the debug (trace) binary.
