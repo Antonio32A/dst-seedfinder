@@ -1,17 +1,32 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import ThemeToggle from "@/components/shell/ThemeToggle";
 import { THEME_INIT_SCRIPT } from "@/lib/client/theme";
 import "./globals.css";
 
-export const metadata: Metadata = {
-    title: "DST Seedfinder",
-    description: "Find Don't Starve Together world seeds with the biomes, resources and set pieces you want.",
-    icons: { icon: "/favicon.png" }
-};
+const DESCRIPTION = "Don't Starve Together seed finding tool";
+
+export async function generateMetadata(): Promise<Metadata> {
+    return {
+        metadataBase: new URL(`https://${(await headers()).get("host")}`),
+        title: "DST Seedfinder",
+        description: DESCRIPTION,
+        icons: { icon: "/favicon.png" },
+        openGraph: {
+            type: "website",
+            siteName: `© ${new Date().getFullYear()} Antonio32A`,
+            title: "DST Seedfinder",
+            description: DESCRIPTION,
+            images: [{ url: "/favicon.png", width: 50, height: 50 }]
+        },
+        twitter: { card: "summary" }
+    };
+}
 
 export const viewport: Viewport = {
     width: "device-width",
-    initialScale: 1
+    initialScale: 1,
+    themeColor: "#fc5821"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
