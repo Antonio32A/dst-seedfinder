@@ -30,6 +30,8 @@ export interface MapCanvas {
     terrain: Promise<void>;
     /** Animated 45 degree steps: positive is the game's rotate right (E). */
     turn: (steps: number) => void;
+    /** Opens darkened, like the game's fog over explored ground. */
+    darken: (on: boolean) => void;
     show: (prefabs: ReadonlySet<string>) => void;
     showSetPieces: (layouts: ReadonlySet<string>) => void;
     highlightSetPieces: (indices: readonly number[]) => void;
@@ -137,6 +139,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     return {
         terrain: terrain.built,
         turn,
+        darken: (on) => {
+            terrain.darken(on);
+            redraw();
+        },
         show: (shown) => {
             entities.show(shown);
             redraw();

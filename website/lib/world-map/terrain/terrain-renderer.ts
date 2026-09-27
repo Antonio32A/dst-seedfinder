@@ -8,6 +8,7 @@ import { oceanTextures } from "./ocean-textures";
 const MAP_EDGE = "/world-map/map_edge.png";
 const PAPER = "/world-map/minimap_paper.png";
 const PIXELS_PER_TILE = 4;
+const FORGOTTEN_BRIGHTNESS = 0.7;
 const QUAD_COMPONENTS = 3;
 const QUAD_CORNERS = [0, 0, 1, 0, 0, 1, 1, 1];
 const TERRAIN_UNIT = 0;
@@ -119,17 +120,20 @@ void main() {
 const SCREEN_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 uniform sampler2D terrain;
+uniform float brightness;
 in vec2 uv;
 out vec4 colour;
 
 void main() {
-    colour = vec4(texture(terrain, uv).rgb, 0.0);
+    colour = vec4(texture(terrain, uv).rgb * brightness, 0.0);
 }`;
 
 export interface TerrainRenderer {
     /** Settles once the terrain is built or disposed of, and rejects when the map art can't be downloaded. */
     built: Promise<void>;
     draw: (view: MapView, viewport: Size) => void;
+    /** Dims the terrain to the game's fog brightness for explored ground, as it opens. */
+    darken: (on: boolean) => void;
     dispose: () => void;
 }
 
@@ -181,6 +185,7 @@ export function createTerrainRenderer(
     gl.bindVertexArray(vertices);
     const corners = vertexBuffer(gl, program, "corner", new Float32Array(QUAD_CORNERS), 2);
     let terrain: WebGLTexture | null = null;
+    let darkened = true;
     let disposed = false;
 
     const urls = [...new Set([...world.tileNames.keys()].flatMap((tile) => noiseOf(tile) ?? []))];
@@ -273,11 +278,13 @@ export function createTerrainRenderer(
             gl.activeTexture(gl.TEXTURE0 + TERRAIN_UNIT);
             gl.bindTexture(gl.TEXTURE_2D, terrain);
             setViewUniforms(gl, program, view, viewport);
+            gl.uniform1f(gl.getUniformLocation(program, "brightness"), darkened ? FORGOTTEN_BRIGHTNESS : 1);
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.ONE, gl.ONE);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             gl.disable(gl.BLEND);
         },
+        darken: (on) => (darkened = on),
         dispose: () => {
             disposed = true;
             gl.deleteTexture(terrain);
