@@ -18,3 +18,24 @@
     gap: 4px 14px;
     margin-top: 8px;
 }
+
+.map__layers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.map__swatch {
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin-right: 6px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    vertical-align: -0.05em;
+}
+
+.map__count {
+    color: var(--muted);
+}

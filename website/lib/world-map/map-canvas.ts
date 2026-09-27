@@ -1,3 +1,6 @@
+import type { EntityLayer } from "./entity-layer";
+import { createEntityRenderer } from "./entity-renderer";
+import type { GroupVisibility } from "./group-visibility";
 import { fitView, type MapView, panBy, type Size, turnView, zoomAt } from "./map-view";
 import { createTileRenderer } from "./tile-renderer";
 import type { GeneratedWorld } from "./world-dump";
@@ -6,22 +9,27 @@ const ZOOM_PER_PIXEL = 0.002;
 const PIXELS_PER_LINE = 16;
 const TURN_MS = 180;
 const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
-const TYPING_TARGETS = "input, textarea, select, [contenteditable]";
+const TYPING_TARGETS = "input:not([type=checkbox], [type=radio]), textarea, select, [contenteditable]";
 
-export interface TileMap {
+export interface MapCanvas {
     fit: () => void;
     /** Turns the map by `steps` of 45 degrees, animated: positive is the game's rotate right (E). */
     turn: (steps: number) => void;
+    /** Draws the entities of the groups `visibility` shows, and hides the rest. */
+    show: (visibility: GroupVisibility) => void;
     dispose: () => void;
 }
 
 /**
- * Draws the world's tiles on the canvas, sized to the canvas's CSS box, and pans on drag, zooms to the cursor on wheel
- * and turns on Q/E like the game. Throws when the browser can't draw it.
+ * Draws the world's tiles and its entity layer on the canvas, sized to the canvas's CSS box, and pans on drag, zooms
+ * to the cursor on wheel and turns on Q/E like the game. It starts with every entity group hidden. Throws when the
+ * browser can't draw it.
  */
-export function mountTileMap(canvas: HTMLCanvasElement, world: GeneratedWorld): TileMap {
-    const renderer = createTileRenderer(canvas, world);
-    if (renderer === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
+export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
+    const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
+    if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
+    const tiles = createTileRenderer(gl, world);
+    const entities = createEntityRenderer(gl, layer);
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
     let view: MapView = fitView(world, viewport);
     let frame = 0;
@@ -37,7 +45,11 @@ export function mountTileMap(canvas: HTMLCanvasElement, world: GeneratedWorld): 
                 if (progress < 1) redraw();
                 else turning = null;
             }
-            renderer.draw(view, viewport);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            tiles.draw(view, viewport);
+            entities.draw(view, viewport);
         });
     };
     const move = (next: MapView) => {
@@ -90,12 +102,17 @@ export function mountTileMap(canvas: HTMLCanvasElement, world: GeneratedWorld): 
     return {
         fit: () => move(fitView(world, viewport, turning?.to ?? view.heading)),
         turn,
+        show: (visibility) => {
+            entities.show(visibility);
+            redraw();
+        },
         dispose: () => {
             cancelAnimationFrame(frame);
             resized.disconnect();
             for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
             removeEventListener("keydown", pressed);
-            renderer.dispose();
+            tiles.dispose();
+            entities.dispose();
         }
     };
 }

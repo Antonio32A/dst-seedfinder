@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Toggle from "@/components/ui/Toggle";
 import type { Platform } from "@/lib/config/seedfinder-config";
+import { entityLayer, MAP_GROUPS, type MapGroupId } from "@/lib/world-map/entity-layer";
+import { type GroupVisibility, readGroupVisibility, storeGroupVisibility } from "@/lib/world-map/group-visibility";
 import { loadWorld, type WorldLoad } from "@/lib/world-map/load-world";
-import { mountTileMap, type TileMap } from "@/lib/world-map/tile-map";
+import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/map-canvas";
 import type { GeneratedWorld } from "@/lib/world-map/world-dump";
 
 const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> = {
@@ -12,14 +15,16 @@ const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> 
     unsupported: "This browser can't run the seedfinder: it needs WebAssembly threads."
 };
 
-function TileCanvas({ world }: { world: GeneratedWorld }) {
+function WorldCanvas({ world }: { world: GeneratedWorld }) {
     const canvas = useRef<HTMLCanvasElement>(null);
-    const map = useRef<TileMap | null>(null);
+    const map = useRef<MapCanvas | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [visibility, setVisibility] = useState<GroupVisibility>(readGroupVisibility);
+    const layer = useMemo(() => entityLayer(world), [world]);
 
     useEffect(() => {
         try {
-            map.current = mountTileMap(canvas.current!, world);
+            map.current = mountMapCanvas(canvas.current!, world, layer);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught));
         }
@@ -27,7 +32,17 @@ function TileCanvas({ world }: { world: GeneratedWorld }) {
             map.current?.dispose();
             map.current = null;
         };
-    }, [world]);
+    }, [world, layer]);
+
+    useEffect(() => {
+        map.current?.show(visibility);
+    }, [visibility, layer]);
+
+    const toggle = (group: MapGroupId, shown: boolean) => {
+        const next = { ...visibility, [group]: shown };
+        setVisibility(next);
+        storeGroupVisibility(next);
+    };
 
     return (
             <div className="map">
@@ -45,6 +60,14 @@ function TileCanvas({ world }: { world: GeneratedWorld }) {
                     </button>
                     <span className="hint">Drag to pan, scroll to zoom, Q/E to rotate.</span>
                 </div>
+                <div className="map__layers" role="group" aria-label="Entity groups">
+                    {MAP_GROUPS.map(({ id, name, colour }, group) => layer.counts[group] > 0 && (
+                            <Toggle key={id} checked={visibility[id]} onChange={(shown) => toggle(id, shown)}>
+                                <span className="map__swatch" style={{ background: `rgb(${colour.join()})` }}/>
+                                {name} <span className="map__count">{layer.counts[group].toLocaleString("en-US")}</span>
+                            </Toggle>
+                    ))}
+                </div>
             </div>
     );
 }
@@ -61,7 +84,7 @@ export default function WorldMap({ platform, seed }: { platform: Platform; seed:
         return () => controller.abort();
     }, [platform, seed]);
 
-    if (load.status === "ready") return <TileCanvas world={load.world}/>;
+    if (load.status === "ready") return <WorldCanvas world={load.world}/>;
     if (load.status === "failed") return <p className="notice notice--error" role="alert">{load.error}</p>;
     return <p className={load.status === "loading" ? "hint" : "notice notice--warning"} role="status">{NOTICES[load.status]}</p>;
 }

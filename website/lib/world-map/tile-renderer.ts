@@ -1,3 +1,4 @@
+import { buildProgram, vertexBuffer } from "./gl-program";
 import { type MapView, type Size, worldBounds, worldToScreen } from "./map-view";
 import { tilePalette } from "./tile-palette";
 import type { GeneratedWorld } from "./world-dump";
@@ -39,14 +40,6 @@ export interface TileRenderer {
     dispose: () => void;
 }
 
-function compile(gl: WebGL2RenderingContext, type: GLenum, source: string) {
-    const shader = gl.createShader(type)!;
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(`The map shader didn't compile: ${gl.getShaderInfoLog(shader)}`);
-    return shader;
-}
-
 function texture(gl: WebGL2RenderingContext, unit: number, upload: () => void) {
     const created = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + unit);
@@ -57,30 +50,15 @@ function texture(gl: WebGL2RenderingContext, unit: number, upload: () => void) {
     return created;
 }
 
-/**
- * Draws a world's tiles as one quad: the tile ids as a texture, coloured through the catalog's tile palette. Returns
- * null when the browser has no WebGL2.
- */
-export function createTileRenderer(canvas: HTMLCanvasElement, world: GeneratedWorld): TileRenderer | null {
-    const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
-    if (gl === null) return null;
-
-    const program = gl.createProgram();
-    gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER));
-    gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(`The map shader didn't link: ${gl.getProgramInfoLog(program)}`);
+/** Draws a world's tiles as one quad: the tile ids as a texture, coloured through the catalog's tile palette. */
+export function createTileRenderer(gl: WebGL2RenderingContext, world: GeneratedWorld): TileRenderer {
+    const program = buildProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
     gl.useProgram(program);
     const uniform = (name: string) => gl.getUniformLocation(program, name);
 
     const vertices = gl.createVertexArray();
     gl.bindVertexArray(vertices);
-    const corners = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, corners);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
-    const corner = gl.getAttribLocation(program, "corner");
-    gl.enableVertexAttribArray(corner);
-    gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 0, 0);
+    const corners = vertexBuffer(gl, program, "corner", new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2);
 
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     const colours = tilePalette(world.tileNames, world.tiles);
@@ -101,9 +79,8 @@ export function createTileRenderer(canvas: HTMLCanvasElement, world: GeneratedWo
 
     return {
         draw: (view, viewport) => {
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.useProgram(program);
+            gl.bindVertexArray(vertices);
             const origin = worldToScreen(view, viewport, { x: bounds.left, z: bounds.top });
             const xEnd = worldToScreen(view, viewport, { x: bounds.left + bounds.width, z: bounds.top });
             const zEnd = worldToScreen(view, viewport, { x: bounds.left, z: bounds.top + bounds.height });
