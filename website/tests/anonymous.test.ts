@@ -1,14 +1,16 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { endpointKey, endpointPath, ENDPOINTS } from "./endpoints";
+import { endpointKey, endpointPath, ENDPOINTS, jsonBody } from "./endpoints";
 import {
     api,
     db,
+    loadJob,
     randomToken,
     SEARCH_REQUEST,
-    seedFinishedJob,
+    seedJob,
     sha256Hex,
     type SignedIn,
     signIn,
+    startSearch,
     useWorker
 } from "./harness";
 
@@ -49,7 +51,7 @@ describe.each(CREDENTIALS)("with $name", ({ session: credential }) => {
 
     beforeAll(async () => {
         const owner = await signIn();
-        jobId = await seedFinishedJob(owner.profile.id);
+        jobId = (await startSearch(owner.session)).id;
         session = await credential(owner);
     });
 
@@ -57,10 +59,10 @@ describe.each(CREDENTIALS)("with $name", ({ session: credential }) => {
         ...endpoint,
         key: endpointKey(endpoint)
     })))("$key is 401", async (endpoint) => {
-        const body = endpoint.method === "GET" ? undefined : SEARCH_REQUEST;
+        const body = endpoint.method === "POST" ? SEARCH_REQUEST : undefined;
         const response = await api(endpointPath(endpoint, jobId), { method: endpoint.method, session, body });
         expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({ error: expect.any(String) });
+        expect(await jsonBody(response)).toEqual(endpoint.method === "HEAD" ? null : { error: expect.any(String) });
     });
 
     it("GET /api/me has no user", async () => {
@@ -75,19 +77,20 @@ describe.each(CREDENTIALS)("with $name", ({ session: credential }) => {
         expect(await db().prepare("SELECT COUNT(*) AS count FROM jobs").first<{ count: number }>()).toEqual(before);
     });
 
-    it("POST /api/jobs/[id]/cancel leaves the job alone", async () => {
-        const before = await db().prepare("SELECT * FROM jobs WHERE id = ?").bind(jobId).first();
+    it("POST /api/jobs/[id]/cancel leaves the running search alone", async () => {
+        const before = await loadJob(jobId);
+        expect(before?.status).toBe("starting");
         await api(`/api/jobs/${jobId}/cancel`, { method: "POST", session });
-        expect(await db().prepare("SELECT * FROM jobs WHERE id = ?").bind(jobId).first()).toEqual(before);
+        expect(await loadJob(jobId)).toEqual(before);
     });
 });
 
 it("a live session reaches the same endpoints", async () => {
     const { profile, session } = await signIn();
-    const jobId = await seedFinishedJob(profile.id);
+    const jobId = await seedJob(profile.id);
     const statuses = await Promise.all(
-        USER_ENDPOINTS.filter(({ method }) => method === "GET").map(async (endpoint) => {
-            const response = await api(endpointPath(endpoint, jobId), { session });
+        USER_ENDPOINTS.filter(({ method }) => method !== "POST").map(async (endpoint) => {
+            const response = await api(endpointPath(endpoint, jobId), { method: endpoint.method, session });
             await response.body?.cancel();
             return response.status;
         })

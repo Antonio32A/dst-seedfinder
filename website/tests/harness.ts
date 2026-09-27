@@ -3,17 +3,19 @@ import { fileURLToPath } from "node:url";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, expect } from "vitest";
-import { createTestHarness, type TestHarness } from "wrangler";
+import { createTestHarness, type TestHarness, type WorkerHandle } from "wrangler";
 import type { JobRow } from "@/lib/server/jobs/jobs";
 import type { DiscordProfile } from "@/lib/server/auth/users";
 
-const ORIGIN = "https://seedfinder.test";
+export const ORIGIN = "https://seedfinder.test";
 
 const DISCORD_API = "https://discord.com/api";
-const VAST_API = "https://console.vast.ai/api";
+export const VAST_API = "https://console.vast.ai/api";
 const POLL_MS = 50;
 
-const SECRETS = {
+type StringVar = { [K in keyof Cloudflare.Env]-?: NonNullable<Cloudflare.Env[K]> extends string ? K : never }[keyof Cloudflare.Env];
+
+export const SECRETS: Record<StringVar | "RUNNER_REPOSITORY", string> = {
     DISCORD_CLIENT_ID: "test-client-id",
     DISCORD_CLIENT_SECRET: "test-client-secret",
     DISCORD_REDIRECT_URI: `${ORIGIN}/api/auth/callback`,
@@ -23,10 +25,11 @@ const SECRETS = {
     RUNNER_IMAGE: "ghcr.io/test/runner:test",
     RUNNER_REPOSITORY: "ghcr.io/test/runner",
     PUBLIC_ORIGIN: ORIGIN,
-    MAX_INSTANCES: "100"
+    MAX_INSTANCES: "100",
+    EVENTS_SESSION_CHECK_MS: "200"
 };
 
-const OFFER = {
+export const OFFER = {
     ask_contract_id: 4242,
     cpu_name: "Test CPU",
     cpu_cores_effective: 64,
@@ -40,28 +43,48 @@ const OFFER = {
 
 export const SEARCH_REQUEST = { config: {}, wanted: 1, maxCost: 200 };
 
-const profilesByCode = new Map<string, DiscordProfile>();
-const runnerTokens = new Map<string, string>();
+interface Grant {
+    profile: DiscordProfile;
+    redirectUri: string;
+}
+
+const grantsByCode = new Map<string, Grant>();
+const runnerTokens = new Map<string, string[]>();
 const unhandledRequests: string[] = [];
 let nextInstanceId = 1000;
+let refusedRentals = 0;
 let harness: TestHarness | null = null;
 let database: D1Database | null = null;
 
+function isValidTokenExchange(form: URLSearchParams): boolean {
+    const grant = grantsByCode.get(form.get("code") ?? "");
+    return grant !== undefined
+        && form.get("grant_type") === "authorization_code"
+        && form.get("client_id") === SECRETS.DISCORD_CLIENT_ID
+        && form.get("client_secret") === SECRETS.DISCORD_CLIENT_SECRET
+        && form.get("redirect_uri") === grant.redirectUri;
+}
+
 export const network = setupServer(
     http.post(`${DISCORD_API}/oauth2/token`, async ({ request }) => {
-        const code = new URLSearchParams(await request.text()).get("code") ?? "";
-        if (!profilesByCode.has(code)) return HttpResponse.json({ error: "invalid_grant" }, { status: 400 });
-        return HttpResponse.json({ access_token: `access-${code}`, token_type: "Bearer" });
+        const form = new URLSearchParams(await request.text());
+        if (!isValidTokenExchange(form)) return HttpResponse.json({ error: "invalid_grant" }, { status: 400 });
+        return HttpResponse.json({ access_token: `access-${form.get("code")}`, token_type: "Bearer" });
     }),
     http.get(`${DISCORD_API}/users/@me`, ({ request }) => {
-        const profile = profilesByCode.get(request.headers.get("Authorization")?.replace("Bearer access-", "") ?? "");
-        return profile ? HttpResponse.json(profile) : HttpResponse.json({ message: "401: Unauthorized" }, { status: 401 });
+        const grant = grantsByCode.get(request.headers.get("Authorization")?.replace("Bearer access-", "") ?? "");
+        return grant ? HttpResponse.json(grant.profile) : HttpResponse.json({ message: "401: Unauthorized" }, { status: 401 });
     }),
     http.get(`${VAST_API}/v1/instances`, () => HttpResponse.json({ instances: [] })),
     http.post(`${VAST_API}/v0/bundles/`, () => HttpResponse.json({ offers: [OFFER] })),
     http.put(`${VAST_API}/v0/asks/:askId/`, async ({ request }) => {
         const { env } = (await request.json()) as { env: Record<string, string> };
-        runnerTokens.set(new URL(env.CALLBACK_URL).pathname.split("/").at(-1) ?? "", env.RUNNER_TOKEN);
+        const jobId = new URL(env.CALLBACK_URL).pathname.split("/").at(-1) ?? "";
+        runnerTokens.set(jobId, [...(runnerTokens.get(jobId) ?? []), env.RUNNER_TOKEN]);
+        if (refusedRentals > 0) {
+            refusedRentals--;
+            return HttpResponse.json({ success: false, error: "no_such_ask" }, { status: 400 });
+        }
         return HttpResponse.json({ success: true, new_contract: nextInstanceId++ });
     }),
     http.delete(`${VAST_API}/v0/instances/:id/`, () => HttpResponse.json({ success: true }))
@@ -85,12 +108,12 @@ export function useWorker(): void {
             workers: [{ configPath: "./dist/server/wrangler.json", secrets: SECRETS }]
         });
         await harness.listen();
-        const worker = harness.getWorker<Cloudflare.Env>();
-        await worker.applyD1Migrations("DB");
-        database = (await worker.getEnv()).DB;
+        await worker().applyD1Migrations("DB");
+        database = (await worker().getEnv()).DB;
     });
     afterEach(() => {
         network.resetHandlers();
+        refusedRentals = 0;
         expect(unhandledRequests.splice(0)).toEqual([]);
     });
     afterAll(async () => {
@@ -98,6 +121,11 @@ export function useWorker(): void {
         globalThis.fetch = interceptedFetch;
         network.close();
     });
+}
+
+export function worker(): WorkerHandle<Cloudflare.Env> {
+    if (harness === null) throw new Error("useWorker() has not started the worker");
+    return harness.getWorker<Cloudflare.Env>();
 }
 
 export function db(): D1Database {
@@ -113,21 +141,35 @@ export interface Call {
     headers?: Record<string, string>;
 }
 
-/** Requests `path` as `ORIGIN` without following redirects; `site` is the `Sec-Fetch-Site` header. */
+/** Requests `path` as `ORIGIN` without following redirects; `site` is `Sec-Fetch-Site`, and a non-raw `body` goes as JSON. */
 export function api(path: string, { session, method = "GET", site, body, headers = {} }: Call = {}): Promise<Response> {
-    if (harness === null) throw new Error("useWorker() has not started the worker");
+    const raw = typeof body === "string" || body instanceof ReadableStream || body instanceof Uint8Array;
     const optional = {
         Cookie: session === undefined ? undefined : `session=${session}`,
         "Sec-Fetch-Site": site,
-        "Content-Type": body === undefined ? undefined : "application/json"
+        "Content-Type": body === undefined || raw ? undefined : "application/json"
     };
     const present = Object.entries(optional).filter((entry): entry is [string, string] => entry[1] !== undefined);
-    return harness.fetch(`${ORIGIN}${path}`, {
+    // harness.fetch goes through a dev proxy that drops its connection after a response leaves the request body unread.
+    return worker().fetch(`${ORIGIN}${path}`, {
         method,
         redirect: "manual",
         headers: { ...Object.fromEntries(present), ...headers },
-        body: body === undefined ? undefined : JSON.stringify(body)
-    }) as unknown as Promise<Response>;
+        body: raw ? body : body === undefined ? undefined : JSON.stringify(body),
+        duplex: "half"
+    } as Parameters<WorkerHandle["fetch"]>[1]) as unknown as Promise<Response>;
+}
+
+export function chunkedBody(bytes: number): ReadableStream<Uint8Array> {
+    let left = bytes;
+    return new ReadableStream({
+        pull(controller) {
+            const size = Math.min(left, 64 * 1024);
+            left -= size;
+            if (size === 0) controller.close();
+            else controller.enqueue(new Uint8Array(size).fill(0x20));
+        }
+    });
 }
 
 export function setCookie(response: Response, name: string): string | undefined {
@@ -145,33 +187,37 @@ export function newProfile(): DiscordProfile {
 
 export interface LoginStart {
     state: string;
+    redirectUri: string;
     stateCookie: string;
     response: Response;
 }
 
-/** `GET /api/auth/login`, returning the `state` sent to Discord and the `oauth_state` cookie. */
+/** `GET /api/auth/login`, returning what it sent to Discord and the `oauth_state` cookie. */
 export async function beginLogin(returnTo?: string): Promise<LoginStart> {
     const query = returnTo === undefined ? "" : `?${new URLSearchParams({ return: returnTo })}`;
     const response = await api(`/api/auth/login${query}`);
     const authorize = new URL(response.headers.get("Location") ?? "");
+    expect(authorize.searchParams.get("client_id")).toBe(SECRETS.DISCORD_CLIENT_ID);
     return {
         state: authorize.searchParams.get("state") ?? "",
+        redirectUri: authorize.searchParams.get("redirect_uri") ?? "",
         stateCookie: cookieValue(response, "oauth_state") ?? "",
         response
     };
 }
 
-/** An authorization code the mocked Discord exchanges for `profile`. */
-export function discordCode(profile: DiscordProfile): string {
+/** An authorization code the mocked Discord exchanges for `profile` when the app sends it with `redirectUri`. */
+export function discordCode(profile: DiscordProfile, redirectUri = SECRETS.DISCORD_REDIRECT_URI): string {
     const code = randomUUID();
-    profilesByCode.set(code, profile);
+    grantsByCode.set(code, { profile, redirectUri });
     return code;
 }
 
-/** `GET /api/auth/callback` with `params` and the `oauth_state` cookie. */
-export function callback(params: Record<string, string>, stateCookie?: string): Promise<Response> {
-    const headers: Record<string, string> = stateCookie === undefined ? {} : { Cookie: `oauth_state=${stateCookie}` };
-    return api(`/api/auth/callback?${new URLSearchParams(params)}`, { headers });
+/** `GET /api/auth/callback` with `params`, the `oauth_state` cookie and the browser's current `session` cookie. */
+export function callback(params: Record<string, string>, stateCookie?: string, session?: string): Promise<Response> {
+    const cookies = [stateCookie === undefined ? null : `oauth_state=${stateCookie}`, session === undefined ? null : `session=${session}`];
+    const cookie = cookies.filter((pair) => pair !== null).join("; ");
+    return api(`/api/auth/callback?${new URLSearchParams(params)}`, { headers: cookie ? { Cookie: cookie } : {} });
 }
 
 export interface SignedIn {
@@ -180,10 +226,10 @@ export interface SignedIn {
     response: Response;
 }
 
-/** Logs in through the OAuth flow against the mocked Discord. */
-export async function signIn(profile: DiscordProfile = newProfile(), returnTo?: string): Promise<SignedIn> {
-    const { state, stateCookie } = await beginLogin(returnTo);
-    const response = await callback({ code: discordCode(profile), state }, stateCookie);
+/** Logs in through the OAuth flow against the mocked Discord, from a browser holding `previousSession` if given. */
+export async function signIn(profile: DiscordProfile = newProfile(), returnTo?: string, previousSession?: string): Promise<SignedIn> {
+    const { state, redirectUri, stateCookie } = await beginLogin(returnTo);
+    const response = await callback({ code: discordCode(profile, redirectUri), state }, stateCookie, previousSession);
     const session = cookieValue(response, "session") ?? "";
     expect(response.status).toBe(307);
     expect(session).toMatch(/^[0-9a-f]{64}$/);
@@ -214,6 +260,14 @@ export function loadJob(id: string): Promise<JobRow | null> {
     return db().prepare("SELECT * FROM jobs WHERE id = ?").bind(id).first<JobRow>();
 }
 
+export function issuedTokens(jobId: string): string[] {
+    return runnerTokens.get(jobId) ?? [];
+}
+
+export function refuseRentals(count: number): void {
+    refusedRentals = count;
+}
+
 export interface StartedSearch {
     id: string;
     token: string;
@@ -224,21 +278,23 @@ export async function startSearch(session: string): Promise<StartedSearch> {
     const response = await api("/api/jobs", { method: "POST", session, body: SEARCH_REQUEST });
     expect(response.status).toBe(201);
     const { job } = (await response.json()) as { job: { id: string } };
-    const token = await until(() => runnerTokens.get(job.id));
     await until(async () => (await loadJob(job.id))?.instance_id);
-    return { id: job.id, token };
+    return { id: job.id, token: issuedTokens(job.id).at(-1) ?? "" };
 }
 
-/** Inserts a finished job straight into D1, with no JobRoom behind it. */
-export async function seedFinishedJob(userId: string): Promise<string> {
+export type SeededJob = Partial<Pick<JobRow, "status" | "max_cost" | "cost" | "updated_at" | "started_at" | "machine" | "finished_at">>;
+
+/** Inserts a job straight into D1 with no JobRoom behind it, finished unless `fields` say otherwise. */
+export async function seedJob(userId: string, fields: SeededJob = {}): Promise<string> {
     const id = randomUUID();
     const now = Date.now();
+    const row = { status: "done", max_cost: 20000, cost: 0, updated_at: now, started_at: null, machine: null, finished_at: now, ...fields };
     await db()
         .prepare(
-            `INSERT INTO jobs (id, user_id, status, config, wanted, max_cost, cost, created_at, updated_at, finished_at)
-             VALUES (?, ?, 'done', '{"version":1,"platform":"windows"}', 1, 20000, 0, ?, ?, ?)`
+            `INSERT INTO jobs (id, user_id, status, config, wanted, max_cost, cost, created_at, updated_at, started_at, machine, finished_at)
+             VALUES (?, ?, ?, '{"version":1,"platform":"windows"}', 1, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .bind(id, userId, now, now, now)
+        .bind(id, userId, row.status, row.max_cost, row.cost, now, row.updated_at, row.started_at, row.machine, row.finished_at)
         .run();
     return id;
 }

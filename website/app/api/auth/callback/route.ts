@@ -2,7 +2,13 @@ import { env } from "cloudflare:workers";
 import { type NextRequest, NextResponse } from "next/server";
 import { discordRedirectUri, fetchDiscordProfile } from "@/lib/server/auth/discord";
 import { decodeOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_COOKIE_OPTIONS } from "@/lib/server/auth/oauth-state";
-import { createSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS, SESSION_TTL_SECONDS } from "@/lib/server/auth/session";
+import {
+    createSession,
+    deleteSession,
+    SESSION_COOKIE,
+    SESSION_COOKIE_OPTIONS,
+    SESSION_TTL_SECONDS
+} from "@/lib/server/auth/session";
 import { upsertUser } from "@/lib/server/auth/users";
 import { clientIp, jsonError } from "@/lib/server/http";
 
@@ -20,6 +26,8 @@ export async function GET(request: NextRequest) {
     const profile = await fetchDiscordProfile(code, discordRedirectUri(request)).catch(() => null);
     if (profile === null) return withClearedState(jsonError(502, "Couldn't log in with Discord. Try again."));
 
+    const previous = request.cookies.get(SESSION_COOKIE)?.value;
+    if (previous) await deleteSession(previous);
     await upsertUser(env.DB, profile, ip);
     const token = await createSession(profile.id, ip);
 

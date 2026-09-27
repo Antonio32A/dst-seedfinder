@@ -19,6 +19,21 @@ import {
 useWorker();
 
 const LOGIN_EXPIRED = { error: "Login expired or was invalid. Try again." };
+const OFF_SITE_RETURNS = [
+    "https://evil.example",
+    "https://evil.example/path",
+    "//evil.example/",
+    "/\\evil.example",
+    "javascript:alert(1)",
+    "http://seedfinder.test.evil.example/",
+    "https://seedfinder.test//evil.example",
+    "http://seedfinder.test//evil.example",
+    "/.//evil.example",
+    "/%2e//evil.example",
+    "/..//evil.example",
+    "/./\\evil.example",
+    "/.\\/evil.example"
+];
 const DISCORD_FAILED = { error: "Couldn't log in with Discord. Try again." };
 
 async function sessionCount(): Promise<number> {
@@ -46,23 +61,22 @@ describe("login", () => {
         expect(redirectPath(response)).toBe("seedfinder.test /search?tab=1#top");
     });
 
-    it.each(["https://evil.example", "https://evil.example/path", "//evil.example/", "/\\evil.example", "javascript:alert(1)", "http://seedfinder.test.evil.example/"])(
-        "sends an off-site return %s to /",
-        async (returnTo) => {
-            const { response } = await signIn(newProfile(), returnTo);
+    it.each(OFF_SITE_RETURNS)("sends an off-site return %s to / and never stores it", async (returnTo) => {
+        const stored = decodeURIComponent(decodeURIComponent((await beginLogin(returnTo)).stateCookie));
+        expect(stored.slice(stored.indexOf(".") + 1)).toBe("/");
+        const { response } = await signIn(newProfile(), returnTo);
+        expect(redirectPath(response)).toBe("seedfinder.test /");
+    });
+
+    it.each(["https://evil.example/", "//evil.example", "/.//evil.example", "/%2e//evil.example"])(
+        "sends an off-site return path %s forged into the state cookie to /",
+        async (forged) => {
+            const state = randomToken();
+            const response = await callback({ code: discordCode(newProfile()), state }, `${state}.${encodeURIComponent(forged)}`);
+            expect(response.status).toBe(307);
             expect(redirectPath(response)).toBe("seedfinder.test /");
         }
     );
-
-    it("sends an off-site return path forged into the state cookie to /", async () => {
-        const state = randomToken();
-        const response = await callback({
-            code: discordCode(newProfile()),
-            state
-        }, `${state}.${encodeURIComponent("https://evil.example/")}`);
-        expect(response.status).toBe(307);
-        expect(redirectPath(response)).toBe("seedfinder.test /");
-    });
 
     it("clears the state cookie once used", async () => {
         const { response } = await signIn();

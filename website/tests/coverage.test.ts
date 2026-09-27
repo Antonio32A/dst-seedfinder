@@ -8,6 +8,7 @@ const WEBSITE = fileURLToPath(new URL("..", import.meta.url));
 const APP = join(WEBSITE, "app");
 const SERVER_CODE = ["app", "components", "lib"];
 const HTTP_METHOD = "GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS";
+const SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];
 const DECLARED_METHOD = new RegExp(`export\\s+(?:(?:async\\s+)?function\\s*\\*?|const|let|var)\\s+(${HTTP_METHOD})\\b`, "g");
 const EXPORT_LIST = /export\s*(?:type\s*)?\{([^}]*)\}/g;
 const LISTED_METHOD = new RegExp(`(?:^|\\s|,)(?:\\w+\\s+as\\s+)?(${HTTP_METHOD})\\s*(?:,|$)`, "g");
@@ -21,7 +22,9 @@ const routeEndpoints = sourceFiles(APP)
         const source = readFileSync(join(APP, file), "utf8");
         const declared = [...source.matchAll(DECLARED_METHOD)].map((match) => match[1]);
         const listed = [...source.matchAll(EXPORT_LIST)].flatMap((list) => [...list[1].matchAll(LISTED_METHOD)].map((match) => match[1]));
-        return [...declared, ...listed].map((method) => endpointKey({ method, route: `/${dirname(file)}` }));
+        const exported = new Set([...declared, ...listed]);
+        const served = new Set([...exported, "OPTIONS", ...(exported.has("GET") ? ["HEAD"] : [])]);
+        return [...served].map((method) => endpointKey({ method, route: `/${dirname(file)}` }));
     });
 
 describe("API coverage", () => {
@@ -29,13 +32,13 @@ describe("API coverage", () => {
         expect(routeEndpoints.length).toBeGreaterThan(0);
     });
 
-    it("classifies every app/api route method in tests/endpoints.ts, and nothing else", () => {
+    it("classifies every method app/api serves, framework HEAD and OPTIONS included, and nothing else", () => {
         expect([...routeEndpoints].sort()).toEqual(ENDPOINTS.map(endpointKey).sort());
     });
 
-    it("checks CSRF on every non-GET endpoint a browser session can reach", () => {
+    it("checks CSRF on every unsafe endpoint a browser session can reach", () => {
         const unguarded = ENDPOINTS.filter(({ method, access, csrf }) =>
-            method !== "GET" && access !== "runner" && !csrf
+            !SAFE_METHODS.includes(method) && access !== "runner" && !csrf
         );
         expect(unguarded.map(endpointKey)).toEqual([]);
     });

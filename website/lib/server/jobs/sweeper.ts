@@ -3,7 +3,7 @@ import { isActiveStatus, type Machine } from "@/lib/jobs/job-events";
 import { destroyInstance, INSTANCE_LABEL_PREFIX, instanceLabel, listInstances } from "@/lib/server/vast/vast";
 import { dispatcherStub, jobRoomStub } from "./dispatcher";
 import { DEADLINE_GRACE_MS } from "./job-room";
-import { ACTIVE_STATUS_SQL, type JobRow, settleJob } from "./jobs";
+import { ACTIVE_STATUS_SQL, JOB_ID, type JobRow, settleJob } from "./jobs";
 
 const QUIET_MS = 5 * 60_000;
 const STUCK_RUNNING_MS = 10 * 60_000;
@@ -12,8 +12,6 @@ const LOST_JOB = "The search was lost. Your credits were refunded.";
 const STUCK_JOB = "The search got stuck and was stopped. Unused credits were refunded.";
 
 type SweptRow = Pick<JobRow, "id" | "user_id" | "max_cost" | "status" | "instance_id" | "machine" | "started_at" | "updated_at">;
-
-const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const machineOf = (row: SweptRow) => (row.machine === null ? null : (JSON.parse(row.machine) as Machine));
 

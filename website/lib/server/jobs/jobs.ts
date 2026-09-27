@@ -12,6 +12,9 @@ import {
 
 export const ACTIVE_STATUS_SQL = ACTIVE_JOB_STATUSES.map((status) => `'${status}'`).join(", ");
 
+/** The `crypto.randomUUID()` form every job id has. */
+export const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 export interface JobRow {
     id: string;
     user_id: string;

@@ -8,9 +8,6 @@
         "not_found_handling": "none",
         "binding": "ASSETS"
     },
-    "images": {
-        "binding": "IMAGES"
-    },
     "observability": {
         "enabled": true
     },

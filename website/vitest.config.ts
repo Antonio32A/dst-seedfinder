@@ -9,6 +9,7 @@ export default defineConfig({
         hookTimeout: 60_000,
         env: {
             CLOUDFLARE_CF_FETCH_ENABLED: "false",
+            CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
             WRANGLER_SEND_METRICS: "false"
         }
     }

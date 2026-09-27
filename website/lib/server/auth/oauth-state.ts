@@ -13,10 +13,11 @@ export interface OAuthState {
     returnPath: string;
 }
 
-/** Keeps login redirects on this site: anything off-origin becomes "/". */
+/** Keeps login redirects on this site: anything off-origin, or a path that reads as protocol-relative, becomes "/". */
 export function sameOriginPath(requested: string, origin: string): string {
     const target = URL.parse(requested, origin);
-    return target?.origin === origin ? `${target.pathname}${target.search}${target.hash}` : "/";
+    const path = target?.origin === origin ? `${target.pathname}${target.search}${target.hash}` : "/";
+    return path.startsWith("//") ? "/" : path;
 }
 
 export function encodeOAuthState({ state, returnPath }: OAuthState): string {

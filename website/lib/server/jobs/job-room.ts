@@ -126,8 +126,8 @@ const EXIT_ENDINGS: Record<ExitKind, EndingKind> = {
     crash: failed(CRASHED, "search")
 };
 
-const RUNNER_GET_STATUSES = new Set<JobStatus>(["starting", "running"]);
-const RUNNER_POST_STATUSES = new Set<JobStatus>(["running"]);
+export const RUNNER_GET_STATUSES = new Set<JobStatus>(["starting", "running"]);
+export const RUNNER_POST_STATUSES = new Set<JobStatus>(["running"]);
 
 /** Constant time, so token checks don't leak timing. */
 function sameHex(given: string, expected: string): boolean {

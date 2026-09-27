@@ -1,11 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { endpointKey, endpointPath, ENDPOINTS } from "./endpoints";
-import { api, db, SEARCH_REQUEST, seedFinishedJob, setCookie, sha256Hex, signIn, useWorker } from "./harness";
+import {
+    api,
+    db,
+    newProfile,
+    SEARCH_REQUEST,
+    SECRETS,
+    seedJob,
+    setCookie,
+    sha256Hex,
+    signIn,
+    startSearch,
+    useWorker
+} from "./harness";
 
 useWorker();
 
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 const SESSION_COOKIE_FLAGS = [/;\s*HttpOnly(;|$)/i, /;\s*Secure(;|$)/i, /;\s*SameSite=Lax(;|$)/i, /;\s*Path=\/(;|$)/i];
+
+const SESSION_CHECK_MS = Number(SECRETS.EVENTS_SESSION_CHECK_MS);
+
+async function endsWithin(reader: ReadableStreamDefaultReader<Uint8Array>, timeoutMs: number): Promise<boolean> {
+    const timeout = new Promise<"open">((resolve) => setTimeout(() => resolve("open"), timeoutMs));
+    for (; ;) {
+        const read = await Promise.race([reader.read(), timeout]);
+        if (read === "open") return false;
+        if (read.done) return true;
+    }
+}
 
 async function meId(session: string): Promise<string | null> {
     const { user } = (await (await api("/api/me", { session })).json()) as { user: { id: string } | null };
@@ -32,6 +55,24 @@ describe("the session cookie", () => {
         const first = await signIn();
         const second = await signIn(first.profile);
         expect(second.session).not.toBe(first.session);
+    });
+});
+
+describe("logging in again", () => {
+    it("ends the session the browser had and leaves the user's other sessions", async () => {
+        const browser = await signIn();
+        const otherDevice = await signIn(browser.profile);
+        const again = await signIn(browser.profile, "/", browser.session);
+        expect((await api("/api/jobs", { session: browser.session })).status).toBe(401);
+        expect(await meId(otherDevice.session)).toBe(browser.profile.id);
+        expect(await meId(again.session)).toBe(browser.profile.id);
+    });
+
+    it("doesn't keep a session cookie planted before the login", async () => {
+        const planter = await signIn();
+        const victim = await signIn(newProfile(), "/", planter.session);
+        expect(await meId(planter.session)).toBeNull();
+        expect(await meId(victim.session)).toBe(victim.profile.id);
     });
 });
 
@@ -62,6 +103,19 @@ describe("logout", () => {
         expect(await meId(other.session)).toBe(other.profile.id);
     });
 
+    it("ends an open search stream and a reconnect is refused", async () => {
+        const { session } = await signIn();
+        const { id } = await startSearch(session);
+        const stream = await api(`/api/jobs/${id}/events`, { session });
+        expect(stream.status).toBe(200);
+        const reader = (stream.body as ReadableStream<Uint8Array>).getReader();
+        expect((await reader.read()).done).toBe(false);
+        expect(await endsWithin(reader, 5 * SESSION_CHECK_MS)).toBe(false);
+        await api("/api/auth/logout", { method: "POST", session });
+        expect(await endsWithin(reader, 20 * SESSION_CHECK_MS)).toBe(true);
+        expect((await api(`/api/jobs/${id}/events`, { session })).status).toBe(401);
+    });
+
     it("without a session succeeds and touches no sessions", async () => {
         const { profile, session } = await signIn();
         const response = await api("/api/auth/logout", { method: "POST" });
@@ -76,7 +130,7 @@ describe("per-user responses", () => {
         key: endpointKey(endpoint)
     })))("$key is Cache-Control: no-store", async (endpoint) => {
         const { profile, session } = await signIn();
-        const jobId = await seedFinishedJob(profile.id);
+        const jobId = await seedJob(profile.id);
         const body = endpoint.route === "/api/jobs" && endpoint.method === "POST" ? SEARCH_REQUEST : undefined;
         const response = await api(endpointPath(endpoint, jobId), { method: endpoint.method, session, body });
         await response.body?.cancel();

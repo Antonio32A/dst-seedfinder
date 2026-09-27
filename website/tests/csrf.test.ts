@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { endpointKey, ENDPOINTS } from "./endpoints";
-import { api, db, loadJob, SEARCH_REQUEST, signIn, startSearch, useWorker } from "./harness";
+import { api, db, loadJob, ORIGIN, SEARCH_REQUEST, signIn, startSearch, useWorker } from "./harness";
 
 useWorker();
 
@@ -64,21 +64,42 @@ it("has an attempt for every CSRF-checked endpoint", () => {
     expect(Object.keys(ATTEMPTS).sort()).toEqual(ENDPOINTS.filter(({ csrf }) => csrf).map(endpointKey).sort());
 });
 
+interface Provenance {
+    name: string;
+    site?: string;
+    origin?: string;
+}
+
+const REFUSED: Provenance[] = [
+    ...["cross-site", "same-site", "none"].map((site) => ({ name: `Sec-Fetch-Site: ${site}`, site })),
+    ...["https://evil.example", "null", "https://seedfinder.test.evil.example", "https://seedfinder.test:8443"].map((origin) => ({
+        name: `Origin: ${origin}`,
+        origin
+    })),
+    { name: "Sec-Fetch-Site: same-origin with Origin: https://evil.example", site: "same-origin", origin: "https://evil.example" }
+];
+
+const ALLOWED: Provenance[] = [
+    { name: "Sec-Fetch-Site: same-origin", site: "same-origin" },
+    { name: `Origin: ${ORIGIN}`, origin: ORIGIN },
+    { name: `Sec-Fetch-Site: same-origin with Origin: ${ORIGIN}`, site: "same-origin", origin: ORIGIN },
+    { name: "neither Sec-Fetch-Site nor Origin, as from a non-browser client" }
+];
+
+const originHeader = (origin?: string): Record<string, string> => (origin === undefined ? {} : { Origin: origin });
+
 describe.each(Object.entries(ATTEMPTS).map(([key, attempt]) => ({ key, attempt })))("$key", ({ attempt }) => {
-    it.each(["cross-site", "same-site", "none"])("rejects Sec-Fetch-Site: %s with 403 and changes nothing", async (site) => {
+    it.each(REFUSED)("rejects $name with 403 and changes nothing", async ({ site, origin }) => {
         const { path, session, body, unchanged } = await attempt();
-        const response = await api(path, { method: "POST", session, body, site });
+        const response = await api(path, { method: "POST", session, body, site, headers: originHeader(origin) });
         expect(response.status).toBe(403);
         expect(await response.json()).toEqual({ error: "Requests from other sites aren't allowed." });
         await unchanged();
     });
 
-    it.each([
-        { header: "Sec-Fetch-Site: same-origin", site: "same-origin" },
-        { header: "no Sec-Fetch-Site", site: undefined }
-    ])("allows $header", async ({ site }) => {
+    it.each(ALLOWED)("allows $name", async ({ site, origin }) => {
         const { path, session, body, applied } = await attempt();
-        const response = await api(path, { method: "POST", session, body, site });
+        const response = await api(path, { method: "POST", session, body, site, headers: originHeader(origin) });
         expect(response.status).toBeLessThan(300);
         await applied();
     });

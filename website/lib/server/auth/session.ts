@@ -33,11 +33,16 @@ export async function deleteSession(token: string): Promise<void> {
     await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256Hex(token)).run();
 }
 
-export async function getCurrentUser(): Promise<UserRow | null> {
-    const token = (await cookies()).get(SESSION_COOKIE)?.value;
-    if (!token) return null;
+/** The id of the user a session token belongs to, or null once it expired or was logged out. */
+export async function sessionUserId(token: string): Promise<string | null> {
     const session = await env.DB.prepare("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?")
         .bind(await sha256Hex(token), Date.now())
         .first<{ user_id: string }>();
-    return session ? loadUser(env.DB, session.user_id) : null;
+    return session?.user_id ?? null;
+}
+
+export async function getCurrentUser(): Promise<UserRow | null> {
+    const token = (await cookies()).get(SESSION_COOKIE)?.value;
+    const userId = token ? await sessionUserId(token) : null;
+    return userId === null ? null : loadUser(env.DB, userId);
 }

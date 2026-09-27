@@ -7,5 +7,6 @@ declare namespace Cloudflare {
         PUBLIC_ORIGIN?: string;
         RUNNER_IMAGE?: string;
         MAX_INSTANCES?: string;
+        EVENTS_SESSION_CHECK_MS?: string;
     }
 }

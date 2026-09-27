@@ -32,6 +32,8 @@ Locally these go in `.dev.vars` (`cp .dev.vars.example .dev.vars`). In productio
   search, and it has to be reachable from the internet. If you're using CF Access on the domain you'll have to whitelist
 the runner callback.
 - `MAX_INSTANCES` (optional): max amount of Vast.ai instances running at once.
+- `EVENTS_SESSION_CHECK_MS` (optional): how often an open search stream checks that its viewer is still logged in.
+  Defaults to 60000.
 - `RUNNER_REPOSITORY` (`.dev.vars` only): the image repository `../runner/build.sh` builds and pushes to.
 
 Remote searches stay disabled until `VAST_API_KEY`, `GHCR_USER`, `GHCR_PULL_TOKEN` and `RUNNER_IMAGE` are all set.

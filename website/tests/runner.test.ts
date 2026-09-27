@@ -1,7 +1,25 @@
 import { randomUUID } from "node:crypto";
+import { http, HttpResponse } from "msw";
 import { beforeAll, describe, expect, it } from "vitest";
 import { endpointKey, ENDPOINTS } from "./endpoints";
-import { api, loadJob, randomToken, signIn, type StartedSearch, startSearch, until, useWorker } from "./harness";
+import {
+    api,
+    chunkedBody,
+    db,
+    issuedTokens,
+    loadJob,
+    network,
+    OFFER,
+    randomToken,
+    refuseRentals,
+    signIn,
+    type StartedSearch,
+    startSearch,
+    until,
+    useWorker,
+    VAST_API,
+    worker
+} from "./harness";
 
 useWorker();
 
@@ -10,9 +28,14 @@ const RUNNER_ENDPOINTS = ENDPOINTS.filter(({ access }) => access === "runner").m
     key: endpointKey(endpoint)
 }));
 
-function runner(method: string, jobId: string, authorization?: string, headers: Record<string, string> = {}): Promise<Response> {
+function runner(method: string, jobId: string, authorization?: string, headers: Record<string, string> = {}, body?: BodyInit): Promise<Response> {
     const credentials: Record<string, string> = authorization === undefined ? {} : { Authorization: authorization };
-    return api(`/api/runner/${jobId}`, { method, headers: { "X-Offset": "0", ...headers, ...credentials } });
+    return api(`/api/runner/${jobId}`, { method, body, headers: { "X-Offset": "0", ...headers, ...credentials } });
+}
+
+async function hasRoom(jobId: string): Promise<boolean> {
+    const env = await worker().getEnv();
+    return (await worker().listDurableObjectIds("JOB_ROOM")).includes(env.JOB_ROOM.idFromName(jobId).toString());
 }
 
 async function expectRefused(response: Response, status: number): Promise<void> {
@@ -141,5 +164,106 @@ describe("a cancelled search's token", () => {
     it.each(RUNNER_ENDPOINTS)("$key is 410", async ({ method }) => {
         await expectRefused(await runner(method, search.id, bearer(search.token)), 410);
         expect((await loadJob(search.id))?.status).toBe("cancelled");
+    });
+});
+
+describe("a job id with no search the runner can reach never wakes a JobRoom", () => {
+    const ids = [
+        ["not a UUID", "not-a-job"],
+        ["a UUID with extra text", `${randomUUID()}-0`],
+        ["an uppercase UUID", randomUUID().toUpperCase()],
+        ["an unknown UUID", randomUUID()]
+    ];
+
+    it.each(RUNNER_ENDPOINTS.flatMap((endpoint) => ids.map(([name, jobId]) => ({ ...endpoint, name, jobId }))))(
+        "$key for $name is 410",
+        async ({ method, jobId }) => {
+            await expectRefused(await runner(method, jobId, bearer(randomToken())), 410);
+            expect(await hasRoom(jobId)).toBe(false);
+        }
+    );
+
+    it("POST for an unknown search is refused before its body is read", async () => {
+        const jobId = randomUUID();
+        await expectRefused(await runner("POST", jobId, bearer(randomToken()), {}, chunkedBody(1024 * 1024)), 410);
+        expect(await hasRoom(jobId)).toBe(false);
+    });
+});
+
+describe("a search D1 has already settled", () => {
+    let search: StartedSearch;
+
+    beforeAll(async () => {
+        const { session } = await signIn();
+        search = await startSearch(session);
+        await db().prepare("UPDATE jobs SET status = 'failed', cost = 0 WHERE id = ?").bind(search.id).run();
+    });
+
+    it.each(RUNNER_ENDPOINTS)("$key with its own token is 410 and leaves the room alone", async ({ method }) => {
+        await expectRefused(await runner(method, search.id, bearer(search.token)), 410);
+    });
+
+    it("was still starting in its room", async () => {
+        await db().prepare("UPDATE jobs SET status = 'starting', cost = NULL WHERE id = ?").bind(search.id).run();
+        const response = await runner("GET", search.id, bearer(search.token));
+        expect(response.status).toBe(200);
+        await response.body?.cancel();
+        expect((await loadJob(search.id))?.status).toBe("running");
+    });
+});
+
+describe("a running search's output", () => {
+    let search: StartedSearch;
+
+    beforeAll(async () => {
+        const { session } = await signIn();
+        search = await startSearch(session);
+        const started = await runner("GET", search.id, bearer(search.token));
+        expect(started.status).toBe(200);
+        await started.body?.cancel();
+    });
+
+    it.each([
+        { name: "buffered", body: () => new Uint8Array(256 * 1024 + 1) },
+        { name: "streamed", body: () => chunkedBody(256 * 1024 + 1) }
+    ])("over 256 KiB, $name, is 413 and not appended", async ({ body }) => {
+        const response = await runner("POST", search.id, bearer(search.token), {}, body());
+        expect(response.status).toBe(413);
+        expect(await response.text()).toBe("Chunk too large.");
+        const next = await runner("POST", search.id, bearer(search.token), {}, "ok\n");
+        expect(next.headers.get("X-Offset")).toBe("3");
+        await next.body?.cancel();
+    });
+});
+
+describe("after a refused rental", () => {
+    let search: StartedSearch;
+    let refused: string;
+
+    beforeAll(async () => {
+        network.use(http.post(`${VAST_API}/v0/bundles/`, () => HttpResponse.json({
+            offers: [OFFER, { ...OFFER, ask_contract_id: OFFER.ask_contract_id + 1 }]
+        })));
+        refuseRentals(1);
+        const { session } = await signIn();
+        search = await startSearch(session);
+        [refused] = issuedTokens(search.id);
+    });
+
+    it("the machine is rented with a new token", () => {
+        expect(issuedTokens(search.id)).toEqual([refused, search.token]);
+        expect(search.token).not.toBe(refused);
+    });
+
+    it.each(RUNNER_ENDPOINTS)("$key with the refused rental's token is 401", async ({ method }) => {
+        await expectRefused(await runner(method, search.id, bearer(refused)), 401);
+        expect((await loadJob(search.id))?.status).toBe("starting");
+    });
+
+    it("the new token starts the search", async () => {
+        const response = await runner("GET", search.id, bearer(search.token));
+        expect(response.status).toBe(200);
+        await response.body?.cancel();
+        expect((await loadJob(search.id))?.status).toBe("running");
     });
 });

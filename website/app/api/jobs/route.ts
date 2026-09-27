@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
-import { DEFAULT_PLATFORM, DEFAULT_START_SEED } from "@/lib/config/seedfinder-config";
+import { DEFAULT_PLATFORM, DEFAULT_START_SEED, type JobRequest } from "@/lib/config/seedfinder-config";
 import { validateJobRequest } from "@/lib/config/validate-config";
 import { creditsToUnits, notEnoughCredits, unitsToCredits } from "@/lib/jobs/credits";
 import { MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { getCurrentUser } from "@/lib/server/auth/session";
-import { clientIp, isCrossOrigin, json, jsonError } from "@/lib/server/http";
+import { clientIp, isCrossOrigin, json, jsonError, readBody } from "@/lib/server/http";
 import { dispatcherStub, jobRoomStub, MAX_WAITING } from "@/lib/server/jobs/dispatcher";
 import { ACTIVE_STATUS_SQL, type JobRow, loadJob, settleJob, toJobView } from "@/lib/server/jobs/jobs";
 
@@ -30,16 +30,23 @@ async function atActiveLimit(userId: string): Promise<boolean> {
     return (row?.active ?? 0) >= MAX_ACTIVE_SEARCHES;
 }
 
+async function readJobRequest(request: Request): Promise<JobRequest | Response> {
+    const mediaType = request.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase();
+    if (mediaType !== "application/json") return jsonError(415, "Send the search as JSON.");
+    const body = await readBody(request, MAX_BODY_BYTES).catch(() => new Uint8Array());
+    if (body === null) return jsonError(413, "The search is too large.");
+    const validation = validateJobRequest(await new Response(body).json().catch(() => undefined));
+    return validation.ok ? validation.value : jsonError(400, validation.error);
+}
+
 export async function POST(request: Request) {
     if (isCrossOrigin(request)) return jsonError(403, "Requests from other sites aren't allowed.");
     const user = await getCurrentUser();
     if (user === null) return jsonError(401, "Log in to start a search.");
     await env.DB.prepare("UPDATE users SET last_ip = COALESCE(?, last_ip) WHERE id = ?").bind(clientIp(request), user.id).run();
 
-    if (Number(request.headers.get("Content-Length")) > MAX_BODY_BYTES) return jsonError(413, "The search is too large.");
-    const validation = validateJobRequest(await request.json().catch(() => undefined));
-    if (!validation.ok) return jsonError(400, validation.error);
-    const { config } = validation.value;
+    const job = await readJobRequest(request);
+    if (job instanceof Response) return job;
 
     const live = [env.VAST_API_KEY, env.GHCR_USER, env.GHCR_PULL_TOKEN, env.RUNNER_IMAGE].every(Boolean);
     if (!live) return jsonError(503, "Seed searches aren't live yet.");
@@ -47,7 +54,6 @@ export async function POST(request: Request) {
     if (await atActiveLimit(user.id)) return jsonError(409, TOO_MANY_ACTIVE);
     if ((await dispatcherStub(env).waiting()) >= MAX_WAITING) return jsonError(503, QUEUE_FULL);
 
-    const job = validation.value;
     const reserved = creditsToUnits(job.maxCost);
     const id = crypto.randomUUID();
     const now = Date.now();
@@ -74,7 +80,7 @@ export async function POST(request: Request) {
             wanted: job.wanted,
             startSeed: job.startSeed ?? DEFAULT_START_SEED,
             config: JSON.stringify(job.config),
-            platform: config.platform ?? DEFAULT_PLATFORM,
+            platform: job.config.platform ?? DEFAULT_PLATFORM,
             origin: env.PUBLIC_ORIGIN || new URL(request.url).origin
         })
         .then(
