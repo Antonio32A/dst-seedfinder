@@ -58,7 +58,8 @@
     }
 }
 
-html.dark {
+html.dark,
+:root:has(.map-screen) {
     --background: #121212;
     --foreground: #eeeeee;
     --accent: #7eddfa;
