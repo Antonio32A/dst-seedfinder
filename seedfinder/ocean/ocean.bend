@@ -4,6 +4,7 @@ import ../worldsim/grid.bend as Grid
 import ../worldsim/points.bend as Points
 import ../worldsim/tiles/groups.bend as TileGroups
 import ../data/ocean.bend as OceanData
+import ../populate/setpiece.bend as PopulateSetpiece
 import ./ents.bend as OceanEnts
 import ./state.bend as OceanState
 import ./place.bend as OceanPlace
@@ -21,7 +22,8 @@ import ./convert_blend.bend as ConvertBlend
 
 # The prefill: level.ocean_prefill_setpieces on IMPASSABLE with ocean_prefill_setpieces_min_land_dist.
 def prefill(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
-  OceanState.digest(c, OceanPlace.place_set_pieces(OceanPopulate.prefill_specs(), c, TileGroups.impassable(), OceanData.config_ocean_prefill_setpieces_min_land_dist(), s), 0)
+  OceanState.digest(c, OceanPlace.place_set_pieces(OceanPopulate.prefill_specs(), c, TileGroups.impassable(), OceanData.config_ocean_prefill_setpieces_min_land_dist(),
+    PopulateSetpiece.ocean_prefill(), s), 0)
 
 def encoded(ok: Bool, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match ok:

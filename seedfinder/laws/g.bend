@@ -12,6 +12,7 @@ import ../populate/counts.bend as PopulateCounts
 import ../ocean/pow.bend as OceanPow
 import ../data/ocean_post.bend as OceanPostData
 import ../ocean/ents.bend as OceanEnts
+import ../populate/setpiece.bend as PopulateSetpiece
 import ../ocean/monkey.bend as Monkey
 import ../ocean/post.bend as OceanPost
 import ../ocean/bunches.bend as Bunches
@@ -112,9 +113,17 @@ def ocean_bunch_ground():
   {==}
 
 law ocean_wormhole_pairs:
-  {OceanEnts.count(OceanPost.swap_wormholes([OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.zero(), F64Repr.zero(), 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.one(), F64Repr.zero(), 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.two(), F64Repr.zero(), 0, 0}]), OceanPostData.wormhole_prefab()) == 2 : U32}
+  {OceanEnts.count(OceanPost.swap_wormholes([OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.one(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.two(), F64Repr.zero(), 0, 0, 0}]), OceanPostData.wormhole_prefab()) == 2 : U32}
 
 def ocean_wormhole_pairs():
+  {==}
+
+# Five entities (oldest first 10 .. 14) and three placed layouts holding the entries 1..2, none and 4: each member
+# takes its layout's number from 1, the rest 0.
+law ocean_set_piece_members:
+  {OceanEnts.tagged([OceanEnts.Ent{14, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{13, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{12, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{11, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{10, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}], [PopulateSetpiece.Piece{25, 0, 0, F64Repr.zero(), F64Repr.zero(), F64Repr.zero(), 1, 3}, PopulateSetpiece.Piece{25, 0, 0, F64Repr.zero(), F64Repr.zero(), F64Repr.zero(), 3, 3}, PopulateSetpiece.Piece{25, 0, 0, F64Repr.zero(), F64Repr.zero(), F64Repr.zero(), 4, 5}]) == [OceanEnts.Ent{14, F64Repr.zero(), F64Repr.zero(), 0, 0, 3}, OceanEnts.Ent{13, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{12, F64Repr.zero(), F64Repr.zero(), 0, 0, 1}, OceanEnts.Ent{11, F64Repr.zero(), F64Repr.zero(), 0, 0, 1}, OceanEnts.Ent{10, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}] : List<&2, OceanEnts.Ent>}
+
+def ocean_set_piece_members():
   {==}
 
 # Ocean_ConvertImpassibleToWater.

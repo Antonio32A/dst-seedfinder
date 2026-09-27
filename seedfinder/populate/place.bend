@@ -13,6 +13,7 @@ import ../worldsim/tiles/groups.bend as TileGroups
 import ./entities.bend as Entities
 import ./layout.bend as PopulateLayout
 import ./state.bend as PopulateState
+import ./setpiece.bend as PopulateSetpiece
 
 # object_layout.lua's ReserveAndPlaceLayout for ConvertGround's layouts (position nil, WorldSim): the reserved size
 # from the entity list's bounding box (or the ground's side), the random transform (3 GetRandomItem draws unless
@@ -180,25 +181,46 @@ def place_items(items: List<&2, PopulateLayout.Item>, +f: Frame, +c: PopulateSta
           +py = F64Arith.add(cy, F64Arith.mul(item_y(t, i), scale))
           place_items(rest, Frame{cx, cy, t, scale}, c, add_fixed(c, item_prefab(i), px, py, l))
 
+# The transform as SETP's bits: 1 switch_xy, 2 flip_x = -1, 4 flip_y = -1.
+def turn_bits(+t: Turn) -> U32:
+  match t:
+    case Turn{+switch, +fx, +fy}:
+      (Bool.to_u32(switch) .|. (Bool.to_u32(Bool.not(fx)) << 1n) .|. (Bool.to_u32(Bool.not(fy)) << 2n) : U32)
+
+def piece_after(got: PopulateState.Land & U32, +p: PopulateSetpiece.Piece, +from: U32) -> PopulateState.Land:
+  (l, +to) = got
+  PopulateState.noted(l, PopulateState.EPiece{PopulateSetpiece.with_members(p, from, to)})
+
+def piece_before(got: PopulateState.Land & U32, +c: PopulateState.Ctx, +items: List<&2, PopulateLayout.Item>, +f: Frame, +p: PopulateSetpiece.Piece) -> PopulateState.Land:
+  (l, +from) = got
+  piece_after(PopulateState.counted(place_items(items, f, c, l)), p, from)
+
+def placed_recorded(on: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +items: List<&2, PopulateLayout.Item>, +f: Frame, +p: PopulateSetpiece.Piece) -> PopulateState.Land:
+  match on:
+    case False{}:
+      place_items(items, f, c, l)
+    case True{}:
+      piece_before(PopulateState.counted(l), c, items, f, p)
+
 def corner(+v: U32, +size: F64Repr.F64) -> F64Repr.F64:
   F64Arith.sub(F64Arith.add(F64Repr.from_u32(v), size), F64Repr.half())
 
-def place_if(ok: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +items: List<&2, PopulateLayout.Item>, +f: Frame, +cx: F64Repr.F64, +cy: F64Repr.F64) -> PopulateState.Land:
+def place_if(ok: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +items: List<&2, PopulateLayout.Item>, +f: Frame, +cx: F64Repr.F64, +cy: F64Repr.F64, +p: PopulateSetpiece.Piece) -> PopulateState.Land:
   match ok:
     case False{}:
       l
     case True{}:
-      match f:
-        case Frame{_, _, +t, +scale}:
-          place_items(items, Frame{cx, cy, t, scale}, c, l)
+      match f p:
+        case Frame{_, _, +t, +scale} PopulateSetpiece.Piece{+name, +source, _, _, _, +half, _, _}:
+          placed_recorded(PopulateState.pieces_of(c), l, c, items, Frame{cx, cy, t, scale}, PopulateSetpiece.Piece{name, source, turn_bits(t), cx, cy, half, 0, 0})
 
-def reserved(r: Points.Reserved, +c: PopulateState.Ctx, +node: U32, +ask: Points.Ask, +pos: U32, +items: List<&2, PopulateLayout.Item>, +f: Frame, +size: F64Repr.F64, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
+def reserved(r: Points.Reserved, +c: PopulateState.Ctx, +node: U32, +ask: Points.Ask, +pos: U32, +items: List<&2, PopulateLayout.Item>, +f: Frame, +size: F64Repr.F64, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +p: PopulateSetpiece.Piece) -> PopulateState.Land:
   match r:
     case Points.Reserved{g, +rng, +ok, +x, +y, +n}:
       match ask:
         case Points.Ask{+fsize, +start, +fill}:
           place_if(ok, PopulateState.Land{g, rng, ents, PopulateState.EReserve{node, F32Ops.bits(fsize), start, fill, pos, n, before, rng, ok, x, y} <> events}, c,
-            items, f, corner(x, size), corner(y, size))
+            items, f, corner(x, size), corner(y, size), p)
 
 def ground_size(+v: U32, +size: F64Repr.F64) -> F64Repr.F64:
   +n = Layouts.ground_size(v)
@@ -210,19 +232,20 @@ def or_zero(+v: U32) -> U32:
 def position_of(+v: U32) -> U32:
   or_zero(Layouts.layout_position(v))
 
-def placed_turn(got: Turn & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
+def placed_turn(got: Turn & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +name: U32, +source: U32) -> PopulateState.Land:
   (+t, +rng) = got
   +sized = ground_size(v, size)
   +ask = {Points.Ask{F32Ops.from_f64(sized), or_zero(Layouts.start_mask(v)), or_zero(Layouts.fill_mask(v))} : Points.Ask}
   +site = PopulateState.site_of(c, node)
   +f = {Frame{F64Repr.zero(), F64Repr.zero(), t, scale_of(Layouts.scale(v))} : Frame}
   reserved(Points.reserve_space(PopulateState.windows_of(c), PopulateState.sites_of(c), site, ask, position_of(v), ground(v, t), g, rng), c, node, ask, position_of(v),
-    items, f, sized, rng, ents, events)
+    items, f, sized, rng, ents, events, PopulateSetpiece.Piece{name, source, 0, F64Repr.zero(), F64Repr.zero(), sized, 0, 0})
 
-# ReserveAndPlaceLayout(node, layout, prefabs, add_fn) for the layout variant v.
-def place(+c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, l: PopulateState.Land) -> PopulateState.Land:
+# ReserveAndPlaceLayout(node, layout, prefabs, add_fn) for the layout variant v, named `name` (string id) and from
+# `source` (populate/setpiece.bend) when the context records the placed layouts.
+def place(+c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, l: PopulateState.Land) -> PopulateState.Land:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
       +start = {Box{million(), F64Repr.neg(million()), million(), F64Repr.neg(million())} : Box}
       +size = F64Arith.mul(scale_of(Layouts.scale(v)), half_extent(bounds(items, start)))
-      placed_turn(turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), c, node, v, items, size, g, ents, events)
+      placed_turn(turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), c, node, v, items, size, g, ents, events, name, source)

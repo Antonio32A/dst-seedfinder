@@ -44,37 +44,43 @@ def first_runs() -> U32:
 def second_runs() -> U32:
   50
 
-# A seed's fixed inputs: the seed, the platform and its level table (part A).
+# A seed's fixed inputs: the seed, the platform, its level table (part A) and whether to record the layouts the world
+# generation places (populate/setpiece.bend).
 type Seed is Data:
-  Seed{seed: U32, windows: Bool, level: LevelSummary.Summary}
+  Seed{seed: U32, windows: Bool, level: LevelSummary.Summary, pieces: Bool}
 
-def seed_inputs(+seed: U32, +windows: Bool) -> Seed:
-  Seed{seed, windows, LevelSummary.summary(seed)}
+def seed_inputs(+seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
+  Seed{seed, windows, LevelSummary.summary(seed), pieces}
 
 def seed_of(+c: Seed) -> U32:
   match c:
-    case Seed{+seed, _, _}:
+    case Seed{+seed, _, _, _}:
       seed
 
 def windows_of(+c: Seed) -> Bool:
   match c:
-    case Seed{_, +windows, _}:
+    case Seed{_, +windows, _, _}:
       windows
 
 def level_of(+c: Seed) -> LevelSummary.Summary:
   match c:
-    case Seed{_, _, +level}:
+    case Seed{_, _, +level, _}:
       level
 
 def swaps_of(+c: Seed) -> U32:
   match c:
-    case Seed{_, _, LevelSummary.Summary{+swaps, _, _, _, _, _, _}}:
+    case Seed{_, _, LevelSummary.Summary{+swaps, _, _, _, _, _, _}, _}:
       swaps
+
+def pieces_of(+c: Seed) -> Bool:
+  match c:
+    case Seed{_, _, _, +pieces}:
+      pieces
 
 # The level table raises a Lua error before Generate.
 def crashed(+c: Seed) -> Bool:
   match c:
-    case Seed{_, _, LevelSummary.Summary{_, _, _, _, _, _, +crashed}}:
+    case Seed{_, _, LevelSummary.Summary{_, _, _, _, _, _, +crashed}, _}:
       crashed
 
 # The RNG at the first attempt's first WorldSim call.
@@ -285,7 +291,7 @@ def tile_grid(+windows: Bool, +w: TileWorld.World, +lists: List<&2, List<&2, U32
 
 # The land context: the RNG at ConvertToTileMap is the story's RNG at Commit (the flag digests replay its variant draws).
 def land_context(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites, +w: U32, +tracing: Bool) -> PopulateState.Ctx:
-  PopulateState.Ctx{windows_of(c), swaps_of(c), sites, s, GenGraph.vertex_table(k), w, w, tracing, StoryGraph.rng_of(s)}
+  PopulateState.Ctx{windows_of(c), swaps_of(c), sites, s, GenGraph.vertex_table(k), w, w, tracing, StoryGraph.rng_of(s), pieces_of(c)}
 
 # Graph:ConvertGround to the end of Graph:PopulateVoronoi, from the grid after DrawRoads.
 def land(+ctx: PopulateState.Ctx, g: Grid.Grid, +w: U32) -> PopulateState.Land:

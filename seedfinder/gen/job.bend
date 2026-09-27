@@ -10,6 +10,7 @@ import ../worldsim/tiles/world.bend as TileWorld
 import ../worldsim/tiles/convert.bend as TileConvert
 import ../populate/entities.bend as Entities
 import ../populate/state.bend as PopulateState
+import ../populate/setpiece.bend as PopulateSetpiece
 import ../ocean/state.bend as OceanState
 import ../ocean/ents.bend as OceanEnts
 import ../ocean/required.bend as OceanRequired
@@ -25,14 +26,15 @@ import ./layout.bend as GenLayout
 # attempt is the world.
 
 # What the ocean stage starts from at land_done (M10's Ocean.run input): the tile grid, the RNG, the land entities (newest
-# first), the finished story (required prefabs, topology) and the map size.
+# first), the finished story (required prefabs, topology), the map size and the land's placed layouts (when recorded).
 type Landed is Type:
-  Landed{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, story: StoryGraph.St, width: U32}
+  Landed{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, story: StoryGraph.St, width: U32, pieces: List<&2, PopulateSetpiece.Piece>}
 
 # The attempt that is the world: its encoded tile map, the RNG after Generate's last draw, savedata.ents (newest
-# first; per prefab in savedata order) and the map size.
+# first; per prefab in savedata order), the map size and, for a job started to record them, the layouts it placed
+# (in placement order; each entity's `piece` numbers them from 1).
 type Final is Type:
-  Final{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, OceanEnts.Ent>, width: U32}
+  Final{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, OceanEnts.Ent>, width: U32, pieces: List<&2, PopulateSetpiece.Piece>}
 
 # Why a seed has no world: the level table raises a Lua error, or all 5 attempts failed.
 type Outcome is Data:
@@ -56,9 +58,9 @@ type Job is Type:
   JWorld{c: Generate.Seed, a: U32, world: Final}
   JDone{c: Generate.Seed, a: U32, outcome: Outcome}
 
-# A new job for seed on the platform.
-def start(+seed: U32, +windows: Bool) -> Job:
-  +c = Generate.seed_inputs(seed, windows)
+# A new job for seed on the platform, recording the layouts it places when `pieces` (Final.pieces).
+def start(+seed: U32, +windows: Bool, +pieces: Bool) -> Job:
+  +c = Generate.seed_inputs(seed, windows, pieces)
   JStart{c, 1, Generate.first_rng(c)}
 
 def retry_if(more: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
@@ -145,8 +147,8 @@ def tiles(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +siz
 
 def landed_of(l: PopulateState.Land, +s: StoryGraph.St, +w: U32) -> Landed:
   match l:
-    case PopulateState.Land{g, +rng, +ents, _}:
-      Landed{g, rng, ents, s, w}
+    case PopulateState.Land{g, +rng, +ents, +events}:
+      Landed{g, rng, ents, s, w, PopulateState.pieces(events)}
 
 # The tile stages and the land population, up to land_done.
 def land(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
@@ -157,10 +159,24 @@ def land(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U
 def topology_count(+s: StoryGraph.St) -> U32:
   StoryGraph.get(s, StoryGraph.s_nodes())
 
+def piece_events(ps: List<&2, PopulateSetpiece.Piece>, +acc: List<&2, OceanState.Ev>) -> List<&2, OceanState.Ev>:
+  match ps:
+    case Nil{}:
+      acc
+    case Con{+p, rest}:
+      piece_events(rest, OceanState.EPiece{p} <> acc)
+
+def ocean_ents(+ents: List<&2, Entities.Ent>, +pieces: List<&2, PopulateSetpiece.Piece>) -> List<&2, OceanEnts.Ent>:
+  match pieces:
+    case Nil{}:
+      OceanEnts.of_land(ents)
+    case Con{+p, rest}:
+      OceanEnts.tagged(OceanEnts.of_land(ents), p <> rest)
+
 def sea_of(landed: Landed) -> OceanState.Sea:
   match landed:
-    case Landed{g, +rng, +ents, +s, _}:
-      OceanState.Sea{g, Grid.new(0, 0, 0), rng, OceanEnts.of_land(ents), topology_count(s), Nil{}}
+    case Landed{g, +rng, +ents, +s, _, +pieces}:
+      OceanState.Sea{g, Grid.new(0, 0, 0), rng, ocean_ents(ents, pieces), topology_count(s), piece_events(pieces, Nil{})}
 
 # The required prefab check's verdict: the world (after the road length draw, math.random(3, 5)), or the next attempt
 # from the RNG after the ocean stage.
@@ -168,8 +184,8 @@ def verdict(ok: Bool, +c: Generate.Seed, +a: U32, sea: OceanState.Sea, +w: U32) 
   match ok:
     case True{}:
       match sea:
-        case OceanState.Sea{g, _, +rng, +ents, _, _}:
-          JWorld{c, a, Final{g, Pcg.advance(rng, 1), ents, w}}
+        case OceanState.Sea{g, _, +rng, +ents, _, +events}:
+          JWorld{c, a, Final{g, Pcg.advance(rng, 1), ents, w, OceanState.pieces(events)}}
     case False{}:
       match sea:
         case OceanState.Sea{_, _, +rng, _, _, _}:
@@ -182,9 +198,9 @@ def oceaned(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +w: U32) -> 
 # The ocean stage from land_done to the required prefab check (no node-id map, no tracing).
 def ocean(+c: Generate.Seed, +a: U32, landed: Landed) -> Job:
   match landed:
-    case Landed{g, +rng, +ents, +s, +w}:
-      +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}} : OceanState.Ctx}
-      oceaned(Ocean.run(ctx, OceanRequired.required(s), sea_of(Landed{g, rng, ents, s, w})), c, a, w)
+    case Landed{g, +rng, +ents, +s, +w, +pieces}:
+      +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
+      oceaned(Ocean.run(ctx, OceanRequired.required(s), sea_of(Landed{g, rng, ents, s, w, pieces})), c, a, w)
 
 # One stage transition. JFirst and JSecond wait (see layout), JWorld and JDone stay as they are.
 def step(job: Job) -> Job:

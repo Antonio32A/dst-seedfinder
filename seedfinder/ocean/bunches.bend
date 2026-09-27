@@ -197,7 +197,7 @@ def exported(items: List<&2, Item>, +ents: List<&2, OceanEnts.Ent>) -> List<&2, 
     case Nil{}:
       ents
     case Con{Item{+prefab, +x, +z}, rest}:
-      exported(rest, OceanEnts.Ent{prefab, x, z, 0, 0} <> ents)
+      exported(rest, OceanEnts.Ent{prefab, x, z, 0, 0, 0} <> ents)
 
 def batch_done(got: Bun & List<&2, Item>) -> Bun:
   (b, +items) = got
@@ -212,7 +212,7 @@ def batch_counted(got: U32 & Pcg.Rng, +c: OceanState.Ctx, +sp: Spawner, +x: F64R
 # BunchSpawnerRunSingleBatchSpawner at a spawner entity.
 def batch(+c: OceanState.Ctx, +sp: Spawner, +e: OceanEnts.Ent, b: Bun) -> Bun:
   match sp e b:
-    case Spawner{_, _, _, +min, +max, _, _} OceanEnts.Ent{_, +x, +z, _, _} Bun{g, +rng, +ents}:
+    case Spawner{_, _, _, +min, +max, _, _} OceanEnts.Ent{_, +x, +z, _, _, _} Bun{g, +rng, +ents}:
       batch_counted(MathRandom.random_range(rng, min, max), c, sp, x, z, g, ents)
 
 def spawners_loop(xs: List<&2, OceanEnts.Ent>, +c: OceanState.Ctx, +sp: Spawner, b: Bun) -> Bun:

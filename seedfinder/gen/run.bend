@@ -53,7 +53,7 @@ def world_fields(got: Grid.Grid & Grid.Hash, +seed: U32, +rng: Pcg.Rng, +n: U32)
 
 def final_fields(world: GenJob.Final, +seed: U32) -> List<&2, String>:
   match world:
-    case GenJob.Final{g, +rng, +ents, _}:
+    case GenJob.Final{g, +rng, +ents, _, _}:
       world_fields(Grid.tiles_digest(g), seed, rng, U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
 
 def outcome_fields(job: GenJob.Job, +seed: U32) -> List<&2, String>:
@@ -133,7 +133,7 @@ def drive(fuel: Nat, st: Stepped, +times: Bool, +seed: U32, +windows: Bool, +nat
 def seed(+seed: U32, +windows: Bool, +times: Bool, +native: Bool) -> IO(Unit):
   do IO<Unit>:
     +start : Nat <- IO.now()
-    drive(8192n, Going{Drive{GenJob.start(seed, windows), GenJob.Where{9, 0}, start}}, times, seed, windows, native, start)
+    drive(8192n, Going{Drive{GenJob.start(seed, windows, False{}), GenJob.Where{9, 0}, start}}, times, seed, windows, native, start)
 
 def seeds(n: Nat, +from: U32, +windows: Bool, +times: Bool, +native: Bool) -> IO(Unit):
   match n:

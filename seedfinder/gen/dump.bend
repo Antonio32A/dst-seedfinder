@@ -272,7 +272,7 @@ def written_dump(+seed: U32, +outcome: U32, +count: U32, bytes: List<&2, U32>, +
 def refilled(+feed: Feed, +ctx: Ctx, +now: Nat) -> Slot:
   match feed:
     case Feed{+next, +left, _, _}:
-      Bool.pick(Slot, Nat.is_eq(left, 0n), Free{}, Busy{next, GenJob.start(next, windows_of(ctx)), now})
+      Bool.pick(Slot, Nat.is_eq(left, 0n), Free{}, Busy{next, GenJob.start(next, windows_of(ctx), True{}), now})
 
 def fed_after(+feed: Feed) -> Feed:
   match feed:

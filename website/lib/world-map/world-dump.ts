@@ -15,6 +15,25 @@ export interface DumpPrefab {
     positions: Int32Array;
 }
 
+/** Where the world generation got a set piece from, by its SETP source code (docs/world-dump.md). */
+export const SET_PIECE_SOURCES = ["room", "task", "start", "map-tag", "ocean-prefill", "ocean-room"] as const;
+export type SetPieceSource = (typeof SET_PIECE_SOURCES)[number] | "unknown";
+
+export interface DumpSetPiece {
+    /** The layout's name, as the game names it. */
+    name: string;
+    source: SetPieceSource;
+    /** Bit 0: x and y swapped, bit 1: x mirrored, bit 2: y mirrored. */
+    transform: number;
+    /** The layout's centre, in world units times 100. */
+    xk: number;
+    zk: number;
+    /** `xmin, zmin, xmax, zmax`, in world units times 100. */
+    bounds: Int32Array;
+    /** Interleaved `prefab, index` per member: an index into `prefabs` and that prefab's instance index. */
+    members: Uint32Array;
+}
+
 export interface GeneratedWorld extends DumpHeader {
     status: "generated";
     gameBuild: number;
@@ -26,6 +45,8 @@ export interface GeneratedWorld extends DumpHeader {
     prefabs: DumpPrefab[];
     /** Interleaved `entry, exit` wormhole instance indices per link. */
     links: Uint32Array;
+    /** The static layouts the world generation placed, absent when the dump doesn't say (no SETP section). */
+    setPieces?: DumpSetPiece[];
 }
 
 export interface GaveUpWorld extends DumpHeader {
@@ -46,6 +67,12 @@ class Reader {
 
     u32() {
         const value = this.view.getUint32(this.offset, true);
+        this.offset += 4;
+        return value;
+    }
+
+    i32() {
+        const value = this.view.getInt32(this.offset, true);
         this.offset += 4;
         return value;
     }
@@ -85,6 +112,17 @@ const SECTIONS: Record<string, (reader: Reader, world: GeneratedWorld) => void> 
     },
     WORM: (reader, world) => {
         world.links = reader.copy(Uint32Array, 2 * reader.u32());
+    },
+    SETP: (reader, world) => {
+        world.setPieces = repeat(reader, () => ({
+            name: reader.string(),
+            source: SET_PIECE_SOURCES[reader.u32()] ?? "unknown",
+            transform: reader.u32(),
+            xk: reader.i32(),
+            zk: reader.i32(),
+            bounds: reader.copy(Int32Array, 4),
+            members: reader.copy(Uint32Array, 2 * reader.u32())
+        }));
     }
 };
 

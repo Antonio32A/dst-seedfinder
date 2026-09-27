@@ -16,10 +16,20 @@ type Prefab is Data:
 type Link is Data:
   Link{entry: U32, exit: U32}
 
+# A set piece member: instance `index` of the `prefab`-th ENTS prefab (both from 0).
+type Member is Data:
+  Member{prefab: U32, index: U32}
+
+# A static layout the world generation placed (the SETP section): its name, source and transform, its centre and
+# bounds (xmin, zmin, xmax, zmax) in hundredths of world units (int32 bits), and its members.
+type Piece is Data:
+  Piece{name: String, source: U32, turn: U32, xk: U32, zk: U32, x0k: U32, z0k: U32, x1k: U32, z1k: U32, members: List<&2, Member>}
+
 # A world dump (docs/world-dump.md) as the file lays it out: a generated world (tiles packed two u16 per word, the
-# first in the low half), or the seed and platform of one whose generation gave up.
+# first in the low half; its set pieces when it has a SETP section), or the seed and platform of one whose generation
+# gave up.
 type Dump is Data:
-  Generated{seed: U32, platform: U32, build: U32, width: U32, height: U32, tile_names: List<&2, TileName>, tiles: List<&2, U32>, prefabs: List<&2, Prefab>, links: List<&2, Link>}
+  Generated{seed: U32, platform: U32, build: U32, width: U32, height: U32, tile_names: List<&2, TileName>, tiles: List<&2, U32>, prefabs: List<&2, Prefab>, links: List<&2, Link>, pieces: Maybe<&2, List<&2, Piece>>}
   GaveUp{seed: U32, platform: U32}
 
 def magic() -> U32:
@@ -90,6 +100,25 @@ def link_of(words: List<&2, U32>) -> Link & List<&2, U32>:
     case _:
       (Link{0, 0}, Nil{})
 
+def members_of(n: Nat, words: List<&2, U32>) -> List<&2, Member>:
+  match n words:
+    case 1n+p Con{+prefab, Con{+index, rest}}:
+      Member{prefab, index} <> members_of(p, rest)
+    case _ _:
+      Nil{}
+
+def piece_with(got: String & List<&2, U32>) -> Piece & List<&2, U32>:
+  (name, rest) = got
+  match rest:
+    case Con{+source, Con{+turn, Con{+xk, Con{+zk, Con{+x0k, Con{+z0k, Con{+x1k, Con{+z1k, Con{+count, +more}}}}}}}}}:
+      +n = U32.to_nat(count)
+      (Piece{name, source, turn, xk, zk, x0k, z0k, x1k, z1k, members_of(n, more)}, List.drop(&2, U32, more, Nat.add(n, n)))
+    case _:
+      (Piece{name, 0, 0, 0, 0, 0, 0, 0, 0, Nil{}}, Nil{})
+
+def piece_of(words: List<&2, U32>) -> Piece & List<&2, U32>:
+  piece_with(string_of(words))
+
 def entries(~A: Data, ~entry: List<&2, U32> -> A & List<&2, U32>, n: Nat, got: A & List<&2, U32>) -> List<&2, A>:
   match n:
     case 0n:
@@ -107,14 +136,16 @@ def counted(~A: Data, ~entry: List<&2, U32> -> A & List<&2, U32>, words: List<&2
 
 def with_section(tag: U32, payload: List<&2, U32>, d: Dump) -> Dump:
   match tag d:
-    case 1296125524 Generated{+seed, +platform, +build, +width, +height, _, +tiles, +prefabs, +links}:
-      Generated{seed, platform, build, width, height, counted(~TileName, ~tile_name_of, payload), tiles, prefabs, links}
-    case 1162627412 Generated{+seed, +platform, +build, +width, +height, +tile_names, _, +prefabs, +links}:
-      Generated{seed, platform, build, width, height, tile_names, payload, prefabs, links}
-    case 1398033989 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, _, +links}:
-      Generated{seed, platform, build, width, height, tile_names, tiles, counted(~Prefab, ~prefab_of, payload), links}
-    case 1297239895 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, _}:
-      Generated{seed, platform, build, width, height, tile_names, tiles, prefabs, counted(~Link, ~link_of, payload)}
+    case 1296125524 Generated{+seed, +platform, +build, +width, +height, _, +tiles, +prefabs, +links, +pieces}:
+      Generated{seed, platform, build, width, height, counted(~TileName, ~tile_name_of, payload), tiles, prefabs, links, pieces}
+    case 1162627412 Generated{+seed, +platform, +build, +width, +height, +tile_names, _, +prefabs, +links, +pieces}:
+      Generated{seed, platform, build, width, height, tile_names, payload, prefabs, links, pieces}
+    case 1398033989 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, _, +links, +pieces}:
+      Generated{seed, platform, build, width, height, tile_names, tiles, counted(~Prefab, ~prefab_of, payload), links, pieces}
+    case 1297239895 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, _, +pieces}:
+      Generated{seed, platform, build, width, height, tile_names, tiles, prefabs, counted(~Link, ~link_of, payload), pieces}
+    case 1347700051 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, _}:
+      Generated{seed, platform, build, width, height, tile_names, tiles, prefabs, links, Some{counted(~Piece, ~piece_of, payload)}}
     case _ other:
       other
 
@@ -129,7 +160,7 @@ def sections(fuel: Nat, words: List<&2, U32>, d: Dump) -> Dump:
 def versioned(words: List<&2, U32>) -> Result<&1, &1, U32 & String, Dump>:
   match words:
     case Con{_, Con{2, Con{+seed, Con{1, Con{+platform, Con{+build, Con{+width, Con{+height, +rest}}}}}}}}:
-      Done{sections(List.length(&2, U32, rest), rest, Generated{seed, platform, build, width, height, Nil{}, Nil{}, Nil{}, Nil{}})}
+      Done{sections(List.length(&2, U32, rest), rest, Generated{seed, platform, build, width, height, Nil{}, Nil{}, Nil{}, Nil{}, None{}})}
     case Con{_, Con{2, Con{+seed, Con{0, Con{+platform, _}}}}}:
       Done{GaveUp{seed, platform}}
     case Con{_, Con{+version, _}}:
@@ -214,19 +245,52 @@ def link_words(links: List<&2, Link>) -> List<&2, U32>:
 def links_section(+links: List<&2, Link>) -> List<&2, U32>:
   section(1297239895, bytes_of(U32.from_nat(List.length(&2, Link, links)) <> link_words(links)))
 
-# A world dump's file bytes: the header, then a generated world's TNAM, TILE, ENTS and WORM sections.
+def member_words(members: List<&2, Member>) -> List<&2, U32>:
+  match members:
+    case Nil{}:
+      Nil{}
+    case Con{Member{+prefab, +index}, rest}:
+      prefab <> index <> member_words(rest)
+
+def piece_bytes(p: Piece) -> List<&2, U32>:
+  match p:
+    case Piece{+name, +source, +turn, +xk, +zk, +x0k, +z0k, +x1k, +z1k, +members}:
+      +count = U32.from_nat(List.length(&2, Member, members))
+      List.append(&2, U32, string_field(name), bytes_of(source <> turn <> xk <> zk <> x0k <> z0k <> x1k <> z1k <> count <> member_words(members)))
+
+# The SETP section of these set pieces, in the given order.
+def set_pieces_section(+pieces: List<&2, Piece>) -> List<&2, U32>:
+  section(1347700051, counted_bytes(~Piece, ~piece_bytes, pieces))
+
+def optional_set_pieces(+pieces: Maybe<&2, List<&2, Piece>>) -> List<&2, U32>:
+  match pieces:
+    case None{}:
+      Nil{}
+    case Some{+found}:
+      set_pieces_section(found)
+
+# A world dump's file bytes: the header, then a generated world's TNAM, TILE, ENTS and WORM sections and, when it has
+# set pieces, its SETP section.
 def bytes(d: Dump) -> List<&2, U32>:
   match d:
     case GaveUp{+seed, +platform}:
       bytes_of([magic(), 2, seed, 0, platform])
-    case Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links}:
+    case Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pieces}:
       List.concat(&2, U32, [bytes_of([magic(), 2, seed, 1, platform, build, width, height]), tile_names_section(tile_names), tiles_section(tiles),
-        entities_section(prefabs), links_section(links)])
+        entities_section(prefabs), links_section(links), optional_set_pieces(pieces)])
 
 # The prefabs of a dump (none when its world generation gave up).
 def prefabs(+d: Dump) -> List<&2, Prefab>:
   match d:
-    case Generated{_, _, _, _, _, _, _, +found, _}:
+    case Generated{_, _, _, _, _, _, _, +found, _, _}:
       found
     case GaveUp{_, _}:
       Nil{}
+
+# The set pieces of a dump (none when it has no SETP section).
+def set_pieces(+d: Dump) -> Maybe<&2, List<&2, Piece>>:
+  match d:
+    case Generated{_, _, _, _, _, _, _, _, _, +found}:
+      found
+    case GaveUp{_, _}:
+      None{}

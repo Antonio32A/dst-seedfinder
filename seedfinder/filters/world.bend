@@ -96,7 +96,7 @@ def links_of(links: List<&2, FilterDump.Link>, +groups: List<&2, List<&2, Inst>>
 
 def loaded_of(dump: Result<&1, &1, U32 & String, FilterDump.Dump>) -> Result<&1, &1, U32 & String, Loaded>:
   match dump:
-    case Done{FilterDump.Generated{+seed, +platform, _, +width, +height, +tile_names, +tiles, +prefabs, +links}}:
+    case Done{FilterDump.Generated{+seed, +platform, _, +width, +height, +tile_names, +tiles, +prefabs, +links, _}}:
       +groups = groups_of(SearchVocab.prefabs(), prefabs, 0)
       Done{Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole()), tiles}, platform}}
     case Done{FilterDump.GaveUp{+seed, _}}:

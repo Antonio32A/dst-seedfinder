@@ -19,9 +19,9 @@ import ./state.bend as OceanState
 
 def pair_loop(markers: List<&2, OceanEnts.Ent>, +id: U32, acc: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
   match markers:
-    case Con{OceanEnts.Ent{_, +x1, +z1, _, _}, Con{OceanEnts.Ent{_, +x2, +z2, _, _}, rest}}:
-      +first = {OceanEnts.Ent{OceanPostData.wormhole_prefab(), x1, z1, id, (id + 1 : U32)} : OceanEnts.Ent}
-      +second = {OceanEnts.Ent{OceanPostData.wormhole_prefab(), x2, z2, (id + 1 : U32), id} : OceanEnts.Ent}
+    case Con{OceanEnts.Ent{_, +x1, +z1, _, _, +p1}, Con{OceanEnts.Ent{_, +x2, +z2, _, _, +p2}, rest}}:
+      +first = {OceanEnts.Ent{OceanPostData.wormhole_prefab(), x1, z1, id, (id + 1 : U32), p1} : OceanEnts.Ent}
+      +second = {OceanEnts.Ent{OceanPostData.wormhole_prefab(), x2, z2, (id + 1 : U32), id, p2} : OceanEnts.Ent}
       pair_loop(rest, (id + 2 : U32), second <> first <> acc)
     case _:
       List.reverse(&2, OceanEnts.Ent, acc)
@@ -87,10 +87,10 @@ def visible_loop(xs: List<&2, OceanEnts.Ent>, got: Grid.Grid & List<&2, OceanEnt
     case Nil{}:
       (g, +acc) = got
       (g, List.reverse(&2, OceanEnts.Ent, acc))
-    case Con{OceanEnts.Ent{+prefab, +x, +z, +id, +target}, rest}:
+    case Con{OceanEnts.Ent{+prefab, +x, +z, +id, +target, +piece}, rest}:
       (g, +acc) = got
       tile_at = Points.visual_tile(g, visual_of(x, OceanState.width_of(c)), visual_of(z, OceanState.height_of(c)))
-      visible_loop(rest, keep_step(tile_at, OceanEnts.Ent{prefab, x, z, id, target}, acc), c)
+      visible_loop(rest, keep_step(tile_at, OceanEnts.Ent{prefab, x, z, id, target, piece}, acc), c)
 
 def filtered(got: Grid.Grid & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx, ids: Grid.Grid, rng: Pcg.Rng, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (g, +ents) = got

@@ -198,6 +198,8 @@ def event_lines(evs: List<&2, PopulateState.Ev>, +o: Out) -> List<&2, String>:
           List.append(&2, String, items_lines(o, name, objs, before, after), event_lines(rest, o))
         case PopulateState.EPlaced{+after}:
           placed_line(o, after) <> event_lines(rest, o)
+        case PopulateState.EPiece{_}:
+          event_lines(rest, o)
 
 def hex_cell(+tiles: String, +flags: String) -> U32:
   Grid.cell(TileInput.hex_loop(4n, tiles, 0), (TileInput.hex_loop(4n, flags, 0) .&. 61695 : U32))
@@ -275,7 +277,7 @@ def context_of(+seed: U32, +windows: Bool, +a: String, +w: TileWorld.World, +s: 
       +nodes = TileInput.of_attempt("tnode", a, lines)
       +site_of = TileTable.from_list(~U32, node_sites(U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, nodes, 0), TileWorld.none())
       +tiles_rng = Pcg.at_counter(seed, TileInput.num("before", TileInput.first_fields(TileInput.of_attempt("tmap", a, lines))))
-      PopulateState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), Points.sites(w, lists), s, site_of, width, height, True{}, tiles_rng}
+      PopulateState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), Points.sites(w, lists), s, site_of, width, height, True{}, tiles_rng, False{}}
 
 def grid_at(+a: String, +at: String, +w: U32, +h: U32, +lines: List<&2, String>) -> Grid.Grid:
   rows_loop(grid_rows(a, at, lines), Grid.new(w, h, 0), w)

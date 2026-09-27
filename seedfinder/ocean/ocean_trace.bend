@@ -42,7 +42,7 @@ def ents_loop(recs: List<&2, List<&2, String>>, +m: Map<&2, U32>, +acc: List<&2,
     case Nil{}:
       acc
     case Con{+fields, rest}:
-      +e = {OceanEnts.Ent{id_of(m, TileInput.text("prefab", fields)), TileInput.f64_field("x", fields), TileInput.f64_field("z", fields), 0, 0} : OceanEnts.Ent}
+      +e = {OceanEnts.Ent{id_of(m, TileInput.text("prefab", fields)), TileInput.f64_field("x", fields), TileInput.f64_field("z", fields), 0, 0, 0} : OceanEnts.Ent}
       ents_loop(rest, m, e <> acc)
 
 def reqs_loop(recs: List<&2, List<&2, String>>, +m: Map<&2, U32>) -> List<&2, OceanPost.Req>:
@@ -130,7 +130,7 @@ def bumped(+o: Out, +pieces: U32, +adds: U32) -> Out:
 
 def entity_line(+kind: String, +o: Out, +e: OceanEnts.Ent, +k: U32) -> String:
   match e:
-    case OceanEnts.Ent{+prefab, +x, +z, _, _}:
+    case OceanEnts.Ent{+prefab, +x, +z, _, _, _}:
       Canon.record(kind, [attempt_field(o), Canon.field("prefab", prefab_text(prefab)), Canon.number("k", k), Canon.field("x", f64_text(x)),
         Canon.field("z", f64_text(z))])
 
@@ -148,9 +148,9 @@ def indexed_loop(xs: List<&2, OceanEnts.Ent>, got: Array<U32> & U32, +kind: Stri
   match xs:
     case Nil{}:
       List.reverse(&2, String, acc)
-    case Con{OceanEnts.Ent{+prefab, +x, +z, +id, +target}, +rest}:
+    case Con{OceanEnts.Ent{+prefab, +x, +z, +id, +target, +piece}, +rest}:
       (counts, +k) = got
-      +e = {OceanEnts.Ent{prefab, x, z, id, target} : OceanEnts.Ent}
+      +e = {OceanEnts.Ent{prefab, x, z, id, target, piece} : OceanEnts.Ent}
       counts[prefab] <- (k + 1 : U32)
       +next_prefab = OceanEnts.prefab_of(Maybe.default(&2, OceanEnts.Ent, List.head(&2, OceanEnts.Ent, rest), e))
       indexed_loop(rest, counts[next_prefab], kind, o, (i + 1 : U32), from, keep_line((i >= from : U32), entity_line(kind, o, e, k), acc))
@@ -159,7 +159,7 @@ def indexed_loop(xs: List<&2, OceanEnts.Ent>, got: Array<U32> & U32, +kind: Stri
 # prefab's list.
 def entity_lines(+kind: String, +o: Out, +ents: List<&2, OceanEnts.Ent>, +from: U32) -> List<&2, String>:
   +oldest = List.reverse(&2, OceanEnts.Ent, ents)
-  +first = OceanEnts.prefab_of(Maybe.default(&2, OceanEnts.Ent, List.head(&2, OceanEnts.Ent, oldest), OceanEnts.Ent{0, F64Repr.zero(), F64Repr.zero(), 0, 0}))
+  +first = OceanEnts.prefab_of(Maybe.default(&2, OceanEnts.Ent, List.head(&2, OceanEnts.Ent, oldest), OceanEnts.Ent{0, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}))
   indexed_loop(oldest, counters()[first], kind, o, 0, from, Nil{})
 
 def count_line(nonzero: Bool, +o: Out, +at: String, +i: U32, +c: U32, acc: List<&2, String>) -> List<&2, String>:
@@ -196,7 +196,7 @@ def wormhole_lines(xs: List<&2, OceanEnts.Ent>, +o: Out, +k: U32) -> List<&2, St
   match xs:
     case Nil{}:
       Nil{}
-    case Con{OceanEnts.Ent{_, +x, +z, +id, +target}, rest}:
+    case Con{OceanEnts.Ent{_, +x, +z, +id, +target, _}, rest}:
       Canon.record("owormhole", [attempt_field(o), Canon.number("k", k), Canon.field("x", f64_text(x)), Canon.field("z", f64_text(z)),
         Canon.number("id", id), Canon.number("target", target)]) <> wormhole_lines(rest, o, (k + 1 : U32))
 
@@ -262,6 +262,8 @@ def event_lines(evs: List<&2, OceanState.Ev>, +o: Out) -> List<&2, String>:
           req_line(o, prefab, count, have) <> event_lines(rest, o)
         case OceanState.EStatus{+ok, +missing, +rng}:
           status_line(o, ok, missing, rng) <> event_lines(rest, o)
+        case OceanState.EPiece{_}:
+          event_lines(rest, o)
 
 def sea_lines(got: OceanState.Sea & Bool, +o: Out) -> List<&2, String>:
   (s, _) = got
@@ -284,7 +286,7 @@ def post_attempt(+seed: U32, +windows: Bool, +a: String, +lines: List<&2, String
   +w = TileInput.num("w", input)
   +h = TileInput.num("h", input)
   +m = names()
-  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), w, h, True{}} : OceanState.Ctx}
+  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), w, h, True{}, False{}} : OceanState.Ctx}
   +ents = ents_loop(TileInput.of_attempt("oent", a, lines), m, Nil{})
   +reqs = reqs_loop(TileInput.of_attempt("oreq", a, lines), m)
   +rng = Pcg.at_counter(seed, TileInput.num("ctr", input))
@@ -309,7 +311,7 @@ def full_attempt(+seed: U32, +windows: Bool, +a: String, +lines: List<&2, String
   +w = TileInput.num("w", input)
   +h = TileInput.num("h", input)
   +m = names()
-  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), w, h, True{}} : OceanState.Ctx}
+  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), w, h, True{}, False{}} : OceanState.Ctx}
   +ents = ents_loop(TileInput.of_attempt("oent", a, lines), m, Nil{})
   +reqs = reqs_loop(TileInput.of_attempt("oreq", a, lines), m)
   +rng = Pcg.at_counter(seed, TileInput.num("ctr", input))

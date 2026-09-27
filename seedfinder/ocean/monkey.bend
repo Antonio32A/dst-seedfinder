@@ -65,7 +65,7 @@ def world_of(+t: U32, +size: U32) -> F64Repr.F64:
 def add_ent(d: Dock, +prefab: U32, +x: F64Repr.F64, +z: F64Repr.F64) -> Dock:
   match d:
     case Dock{g, cache, list, rng, +ents}:
-      Dock{g, cache, list, rng, OceanEnts.Ent{prefab, x, z, 0, 0} <> ents}
+      Dock{g, cache, list, rng, OceanEnts.Ent{prefab, x, z, 0, 0, 0} <> ents}
 
 def registrator(d: Dock, +a: Area, +x: U32, +z: U32) -> Dock:
   match a:
@@ -636,7 +636,7 @@ def grid_of(+v: F64Repr.F64, +size: U32) -> U32:
 
 def orientation(+c: OceanEnts.Ent, +b: OceanEnts.Ent) -> U32:
   match c b:
-    case OceanEnts.Ent{_, +cx, +cz, _, _} OceanEnts.Ent{_, +bx, +bz, _, _}:
+    case OceanEnts.Ent{_, +cx, +cz, _, _, _} OceanEnts.Ent{_, +bx, +bz, _, _, _}:
       +same = F64Cmp.eq(F64Repr.floor(cx), F64Repr.floor(bx))
       Bool.pick(U32, same, Bool.pick(U32, F64Cmp.gt(cz, bz), 2, 3), Bool.pick(U32, F64Cmp.gt(cx, bx), 0, 1))
 
@@ -670,7 +670,7 @@ def started(got: Dock & List<&2, Frame>, +a: Area) -> Dock:
 
 def island_at(d: Dock, +o: Area, +c: OceanEnts.Ent) -> Dock:
   match o c:
-    case Area{_, _, _, _, +w, +h, _} OceanEnts.Ent{_, +cx, +cz, _, _}:
+    case Area{_, _, _, _, +w, +h, _} OceanEnts.Ent{_, +cx, +cz, _, _, _}:
       started(starting(U32.to_nat(OceanPostData.dock_amount()), (with_list(d), Nil{}), o, grid_of(cx, w), grid_of(cz, h)), o)
 
 # One island: orientation, the starting points, NewGen, then the posts and endpoints.
@@ -679,7 +679,7 @@ def island(d: Dock, +a: Area, +c: OceanEnts.Ent, +b: OceanEnts.Ent) -> Dock:
 
 def safe_area(+a: Area, +s: OceanEnts.Ent) -> Area:
   match a s:
-    case Area{_, _, _, _, +w, +h, +o} OceanEnts.Ent{_, +sx, +sz, _, _}:
+    case Area{_, _, _, _, +w, +h, +o} OceanEnts.Ent{_, +sx, +sz, _, _, _}:
       +half_w = F64Arith.mul(f64_of(OceanPostData.dock_safe_width()), F64Repr.half())
       +half_h = F64Arith.mul(f64_of(OceanPostData.dock_safe_height()), F64Repr.half())
       +tx = F64Repr.from_u32(grid_of(sx, w))

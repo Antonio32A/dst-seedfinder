@@ -280,7 +280,7 @@ def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +e
   +line = Canon.record("landed", [Canon.number("a", a), Canon.number("ctr", Pcg.counter(seed_of(st), rng)),
     Canon.number("n", U32.from_nat(List.length(&2, Entities.Ent, ents))), Canon.field("tiles", hash_text(tiles)), Canon.field("flags", hash_text(flags)),
     Canon.number("topo", GenJob.topology_count(s))])
-  (GenJob.Landed{g, rng, ents, s, w}, [line])
+  (GenJob.Landed{g, rng, ents, s, w, Nil{}}, [line])
 
 def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32) -> GenJob.Landed & List<&2, String>:
   (g, +tiles) = got
@@ -288,7 +288,7 @@ def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +e
 
 def landed_lines(landed: GenJob.Landed, +st: Tr, +a: U32) -> GenJob.Landed & List<&2, String>:
   match landed:
-    case GenJob.Landed{g, +rng, +ents, +s, +w}:
+    case GenJob.Landed{g, +rng, +ents, +s, +w, _}:
       landed_tiles(Grid.tiles_digest(g), st, a, rng, ents, s, w)
 
 def ocean_entered(got: GenJob.Landed & List<&2, String>, +c: Generate.Seed, +a: U32) -> GenJob.Job & List<&2, String>:
@@ -411,4 +411,4 @@ def lines_of(+st: Tr) -> List<&2, String>:
 
 # The stage's records for a seed on the platform (the input is not used).
 def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
-  lines_of(trace_loop(8192n, (Tr{seed, 9, 0, 0, Nil{}}, Go{GenJob.start(seed, windows)})))
+  lines_of(trace_loop(8192n, (Tr{seed, 9, 0, 0, Nil{}}, Go{GenJob.start(seed, windows, False{})})))

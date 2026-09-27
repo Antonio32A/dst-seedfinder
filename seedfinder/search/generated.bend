@@ -450,7 +450,7 @@ def fill(xs: List<&1, Slot>, +pending: List<&2, U32>, +windows: Bool, +start: U3
           match pending:
             case Con{+seed, +more}:
               +p = SearchOrder.position(seed, start)
-              fill(rest, more, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, GenJob.start(seed, windows), stage_cost(0)} <> acc)
+              fill(rest, more, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, GenJob.start(seed, windows, False{}), stage_cost(0)} <> acc)
             case Nil{}:
               fill(rest, Nil{}, windows, start, first, busy, ready, at, Free{} <> acc)
         case Cpu{+seed, job, +cost}:

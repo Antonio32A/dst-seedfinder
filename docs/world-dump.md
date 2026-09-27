@@ -1,10 +1,10 @@
 # World dump format (`.dstw`, format 2)
 
-A `.dstw` file holds one generated forest world: its tile map, every entity the world generation saved and the
-wormhole links. `seedfinder world eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world
-dump` writes it for the worlds the seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on
-the real dedicated server. The file describes itself: it carries every name it uses, so reading it needs no catalog or
-game data.
+A `.dstw` file holds one generated forest world: its tile map, every entity the world generation saved, the
+wormhole links and, when the seedfinder generated it, the set pieces the world generation placed. `seedfinder world
+eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world dump` writes it for the worlds the
+seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on the real dedicated server. The file
+describes itself: it carries every name it uses, so reading it needs no catalog or game data.
 
 ## 1. Conventions
 
@@ -37,8 +37,9 @@ laid out differently; regenerate them).
 ## 3. Sections
 
 A section is a 4-byte ASCII tag, a `u32` payload length `L` in bytes (a multiple of 4), then the payload. The next
-section starts right after it, `8 + L` bytes after the tag. A generated world has each of the sections below exactly
-once, in this order. A reader finds them by tag and skips any tag it does not know.
+section starts right after it, `8 + L` bytes after the tag. A generated world has `TNAM`, `TILE`, `ENTS` and `WORM`
+exactly once, in this order, and may then have `SETP` once. A reader finds them by tag and skips any tag it does not
+know.
 
 ### `TNAM`: tile names
 
@@ -77,11 +78,68 @@ Windows. The same holds for `z` and `zk`.
 `ENTS`. Jumping into the entry wormhole comes out at the exit one. A link is directed, and a wormhole pair is two
 links. Links are in the order of their entry wormholes in the savedata.
 
+### `SETP`: set pieces
+
+Every static layout the world generation placed through the game's layout code (`map/object_layout.lua`'s
+`ReserveAndPlaceLayout`): the task set pieces, the rooms' static layouts, the starting set piece, the map tags'
+layouts and the ocean set pieces. `seedfinder world dump` writes this section; `scripts/groundtruth/world_dump.py` does
+not, because the game's savedata does not say where the layouts went. A file without it says nothing about set pieces
+(it does not mean there are none); a file with it lists them all, and may list none.
+
+`u32` count, then per layout, in the order the world generation placed them:
+- its name (a string): the layout's name as the game names it (the key of `map/layouts.lua` and the other layout
+  tables, e.g. `MooseNest`),
+- `u32` source: where the layout comes from:
+
+  | Code | Source |
+  |---|---|
+  | 0 | a room's `countstaticlayouts` (e.g. `MoonbaseOne`) |
+  | 1 | a task set piece (`set_pieces` or `random_set_pieces`, put in a node by `Story:InsertAdditionalSetPieces`) |
+  | 2 | the starting set piece of the START node (`AddStartingSetPiece`, e.g. `DefaultStart`) |
+  | 3 | a map tag's layout (`terrain_contents_extra.static_layouts`) |
+  | 4 | the level's `ocean_prefill_setpieces` |
+  | 5 | an ocean room's `countstaticlayouts` (`PopulateOcean`) |
+
+  A reader treats another code as unknown.
+- `u32` transform: how the layout was turned, as `ReserveAndPlaceLayout` applies it. Bit 0 is `switch_xy`, bit 1 is
+  `flip_x = -1` and bit 2 is `flip_y = -1`. The object a layout defines at `(ox, oy)` lands at
+  `x = xc + 4 × scale × u`, `z = zc + 4 × scale × v` (then rounded like every entity), with
+  `(u, v) = (fx × ox, fy × oy)`, or `(fy × oy, fx × ox)` when bit 0 is set. `fx` is -1 when bit 1 is set and 1
+  otherwise, `fy` likewise with bit 2, and `scale` is the layout's scale.
+- `i32 xk`, `i32 zk`: the centre `(xc, zc)` the layout's objects are placed around.
+- `i32 x0k`, `i32 z0k`, `i32 x1k`, `i32 z1k`: the bounds, from `(x0, z0)` to `(x1, z1)`.
+- `u32` member count `m`, then `m` members, each a `u32` prefab (the position of the member's prefab in `ENTS`, from 0)
+  and a `u32` instance index of that prefab, ordered by prefab then index.
+
+Positions and bounds are in hundredths of world units, rounded like `ENTS` positions.
+
+The **bounds** are the square the layout takes up: centred on `(xc, zc)`, `8 × h` world units wide, where `h` is the
+half-size in tiles `ReserveAndPlaceLayout` computes. For a layout with ground tiles, `h` is half the ground's side.
+Otherwise `h` is the scale times half the larger side of its objects' bounding box.
+- A land layout with ground: the bounds are exactly the tiles `ReserveSpace` reserved and painted.
+- A land layout without ground: those tiles are the bounds rounded to whole tiles.
+- An ocean layout: the bounds are its ground tiles (the box `PlaceOceanLayout` reserves is one tile lower on both
+  axes).
+
+A few layouts define objects past their ground or off their centre (e.g. `junk_yard`, `CropCircle`), and their members
+can lie up to about 2 world units outside the bounds.
+
+The **members** are the `ENTS` instances the layout's objects became, after the whole world generation:
+- An object that was never added is not a member, and neither is an entry a later step removed. For example, a land
+  layout skips an object that falls on a non-land tile, and the impassable filter removes entries on impassable tiles.
+- An entry a later step renamed is a member under its final prefab and index. For example, a `wormhole_MARKER` becomes
+  a `wormhole`, and a proxy prefab becomes the prefab it stands for.
+- No instance is a member of two layouts.
+- Two layouts can still overlap. Layouts that reserve no tiles can land on the same spot, each with its own members.
+
+A layout the world generation found no place for is not listed.
+
 ## 4. What is in it
 
 Only what the world generation saved for the forest shard: the savedata's map tiles, every `savedata.ents` entry
-(whatever its prefab) and the wormholes' teleporter targets. This includes the pocket dimension containers the game
-adds at (0, 0) when the world has none.
+(whatever its prefab) and the wormholes' teleporter targets, and for worlds the seedfinder generated, where the world
+generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
+has none.
 
 It does not hold anything the running game makes later: entities that prefabs spawn once the world loads (e.g. a
 spawner's children), what a server adds on its first start, or the caves. Roads, the node graph and the entities'

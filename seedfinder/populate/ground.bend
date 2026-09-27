@@ -1,12 +1,15 @@
 import Base
 import ../rng/pcg.bend as Pcg
 import ../data/layouts.bend as Layouts
+import ../data/populate.bend as PopulateData
 import ../worldsim/points.bend as Points
+import ../storygen/graph.bend as StoryGraph
 import ./counts.bend as PopulateCounts
 import ./layout.bend as PopulateLayout
 import ./nodes.bend as PopulateNodes
 import ./place.bend as PopulatePlace
 import ./state.bend as PopulateState
+import ./setpiece.bend as PopulateSetpiece
 
 # Node:ConvertGround (graphnode.lua) over Graph:ConvertGround's node order: per node with terrain_contents, each
 # countstaticlayouts entry (closures called with the site area) that many times, then the map tag static layouts,
@@ -19,32 +22,51 @@ def objs_of(items: List<&2, PopulateLayout.Item>) -> List<&2, PopulateState.Obj>
     case Con{PopulateLayout.Item{+prefab, +x, +y, _}, rest}:
       PopulateState.Obj{prefab, x, y} <> objs_of(rest)
 
-def converted(got: List<&2, PopulateLayout.Item> & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +name: U32, +v: U32, +before: Pcg.Rng, l: PopulateState.Land) -> PopulateState.Land:
+def converted(got: List<&2, PopulateLayout.Item> & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +v: U32, +before: Pcg.Rng, l: PopulateState.Land) -> PopulateState.Land:
   (+items, +rng) = got
-  PopulatePlace.place(c, node, v, items, PopulateState.noted(PopulateState.with_rng(l, rng), PopulateState.EItems{name, objs_of(items), before, rng}))
+  PopulatePlace.place(c, node, name, source, v, items, PopulateState.noted(PopulateState.with_rng(l, rng), PopulateState.EItems{name, objs_of(items), before, rng}))
 
 def placed_note(got: PopulateState.Land & Pcg.Rng) -> PopulateState.Land:
   (l, +after) = got
   PopulateState.noted(l, PopulateState.EPlaced{after})
 
-# object_layout.Convert(node, name, add_fn) for layout index `layout`.
-def convert(+c: PopulateState.Ctx, +node: U32, +name: U32, +layout: U32, l: PopulateState.Land) -> PopulateState.Land:
+# object_layout.Convert(node, name, add_fn) for layout index `layout` (from `source`, populate/setpiece.bend).
+def convert(+c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +layout: U32, l: PopulateState.Land) -> PopulateState.Land:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
       +v = Layouts.variant(layout, PopulateState.swaps_of(c))
-      placed_note(PopulateState.rng_of(converted(PopulateLayout.convert(PopulateState.swaps_of(c), layout, rng), c, node, name, v, rng,
+      placed_note(PopulateState.rng_of(converted(PopulateLayout.convert(PopulateState.swaps_of(c), layout, rng), c, node, name, source, v, rng,
         PopulateState.noted(PopulateState.Land{g, rng, ents, events}, PopulateState.ELayout{node, name, rng}))))
 
-def repeat(n: Nat, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32, +name: U32, +layout: U32) -> PopulateState.Land:
+def repeat(n: Nat, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +layout: U32) -> PopulateState.Land:
   match n:
     case 0n:
       l
     case 1n+p:
-      repeat(p, convert(c, node, name, layout, l), c, node, name, layout)
+      repeat(p, convert(c, node, name, source, layout, l), c, node, name, source, layout)
 
-def counted_statics(got: U32 & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +name: U32, +layout: U32, l: PopulateState.Land) -> PopulateState.Land:
+def counted_statics(got: U32 & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +layout: U32, l: PopulateState.Land) -> PopulateState.Land:
   (+n, rng) = got
-  repeat(U32.to_nat(n), PopulateState.with_rng(l, rng), c, node, name, layout)
+  repeat(U32.to_nat(n), PopulateState.with_rng(l, rng), c, node, name, source, layout)
+
+def is_piece(pieces: List<&2, PopulateNodes.Static>, +key: U32) -> Bool:
+  match pieces:
+    case Nil{}:
+      False{}
+    case Con{PopulateNodes.Static{+k, _, _, _}, rest}:
+      U32.is_eq(k, key) || is_piece(rest, key)
+
+def source_of(+s: StoryGraph.St, +node: U32, +key: U32) -> U32:
+  +start = PopulateNodes.is_start(s, node) && U32.is_eq(key, PopulateData.start_key())
+  Bool.pick(U32, start, PopulateSetpiece.start(), Bool.pick(U32, is_piece(PopulateNodes.pieces(s, node), key), PopulateSetpiece.task(), PopulateSetpiece.room()))
+
+# Where a countstaticlayouts entry comes from, when the context records the placed layouts.
+def static_source(on: Bool, +c: PopulateState.Ctx, +node: U32, +key: U32) -> U32:
+  match on:
+    case False{}:
+      PopulateSetpiece.room()
+    case True{}:
+      source_of(PopulateState.story_of(c), node, key)
 
 def statics_loop(xs: List<&2, PopulateNodes.Static>, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32, +area: U32) -> PopulateState.Land:
   match xs:
@@ -53,7 +75,8 @@ def statics_loop(xs: List<&2, PopulateNodes.Static>, l: PopulateState.Land, +c: 
     case Con{PopulateNodes.Static{+key, +kind, +value, +layout}, rest}:
       match l:
         case PopulateState.Land{g, +rng, +ents, +events}:
-          statics_loop(rest, counted_statics(PopulateCounts.value_of(kind, value, area, PopulateState.width_of(c), rng), c, node, key, layout,
+          +source = static_source(PopulateState.pieces_of(c), c, node, key)
+          statics_loop(rest, counted_statics(PopulateCounts.value_of(kind, value, area, PopulateState.width_of(c), rng), c, node, key, source, layout,
             PopulateState.Land{g, rng, ents, events}), c, node, area)
 
 def extras_loop(xs: List<&2, U32>, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
@@ -61,7 +84,7 @@ def extras_loop(xs: List<&2, U32>, l: PopulateState.Land, +c: PopulateState.Ctx,
     case Nil{}:
       l
     case Con{+layout, rest}:
-      extras_loop(rest, convert(c, node, Layouts.name(Layouts.variant(layout, PopulateState.swaps_of(c))), layout, l), c, node)
+      extras_loop(rest, convert(c, node, Layouts.name(Layouts.variant(layout, PopulateState.swaps_of(c))), PopulateSetpiece.map_tag(), layout, l), c, node)
 
 def ground_body(on: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
   match on:

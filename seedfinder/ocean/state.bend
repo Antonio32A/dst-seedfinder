@@ -2,17 +2,20 @@ import Base
 import ../rng/pcg.bend as Pcg
 import ../f64/repr.bend as F64Repr
 import ../worldsim/grid.bend as Grid
+import ../populate/setpiece.bend as PopulateSetpiece
 import ./ents.bend as OceanEnts
 
 # The state of one attempt's ocean phase (land_done to the required prefab check) and what it records for the trace.
 
-# Platform, prefab swap state, map size, and `tracing` to record the map digests and entity snapshots.
+# Platform, prefab swap state, map size, `tracing` to record the map digests and entity snapshots, and `pieces` the
+# layouts placed (EPiece).
 type Ctx is Data:
-  Ctx{windows: Bool, swaps: U32, width: U32, height: U32, tracing: Bool}
+  Ctx{windows: Bool, swaps: U32, width: U32, height: U32, tracing: Bool, pieces: Bool}
 
 # What happened, in execution order. Digest points `at`: 0 prefill, 1 fills, 2 noise, 3 blend, 4 shoreline, 5 void,
 # 6 populate, 7 docks, 8 post, 9 bunches, 10 encoded. Snapshot points: 0 populate, 1 filter. EDocks and EBunches
 # hold every entity after the step and how many of the newest it added.
+# EPiece: a placed layout (the land's first), recorded with `pieces` whether tracing or not.
 type Ev is Data:
   EDigest{at: U32, rng: Pcg.Rng, tiles: Grid.Hash, mflags: Grid.Hash, ids: Grid.Hash}
   EBlend{k: U32, hash: Grid.Hash}
@@ -25,6 +28,7 @@ type Ev is Data:
   EFinal{ents: List<&2, OceanEnts.Ent>}
   EReq{prefab: U32, count: U32, have: U32}
   EStatus{ok: Bool, missing: List<&2, U32>, rng: Pcg.Rng}
+  EPiece{piece: PopulateSetpiece.Piece}
 
 # The tile map (tiles and flags), the node-id map (0 x 0 when not tracked), the RNG, the entities (newest first), the
 # topology node count and the events (newest first).
@@ -33,27 +37,32 @@ type Sea is Type:
 
 def width_of(+c: Ctx) -> U32:
   match c:
-    case Ctx{_, _, +width, _, _}:
+    case Ctx{_, _, +width, _, _, _}:
       width
 
 def height_of(+c: Ctx) -> U32:
   match c:
-    case Ctx{_, _, _, +height, _}:
+    case Ctx{_, _, _, +height, _, _}:
       height
 
 def swaps_of(+c: Ctx) -> U32:
   match c:
-    case Ctx{_, +swaps, _, _, _}:
+    case Ctx{_, +swaps, _, _, _, _}:
       swaps
 
 def windows_of(+c: Ctx) -> Bool:
   match c:
-    case Ctx{+windows, _, _, _, _}:
+    case Ctx{+windows, _, _, _, _, _}:
       windows
+
+def pieces_of(+c: Ctx) -> Bool:
+  match c:
+    case Ctx{_, _, _, _, _, +pieces}:
+      pieces
 
 def tracing_of(+c: Ctx) -> Bool:
   match c:
-    case Ctx{_, _, _, _, +tracing}:
+    case Ctx{_, _, _, _, +tracing, _}:
       tracing
 
 def flags_loop(n: Nat, got: Array<U32> & U32, +i: U32, h: Grid.Hash) -> Array<U32> & Grid.Hash:
@@ -132,3 +141,29 @@ def with_ents(s: Sea, +ents: List<&2, OceanEnts.Ent>) -> Sea:
   match s:
     case Sea{g, ids, +rng, _, +topo, +events}:
       Sea{g, ids, rng, ents, topo, events}
+
+def pieces_loop(evs: List<&2, Ev>, +acc: List<&2, PopulateSetpiece.Piece>) -> List<&2, PopulateSetpiece.Piece>:
+  match evs:
+    case Nil{}:
+      acc
+    case Con{EPiece{+p}, rest}:
+      pieces_loop(rest, p <> acc)
+    case Con{_, rest}:
+      pieces_loop(rest, acc)
+
+# The EPiece records of the events (newest first), in placement order.
+def pieces(+evs: List<&2, Ev>) -> List<&2, PopulateSetpiece.Piece>:
+  pieces_loop(evs, Nil{})
+
+def count_loop(evs: List<&2, Ev>, +n: U32) -> U32:
+  match evs:
+    case Nil{}:
+      n
+    case Con{EPiece{_}, rest}:
+      count_loop(rest, (n + 1 : U32))
+    case Con{_, rest}:
+      count_loop(rest, n)
+
+# How many EPiece records the events hold.
+def piece_count(+evs: List<&2, Ev>) -> U32:
+  count_loop(evs, 0)

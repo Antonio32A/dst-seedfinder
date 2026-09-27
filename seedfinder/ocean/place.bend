@@ -14,6 +14,7 @@ import ../populate/entities.bend as Entities
 import ../populate/layout.bend as PopulateLayout
 import ../populate/place.bend as PopulatePlace
 import ../populate/counts.bend as PopulateCounts
+import ../populate/setpiece.bend as PopulateSetpiece
 import ./ents.bend as OceanEnts
 import ./state.bend as OceanState
 
@@ -27,7 +28,7 @@ type Spec is Data:
   Spec{layout: U32, kind: U32, value: U32}
 
 type Piece is Data:
-  Piece{v: U32, items: List<&2, PopulateLayout.Item>}
+  Piece{v: U32, source: U32, items: List<&2, PopulateLayout.Item>}
 
 def none() -> U32:
   4294967295
@@ -43,11 +44,11 @@ def counted(got: U32 & Pcg.Rng, +p: Piece, +acc: List<&2, Piece>) -> List<&2, Pi
   (+count, rng) = got
   (copies(U32.to_nat(count), p, acc), rng)
 
-def converted(got: List<&2, PopulateLayout.Item> & Pcg.Rng, +v: U32, +kind: U32, +value: U32, +width: U32, +acc: List<&2, Piece>) -> List<&2, Piece> & Pcg.Rng:
+def converted(got: List<&2, PopulateLayout.Item> & Pcg.Rng, +v: U32, +source: U32, +kind: U32, +value: U32, +width: U32, +acc: List<&2, Piece>) -> List<&2, Piece> & Pcg.Rng:
   (+items, rng) = got
-  counted(PopulateCounts.value_of(kind, value, 0, width, rng), Piece{v, items}, acc)
+  counted(PopulateCounts.value_of(kind, value, 0, width, rng), Piece{v, source, items}, acc)
 
-def collect_loop(specs: List<&2, Spec>, +c: OceanState.Ctx, got: List<&2, Piece> & Pcg.Rng) -> List<&2, Piece> & Pcg.Rng:
+def collect_loop(specs: List<&2, Spec>, +c: OceanState.Ctx, +source: U32, got: List<&2, Piece> & Pcg.Rng) -> List<&2, Piece> & Pcg.Rng:
   match specs:
     case Nil{}:
       (+acc, rng) = got
@@ -55,7 +56,7 @@ def collect_loop(specs: List<&2, Spec>, +c: OceanState.Ctx, got: List<&2, Piece>
     case Con{Spec{+layout, +kind, +value}, rest}:
       (+acc, rng) = got
       +swaps = OceanState.swaps_of(c)
-      collect_loop(rest, c, converted(PopulateLayout.convert(swaps, layout, rng), Layouts.variant(layout, swaps), kind, value, OceanState.width_of(c), acc))
+      collect_loop(rest, c, source, converted(PopulateLayout.convert(swaps, layout, rng), Layouts.variant(layout, swaps), source, kind, value, OceanState.width_of(c), acc))
 
 def fill_order(n: Nat, items: Array<U32>, +i: U32) -> Array<U32>:
   match n:
@@ -373,21 +374,22 @@ def ground(g: Grid.Grid, +v: U32, +t: PopulatePlace.Turn, +x: U32, +y: U32) -> G
 type Frame is Data:
   Frame{cx: F64Repr.F64, cy: F64Repr.F64, turn: PopulatePlace.Turn, scale: F64Repr.F64}
 
-def entity_added(got: Grid.Grid & Bool, +c: OceanState.Ctx, +e: Entities.Ent, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
+def entity_added(got: Grid.Grid & Bool, +c: OceanState.Ctx, +e: Entities.Ent, +piece: U32, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (g, _) = got
   match e:
     case Entities.Ent{+prefab, +tx, +ty, +x, +z, _, _, +rng}:
-      OceanState.noted(c, OceanState.Sea{g, ids, rng, OceanEnts.Ent{prefab, x, z, 0, 0} <> ents, topo, events}, OceanState.EAdd{prefab, tx, ty, x, z, rng})
+      OceanState.noted(c, OceanState.Sea{g, ids, rng, OceanEnts.Ent{prefab, x, z, 0, 0, piece} <> ents, topo, events}, OceanState.EAdd{prefab, tx, ty, x, z, rng})
 
 # The ocean phase's entity adds without offsets (forest_map's add_fn, PopulateWorld_AddEntity with rand_offset
-# false): ReserveTile at the integer tile, then x = floor((tx - width / 2) * 4 * 100) / 100 and the same for z.
-def add_fixed(+c: OceanState.Ctx, +prefab: U32, +px: F64Repr.F64, +py: F64Repr.F64, s: OceanState.Sea) -> OceanState.Sea:
+# false): ReserveTile at the integer tile, then x = floor((tx - width / 2) * 4 * 100) / 100 and the same for z; the
+# entity is a member of set piece `piece` (0 none).
+def add_fixed(+c: OceanState.Ctx, +prefab: U32, +px: F64Repr.F64, +py: F64Repr.F64, +piece: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
       +e = Entities.entity(prefab, px, py, OceanState.width_of(c), OceanState.height_of(c), False{}, rng)
-      entity_added(Points.reserve_tile(g, Points.lua_int(px), Points.lua_int(py)), c, e, ids, ents, topo, events)
+      entity_added(Points.reserve_tile(g, Points.lua_int(px), Points.lua_int(py)), c, e, piece, ids, ents, topo, events)
 
-def place_items(items: List<&2, PopulateLayout.Item>, +f: Frame, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+def place_items(items: List<&2, PopulateLayout.Item>, +f: Frame, +c: OceanState.Ctx, +piece: U32, s: OceanState.Sea) -> OceanState.Sea:
   match items:
     case Nil{}:
       s
@@ -396,23 +398,32 @@ def place_items(items: List<&2, PopulateLayout.Item>, +f: Frame, +c: OceanState.
         case Frame{+cx, +cy, +t, +scale}:
           +px = F64Arith.add(cx, F64Arith.mul(PopulatePlace.item_x(t, i), scale))
           +py = F64Arith.add(cy, F64Arith.mul(PopulatePlace.item_y(t, i), scale))
-          place_items(rest, Frame{cx, cy, t, scale}, c, add_fixed(c, PopulatePlace.item_prefab(i), px, py, s))
+          place_items(rest, Frame{cx, cy, t, scale}, c, piece, add_fixed(c, PopulatePlace.item_prefab(i), px, py, piece, s))
 
-def turned_layout(got: PopulatePlace.Turn & Pcg.Rng, +c: OceanState.Ctx, +v: U32, +items: List<&2, PopulateLayout.Item>, +x: U32, +y: U32, g: Grid.Grid, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
+def piece_number(on: Bool, +events: List<&2, OceanState.Ev>) -> U32:
+  match on:
+    case False{}:
+      0
+    case True{}:
+      (OceanState.piece_count(events) + 1 : U32)
+
+def turned_layout(got: PopulatePlace.Turn & Pcg.Rng, +c: OceanState.Ctx, +v: U32, +source: U32, +items: List<&2, PopulateLayout.Item>, +x: U32, +y: U32, g: Grid.Grid, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (+turn, +rng) = got
   +t = positioned(turn)
   +scale = PopulatePlace.scale_of(Layouts.scale(v))
   +size = PopulatePlace.ground_size(v, F64Arith.mul(scale, PopulatePlace.half_extent(item_bounds(items))))
   +cx = F64Arith.add(F64Arith.add(F64Repr.from_u32(x), size), F64Repr.half())
   +cy = F64Arith.add(F64Arith.add(F64Repr.from_u32(y), size), F64Repr.half())
-  place_items(items, Frame{cx, cy, t, scale}, c, OceanState.Sea{ground(g, v, t, x, y), ids, rng, ents, topo, events})
+  +on = OceanState.pieces_of(c)
+  s = place_items(items, Frame{cx, cy, t, scale}, c, piece_number(on, events), OceanState.Sea{ground(g, v, t, x, y), ids, rng, ents, topo, events})
+  OceanState.noted_if(on, s, OceanState.EPiece{PopulateSetpiece.Piece{Layouts.name(v), source, PopulatePlace.turn_bits(t), cx, cy, size, 0, 0}})
 
 # ReserveAndPlaceLayout("POSITIONED", layout, prefabs, add_fn, {x, y}): the transform draws (flips negated for a
 # position), the ground tiles, then every entity at rcx + x * scale, rcy + y * scale.
-def place_layout(+c: OceanState.Ctx, +v: U32, +items: List<&2, PopulateLayout.Item>, +x: U32, +y: U32, s: OceanState.Sea) -> OceanState.Sea:
+def place_layout(+c: OceanState.Ctx, +v: U32, +source: U32, +items: List<&2, PopulateLayout.Item>, +x: U32, +y: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      turned_layout(PopulatePlace.turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), c, v, items, x, y, g, ids, ents, topo, events)
+      turned_layout(PopulatePlace.turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), c, v, source, items, x, y, g, ids, ents, topo, events)
 
 def id_put(got: Grid.Grid & U32, +i: U32, +id: U32) -> Grid.Grid:
   (g, _) = got
@@ -481,8 +492,8 @@ def reserve_box(s: OceanState.Sea, +x: U32, +y: U32, +size: U32) -> OceanState.S
 def placed_at(got: U32 & Pcg.Rng, +c: OceanState.Ctx, +p: Piece, +x: U32, +y: U32, +size: U32, g: Grid.Grid, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (_, rng) = got
   match p:
-    case Piece{+v, +items}:
-      s = place_layout(c, v, items, x, y, OceanState.Sea{g, ids, rng, ents, topo, events})
+    case Piece{+v, +source, +items}:
+      s = place_layout(c, v, source, items, x, y, OceanState.Sea{g, ids, rng, ents, topo, events})
       reserve_box(topology_if(Layouts.has(v, Layouts.flag_topology()), s, x, y, size), x, y, size)
 
 def place_if(missing: Bool, g: Grid.Grid, +x: U32, +y: U32, rng: Pcg.Rng, +c: OceanState.Ctx, +p: Piece, +size: U32, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
@@ -500,13 +511,13 @@ def place_found(f: Found, +c: OceanState.Ctx, +p: Piece, +size: U32, ids: Grid.G
 # PlaceOceanLayout for one piece on the populating tile.
 def place_piece(+c: OceanState.Ctx, +tile: U32, +fallback: U32, +p: Piece, s: OceanState.Sea) -> OceanState.Sea:
   match p s:
-    case Piece{+v, +items} OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+    case Piece{+v, +source, +items} OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
           +size = layout_size(v, items)
           +m = land_distance(v, fallback)
-          place_found(find_position(g, OceanState.width_of(c), OceanState.height_of(c), size, m, tile, rng), c, Piece{v, items}, size, ids, ents, topo, events)
+          place_found(find_position(g, OceanState.width_of(c), OceanState.height_of(c), size, m, tile, rng), c, Piece{v, source, items}, size, ids, ents, topo, events)
 
 def piece_at(+pieces: List<&2, Piece>, +i: U32) -> Piece:
-  Maybe.default(&2, Piece, List.get(&2, Piece, pieces, U32.to_nat(i)), Piece{0, Nil{}})
+  Maybe.default(&2, Piece, List.get(&2, Piece, pieces, U32.to_nat(i)), Piece{0, 0, Nil{}})
 
 def place_all(order: List<&2, U32>, +pieces: List<&2, Piece>, +c: OceanState.Ctx, +tile: U32, +fallback: U32, s: OceanState.Sea) -> OceanState.Sea:
   match order:
@@ -528,8 +539,9 @@ def collected(got: List<&2, Piece> & Pcg.Rng, +c: OceanState.Ctx, +tile: U32, +f
   +n = U32.from_nat(List.length(&2, Piece, pieces))
   pieces_noted(OceanState.rng_of(placed_order(shuffle(n, rng), pieces, c, tile, fallback, s)), c, tile, n, before)
 
-# Ocean_PlaceSetPieces(set_pieces, add_fn, obj_layout, tile, min_dist_from_land) for the set piece table `specs`.
-def place_set_pieces(+specs: List<&2, Spec>, +c: OceanState.Ctx, +tile: U32, +fallback: U32, s: OceanState.Sea) -> OceanState.Sea:
+# Ocean_PlaceSetPieces(set_pieces, add_fn, obj_layout, tile, min_dist_from_land) for the set piece table `specs`
+# (from `source`, populate/setpiece.bend).
+def place_set_pieces(+specs: List<&2, Spec>, +c: OceanState.Ctx, +tile: U32, +fallback: U32, +source: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      collected(collect_loop(specs, c, (Nil{}, rng)), c, tile, fallback, OceanState.Sea{g, ids, rng, ents, topo, events}, rng)
+      collected(collect_loop(specs, c, source, (Nil{}, rng)), c, tile, fallback, OceanState.Sea{g, ids, rng, ents, topo, events}, rng)

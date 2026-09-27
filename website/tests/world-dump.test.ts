@@ -76,6 +76,30 @@ describe("reading a world dump", () => {
         expect([...dump.links]).toEqual([0, 1, 1, 0]);
     });
 
+    it("reads the placed set pieces with their centre, bounds, transform and members", () => {
+        const pieces = section("SETP", [
+            u32(2),
+            ...text("MooseNest"), u32(1), u32(5), i32(800), i32(-400), i32(0), i32(-1200), i32(1600), i32(400),
+            u32(2), u32(0), u32(1), u32(1), u32(0),
+            ...text("OceanMonument"), u32(4), u32(0), i32(-60), i32(0), i32(-60), i32(0), i32(-60), i32(0), u32(0)
+        ]);
+        const dump = generated(concat([world(), pieces]));
+        expect(dump.setPieces?.map(({ name, source, transform, xk, zk, bounds, members }) =>
+            [name, source, transform, xk, zk, [...bounds], [...members]])).toEqual([
+            ["MooseNest", "task", 5, 800, -400, [0, -1200, 1600, 400], [0, 1, 1, 0]],
+            ["OceanMonument", "ocean-prefill", 0, -60, 0, [-60, 0, -60, 0], []]
+        ]);
+    });
+
+    it("has no set pieces when the dump has no SETP section", () => {
+        expect(generated(world())).not.toHaveProperty("setPieces");
+    });
+
+    it("names a source code it doesn't know unknown", () => {
+        const pieces = section("SETP", [u32(1), ...text("Future"), u32(99), u32(0), ...Array.from({ length: 6 }, () => i32(0)), u32(0)]);
+        expect(generated(concat([world(), pieces])).setPieces?.[0].source).toBe("unknown");
+    });
+
     it("skips a section it doesn't know", () => {
         const road = section("ROAD", [u32(3), i32(-7), u32(0xffffffff), ...text("TILE")]);
         expect(generated(world(road))).toEqual(generated(world()));

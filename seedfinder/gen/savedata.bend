@@ -2,7 +2,10 @@ import Base
 import ../f64/repr.bend as F64Repr
 import ./centi.bend as Centi
 import ../worldsim/grid.bend as Grid
+import ../f64/arith.bend as F64Arith
 import ../ocean/ents.bend as OceanEnts
+import ../populate/entities.bend as Entities
+import ../populate/setpiece.bend as PopulateSetpiece
 import ../filters/world.bend as FilterWorld
 import ../filters/dump.bend as FilterDump
 import ../data/gen_tags.bend as GenTagsData
@@ -19,7 +22,7 @@ def insts_of(ents: List<&2, OceanEnts.Ent>, +v: U32, +index: U32, +windows: Bool
   match ents:
     case Nil{}:
       Nil{}
-    case Con{OceanEnts.Ent{_, +x, +z, _, _}, rest}:
+    case Con{OceanEnts.Ent{_, +x, +z, _, _, _}, rest}:
       FilterWorld.inst_of(v, index, Centi.centi(x, windows), Centi.centi(z, windows)) <> insts_of(rest, v, (index + 1 : U32), windows)
 
 def is_pocket(+v: U32) -> Bool:
@@ -106,12 +109,12 @@ def groups_loop(n: Nat, got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts
 
 def ent_id(+e: OceanEnts.Ent) -> U32:
   match e:
-    case OceanEnts.Ent{_, _, _, +id, _}:
+    case OceanEnts.Ent{_, _, _, +id, _, _}:
       id
 
 def ent_target(+e: OceanEnts.Ent) -> U32:
   match e:
-    case OceanEnts.Ent{_, _, _, _, +target}:
+    case OceanEnts.Ent{_, _, _, _, +target, _}:
       target
 
 def last_with_id(ents: List<&2, OceanEnts.Ent>, +id: U32, +i: U32, +found: U32) -> U32:
@@ -166,7 +169,7 @@ def grouped(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) ->
 # The filters' world of a generated world (the seed's world attempt on the platform).
 def world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
   match final:
-    case GenJob.Final{g, _, +ents, +w}:
+    case GenJob.Final{g, _, +ents, +w, _}:
       +tiles = packed(g, (w * w : U32))
       world_of_groups(grouped(buckets(ents, (lookup(), Array.new(List<&2, OceanEnts.Ent>, bucket_depth(), Nil{}))), windows), seed, w, tiles)
 
@@ -187,39 +190,135 @@ def positions_of(ents: List<&2, OceanEnts.Ent>, +windows: Bool) -> List<&2, Filt
   match ents:
     case Nil{}:
       Nil{}
-    case Con{OceanEnts.Ent{_, +x, +z, _, _}, rest}:
+    case Con{OceanEnts.Ent{_, +x, +z, _, _, _}, rest}:
       FilterDump.Position{Centi.centi(x, windows), Centi.centi(z, windows)} <> positions_of(rest, windows)
 
-def prefab_if(ents: List<&2, OceanEnts.Ent>, +sid: U32, +windows: Bool, +acc: List<&2, FilterDump.Prefab>) -> List<&2, FilterDump.Prefab>:
+# A prefab's savedata.ents entries, oldest first.
+type Named is Data:
+  Named{name: String, ents: List<&2, OceanEnts.Ent>}
+
+def named_if(ents: List<&2, OceanEnts.Ent>, +sid: U32, +acc: List<&2, Named>) -> List<&2, Named>:
   match ents:
     case Nil{}:
       acc
     case Con{+e, +rest}:
-      FilterDump.Prefab{Strings.name(sid), positions_of(e <> rest, windows)} <> acc
+      Named{Strings.name(sid), e <> rest} <> acc
 
-def prefabs_loop(n: Nat, got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +sid: U32, +windows: Bool, +acc: List<&2, FilterDump.Prefab>) -> List<&2, FilterDump.Prefab>:
+def named_loop(n: Nat, got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +sid: U32, +acc: List<&2, Named>) -> List<&2, Named>:
   match n:
     case 0n:
       acc
     case 1n+p:
       (a, +ents) = got
-      prefabs_loop(p, Array.swap(List<&2, OceanEnts.Ent>, a, (sid + 1 : U32), Nil{}), (sid + 1 : U32), windows, prefab_if(ents, sid, windows, acc))
+      named_loop(p, Array.swap(List<&2, OceanEnts.Ent>, a, (sid + 1 : U32), Nil{}), (sid + 1 : U32), named_if(ents, sid, acc))
 
-def has_prefab(prefabs: List<&2, FilterDump.Prefab>, +name: String) -> Bool:
+def has_prefab(prefabs: List<&2, Named>, +name: String) -> Bool:
   match prefabs:
     case Nil{}:
       False{}
-    case Con{FilterDump.Prefab{+found, _}, rest}:
+    case Con{Named{+found, _}, rest}:
       String.eq(found, name) || has_prefab(rest, name)
 
-def with_pocket(+prefabs: List<&2, FilterDump.Prefab>, +v: U32) -> List<&2, FilterDump.Prefab>:
+def with_pocket(+prefabs: List<&2, Named>, +v: U32) -> List<&2, Named>:
   +name = Maybe.default(&2, String, List.get(&2, String, SearchVocab.prefabs(), U32.to_nat(v)), "")
-  Bool.pick(List<&2, FilterDump.Prefab>, has_prefab(prefabs, name), prefabs, FilterDump.Prefab{name, [FilterDump.Position{0, 0}]} <> prefabs)
+  +origin = {OceanEnts.Ent{0, F64Repr.zero(), F64Repr.zero(), 0, 0, 0} : OceanEnts.Ent}
+  Bool.pick(List<&2, Named>, has_prefab(prefabs, name), prefabs, Named{name, [origin]} <> prefabs)
 
-def prefab_le(a: FilterDump.Prefab, b: FilterDump.Prefab) -> Bool:
+def named_le(a: Named, b: Named) -> Bool:
   match a b:
-    case FilterDump.Prefab{x, _} FilterDump.Prefab{y, _}:
+    case Named{x, _} Named{y, _}:
       String.is_le(x, y)
+
+def prefabs_of(named: List<&2, Named>, +windows: Bool) -> List<&2, FilterDump.Prefab>:
+  match named:
+    case Nil{}:
+      Nil{}
+    case Con{Named{+name, +ents}, rest}:
+      FilterDump.Prefab{name, positions_of(ents, windows)} <> prefabs_of(rest, windows)
+
+# A set piece member with the set piece it belongs to.
+type Tagged is Data:
+  Tagged{piece: U32, member: FilterDump.Member}
+
+def tagged_ents(ents: List<&2, OceanEnts.Ent>, +prefab: U32, +index: U32, +tail: List<&2, Tagged>) -> List<&2, Tagged>:
+  match ents:
+    case Nil{}:
+      tail
+    case Con{OceanEnts.Ent{_, _, _, _, _, +piece}, rest}:
+      +more = tagged_ents(rest, prefab, (index + 1 : U32), tail)
+      Bool.pick(List<&2, Tagged>, U32.is_zero(piece), more, Tagged{piece, FilterDump.Member{prefab, index}} <> more)
+
+def tagged_of(named: List<&2, Named>, +prefab: U32) -> List<&2, Tagged>:
+  match named:
+    case Nil{}:
+      Nil{}
+    case Con{Named{_, +ents}, rest}:
+      tagged_ents(ents, prefab, 0, tagged_of(rest, (prefab + 1 : U32)))
+
+# A set piece's members, in ENTS order.
+type Group is Data:
+  Group{piece: U32, members: List<&2, FilterDump.Member>}
+
+def tagged_ge(a: Tagged, b: Tagged) -> Bool:
+  match a b:
+    case Tagged{+k, FilterDump.Member{+p, +i}} Tagged{+l, FilterDump.Member{+q, +j}}:
+      (k > l : U32) || (U32.is_eq(k, l) && ((p > q : U32) || (U32.is_eq(p, q) && (i >= j : U32))))
+
+# The grouping so far: the set piece of the group in progress, its members and the finished groups.
+type Run is Data:
+  Run{current: U32, members: List<&2, FilterDump.Member>, groups: List<&2, Group>}
+
+def group_step(same: Bool, +k: U32, +m: FilterDump.Member, +r: Run) -> Run:
+  match same r:
+    case True{} Run{+current, +members, +groups}:
+      Run{current, m <> members, groups}
+    case False{} Run{+current, +members, +groups}:
+      Run{k, [m], Group{current, members} <> groups}
+
+def group_loop(tagged: List<&2, Tagged>, +r: Run) -> List<&2, Group>:
+  match tagged r:
+    case Nil{} Run{+current, +members, +groups}:
+      Group{current, members} <> groups
+    case Con{Tagged{+k, +m}, rest} Run{+current, +members, +groups}:
+      group_loop(rest, group_step(U32.is_eq(k, current), k, m, Run{current, members, groups}))
+
+# The members of each set piece, by set piece number (a set piece without members has no group).
+def groups_of(+tagged: List<&2, Tagged>) -> List<&2, Group>:
+  group_loop(List.sort(~Tagged, ~tagged_ge, tagged), Run{0, Nil{}, Nil{}})
+
+def group_members(groups: List<&2, Group>, +k: U32) -> List<&2, FilterDump.Member>:
+  match groups:
+    case Con{Group{+piece, +members}, _}:
+      Bool.pick(List<&2, FilterDump.Member>, U32.is_eq(piece, k), members, Nil{})
+    case Nil{}:
+      Nil{}
+
+def groups_after(groups: List<&2, Group>, +k: U32) -> List<&2, Group>:
+  match groups:
+    case Con{Group{+piece, +members}, +rest}:
+      Bool.pick(List<&2, Group>, U32.is_eq(piece, k), rest, Group{piece, members} <> rest)
+    case Nil{}:
+      Nil{}
+
+def world_centi(+t: F64Repr.F64, +w: U32, +windows: Bool) -> U32:
+  Centi.centi(Entities.centred(t, w), windows)
+
+def piece_of(+p: PopulateSetpiece.Piece, +members: List<&2, FilterDump.Member>, +w: U32, +windows: Bool) -> FilterDump.Piece:
+  match p:
+    case PopulateSetpiece.Piece{+name, +source, +turn, +cx, +cy, +half, _, _}:
+      +x0 = world_centi(F64Arith.sub(cx, half), w, windows)
+      +z0 = world_centi(F64Arith.sub(cy, half), w, windows)
+      +x1 = world_centi(F64Arith.add(cx, half), w, windows)
+      +z1 = world_centi(F64Arith.add(cy, half), w, windows)
+      FilterDump.Piece{Strings.name(name), source, turn, world_centi(cx, w, windows), world_centi(cy, w, windows), x0, z0, x1, z1, members}
+
+# The set pieces numbered from k, with the members of their groups.
+def pieces_of(pieces: List<&2, PopulateSetpiece.Piece>, +groups: List<&2, Group>, +k: U32, +w: U32, +windows: Bool) -> List<&2, FilterDump.Piece>:
+  match pieces:
+    case Nil{}:
+      Nil{}
+    case Con{+p, rest}:
+      piece_of(p, group_members(groups, k), w, windows) <> pieces_of(rest, groups_after(groups, k), (k + 1 : U32), w, windows)
 
 def tile_name_le(a: FilterDump.TileName, b: FilterDump.TileName) -> Bool:
   match a b:
@@ -233,22 +332,23 @@ def tile_names_of(tiles: List<&2, SearchVocab.Tile>, ids: List<&2, U32>) -> List
     case _ _:
       Nil{}
 
-def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>) -> FilterDump.Dump:
+def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>) -> FilterDump.Dump:
   (a, +wormholes) = got
-  +found = prefabs_loop(U32.to_nat(sid_slots()), Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, windows, Nil{})
-  +prefabs = with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container())
+  +found = named_loop(U32.to_nat(sid_slots()), Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, Nil{})
+  +named = List.sort(~Named, ~named_le, with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container()))
   FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
-    List.sort(~FilterDump.Prefab, ~prefab_le, prefabs), links(wormholes)}
+    prefabs_of(named, windows), links(wormholes), Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}}
 
 def wormhole_sid() -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, GenTagsData.vocab_prefab_sids(), U32.to_nat(GenTagsData.vocab_wormhole())), 0)
 
 # The world dump (docs/world-dump.md) of a generated world (the seed's world attempt on the platform): every
-# savedata.ents entry whatever its prefab, and the pocket dimension containers, per prefab in name order.
+# savedata.ents entry whatever its prefab, and the pocket dimension containers, per prefab in name order, and the
+# placed layouts with their members.
 def dump(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match final:
-    case GenJob.Final{g, _, +ents, +w}:
+    case GenJob.Final{g, _, +ents, +w, +pieces}:
       +tiles = packed(g, (w * w : U32))
       dump_of(Array.get(List<&2, OceanEnts.Ent>, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.sid_depth(), Nil{})), wormhole_sid()),
-        seed, windows, w, tiles)
+        seed, windows, w, tiles, pieces)

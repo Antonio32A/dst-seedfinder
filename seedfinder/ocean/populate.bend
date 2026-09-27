@@ -13,6 +13,7 @@ import ../worldsim/grid.bend as Grid
 import ../worldsim/points.bend as Points
 import ../populate/entities.bend as Entities
 import ../populate/counts.bend as PopulateCounts
+import ../populate/setpiece.bend as PopulateSetpiece
 import ./ents.bend as OceanEnts
 import ./state.bend as OceanState
 import ./place.bend as OceanPlace
@@ -169,7 +170,7 @@ type Dist is Data:
 def jittered(+c: OceanState.Ctx, +e: Entities.Ent, g: Grid.Grid, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   match e:
     case Entities.Ent{+prefab, +tx, +ty, +x, +z, _, _, +rng}:
-      OceanState.noted(c, OceanState.Sea{g, ids, rng, OceanEnts.Ent{prefab, x, z, 0, 0} <> ents, topo, events}, OceanState.EAdd{prefab, tx, ty, x, z, rng})
+      OceanState.noted(c, OceanState.Sea{g, ids, rng, OceanEnts.Ent{prefab, x, z, 0, 0, 0} <> ents, topo, events}, OceanState.EAdd{prefab, tx, ty, x, z, rng})
 
 def reserved_add(got: Grid.Grid & Bool, +c: OceanState.Ctx, +prefab: U32, +x: U32, +y: U32, ids: Grid.Grid, rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (g, _) = got
@@ -295,7 +296,7 @@ def pieces_if(some: Bool, +c: OceanState.Ctx, +specs: List<&2, OceanPlace.Spec>,
     case False{}:
       s
     case True{}:
-      OceanPlace.place_set_pieces(specs, c, tile, OceanData.config_ocean_prefill_setpieces_min_land_dist(), s)
+      OceanPlace.place_set_pieces(specs, c, tile, OceanData.config_ocean_prefill_setpieces_min_land_dist(), PopulateSetpiece.ocean_room(), s)
 
 def picks_of(+i: U32) -> List<&2, U32>:
   Blob.drop(Distribute.ocean_picks(i), 2)
