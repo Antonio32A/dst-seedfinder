@@ -18,9 +18,11 @@
         "@types/react-dom": "19.3.0",
         "@vitejs/plugin-react": "6.1.1",
         "@vitejs/plugin-rsc": "0.5.35",
+        "msw": "2.15.0",
         "tailwindcss": "4.3.3",
         "typescript": "7.0.2",
         "vite": "8.3.0",
+        "vitest": "5.0.2",
         "wrangler": "4.137.0"
     },
     "type": "module",
@@ -33,6 +35,7 @@
         "start": "wrangler dev --config dist/server/wrangler.json",
         "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",
         "preview": "npm run build && npm run start --",
+        "test": "vinext build && vitest run",
         "cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts"
     }
 }
