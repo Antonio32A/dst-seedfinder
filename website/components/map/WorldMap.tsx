@@ -8,6 +8,8 @@ import { type GroupVisibility, readGroupVisibility, storeGroupVisibility } from 
 import { loadWorld, type WorldLoad } from "@/lib/world-map/load-world";
 import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/map-canvas";
 import type { GeneratedWorld } from "@/lib/world-map/world-dump";
+import MapTooltip from "./MapTooltip";
+import PrefabSearch from "./PrefabSearch";
 
 const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> = {
     loading: "Generating the world in your browser...",
@@ -21,16 +23,20 @@ function WorldCanvas({ world }: { world: GeneratedWorld }) {
     const [error, setError] = useState<string | null>(null);
     const [visibility, setVisibility] = useState<GroupVisibility>(readGroupVisibility);
     const layer = useMemo(() => entityLayer(world), [world]);
+    const [mounted, setMounted] = useState<MapCanvas | null>(null);
+    const [searched, setSearched] = useState<string | null>(null);
 
     useEffect(() => {
         try {
             map.current = mountMapCanvas(canvas.current!, world, layer);
+            setMounted(map.current);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught));
         }
         return () => {
             map.current?.dispose();
             map.current = null;
+            setMounted(null);
         };
     }, [world, layer]);
 
@@ -48,6 +54,7 @@ function WorldCanvas({ world }: { world: GeneratedWorld }) {
             <div className="map">
                 {error && <p className="notice notice--error" role="alert">{error}</p>}
                 <canvas ref={canvas} className="map__canvas" aria-label="World map"/>
+                <MapTooltip world={world} map={mounted} canvas={canvas} visibility={visibility} highlighted={searched}/>
                 <div className="map__controls">
                     <button type="button" className="link-button" onClick={() => map.current?.fit()}>
                         fit to world
@@ -60,6 +67,7 @@ function WorldCanvas({ world }: { world: GeneratedWorld }) {
                     </button>
                     <span className="hint">Drag to pan, scroll to zoom, Q/E to rotate.</span>
                 </div>
+                <PrefabSearch world={world} map={mounted} onChange={setSearched}/>
                 <div className="map__layers" role="group" aria-label="Entity groups">
                     {MAP_GROUPS.map(({ id, name, colour }, group) => layer.counts[group] > 0 && (
                             <Toggle key={id} checked={visibility[id]} onChange={(shown) => toggle(id, shown)}>

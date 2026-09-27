@@ -52,7 +52,8 @@ export interface EntityLayer {
     linkGroup: number;
 }
 
-const groupOf = (prefab: string) => {
+/** The index in {@link MAP_GROUPS} of a prefab's group. */
+export const groupOf = (prefab: string) => {
     const group = PREFAB_BY_ID.get(prefab)?.group;
     return group === undefined ? OTHER : PREFAB_GROUP_IDS.indexOf(group);
 };

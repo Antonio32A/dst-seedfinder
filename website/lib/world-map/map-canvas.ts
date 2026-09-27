@@ -1,7 +1,8 @@
 import type { EntityLayer } from "./entity-layer";
 import { createEntityRenderer } from "./entity-renderer";
 import type { GroupVisibility } from "./group-visibility";
-import { fitView, type MapView, panBy, type Size, turnView, zoomAt } from "./map-view";
+import { createHighlightRenderer } from "./highlight-renderer";
+import { fitView, type MapView, panBy, type Size, turnView, type WorldPoint, zoomAt } from "./map-view";
 import { createTileRenderer } from "./tile-renderer";
 import type { GeneratedWorld } from "./world-dump";
 
@@ -17,6 +18,12 @@ export interface MapCanvas {
     turn: (steps: number) => void;
     /** Draws the entities of the groups `visibility` shows, and hides the rest. */
     show: (visibility: GroupVisibility) => void;
+    /** Rings `points`, interleaved world `x, z`, over the entities, whichever groups are shown. */
+    highlight: (points: Float32Array) => void;
+    /** Centres the map on `point`, zooming in to at least `scale` pixels per world unit. */
+    centre: (point: WorldPoint, scale: number) => void;
+    /** Calls `listener` with the view now and after every redraw, until the returned function is called. */
+    watch: (listener: (view: MapView, viewport: Size) => void) => () => void;
     dispose: () => void;
 }
 
@@ -30,6 +37,8 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const tiles = createTileRenderer(gl, world);
     const entities = createEntityRenderer(gl, layer);
+    const highlights = createHighlightRenderer(gl);
+    const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
     let view: MapView = fitView(world, viewport);
     let frame = 0;
@@ -50,6 +59,8 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             gl.clear(gl.COLOR_BUFFER_BIT);
             tiles.draw(view, viewport);
             entities.draw(view, viewport);
+            highlights.draw(view, viewport);
+            for (const watcher of watchers) watcher(view, viewport);
         });
     };
     const move = (next: MapView) => {
@@ -106,6 +117,16 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             entities.show(visibility);
             redraw();
         },
+        highlight: (points) => {
+            highlights.highlight(points);
+            redraw();
+        },
+        centre: (point, scale) => move({ ...view, centerX: point.x, centerZ: point.z, scale: Math.max(view.scale, scale) }),
+        watch: (listener) => {
+            watchers.add(listener);
+            listener(view, viewport);
+            return () => watchers.delete(listener);
+        },
         dispose: () => {
             cancelAnimationFrame(frame);
             resized.disconnect();
@@ -113,6 +134,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             removeEventListener("keydown", pressed);
             tiles.dispose();
             entities.dispose();
+            highlights.dispose();
         }
     };
 }

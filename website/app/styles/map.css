@@ -39,3 +39,65 @@
 .map__count {
     color: var(--muted);
 }
+
+.map__tooltip {
+    position: fixed;
+    z-index: 10;
+    max-width: 360px;
+    padding: 6px 10px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    font-size: 0.8em;
+    line-height: 1.45;
+    pointer-events: none;
+}
+
+.map__search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    margin-top: 10px;
+}
+
+.map__search-box {
+    position: relative;
+    width: min(100%, 380px);
+}
+
+.map__search-box input {
+    width: 100%;
+}
+
+.map__suggestions {
+    position: absolute;
+    z-index: 10;
+    top: 100%;
+    right: 0;
+    left: 0;
+    max-height: 320px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-top: 0;
+}
+
+.map__suggestions li {
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+.map__suggestions li:hover,
+.map__suggestions li[aria-selected="true"] {
+    background: var(--accent-soft);
+}
+
+.map__found {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+}
