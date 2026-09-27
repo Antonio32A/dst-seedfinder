@@ -1,40 +1,39 @@
 "use client";
 
-import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { MapCanvas } from "@/lib/world-map/map-canvas";
-import { createMapProbe, type Probe } from "@/lib/world-map/map-probe";
+import type { MapProbe, MapShown, Probe } from "@/lib/world-map/map-probe";
 import type { MapView, ScreenPoint, Size } from "@/lib/world-map/map-view";
-import type { GeneratedWorld } from "@/lib/world-map/world-dump";
+import type { MapTarget } from "@/lib/world-map/prefab-search";
 
 const OFFSET = 14;
 const FLIP_WITHIN = 240;
 const CLICK_SLOP = 5;
 
 interface MapPointerProps {
-    world: GeneratedWorld;
+    probe: MapProbe;
     map: MapCanvas | null;
     canvas: RefObject<HTMLCanvasElement | null>;
-    shown: ReadonlySet<string>;
-    highlighted: string | null;
+    shown: MapShown;
+    searched: MapTarget | null;
     /** Called with what a click or tap without a drag landed on, or `null` off the map. */
     onPick: (probe: Probe | null) => void;
 }
 
 const clientPoint = (event: PointerEvent): ScreenPoint => ({ x: event.clientX, y: event.clientY });
 
-/** Names the dot under the mouse, and reports what a click or a tap on the map picks. */
-export default function MapPointer({ world, map, canvas, shown, highlighted, onPick }: MapPointerProps) {
-    const probe = useMemo(() => createMapProbe(world), [world]);
+/** Names the dot or set piece under the mouse, and reports what a click or a tap on the map picks. */
+export default function MapPointer({ probe, map, canvas, shown, searched, onPick }: MapPointerProps) {
     const [hovered, setHovered] = useState<{ cursor: ScreenPoint; name: string } | null>(null);
     const cursor = useRef<ScreenPoint | null>(null);
     const drawn = useRef<{ view: MapView; viewport: Size } | null>(null);
-    const filter = useRef<[ReadonlySet<string>, string | null]>([shown, highlighted]);
+    const filter = useRef<[MapShown, MapTarget | null]>([shown, searched]);
     const pick = useRef(onPick);
 
     useEffect(() => {
-        filter.current = [shown, highlighted];
+        filter.current = [shown, searched];
         pick.current = onPick;
-    }, [shown, highlighted, onPick]);
+    }, [shown, searched, onPick]);
 
     useEffect(() => {
         const element = canvas.current;
@@ -46,8 +45,9 @@ export default function MapPointer({ world, map, canvas, shown, highlighted, onP
         };
         const update = () => {
             if (cursor.current === null || drawn.current === null) return;
-            const { entity } = probeAt(cursor.current, drawn.current);
-            setHovered(entity && { cursor: cursor.current, name: entity.displayName });
+            const { entity, setPiece } = probeAt(cursor.current, drawn.current);
+            const name = entity?.displayName ?? setPiece?.name;
+            setHovered(name === undefined ? null : { cursor: cursor.current, name });
         };
         const listeners: { [K in keyof HTMLElementEventMap]?: (event: HTMLElementEventMap[K]) => void } = {
             pointermove: (event) => {
@@ -66,7 +66,7 @@ export default function MapPointer({ world, map, canvas, shown, highlighted, onP
                 pressed = null;
                 if (!click || drawn.current === null) return;
                 const found = probeAt(at, drawn.current);
-                pick.current(found.entity === null && found.tile === null ? null : found);
+                pick.current(found.entity === null && found.setPiece === null && found.tile === null ? null : found);
             }
         };
         const unwatch = map.watch((view, viewport) => {

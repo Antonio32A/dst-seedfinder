@@ -39,6 +39,30 @@ describe("the entity layer", () => {
         expect(mapped.links).toBe(world.links);
     });
 
+    it("keeps the set pieces' members on their prefabs in the map's world, without the spawn points", () => {
+        const start = {
+            name: "DefaultStart",
+            source: "start" as const,
+            transform: 0,
+            xk: 0,
+            zk: 0,
+            bounds: new Int32Array([-800, -800, 800, 800]),
+            members: new Uint32Array([0, 0, 1, 0, 2, 0, 4, 1])
+        };
+        const world = {
+            prefabs: [
+                prefab("multiplayer_portal", 0, 0),
+                prefab("spawnpoint_master", 0, 0),
+                prefab("spawnpoint_multiplayer", 0, 0),
+                ...WORLD.prefabs
+            ],
+            setPieces: [start]
+        };
+        const mapped = mapWorld(world);
+        expect(mapped.setPieces).toEqual([{ ...start, members: new Uint32Array([0, 0, 2, 1]) }]);
+        expect(mapWorld({ ...WORLD, setPieces: undefined }).setPieces).toBeUndefined();
+    });
+
     it("places a dot for every entity at its world position, in its group or in other outside the catalog", () => {
         expect(dots(entityLayer(WORLD))).toEqual(expect.arrayContaining([
             ["trees", 1.5, -4],

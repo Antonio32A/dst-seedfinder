@@ -187,8 +187,21 @@ details.map-bar * {
     border-radius: 50%;
 }
 
+.map__swatch--outline {
+    border-width: 2px;
+    border-radius: 0;
+    box-shadow: 0 0 0 1px rgb(20 20 20), inset 0 0 0 1px rgb(20 20 20);
+}
+
 .map__count {
     color: var(--muted);
+}
+
+.map__kind {
+    padding: 0 4px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85em;
 }
 
 .map__label {
@@ -229,6 +242,15 @@ details.map-bar * {
 
 .map-details__facts dd {
     overflow-wrap: anywhere;
+}
+
+.map-details__part {
+    margin: 4px 0 0;
+}
+
+.map-details__members {
+    list-style: none;
+    margin: 0;
 }
 
 .map__search {

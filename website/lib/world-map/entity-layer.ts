@@ -43,11 +43,27 @@ const UNMAPPED: ReadonlySet<string> = new Set(["spawnpoint_master", "spawnpoint_
 /** Whether the map draws a prefab: all but the spawn points, which the portal stands for. */
 export const isMapped = (prefab: string) => !UNMAPPED.has(prefab);
 
-/** A world as its map draws it, with only the prefabs it {@link isMapped maps}. */
-export const mapWorld = <World extends Pick<GeneratedWorld, "prefabs">>(world: World): World => ({
-    ...world,
-    prefabs: world.prefabs.filter(({ name }) => isMapped(name))
-});
+/**
+ * A world as its map draws it, with only the prefabs it {@link isMapped maps}, and its set pieces' members renumbered
+ * to them.
+ */
+export function mapWorld<World extends Pick<GeneratedWorld, "prefabs" | "setPieces">>(world: World): World {
+    const kept = world.prefabs.flatMap(({ name }, prefab) => (isMapped(name) ? [prefab] : []));
+    const renumbered = new Map(kept.map((prefab, index) => [prefab, index]));
+    const members = (pairs: Uint32Array) => {
+        const mapped: number[] = [];
+        for (let at = 0; at < pairs.length; at += 2) {
+            const prefab = renumbered.get(pairs[at]);
+            if (prefab !== undefined) mapped.push(prefab, pairs[at + 1]);
+        }
+        return Uint32Array.from(mapped);
+    };
+    return {
+        ...world,
+        prefabs: kept.map((prefab) => world.prefabs[prefab]),
+        setPieces: world.setPieces?.map((piece) => ({ ...piece, members: members(piece.members) }))
+    };
+}
 
 export interface EntityLayer {
     /** Interleaved `x, z` world positions, one per dot. */

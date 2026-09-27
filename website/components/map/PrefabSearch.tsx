@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, useEffect, useId, useMemo, useState } from "react";
 import type { MapCanvas } from "@/lib/world-map/map-canvas";
-import { instancesOf, type PrefabMatch, searchPrefabs, stepInstance } from "@/lib/world-map/prefab-search";
+import { instancesOf, type MapMatch, type MapTarget, searchPrefabs, stepInstance } from "@/lib/world-map/prefab-search";
 import type { GeneratedWorld } from "@/lib/world-map/world-dump";
 
 const MAX_SUGGESTIONS = 40;
@@ -12,7 +12,7 @@ const FOCUS_SCALE = 3;
 interface PrefabSearchProps {
     world: GeneratedWorld;
     map: MapCanvas | null;
-    onChange: (prefab: string | null) => void;
+    onChange: (target: MapTarget | null) => void;
 }
 
 const count = (value: number) => value.toLocaleString("en-US");
@@ -22,21 +22,21 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
     const [query, setQuery] = useState("");
     const [open, setOpen] = useState(false);
     const [active, setActive] = useState(0);
-    const [chosen, setChosen] = useState<PrefabMatch | null>(null);
+    const [chosen, setChosen] = useState<MapMatch | null>(null);
     const [current, setCurrent] = useState<number | null>(null);
     const suggestions = useMemo(() => searchPrefabs(world, query).slice(0, MAX_SUGGESTIONS), [world, query]);
-    const instances = useMemo(() => (chosen ? instancesOf(world, chosen.prefab) : []), [world, chosen]);
+    const instances = useMemo(() => (chosen ? instancesOf(world, chosen) : []), [world, chosen]);
 
     useEffect(() => {
         map?.highlight(Float32Array.from(instances.flatMap(({ x, z }) => [x, z])));
     }, [map, instances]);
 
-    const choose = (match: PrefabMatch | null) => {
+    const choose = (match: MapMatch | null) => {
         setChosen(match);
         setCurrent(null);
         setOpen(false);
         setQuery(match?.displayName ?? "");
-        onChange(match?.prefab ?? null);
+        onChange(match && { kind: match.kind, name: match.name });
     };
 
     const step = (by: number) => {
@@ -62,7 +62,7 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
     return (
             <div className="map__search">
                 <div className="map__search-box">
-                    <input type="search" role="combobox" aria-label="Find a prefab in this world"
+                    <input type="search" role="combobox" aria-label="Find a prefab or set piece in this world"
                            aria-expanded={open && suggestions.length > 0} aria-controls={listId} aria-autocomplete="list"
                            aria-activedescendant={open && suggestions.length > 0 ? `${listId}-${active}` : undefined}
                            placeholder="Find prefab" value={query}
@@ -74,14 +74,17 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
                            }}
                            onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onKeyDown={pressed}/>
                     {open && suggestions.length > 0 && (
-                            <ul id={listId} role="listbox" className="map__suggestions" aria-label="Prefabs in this world">
+                            <ul id={listId} role="listbox" className="map__suggestions"
+                                aria-label="Prefabs and set pieces in this world">
                                 {suggestions.map((match, index) => (
-                                        <li key={match.prefab} id={`${listId}-${index}`} role="option"
+                                        <li key={`${match.kind} ${match.name}`} id={`${listId}-${index}`} role="option"
                                             aria-selected={index === active}
                                             ref={index === active ? (element) => element?.scrollIntoView(NEAREST) : undefined}
                                             onPointerDown={(event) => event.preventDefault()}
                                             onClick={() => choose(match)}>
-                                            {match.displayName} <code>{match.prefab}</code>
+                                            {match.kind === "set piece"
+                                                    ? <>{match.name} <span className="map__kind">set piece</span></>
+                                                    : <>{match.displayName} <code>{match.name}</code></>}
                                             <span className="map__count"> {count(match.count)}</span>
                                         </li>
                                 ))}
@@ -91,7 +94,8 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
                 {chosen && (
                         <div className="map__found" aria-live="polite">
                             <span>
-                                {chosen.displayName}: {count(chosen.count)} in this world
+                                {chosen.displayName}{chosen.kind === "set piece" && " set piece"}:{" "}
+                                {count(chosen.count)} in this world
                                 {shownAt && (
                                         <span className="map__count">
                                             , showing {count(shownAt.number)} at

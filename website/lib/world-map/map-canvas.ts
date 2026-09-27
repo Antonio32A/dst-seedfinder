@@ -2,6 +2,7 @@ import type { EntityLayer } from "./entity-layer";
 import { createEntityRenderer } from "./entity-renderer";
 import { createHighlightRenderer } from "./highlight-renderer";
 import { fitView, type MapView, panBy, type Size, turnView, type WorldPoint, zoomAt } from "./map-view";
+import { createSetPieceRenderer } from "./set-piece-renderer";
 import { createTileRenderer } from "./tile-renderer";
 import type { WitnessShape } from "./witness-overlay";
 import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
@@ -18,6 +19,10 @@ export interface MapCanvas {
     turn: (steps: number) => void;
     /** Draws the entities of the `shown` prefabs, and hides the rest. */
     show: (shown: ReadonlySet<string>) => void;
+    /** Outlines the set pieces of the `shown` layout names, under the entities, and hides the rest. */
+    showSetPieces: (shown: ReadonlySet<string>) => void;
+    /** Outlines the world's set pieces at `indices` brighter, whichever are shown, instead of the ones before. */
+    highlightSetPieces: (indices: readonly number[]) => void;
     /** Rings `points`, interleaved world `x, z`, over the entities, whichever prefabs are shown. */
     highlight: (points: Float32Array) => void;
     /** Centres the map on `point`, zooming in to at least `scale` pixels per world unit when given. */
@@ -30,14 +35,15 @@ export interface MapCanvas {
 }
 
 /**
- * Draws the world's tiles and its entity layer on the canvas, sized to the canvas's CSS box, and pans on drag, zooms
- * to the cursor on wheel and turns on Q/E like the game. It opens fitted to the world, with every prefab hidden. Throws
- * when the browser can't draw it.
+ * Draws the world's tiles, its set pieces' outlines and its entity layer on the canvas, sized to the canvas's CSS box,
+ * and pans on drag, zooms to the cursor on wheel and turns on Q/E like the game. It opens fitted to the world, with
+ * every prefab and set piece hidden. Throws when the browser can't draw it.
  */
 export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const tiles = createTileRenderer(gl, world);
+    const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
     const entities = createEntityRenderer(gl, layer);
     const highlights = createHighlightRenderer(gl);
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
@@ -61,6 +67,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             tiles.draw(view, viewport);
+            setPieces.draw(view, viewport);
             entities.draw(view, viewport);
             overlay?.draw(view, viewport);
             highlights.draw(view, viewport);
@@ -120,6 +127,14 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             entities.show(shown);
             redraw();
         },
+        showSetPieces: (shown) => {
+            setPieces.show(shown);
+            redraw();
+        },
+        highlightSetPieces: (indices) => {
+            setPieces.highlight(indices);
+            redraw();
+        },
         highlight: (points) => {
             highlights.highlight(points);
             redraw();
@@ -141,6 +156,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
             removeEventListener("keydown", pressed);
             tiles.dispose();
+            setPieces.dispose();
             entities.dispose();
             highlights.dispose();
             overlay?.dispose();

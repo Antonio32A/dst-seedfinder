@@ -29,8 +29,9 @@ const GRASSLAND: GeneratedWorld = {
     ]
 };
 
-const ALL_SHOWN: ReadonlySet<string> = new Set(["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"]);
-const NO_TREES: ReadonlySet<string> = new Set(["pigking"]);
+const NO_SET_PIECES: ReadonlySet<string> = new Set();
+const ALL_SHOWN = { prefabs: new Set(["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"]), setPieces: NO_SET_PIECES };
+const NO_TREES = { prefabs: new Set(["pigking"]), setPieces: NO_SET_PIECES };
 
 describe("the map probe", () => {
     it("names the tile under a point", () => {
@@ -56,7 +57,8 @@ describe("the map probe", () => {
             displayName: "Evergreen",
             index: 1,
             x: -0.01,
-            z: 0.25
+            z: 0.25,
+            setPiece: null
         });
         expect(probe.at({ x: 9, z: 19 }, 2, ALL_SHOWN).entity).toMatchObject({ prefab: "pigking", index: 0, x: 10, z: 20 });
     });
@@ -75,7 +77,8 @@ describe("the map probe", () => {
     it("picks no entity when none is within the radius, and still names the tile", () => {
         expect(createMapProbe(GRASSLAND).at({ x: 3, z: 3 }, 2, ALL_SHOWN)).toEqual({
             tile: { name: "GRASS", displayName: "Grass Turf" },
-            entity: null
+            entity: null,
+            setPiece: null
         });
     });
 
@@ -88,8 +91,8 @@ describe("the map probe", () => {
 
     it("picks the instances of the prefab searched for even when it's hidden", () => {
         const probe = createMapProbe(GRASSLAND);
-        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, "evergreen").entity).toMatchObject({ prefab: "evergreen", index: 1 });
-        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, "pigking").entity).toBeNull();
+        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, { kind: "prefab", name: "evergreen" }).entity).toMatchObject({ prefab: "evergreen", index: 1 });
+        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, { kind: "prefab", name: "pigking" }).entity).toBeNull();
     });
 
     const VIEWPORT = { width: 800, height: 600 };
@@ -114,7 +117,7 @@ describe("the map probe", () => {
         const names = ["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"];
         const world = { ...GRASSLAND, prefabs: names.map((name) => prefab(name, ...scatter(300))) };
         const probe = createMapProbe(world);
-        const visibility = new Set(names.filter((name) => name !== "pigking"));
+        const visibility = { prefabs: new Set(names.filter((name) => name !== "pigking")), setPieces: NO_SET_PIECES };
         for (let trial = 0; trial < 500; trial++) {
             const point = { x: (random() - 0.5) * 520, z: (random() - 0.5) * 520 };
             const radius = random() * 60;
@@ -132,5 +135,78 @@ describe("the map probe", () => {
                     found ? { prefab: found.prefab, index: found.index } : null;
             expect(picked(entity)).toEqual(picked(expected));
         }
+    });
+});
+
+const setPiece = (name: string, bounds: number[], members: number[] = []) => ({
+    name,
+    source: "room" as const,
+    transform: 1,
+    xk: (bounds[0] + bounds[2]) / 2,
+    zk: (bounds[1] + bounds[3]) / 2,
+    bounds: new Int32Array(bounds),
+    members: new Uint32Array(members)
+});
+
+const KINGDOM: GeneratedWorld = {
+    ...GRASSLAND,
+    prefabs: [prefab("evergreen", 150, -400, -1, 25, 3000, 3000), prefab("pigking", 1000, 2000), prefab("sanityrock", 1400, 2000)],
+    setPieces: [
+        setPiece("DefaultPigking", [-600, 400, 2600, 3600], [1, 0, 2, 0]),
+        setPiece("Grove", [2600, 2600, 3400, 3400], [0, 2]),
+        setPiece("CropCircle", [0, 1600, 800, 2400])
+    ]
+};
+
+const shownWith = (...setPieces: string[]) => ({ prefabs: ALL_SHOWN.prefabs, setPieces: new Set(setPieces) });
+
+describe("the map probe on set pieces", () => {
+    it("says which set piece an entity is part of", () => {
+        const probe = createMapProbe(KINGDOM);
+        expect(probe.at({ x: 10, z: 20 }, 1, ALL_SHOWN).entity).toMatchObject({ prefab: "pigking", setPiece: { index: 0, name: "DefaultPigking" } });
+        expect(probe.at({ x: 30, z: 30 }, 1, ALL_SHOWN).entity).toMatchObject({ prefab: "evergreen", setPiece: { index: 1, name: "Grove" } });
+        expect(probe.at({ x: 1.5, z: -4 }, 1, ALL_SHOWN).entity).toMatchObject({ prefab: "evergreen", setPiece: null });
+    });
+
+    it("picks the shown set piece whose bounds hold the point when there's no dot near it, with its details", () => {
+        const probe = createMapProbe(KINGDOM);
+        const found = probe.at({ x: 0, z: 30 }, 1, shownWith("DefaultPigking"));
+        expect(found).toMatchObject({ entity: null, tile: { name: "GRASS" }, setPiece: { index: 0, name: "DefaultPigking", source: "room" } });
+        expect(found.setPiece!.members.map(({ prefab }) => prefab).sort()).toEqual(["pigking", "sanityrock"]);
+        expect(probe.at({ x: -7, z: 30 }, 1, shownWith("DefaultPigking")).setPiece).toBeNull();
+        expect(probe.at({ x: 0, z: 30 }, 1, ALL_SHOWN).setPiece).toBeNull();
+    });
+
+    it("picks a dot over the set piece it's in", () => {
+        const found = createMapProbe(KINGDOM).at({ x: 10.5, z: 20 }, 1, shownWith("DefaultPigking"));
+        expect(found).toMatchObject({ entity: { prefab: "pigking" }, setPiece: null });
+    });
+
+    it("picks the smallest of the shown set pieces that hold the point", () => {
+        const probe = createMapProbe(KINGDOM);
+        const all = shownWith("DefaultPigking", "CropCircle", "Grove");
+        expect(probe.at({ x: 4, z: 20 }, 1, all).setPiece).toMatchObject({ name: "CropCircle" });
+        expect(probe.at({ x: 4, z: 20 }, 1, shownWith("DefaultPigking")).setPiece).toMatchObject({ name: "DefaultPigking" });
+        expect(probe.at({ x: 27, z: 34 }, 0.1, all).setPiece).toMatchObject({ name: "Grove" });
+    });
+
+    it("picks the instances of the set piece searched for even when they're hidden", () => {
+        const probe = createMapProbe(KINGDOM);
+        expect(probe.at({ x: 4, z: 20 }, 1, ALL_SHOWN, { kind: "set piece", name: "CropCircle" }).setPiece).toMatchObject({ name: "CropCircle" });
+        expect(probe.at({ x: 4, z: 20 }, 1, ALL_SHOWN, { kind: "prefab", name: "CropCircle" }).setPiece).toBeNull();
+    });
+
+    it("gives a set piece's details, with the tile at its centre", () => {
+        expect(createMapProbe(KINGDOM).setPiece(2)).toMatchObject({
+            entity: null,
+            tile: { name: "GRASS" },
+            setPiece: { index: 2, name: "CropCircle", x: 4, z: 20, width: 2, height: 2 }
+        });
+    });
+
+    it("has no set pieces when the dump doesn't say where they are", () => {
+        const probe = createMapProbe(GRASSLAND);
+        expect(probe.at({ x: 10, z: 20 }, 1, shownWith("DefaultPigking")).entity).toMatchObject({ setPiece: null });
+        expect(probe.at({ x: 0, z: 30 }, 1, shownWith("DefaultPigking")).setPiece).toBeNull();
     });
 });

@@ -11,7 +11,7 @@ export interface LegendPrefab {
 }
 
 export interface LegendGroup {
-    group: MapGroup;
+    group: Omit<MapGroup, "id"> & { id: string };
     /** The group's entities in the world. */
     count: number;
     /** The group's prefabs in the world, by display name. */

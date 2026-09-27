@@ -5,9 +5,11 @@ import type { Platform } from "@/lib/config/seedfinder-config";
 import { entityLayer, mapWorld } from "@/lib/world-map/entity-layer";
 import { loadWorld, type WorldLoad } from "@/lib/world-map/load-world";
 import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/map-canvas";
-import type { Probe } from "@/lib/world-map/map-probe";
+import { createMapProbe, type Probe } from "@/lib/world-map/map-probe";
 import { parseMapConfig } from "@/lib/world-map/map-route";
+import type { MapTarget } from "@/lib/world-map/prefab-search";
 import { defaultShown, mapLegend } from "@/lib/world-map/prefab-visibility";
+import { defaultShownSetPieces, setPieceLegend } from "@/lib/world-map/set-pieces";
 import type { GeneratedWorld } from "@/lib/world-map/world-dump";
 import GroupsPanel from "./GroupsPanel";
 import MapCorner from "./MapCorner";
@@ -35,12 +37,22 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     const [error, setError] = useState<string | null>(null);
     const layer = useMemo(() => entityLayer(world), [world]);
     const legend = useMemo(() => mapLegend(world), [world]);
+    const setPieces = useMemo(() => setPieceLegend(world), [world]);
+    const probe = useMemo(() => createMapProbe(world), [world]);
     const shared = useMemo(() => (share === undefined ? null : parseMapConfig(share, platform)), [share, platform]);
-    const [shown, setShown] = useState<ReadonlySet<string>>(() =>
-        defaultShown(shared && "config" in shared ? shared.config : undefined));
-    const [searched, setSearched] = useState<string | null>(null);
+    const search = shared && "config" in shared ? shared.config : undefined;
+    const [shownPrefabs, setShownPrefabs] = useState<ReadonlySet<string>>(() => defaultShown(search));
+    const [shownSetPieces, setShownSetPieces] = useState<ReadonlySet<string>>(() => defaultShownSetPieces(search));
+    const shown = useMemo(() => ({ prefabs: shownPrefabs, setPieces: shownSetPieces }), [shownPrefabs, shownSetPieces]);
+    const [searched, setSearched] = useState<MapTarget | null>(null);
     const [picked, setPicked] = useState<Probe | null>(null);
     const close = useCallback(() => setPicked(null), []);
+    const openSetPiece = useCallback((index: number) => setPicked(probe.setPiece(index)), [probe]);
+    const highlighted = useMemo(() => {
+        const found = (world.setPieces ?? []).flatMap(({ name }, index) =>
+                (searched?.kind === "set piece" && name === searched.name ? [index] : []));
+        return picked?.setPiece ? [...found, picked.setPiece.index] : found;
+    }, [world, searched, picked]);
 
     useEffect(() => {
         let mounted: MapCanvas | null = null;
@@ -57,22 +69,31 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     }, [world, layer]);
 
     useEffect(() => {
-        map?.show(shown);
-    }, [map, shown]);
+        map?.show(shownPrefabs);
+    }, [map, shownPrefabs]);
+
+    useEffect(() => {
+        map?.showSetPieces(shownSetPieces);
+    }, [map, shownSetPieces]);
+
+    useEffect(() => {
+        map?.highlightSetPieces(highlighted);
+    }, [map, highlighted]);
 
     return (
             <>
                 <canvas ref={canvas} className="map__canvas" aria-label="World map"/>
                 {error && <p className="notice notice--error map-screen__notice" role="alert">{error}</p>}
-                <MapPointer world={world} map={map} canvas={canvas} shown={shown} highlighted={searched}
+                <MapPointer probe={probe} map={map} canvas={canvas} shown={shown} searched={searched}
                             onPick={setPicked}/>
-                <GroupsPanel legend={legend} shown={shown} onChange={setShown}/>
+                <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} setPieces={setPieces}
+                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces}/>
                 <MapCorner seed={seed} map={map}/>
                 <div className="map-side">
                     <div className="map-bar">
                         <PrefabSearch world={world} map={map} onChange={setSearched}/>
                     </div>
-                    {picked && <MapDetails probe={picked} onClose={close}/>}
+                    {picked && <MapDetails probe={picked} onClose={close} onOpenSetPiece={openSetPiece}/>}
                     {shared && <WitnessPanel shared={shared} world={generated} bytes={bytes} map={map}/>}
                 </div>
             </>
