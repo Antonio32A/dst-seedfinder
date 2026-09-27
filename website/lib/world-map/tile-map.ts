@@ -1,18 +1,23 @@
-import { fitView, type MapView, panBy, type Size, zoomAt } from "./map-view";
+import { fitView, type MapView, panBy, type Size, turnView, zoomAt } from "./map-view";
 import { createTileRenderer } from "./tile-renderer";
 import type { GeneratedWorld } from "./world-dump";
 
 const ZOOM_PER_PIXEL = 0.002;
 const PIXELS_PER_LINE = 16;
+const TURN_MS = 180;
+const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
+const TYPING_TARGETS = "input, textarea, select, [contenteditable]";
 
 export interface TileMap {
     fit: () => void;
+    /** Turns the map by `steps` of 45 degrees, animated: positive is the game's rotate right (E). */
+    turn: (steps: number) => void;
     dispose: () => void;
 }
 
 /**
- * Draws the world's tiles on the canvas, sized to the canvas's CSS box, and pans on drag and zooms to the cursor on
- * wheel. Throws when the browser can't draw it.
+ * Draws the world's tiles on the canvas, sized to the canvas's CSS box, and pans on drag, zooms to the cursor on wheel
+ * and turns on Q/E like the game. Throws when the browser can't draw it.
  */
 export function mountTileMap(canvas: HTMLCanvasElement, world: GeneratedWorld): TileMap {
     const renderer = createTileRenderer(canvas, world);
@@ -21,10 +26,17 @@ export function mountTileMap(canvas: HTMLCanvasElement, world: GeneratedWorld): 
     let view: MapView = fitView(world, viewport);
     let frame = 0;
     let grab: { x: number; y: number } | null = null;
+    let turning: { from: number; to: number; start: number } | null = null;
 
     const redraw = () => {
-        frame ||= requestAnimationFrame(() => {
+        frame ||= requestAnimationFrame((now) => {
             frame = 0;
+            if (turning !== null) {
+                const progress = Math.min(1, (now - turning.start) / TURN_MS);
+                view = { ...view, heading: turning.from + (turning.to - turning.from) * (1 - (1 - progress) ** 3) };
+                if (progress < 1) redraw();
+                else turning = null;
+            }
             renderer.draw(view, viewport);
         });
     };
@@ -62,12 +74,27 @@ export function mountTileMap(canvas: HTMLCanvasElement, world: GeneratedWorld): 
     };
     for (const [type, listener] of Object.entries(listeners)) canvas.addEventListener(type, listener as EventListener, { passive: false });
 
+    const turn = (steps: number) => {
+        const to = turnView({ ...view, heading: turning?.to ?? view.heading }, steps).heading;
+        turning = { from: view.heading, to, start: performance.now() };
+        redraw();
+    };
+    const pressed = (event: KeyboardEvent) => {
+        const steps = TURN_KEYS[event.key.toLowerCase()];
+        const typing = event.target instanceof HTMLElement && event.target.closest(TYPING_TARGETS) !== null;
+        if (steps === undefined || typing || event.ctrlKey || event.metaKey || event.altKey) return;
+        turn(steps);
+    };
+    addEventListener("keydown", pressed);
+
     return {
-        fit: () => move(fitView(world, viewport)),
+        fit: () => move(fitView(world, viewport, turning?.to ?? view.heading)),
+        turn,
         dispose: () => {
             cancelAnimationFrame(frame);
             resized.disconnect();
             for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
+            removeEventListener("keydown", pressed);
             renderer.dispose();
         }
     };

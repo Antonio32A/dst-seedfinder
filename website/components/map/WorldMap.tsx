@@ -37,7 +37,13 @@ function TileCanvas({ world }: { world: GeneratedWorld }) {
                     <button type="button" className="link-button" onClick={() => map.current?.fit()}>
                         fit to world
                     </button>
-                    <span className="hint">Drag to pan, scroll to zoom.</span>
+                    <button type="button" className="link-button" onClick={() => map.current?.turn(-1)}>
+                        rotate left (Q)
+                    </button>
+                    <button type="button" className="link-button" onClick={() => map.current?.turn(1)}>
+                        rotate right (E)
+                    </button>
+                    <span className="hint">Drag to pan, scroll to zoom, Q/E to rotate.</span>
                 </div>
             </div>
     );

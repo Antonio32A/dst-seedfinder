@@ -1,4 +1,4 @@
-import { type MapView, type Size, worldBounds } from "./map-view";
+import { type MapView, type Size, worldBounds, worldToScreen } from "./map-view";
 import { tilePalette } from "./tile-palette";
 import type { GeneratedWorld } from "./world-dump";
 
@@ -7,16 +7,15 @@ const PALETTE_ROW = 256;
 const VERTEX_SHADER = `#version 300 es
 in vec2 corner;
 uniform vec2 gridSize;
-uniform vec2 worldOrigin;
-uniform vec2 worldSize;
-uniform vec2 center;
-uniform float scale;
+uniform vec2 origin;
+uniform vec2 alongX;
+uniform vec2 alongZ;
 uniform vec2 viewport;
 out vec2 grid;
 
 void main() {
-    vec2 offset = (worldOrigin + corner * worldSize - center) * scale;
-    gl_Position = vec4(2.0 * offset.x / viewport.x, -2.0 * offset.y / viewport.y, 0.0, 1.0);
+    vec2 screen = origin + corner.x * alongX + corner.y * alongZ;
+    gl_Position = vec4(2.0 * screen.x / viewport.x - 1.0, 1.0 - 2.0 * screen.y / viewport.y, 0.0, 1.0);
     grid = corner * gridSize;
 }`;
 
@@ -99,16 +98,18 @@ export function createTileRenderer(canvas: HTMLCanvasElement, world: GeneratedWo
 
     const bounds = worldBounds(world);
     gl.uniform2f(uniform("gridSize"), world.width, world.height);
-    gl.uniform2f(uniform("worldOrigin"), bounds.left, bounds.top);
-    gl.uniform2f(uniform("worldSize"), bounds.width, bounds.height);
 
     return {
         draw: (view, viewport) => {
             gl.viewport(0, 0, canvas.width, canvas.height);
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.uniform2f(uniform("center"), view.centerX, view.centerZ);
-            gl.uniform1f(uniform("scale"), view.scale);
+            const origin = worldToScreen(view, viewport, { x: bounds.left, z: bounds.top });
+            const xEnd = worldToScreen(view, viewport, { x: bounds.left + bounds.width, z: bounds.top });
+            const zEnd = worldToScreen(view, viewport, { x: bounds.left, z: bounds.top + bounds.height });
+            gl.uniform2f(uniform("origin"), origin.x, origin.y);
+            gl.uniform2f(uniform("alongX"), xEnd.x - origin.x, xEnd.y - origin.y);
+            gl.uniform2f(uniform("alongZ"), zEnd.x - origin.x, zEnd.y - origin.y);
             gl.uniform2f(uniform("viewport"), viewport.width, viewport.height);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         },
