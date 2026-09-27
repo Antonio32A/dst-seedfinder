@@ -14,7 +14,7 @@ const WORLD = {
     ]
 };
 
-const SPAWN_AND_TRAVEL = ["cave_entrance", "multiplayer_portal", "wormhole"];
+const SPAWN_AND_TRAVEL = ["cave_entrance", "multiplayer_portal"];
 
 const SEARCH: SeedfinderConfig = {
     version: 1,
@@ -81,7 +81,7 @@ describe("toggling the map's prefabs", () => {
 });
 
 describe("the prefabs a map shows", () => {
-    it("starts with only the spawn & travel group, without the spawn points the map leaves out, without a search", () => {
+    it("starts with the spawn & travel group, less wormholes and the unmapped spawn points, without a search", () => {
         expect([...defaultShown()].sort()).toEqual(SPAWN_AND_TRAVEL);
     });
 
@@ -90,6 +90,11 @@ describe("the prefabs a map shows", () => {
             ...SPAWN_AND_TRAVEL, "beefalo", "evergreen", "flower", "grass", "knight", "moonbase", "pigking", "rook",
             "sapling", "spiderden", "walrus_camp"
         ].sort());
+    });
+
+    it("shows wormholes when the search names them", () => {
+        const wormholes: SeedfinderConfig = { version: 1, criteria: [{ counts: [{ prefab: "wormhole", min: 1 }] }] };
+        expect(defaultShown(wormholes)).toContain("wormhole");
     });
 
     it("shows only the spawn & travel group for a search without world rules", () => {

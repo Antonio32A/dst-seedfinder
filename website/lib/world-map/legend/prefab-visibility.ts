@@ -46,8 +46,9 @@ export function showPrefabs(shown: ReadonlySet<string>, prefabs: readonly string
 }
 
 const SHOWN_GROUP = "spawn & travel";
+const HIDDEN_FROM_GROUP = "wormhole";
 
-/** The spawn & travel group, and every prefab the world rules of `search` name, in any of its options. */
+/** The spawn & travel group without wormholes, and every prefab the world rules of `search` name, in any of its options. */
 export function defaultShown(search?: SeedfinderConfig): Set<string> {
     const named = (search?.criteria ?? []).flatMap(({ counts = [], distances = [], routes = [] }) => [
         ...counts.flatMap(({ prefab, near }) => [prefab, near?.prefab]),
@@ -55,5 +56,5 @@ export function defaultShown(search?: SeedfinderConfig): Set<string> {
         ...routes.flatMap(({ from, visit, to }) => [from, ...visit, to])
     ]);
     const group = PREFAB_GROUPS.find(({ id }) => id === SHOWN_GROUP)!.prefabs;
-    return new Set([...group.filter(isMapped), ...named.flatMap((prefabs) => [prefabs ?? []].flat())]);
+    return new Set([...group.filter((prefab) => isMapped(prefab) && prefab !== HIDDEN_FROM_GROUP), ...named.flatMap((prefabs) => [prefabs ?? []].flat())]);
 }

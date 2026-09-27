@@ -1,4 +1,5 @@
-import type { EntityLayer } from "@/lib/world-map/legend/entity-layer";
+import { type EntityLayer, SPAWN } from "@/lib/world-map/legend/entity-layer";
+import { instancesOf } from "@/lib/world-map/legend/prefab-search";
 import type { WitnessShape } from "@/lib/world-map/search/witness-overlay";
 import { createTerrainRenderer } from "@/lib/world-map/terrain/terrain-renderer";
 import {
@@ -22,6 +23,7 @@ const TURN_MS = 180;
 const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
 const TYPING_TARGETS = "input:not([type=checkbox], [type=radio]), textarea, select, [contenteditable]";
 const BACKGROUND = [22, 17, 14] as const;
+const SPAWN_SCALE = 2;
 
 export interface MapCanvas {
     /** Rejects with a readable error when the map art can't be downloaded. */
@@ -41,7 +43,7 @@ export interface MapCanvas {
     dispose: () => void;
 }
 
-/** Opens fitted to the world, with every prefab and set piece hidden. Throws when the browser can't draw the map. */
+/** Opens on the spawn portal, or fitted to the world without one, with every prefab and set piece hidden. Throws when the browser can't draw the map. */
 export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
@@ -52,7 +54,11 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
-    let view: MapView = fitView(world, viewport);
+    const [spawn] = instancesOf(world, { kind: "prefab", name: SPAWN });
+    const fitted = fitView(world, viewport);
+    let view: MapView = spawn === undefined
+            ? fitted
+            : { ...fitted, centerX: spawn.x, centerZ: spawn.z, scale: Math.max(fitted.scale, SPAWN_SCALE) };
     let frame = 0;
     let grab: { x: number; y: number } | null = null;
     let turning: { from: number; to: number; start: number } | null = null;

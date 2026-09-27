@@ -1,10 +1,11 @@
-import { type EntityLayer, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
+import { type EntityLayer, MAP_GROUPS, SPAWN } from "@/lib/world-map/legend/entity-layer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "./gl-program";
 
 const MIN_DOT_RADIUS = 2.5;
 const MAX_DOT_RADIUS = 8;
 const DOT_RADIUS_PER_WORLD_UNIT = 1;
+const SPAWN_RADIUS_SCALE = 2.5;
 const LINK_HALF_WIDTH = 0.625;
 const LINK_FEATHER = 1;
 const VISIBILITY_ROW = 256;
@@ -26,25 +27,29 @@ in float group;
 in float prefab;
 uniform vec3 colours[${MAP_GROUPS.length}];
 uniform float radius;
+uniform float spawn;
+uniform float spawnRadius;
 out vec3 fill;
+flat out float dotRadius;
 ${TRANSFORM}
 
 void main() {
     fill = colours[int(group)];
-    gl_PointSize = 2.0 * radius + 1.0;
+    dotRadius = prefab == spawn ? spawnRadius : radius;
+    gl_PointSize = 2.0 * dotRadius + 1.0;
     gl_Position = hidden(prefab) ? vec4(2.0, 2.0, 2.0, 1.0) : clipped(onScreen(position));
 }`;
 
 const DOT_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
-uniform float radius;
 in vec3 fill;
+flat in float dotRadius;
 out vec4 colour;
 
 void main() {
-    float fromCentre = length(gl_PointCoord - 0.5) * (2.0 * radius + 1.0);
-    float outline = smoothstep(radius - 1.75, radius - 0.75, fromCentre);
-    float coverage = 1.0 - smoothstep(radius - 0.5, radius + 0.5, fromCentre);
+    float fromCentre = length(gl_PointCoord - 0.5) * (2.0 * dotRadius + 1.0);
+    float outline = smoothstep(dotRadius - 1.75, dotRadius - 0.75, fromCentre);
+    float coverage = 1.0 - smoothstep(dotRadius - 0.5, dotRadius + 0.5, fromCentre);
     if (coverage <= 0.0) discard;
     colour = vec4(mix(fill, fill * 0.3, outline), coverage);
 }`;
@@ -97,8 +102,9 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
         vertexBuffer(gl, dotProgram, "prefab", Float32Array.from(layer.prefabs), 1)
     ];
     const [, largestPoint] = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array;
-    const maxRadius = Math.min(MAX_DOT_RADIUS, (largestPoint - 1) / 2);
+    const largestRadius = (largestPoint - 1) / 2;
     gl.useProgram(dotProgram);
+    gl.uniform1f(gl.getUniformLocation(dotProgram, "spawn"), layer.names.indexOf(SPAWN));
     gl.uniform3fv(gl.getUniformLocation(dotProgram, "colours"), MAP_GROUPS.flatMap(({ colour }) => colour.map(unit)));
 
     const linkProgram = buildProgram(gl, LINK_VERTEX_SHADER, LINK_FRAGMENT_SHADER);
@@ -141,8 +147,10 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
             gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, layer.links.length / 4);
             gl.useProgram(dotProgram);
             gl.bindVertexArray(dotVertices);
-            const radius = Math.min(maxRadius, Math.max(MIN_DOT_RADIUS, view.scale * DOT_RADIUS_PER_WORLD_UNIT));
-            gl.uniform1f(gl.getUniformLocation(dotProgram, "radius"), radius);
+            const radius = Math.min(MAX_DOT_RADIUS, Math.max(MIN_DOT_RADIUS, view.scale * DOT_RADIUS_PER_WORLD_UNIT));
+            gl.uniform1f(gl.getUniformLocation(dotProgram, "radius"), Math.min(largestRadius, radius));
+            const spawnRadius = Math.min(largestRadius, SPAWN_RADIUS_SCALE * radius);
+            gl.uniform1f(gl.getUniformLocation(dotProgram, "spawnRadius"), spawnRadius);
             gl.drawArrays(gl.POINTS, 0, layer.groups.length);
             gl.disable(gl.BLEND);
         },

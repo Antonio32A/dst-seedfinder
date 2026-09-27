@@ -38,6 +38,7 @@ export const MAP_GROUPS: readonly MapGroup[] = [
 
 const OTHER = MAP_GROUPS.length - 1;
 const WORMHOLE = "wormhole";
+export const SPAWN = "multiplayer_portal";
 const UNMAPPED: ReadonlySet<string> = new Set(["spawnpoint_master", "spawnpoint_multiplayer"]);
 
 /** The map leaves the spawn points out: the portal stands for them. */
