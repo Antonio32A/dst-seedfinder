@@ -5,7 +5,21 @@ Generates `catalog.json`: the settings, prefab swaps, tasks, set pieces, prefabs
 statistics over a sample of generated worlds.
 
 Everything here needs `scripts/setup.sh` to have been run, and the game installed through Steam (`DST_GAME` overrides
-the install path; without the game the catalog silently loses its icons and game build).
+the install path; without the game the catalog silently loses its icons, tile colours and game build).
+
+## Tile colours
+
+`tiles[].minimap_color` is the tile's colour on the in-game minimap, as `[r, g, b]` (0-255). It's the mean colour of
+the full-size mip of the noise texture named by the tile's minimap def in the game's `tiledefs.lua` (the
+`levels/textures/*.tex` files of the install, decoded by `ktex.py`):
+
+- Ocean tiles whose minimap noise is `ocean_noise` multiply its mean by the RGB of their ground def's
+  `colors.minimap_color` (the colour `world.lua` hands to `MapLayerManager:SetMinimapColor`, over 255).
+- Tiles without a minimap def (`IMPASSABLE`, the walls, the noise tiles, ...) get the mean of
+  `images/minimap_paper.tex`, the minimap's background.
+
+The texture names come from `inputs/static.json` (`minimap_noise`, `ground_minimap_color`). Only the numbers are
+committed. `python3 -m unittest discover -s scripts/catalog` tests the texture decoder.
 
 ## Rebuilding from the committed inputs
 

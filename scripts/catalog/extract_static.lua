@@ -515,7 +515,7 @@ for spawner, data in pairs(bunches.Bunches) do
     local prefab = data.prefab
     if type(prefab) == "function" then
         local info = debug.getinfo(prefab, "S")
-        bunches_out[spawner] = { prefab_fn = { file = info.short_src, first = info.linedefined, last = info.lastlinedefined },
+        bunches_out[spawner] = { prefab_fn = { file = info.source:match("game%-scripts/(.*)$"), first = info.linedefined, last = info.lastlinedefined },
             min = data.min, max = data.max }
     else
         bunches_out[spawner] = { prefab = prefab, min = data.min, max = data.max }
@@ -559,11 +559,19 @@ for k, v in pairs(custom_names) do customization_proxies[k] = v end
 -------------------------------------------------------------------------------------------------------------------
 -- Tiles
 
+local function layer_properties(layers, id)
+    for _, layer in ipairs(layers or {}) do
+        if layer[1] == id then return layer[2] end
+    end
+    return {}
+end
+
 local tiles_out = {}
 for name, id in pairs(GetWorldTileMap()) do
     local ground_tiles = require("worldtiledefs")
     local ground_names = rawget(_G, "GROUND_NAMES")
     local turf = ground_tiles and ground_tiles.turf and ground_tiles.turf[id]
+    local ground_colors = layer_properties(ground_tiles.ground, id).colors
     tiles_out[name] = {
         id = id,
         land = TileGroupManager:IsLandTile(id),
@@ -574,6 +582,8 @@ for name, id in pairs(GetWorldTileMap()) do
         ground_name = ground_names and ground_names[id] or nil,
         turf = turf and turf.name or nil,
         legacy = WORLD_TILES[name] == nil,
+        minimap_noise = layer_properties(ground_tiles.minimap, id).noise_texture,
+        ground_minimap_color = ground_colors and ground_colors.minimap_color or nil,
     }
 end
 

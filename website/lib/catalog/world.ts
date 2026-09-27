@@ -29,6 +29,12 @@ export interface LandTile {
     inDefaultWorlds?: true;
 }
 
+export interface MapTile {
+    displayName: string;
+    kind: "land" | "ocean" | "impassable" | "invalid";
+    color: [r: number, g: number, b: number];
+}
+
 export interface NamedAnchor {
     id: string;
     label: string;
@@ -1326,6 +1332,104 @@ export const LAND_TILES: LandTile[] = [
 ];
 
 export const NON_LAND_TILE_NAMES: string[] = ["IMPASSABLE", "UNDERGROUND", "WALL_ROCKY", "WALL_DIRT", "WALL_MARSH", "WALL_CAVE", "WALL_FUNGUS", "WALL_SINKHOLE", "WALL_MUD", "WALL_TOP", "WALL_WOOD", "WALL_HUNESTONE", "WALL_HUNESTONE_GLOW", "WALL_STONEEYE", "WALL_STONEEYE_GLOW", "FAKE_GROUND", "OCEAN_COASTAL", "OCEAN_COASTAL_SHORE", "OCEAN_SWELL", "OCEAN_ROUGH", "OCEAN_BRINEPOOL", "OCEAN_BRINEPOOL_SHORE", "OCEAN_HAZARDOUS", "OCEAN_WATERLOG", "OCEAN_END", "INVALID"];
+
+export const TILES: Readonly<Record<string, MapTile>> = {
+    "IMPASSABLE": { "displayName": "Impassable", "kind": "impassable", "color": [172, 172, 172] },
+    "ROAD": { "displayName": "Cobblestones", "kind": "land", "color": [210, 210, 210] },
+    "ROCKY": { "displayName": "Rocky Turf", "kind": "land", "color": [192, 192, 186] },
+    "DIRT": { "displayName": "Dirt", "kind": "land", "color": [249, 249, 249] },
+    "SAVANNA": { "displayName": "Savanna Turf", "kind": "land", "color": [221, 198, 118] },
+    "GRASS": { "displayName": "Grass Turf", "kind": "land", "color": [199, 230, 145] },
+    "FOREST": { "displayName": "Forest Turf", "kind": "land", "color": [115, 150, 120] },
+    "MARSH": { "displayName": "Marsh Turf", "kind": "land", "color": [124, 114, 132] },
+    "WEB": { "displayName": "Web", "kind": "land", "color": [172, 172, 172] },
+    "WOODFLOOR": { "displayName": "Wooden Flooring", "kind": "land", "color": [169, 159, 130] },
+    "CARPET": { "displayName": "Carpeted Flooring", "kind": "land", "color": [174, 131, 123] },
+    "CHECKER": { "displayName": "Checkered Flooring", "kind": "land", "color": [203, 185, 177] },
+    "CAVE": { "displayName": "Guano Turf", "kind": "land", "color": [156, 165, 184] },
+    "FUNGUS": { "displayName": "Fungal Turf", "kind": "land", "color": [68, 104, 174] },
+    "SINKHOLE": { "displayName": "Slimy Turf", "kind": "land", "color": [130, 154, 97] },
+    "UNDERROCK": { "displayName": "Cave Rock Turf", "kind": "land", "color": [100, 100, 110] },
+    "MUD": { "displayName": "Mud Turf", "kind": "land", "color": [132, 104, 71] },
+    "BRICK": { "displayName": "Ancient Flooring", "kind": "land", "color": [107, 129, 142] },
+    "BRICK_GLOW": { "displayName": "Imitation Ancient Flooring", "kind": "land", "color": [107, 129, 142] },
+    "TILES": { "displayName": "Ancient Tilework", "kind": "land", "color": [93, 67, 113] },
+    "TILES_GLOW": { "displayName": "Imitation Ancient Tilework", "kind": "land", "color": [93, 67, 113] },
+    "TRIM": { "displayName": "Ancient Brickwork", "kind": "land", "color": [49, 50, 65] },
+    "TRIM_GLOW": { "displayName": "Imitation Ancient Brickwork", "kind": "land", "color": [93, 67, 113] },
+    "FUNGUSRED": { "displayName": "Fungal Turf", "kind": "land", "color": [143, 109, 119] },
+    "FUNGUSGREEN": { "displayName": "Fungal Turf", "kind": "land", "color": [93, 107, 95] },
+    "DECIDUOUS": { "displayName": "Deciduous Turf", "kind": "land", "color": [162, 136, 135] },
+    "DESERT_DIRT": { "displayName": "Sandy Turf", "kind": "land", "color": [227, 221, 185] },
+    "SCALE": { "displayName": "Scaled Flooring", "kind": "land", "color": [76, 72, 56] },
+    "LAVAARENA_FLOOR": { "displayName": "Forge Floor", "kind": "land", "color": [110, 28, 0] },
+    "LAVAARENA_TRIM": { "displayName": "Forge Trim", "kind": "land", "color": [110, 28, 0] },
+    "QUAGMIRE_PEATFOREST": { "displayName": "Gorge Peat Forest", "kind": "land", "color": [158, 157, 172] },
+    "QUAGMIRE_PARKFIELD": { "displayName": "Gorge Park Grass", "kind": "land", "color": [162, 136, 135] },
+    "QUAGMIRE_PARKSTONE": { "displayName": "Gorge Park Path", "kind": "land", "color": [232, 220, 232] },
+    "QUAGMIRE_GATEWAY": { "displayName": "Gorge Gateway", "kind": "land", "color": [130, 154, 97] },
+    "QUAGMIRE_SOIL": { "displayName": "Gorge Soil", "kind": "land", "color": [70, 63, 51] },
+    "QUAGMIRE_CITYSTONE": { "displayName": "Gorge Citystone", "kind": "land", "color": [217, 218, 217] },
+    "PEBBLEBEACH": { "displayName": "Rocky Beach Turf", "kind": "land", "color": [187, 205, 201] },
+    "METEOR": { "displayName": "Moon Crater Turf", "kind": "land", "color": [127, 193, 206] },
+    "SHELLBEACH": { "displayName": "Shell Beach Turf", "kind": "land", "color": [151, 163, 229] },
+    "ARCHIVE": { "displayName": "Ancient Stonework", "kind": "land", "color": [155, 128, 106] },
+    "FUNGUSMOON": { "displayName": "Mutated Fungal Turf", "kind": "land", "color": [53, 94, 100] },
+    "FARMING_SOIL": { "displayName": "Farm soil", "kind": "land", "color": [70, 63, 51] },
+    "FUNGUSMOON_NOISE": { "displayName": "Fungusmoon Noise", "kind": "land", "color": [172, 172, 172] },
+    "METEORMINE_NOISE": { "displayName": "Meteormine Noise", "kind": "land", "color": [172, 172, 172] },
+    "METEORCOAST_NOISE": { "displayName": "Meteorcoast Noise", "kind": "land", "color": [172, 172, 172] },
+    "DIRT_NOISE": { "displayName": "Dirt Noise", "kind": "land", "color": [172, 172, 172] },
+    "ABYSS_NOISE": { "displayName": "Abyss Noise", "kind": "land", "color": [172, 172, 172] },
+    "GROUND_NOISE": { "displayName": "Ground Noise", "kind": "land", "color": [172, 172, 172] },
+    "CAVE_NOISE": { "displayName": "Cave Noise", "kind": "land", "color": [172, 172, 172] },
+    "FUNGUS_NOISE": { "displayName": "Fungus Noise", "kind": "land", "color": [172, 172, 172] },
+    "UNDERGROUND": { "displayName": "Underground", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_ROCKY": { "displayName": "Wall Rocky", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_DIRT": { "displayName": "Wall Dirt", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_MARSH": { "displayName": "Wall Marsh", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_CAVE": { "displayName": "Wall Cave", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_FUNGUS": { "displayName": "Wall Fungus", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_SINKHOLE": { "displayName": "Wall Sinkhole", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_MUD": { "displayName": "Wall Mud", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_TOP": { "displayName": "Wall Top", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_WOOD": { "displayName": "Wall Wood", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_HUNESTONE": { "displayName": "Wall Hunestone", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_HUNESTONE_GLOW": { "displayName": "Wall Hunestone Glow", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_STONEEYE": { "displayName": "Wall Stoneeye", "kind": "impassable", "color": [172, 172, 172] },
+    "WALL_STONEEYE_GLOW": { "displayName": "Wall Stoneeye Glow", "kind": "impassable", "color": [172, 172, 172] },
+    "FAKE_GROUND": { "displayName": "Fake Ground", "kind": "impassable", "color": [172, 172, 172] },
+    "OCEAN_COASTAL": { "displayName": "Ocean (coastal)", "kind": "ocean", "color": [8, 27, 22] },
+    "OCEAN_COASTAL_SHORE": { "displayName": "Ocean (shore)", "kind": "ocean", "color": [99, 167, 170] },
+    "OCEAN_SWELL": { "displayName": "Ocean (swell)", "kind": "ocean", "color": [5, 18, 22] },
+    "OCEAN_ROUGH": { "displayName": "Ocean (rough)", "kind": "ocean", "color": [7, 11, 14] },
+    "OCEAN_BRINEPOOL": { "displayName": "Ocean (brine pool)", "kind": "ocean", "color": [14, 46, 33] },
+    "OCEAN_BRINEPOOL_SHORE": { "displayName": "Ocean (brine pool shore)", "kind": "ocean", "color": [76, 175, 182] },
+    "OCEAN_HAZARDOUS": { "displayName": "Ocean (hazardous)", "kind": "ocean", "color": [3, 4, 5] },
+    "OCEAN_WATERLOG": { "displayName": "Ocean (waterlogged)", "kind": "ocean", "color": [14, 46, 33] },
+    "OCEAN_END": { "displayName": "Ocean End", "kind": "ocean", "color": [172, 172, 172] },
+    "COTL_BRICK": { "displayName": "Brick Flooring", "kind": "land", "color": [127, 120, 104] },
+    "MONKEY_GROUND": { "displayName": "Moon Quay Beach Turf", "kind": "land", "color": [187, 205, 201] },
+    "LUNAR_MARSH": { "displayName": "Lunar Marsh", "kind": "land", "color": [124, 114, 132] },
+    "SHADOW_MARSH": { "displayName": "Shadow Marsh", "kind": "land", "color": [124, 114, 132] },
+    "VENT": { "displayName": "Cave Fumarole Turf", "kind": "land", "color": [92, 91, 90] },
+    "VAULT": { "displayName": "Vault", "kind": "land", "color": [138, 120, 91] },
+    "VAULT_CLEAN": { "displayName": "Ancient Sanctum Stonework", "kind": "land", "color": [138, 120, 91] },
+    "MONKEY_DOCK": { "displayName": "Monkey Island dock", "kind": "land", "color": [100, 81, 49] },
+    "OCEAN_ICE": { "displayName": "Ocean (ice)", "kind": "land", "color": [49, 78, 83] },
+    "CHARLIE_VINE": { "displayName": "Charlie Vine", "kind": "land", "color": [221, 198, 118] },
+    "ROPE_BRIDGE": { "displayName": "Rope Bridge", "kind": "land", "color": [169, 159, 130] },
+    "WAGSTAFF_FLOOR": { "displayName": "Wagstaff Floor", "kind": "land", "color": [169, 159, 130] },
+    "COTL_GOLD": { "displayName": "Gold Flooring", "kind": "land", "color": [164, 140, 62] },
+    "MOSAIC_GREY": { "displayName": "Grey Mosaic Flooring", "kind": "land", "color": [54, 48, 58] },
+    "MOSAIC_RED": { "displayName": "Red Mosaic Flooring", "kind": "land", "color": [100, 37, 69] },
+    "MOSAIC_BLUE": { "displayName": "Blue Mosaic Flooring", "kind": "land", "color": [55, 44, 69] },
+    "CARPET2": { "displayName": "Lush Carpet", "kind": "land", "color": [37, 11, 39] },
+    "BEARD_RUG": { "displayName": "Beard Hair Rug", "kind": "land", "color": [0, 0, 0] },
+    "RIFT_MOON": { "displayName": "Lunar Rift", "kind": "land", "color": [152, 181, 181] },
+    "VENT_NOISE": { "displayName": "Vent Noise", "kind": "land", "color": [172, 172, 172] },
+    "INVALID": { "displayName": "Invalid", "kind": "invalid", "color": [172, 172, 172] }
+};
 
 export const NAMED_ANCHORS: NamedAnchor[] = [
     { "id": "multiplayer_portal", "label": "Spawn (Florid Postern)" },

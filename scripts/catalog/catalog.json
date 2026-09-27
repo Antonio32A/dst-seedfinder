@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "game_build": "747465",
- "generated": "2026-09-24",
+ "generated": "2026-09-27",
  "shard": "forest",
  "preset": "SURVIVAL_TOGETHER",
  "worlds": {
@@ -28960,6 +28960,11 @@
    "legacy": false,
    "display_name": "Impassable",
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -28978,6 +28983,11 @@
    "legacy": false,
    "display_name": "Cobblestones",
    "turf_prefab": "turf_road",
+   "minimap_color": [
+    210,
+    210,
+    210
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -28996,6 +29006,11 @@
    "legacy": false,
    "display_name": "Rocky Turf",
    "turf_prefab": "turf_rocky",
+   "minimap_color": [
+    192,
+    192,
+    186
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29014,6 +29029,11 @@
    "legacy": false,
    "display_name": "Dirt",
    "turf_prefab": null,
+   "minimap_color": [
+    249,
+    249,
+    249
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29032,6 +29052,11 @@
    "legacy": false,
    "display_name": "Savanna Turf",
    "turf_prefab": "turf_savanna",
+   "minimap_color": [
+    221,
+    198,
+    118
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29050,6 +29075,11 @@
    "legacy": false,
    "display_name": "Grass Turf",
    "turf_prefab": "turf_grass",
+   "minimap_color": [
+    199,
+    230,
+    145
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29068,6 +29098,11 @@
    "legacy": false,
    "display_name": "Forest Turf",
    "turf_prefab": "turf_forest",
+   "minimap_color": [
+    115,
+    150,
+    120
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29086,6 +29121,11 @@
    "legacy": false,
    "display_name": "Marsh Turf",
    "turf_prefab": "turf_marsh",
+   "minimap_color": [
+    124,
+    114,
+    132
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29104,6 +29144,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29122,6 +29167,11 @@
    "legacy": false,
    "display_name": "Wooden Flooring",
    "turf_prefab": "turf_woodfloor",
+   "minimap_color": [
+    169,
+    159,
+    130
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29140,6 +29190,11 @@
    "legacy": false,
    "display_name": "Carpeted Flooring",
    "turf_prefab": "turf_carpetfloor",
+   "minimap_color": [
+    174,
+    131,
+    123
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29158,6 +29213,11 @@
    "legacy": false,
    "display_name": "Checkered Flooring",
    "turf_prefab": "turf_checkerfloor",
+   "minimap_color": [
+    203,
+    185,
+    177
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29176,6 +29236,11 @@
    "legacy": false,
    "display_name": "Guano Turf",
    "turf_prefab": "turf_cave",
+   "minimap_color": [
+    156,
+    165,
+    184
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29194,6 +29259,11 @@
    "legacy": false,
    "display_name": "Fungal Turf",
    "turf_prefab": "turf_fungus",
+   "minimap_color": [
+    68,
+    104,
+    174
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29212,6 +29282,11 @@
    "legacy": false,
    "display_name": "Slimy Turf",
    "turf_prefab": "turf_sinkhole",
+   "minimap_color": [
+    130,
+    154,
+    97
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29230,6 +29305,11 @@
    "legacy": false,
    "display_name": "Cave Rock Turf",
    "turf_prefab": "turf_underrock",
+   "minimap_color": [
+    100,
+    100,
+    110
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29248,6 +29328,11 @@
    "legacy": false,
    "display_name": "Mud Turf",
    "turf_prefab": "turf_mud",
+   "minimap_color": [
+    132,
+    104,
+    71
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29266,6 +29351,11 @@
    "legacy": false,
    "display_name": "Ancient Flooring",
    "turf_prefab": "turf_ruinsbrick",
+   "minimap_color": [
+    107,
+    129,
+    142
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29284,6 +29374,11 @@
    "legacy": false,
    "display_name": "Imitation Ancient Flooring",
    "turf_prefab": "turf_ruinsbrick_glow",
+   "minimap_color": [
+    107,
+    129,
+    142
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29302,6 +29397,11 @@
    "legacy": false,
    "display_name": "Ancient Tilework",
    "turf_prefab": "turf_ruinstiles",
+   "minimap_color": [
+    93,
+    67,
+    113
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29320,6 +29420,11 @@
    "legacy": false,
    "display_name": "Imitation Ancient Tilework",
    "turf_prefab": "turf_ruinstiles_glow",
+   "minimap_color": [
+    93,
+    67,
+    113
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29338,6 +29443,11 @@
    "legacy": false,
    "display_name": "Ancient Brickwork",
    "turf_prefab": "turf_ruinstrim",
+   "minimap_color": [
+    49,
+    50,
+    65
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29356,6 +29466,11 @@
    "legacy": false,
    "display_name": "Imitation Ancient Brickwork",
    "turf_prefab": "turf_ruinstrim_glow",
+   "minimap_color": [
+    93,
+    67,
+    113
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29374,6 +29489,11 @@
    "legacy": false,
    "display_name": "Fungal Turf",
    "turf_prefab": "turf_fungus_red",
+   "minimap_color": [
+    143,
+    109,
+    119
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29392,6 +29512,11 @@
    "legacy": false,
    "display_name": "Fungal Turf",
    "turf_prefab": "turf_fungus_green",
+   "minimap_color": [
+    93,
+    107,
+    95
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29410,6 +29535,11 @@
    "legacy": false,
    "display_name": "Deciduous Turf",
    "turf_prefab": "turf_deciduous",
+   "minimap_color": [
+    162,
+    136,
+    135
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29428,6 +29558,11 @@
    "legacy": false,
    "display_name": "Sandy Turf",
    "turf_prefab": "turf_desertdirt",
+   "minimap_color": [
+    227,
+    221,
+    185
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29446,6 +29581,11 @@
    "legacy": false,
    "display_name": "Scaled Flooring",
    "turf_prefab": "turf_dragonfly",
+   "minimap_color": [
+    76,
+    72,
+    56
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29464,6 +29604,11 @@
    "legacy": false,
    "display_name": "Forge Floor",
    "turf_prefab": null,
+   "minimap_color": [
+    110,
+    28,
+    0
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29482,6 +29627,11 @@
    "legacy": false,
    "display_name": "Forge Trim",
    "turf_prefab": null,
+   "minimap_color": [
+    110,
+    28,
+    0
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29500,6 +29650,11 @@
    "legacy": false,
    "display_name": "Gorge Peat Forest",
    "turf_prefab": null,
+   "minimap_color": [
+    158,
+    157,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29518,6 +29673,11 @@
    "legacy": false,
    "display_name": "Gorge Park Grass",
    "turf_prefab": null,
+   "minimap_color": [
+    162,
+    136,
+    135
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29536,6 +29696,11 @@
    "legacy": false,
    "display_name": "Gorge Park Path",
    "turf_prefab": null,
+   "minimap_color": [
+    232,
+    220,
+    232
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29554,6 +29719,11 @@
    "legacy": false,
    "display_name": "Gorge Gateway",
    "turf_prefab": null,
+   "minimap_color": [
+    130,
+    154,
+    97
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29572,6 +29742,11 @@
    "legacy": false,
    "display_name": "Gorge Soil",
    "turf_prefab": null,
+   "minimap_color": [
+    70,
+    63,
+    51
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29590,6 +29765,11 @@
    "legacy": false,
    "display_name": "Gorge Citystone",
    "turf_prefab": null,
+   "minimap_color": [
+    217,
+    218,
+    217
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29608,6 +29788,11 @@
    "legacy": false,
    "display_name": "Rocky Beach Turf",
    "turf_prefab": "turf_pebblebeach",
+   "minimap_color": [
+    187,
+    205,
+    201
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29626,6 +29811,11 @@
    "legacy": false,
    "display_name": "Moon Crater Turf",
    "turf_prefab": "turf_meteor",
+   "minimap_color": [
+    127,
+    193,
+    206
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29644,6 +29834,11 @@
    "legacy": false,
    "display_name": "Shell Beach Turf",
    "turf_prefab": "turf_shellbeach",
+   "minimap_color": [
+    151,
+    163,
+    229
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -29662,6 +29857,11 @@
    "legacy": false,
    "display_name": "Ancient Stonework",
    "turf_prefab": "turf_archive",
+   "minimap_color": [
+    155,
+    128,
+    106
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29680,6 +29880,11 @@
    "legacy": false,
    "display_name": "Mutated Fungal Turf",
    "turf_prefab": "turf_fungus_moon",
+   "minimap_color": [
+    53,
+    94,
+    100
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29698,6 +29903,11 @@
    "legacy": false,
    "display_name": "Farm soil",
    "turf_prefab": null,
+   "minimap_color": [
+    70,
+    63,
+    51
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29716,6 +29926,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29734,6 +29949,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29752,6 +29972,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29770,6 +29995,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29788,6 +30018,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29806,6 +30041,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29824,6 +30064,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29842,6 +30087,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29860,6 +30110,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29878,6 +30133,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29896,6 +30156,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29914,6 +30179,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29932,6 +30202,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29950,6 +30225,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29968,6 +30248,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -29986,6 +30271,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30004,6 +30294,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30022,6 +30317,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30040,6 +30340,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30058,6 +30363,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30076,6 +30386,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30094,6 +30409,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30112,6 +30432,11 @@
    "legacy": false,
    "display_name": "Fake Ground",
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30130,6 +30455,11 @@
    "legacy": false,
    "display_name": "Ocean (coastal)",
    "turf_prefab": null,
+   "minimap_color": [
+    8,
+    27,
+    22
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30148,6 +30478,11 @@
    "legacy": false,
    "display_name": "Ocean (shore)",
    "turf_prefab": null,
+   "minimap_color": [
+    99,
+    167,
+    170
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30166,6 +30501,11 @@
    "legacy": false,
    "display_name": "Ocean (swell)",
    "turf_prefab": null,
+   "minimap_color": [
+    5,
+    18,
+    22
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30184,6 +30524,11 @@
    "legacy": false,
    "display_name": "Ocean (rough)",
    "turf_prefab": null,
+   "minimap_color": [
+    7,
+    11,
+    14
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30202,6 +30547,11 @@
    "legacy": false,
    "display_name": "Ocean (brine pool)",
    "turf_prefab": null,
+   "minimap_color": [
+    14,
+    46,
+    33
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30220,6 +30570,11 @@
    "legacy": false,
    "display_name": "Ocean (brine pool shore)",
    "turf_prefab": null,
+   "minimap_color": [
+    76,
+    175,
+    182
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30238,6 +30593,11 @@
    "legacy": false,
    "display_name": "Ocean (hazardous)",
    "turf_prefab": null,
+   "minimap_color": [
+    3,
+    4,
+    5
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30256,6 +30616,11 @@
    "legacy": false,
    "display_name": "Ocean (waterlogged)",
    "turf_prefab": null,
+   "minimap_color": [
+    14,
+    46,
+    33
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30274,6 +30639,11 @@
    "legacy": true,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30292,6 +30662,11 @@
    "legacy": false,
    "display_name": "Brick Flooring",
    "turf_prefab": "turf_cotl_brick",
+   "minimap_color": [
+    127,
+    120,
+    104
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30310,6 +30685,11 @@
    "legacy": false,
    "display_name": "Moon Quay Beach Turf",
    "turf_prefab": "turf_monkey_ground",
+   "minimap_color": [
+    187,
+    205,
+    201
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30328,6 +30708,11 @@
    "legacy": false,
    "display_name": "Lunar Marsh",
    "turf_prefab": null,
+   "minimap_color": [
+    124,
+    114,
+    132
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30346,6 +30731,11 @@
    "legacy": false,
    "display_name": "Shadow Marsh",
    "turf_prefab": null,
+   "minimap_color": [
+    124,
+    114,
+    132
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30364,6 +30754,11 @@
    "legacy": false,
    "display_name": "Cave Fumarole Turf",
    "turf_prefab": "turf_vent",
+   "minimap_color": [
+    92,
+    91,
+    90
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30382,6 +30777,11 @@
    "legacy": false,
    "display_name": "Vault",
    "turf_prefab": null,
+   "minimap_color": [
+    138,
+    120,
+    91
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30400,6 +30800,11 @@
    "legacy": false,
    "display_name": "Ancient Sanctum Stonework",
    "turf_prefab": "turf_vault",
+   "minimap_color": [
+    138,
+    120,
+    91
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30418,6 +30823,11 @@
    "legacy": false,
    "display_name": "Monkey Island dock",
    "turf_prefab": null,
+   "minimap_color": [
+    100,
+    81,
+    49
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30436,6 +30846,11 @@
    "legacy": false,
    "display_name": "Ocean (ice)",
    "turf_prefab": null,
+   "minimap_color": [
+    49,
+    78,
+    83
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30454,6 +30869,11 @@
    "legacy": false,
    "display_name": "Charlie Vine",
    "turf_prefab": null,
+   "minimap_color": [
+    221,
+    198,
+    118
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30472,6 +30892,11 @@
    "legacy": false,
    "display_name": "Rope Bridge",
    "turf_prefab": null,
+   "minimap_color": [
+    169,
+    159,
+    130
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30490,6 +30915,11 @@
    "legacy": false,
    "display_name": "Wagstaff Floor",
    "turf_prefab": null,
+   "minimap_color": [
+    169,
+    159,
+    130
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30508,6 +30938,11 @@
    "legacy": false,
    "display_name": "Gold Flooring",
    "turf_prefab": "turf_cotl_gold",
+   "minimap_color": [
+    164,
+    140,
+    62
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30526,6 +30961,11 @@
    "legacy": false,
    "display_name": "Grey Mosaic Flooring",
    "turf_prefab": "turf_mosaic_grey",
+   "minimap_color": [
+    54,
+    48,
+    58
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30544,6 +30984,11 @@
    "legacy": false,
    "display_name": "Red Mosaic Flooring",
    "turf_prefab": "turf_mosaic_red",
+   "minimap_color": [
+    100,
+    37,
+    69
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30562,6 +31007,11 @@
    "legacy": false,
    "display_name": "Blue Mosaic Flooring",
    "turf_prefab": "turf_mosaic_blue",
+   "minimap_color": [
+    55,
+    44,
+    69
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30580,6 +31030,11 @@
    "legacy": false,
    "display_name": "Lush Carpet",
    "turf_prefab": "turf_carpetfloor2",
+   "minimap_color": [
+    37,
+    11,
+    39
+   ],
    "in_forest_worlds": {
     "worlds": 311,
     "share": 1.0,
@@ -30598,6 +31053,11 @@
    "legacy": false,
    "display_name": "Beard Hair Rug",
    "turf_prefab": "turf_beard_rug",
+   "minimap_color": [
+    0,
+    0,
+    0
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30616,6 +31076,11 @@
    "legacy": false,
    "display_name": "Lunar Rift",
    "turf_prefab": null,
+   "minimap_color": [
+    152,
+    181,
+    181
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30634,6 +31099,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,
@@ -30652,6 +31122,11 @@
    "legacy": false,
    "display_name": null,
    "turf_prefab": null,
+   "minimap_color": [
+    172,
+    172,
+    172
+   ],
    "in_forest_worlds": {
     "worlds": 0,
     "share": 0.0,

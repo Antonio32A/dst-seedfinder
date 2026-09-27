@@ -26,6 +26,7 @@ REALGEN = os.environ.get("REALGEN_DIR", "")
 GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together"))
 
 sys.path.insert(0, HERE)
+import ktex  # noqa: E402
 import names as handnames  # noqa: E402
 from summarize_world import summarize  # noqa: E402
 
@@ -641,8 +642,31 @@ def build_tasks(static):
     return out
 
 
+MINIMAP_PAPER = "images/minimap_paper.tex"
+OCEAN_NOISE = "ocean_noise.tex"
+
+
+def minimap_texture_means(static):
+    if not os.path.isdir(GAME_DIR):
+        return {}
+    textures = {t.get("minimap_noise", MINIMAP_PAPER) for t in static["tiles"].values()}
+    means = {}
+    for name in sorted(textures):
+        path = os.path.join(GAME_DIR, "data", name)
+        with open(path if os.path.exists(path) else os.path.join(GAME_DIR, "data/levels/textures", name), "rb") as f:
+            means[name] = ktex.mean_rgb(f.read())
+    return means
+
+
+def minimap_color(tile, means):
+    noise = tile.get("minimap_noise", MINIMAP_PAPER)
+    tint = tile["ground_minimap_color"][:3] if noise == OCEAN_NOISE else (255, 255, 255)
+    return [round(m * c / 255) for m, c in zip(means[noise], tint)] if noise in means else None
+
+
 def build_tiles(static, worlds):
     names = static["names"]
+    means = minimap_texture_means(static)
     seen = collections.defaultdict(list)
     n_with_tiles = 0
     for w in worlds.values():
@@ -662,6 +686,7 @@ def build_tiles(static, worlds):
             "land": t["land"], "ocean": t["ocean"], "noise": t["noise"], "legacy": t.get("legacy", False),
             "display_name": label or handnames.TILE_NAMES.get(name) or (t.get("ground_name") if t.get("ground_name") != name else None),
             "turf_prefab": "turf_" + turf if turf else None,
+            "minimap_color": minimap_color(t, means),
             "in_forest_worlds": {"worlds": len(counts), "share": round(len(counts) / n_with_tiles, 4) if n_with_tiles else 0,
                                  "min_tiles": min(counts) if counts else 0, "max_tiles": max(counts) if counts else 0,
                                  "median_tiles": statistics.median(counts) if counts else 0},
