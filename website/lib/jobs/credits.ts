@@ -6,7 +6,7 @@ export const DAILY_CREDITS = 10_000;
 export const DEFAULT_MAX_COST = 100;
 export const MIN_MAX_COST = 20;
 export const MAX_MAX_COST = 1_000_000;
-export const MAX_COST_OPTIONS = [50, 100, 250, 500, 1000];
+export const MAX_COST_OPTIONS = [50, 100, 250, 500, 1000, 10_000];
 export const STARTING_FEE = 100;
 export const MAX_SEARCH_SECONDS = 4 * 60 * 60;
 
