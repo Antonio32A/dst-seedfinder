@@ -7,11 +7,9 @@ export type MapConfig = { config: SeedfinderConfig } | { error: string };
 
 export type MapRoute = { platform: Platform; seed: number } | { error: string };
 
-/** The path of a seed's world map on a platform, drawing `config`'s witnesses when given. */
 export const mapPath = (platform: Platform, seed: number, config?: SeedfinderConfig) =>
     `/map/${platform}/${seed}${config === undefined ? "" : `?c=${encodeShareParam(config)}`}`;
 
-/** Reads the `/map/<platform>/<seed>` route params, with a readable error for the ones that don't name a world. */
 export function parseMapRoute(platform: string, seed: string): MapRoute {
     const known = PLATFORMS.find((option) => option === platform);
     if (known === undefined) return { error: `There's no "${platform}" platform. Use ${PLATFORMS.join(" or ")}.` };
@@ -20,7 +18,7 @@ export function parseMapRoute(platform: string, seed: string): MapRoute {
     return { platform: known, seed: value };
 }
 
-/** Reads a map's `?c=` share param as the config to evaluate on the map's world, so on the map's platform. */
+/** On the map's platform, since `world eval` refuses a config for another. */
 export function parseMapConfig(share: string, platform: Platform): MapConfig {
     const checked = validateConfig(decodeShareParam(share));
     return checked.ok ? { config: { ...checked.value, platform } } : { error: checked.error };

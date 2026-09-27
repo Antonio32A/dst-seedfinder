@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Platform } from "@/lib/config/seedfinder-config";
-import { entityLayer, mapWorld } from "@/lib/world-map/entity-layer";
-import { loadWorld, type WorldLoad } from "@/lib/world-map/load-world";
-import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/map-canvas";
-import { createMapProbe, type Probe } from "@/lib/world-map/map-probe";
+import { entityLayer, mapWorld } from "@/lib/world-map/legend/entity-layer";
+import { loadWorld, type WorldLoad } from "@/lib/world-map/world/load-world";
+import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/canvas/map-canvas";
+import { createMapProbe, type Probe } from "@/lib/world-map/view/map-probe";
 import { parseMapConfig } from "@/lib/world-map/map-route";
-import type { MapTarget } from "@/lib/world-map/prefab-search";
-import { defaultShown, mapLegend } from "@/lib/world-map/prefab-visibility";
-import { defaultShownSetPieces, setPieceLegend } from "@/lib/world-map/set-pieces";
-import type { GeneratedWorld } from "@/lib/world-map/world-dump";
+import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
+import { defaultShown, mapLegend } from "@/lib/world-map/legend/prefab-visibility";
+import { defaultShownSetPieces, setPieceLegend } from "@/lib/world-map/legend/set-pieces";
+import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import GroupsPanel from "./GroupsPanel";
 import MapCorner from "./MapCorner";
 import MapDetails from "./MapDetails";

@@ -1,9 +1,9 @@
 "use client";
 
 import { type KeyboardEvent, useEffect, useId, useMemo, useState } from "react";
-import type { MapCanvas } from "@/lib/world-map/map-canvas";
-import { instancesOf, type MapMatch, type MapTarget, searchPrefabs, stepInstance } from "@/lib/world-map/prefab-search";
-import type { GeneratedWorld } from "@/lib/world-map/world-dump";
+import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
+import { instancesOf, type MapMatch, type MapTarget, searchPrefabs, stepInstance } from "@/lib/world-map/legend/prefab-search";
+import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 
 const MAX_SUGGESTIONS = 40;
 const NEAREST: ScrollIntoViewOptions = { block: "nearest" };

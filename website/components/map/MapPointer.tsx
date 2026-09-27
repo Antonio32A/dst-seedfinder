@@ -1,10 +1,10 @@
 "use client";
 
 import { type RefObject, useEffect, useRef, useState } from "react";
-import type { MapCanvas } from "@/lib/world-map/map-canvas";
-import type { MapProbe, MapShown, Probe } from "@/lib/world-map/map-probe";
-import type { MapView, ScreenPoint, Size } from "@/lib/world-map/map-view";
-import type { MapTarget } from "@/lib/world-map/prefab-search";
+import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
+import type { MapProbe, MapShown, Probe } from "@/lib/world-map/view/map-probe";
+import type { MapView, ScreenPoint, Size } from "@/lib/world-map/view/map-view";
+import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
 
 const OFFSET = 14;
 const FLIP_WITHIN = 240;
@@ -22,7 +22,6 @@ interface MapPointerProps {
 
 const clientPoint = (event: PointerEvent): ScreenPoint => ({ x: event.clientX, y: event.clientY });
 
-/** Names the dot or set piece under the mouse, and reports what a click or a tap on the map picks. */
 export default function MapPointer({ probe, map, canvas, shown, searched, onPick }: MapPointerProps) {
     const [hovered, setHovered] = useState<{ cursor: ScreenPoint; name: string } | null>(null);
     const cursor = useRef<ScreenPoint | null>(null);

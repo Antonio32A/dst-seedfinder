@@ -3,12 +3,12 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { Criterion } from "@/lib/config/seedfinder-config";
 import { describeWitness } from "@/lib/jobs/witness-text";
-import { type EvalLoad, evaluateWorld } from "@/lib/world-map/evaluate-world";
-import type { MapCanvas } from "@/lib/world-map/map-canvas";
+import { type EvalLoad, evaluateWorld } from "@/lib/world-map/search/evaluate-world";
+import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
 import type { MapConfig } from "@/lib/world-map/map-route";
-import { witnessShapes } from "@/lib/world-map/witness-overlay";
-import type { GeneratedWorld } from "@/lib/world-map/world-dump";
-import type { WorldEval } from "@/lib/world-map/world-eval";
+import { witnessShapes } from "@/lib/world-map/search/witness-overlay";
+import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
+import type { WorldEval } from "@/lib/world-map/search/world-eval";
 
 interface WitnessPanelProps {
     shared: MapConfig;
@@ -59,10 +59,6 @@ function WitnessChecks({ evaluation, criterion, world, map }: WitnessChecksProps
     );
 }
 
-/**
- * The checks of a map link's search on its world, in a panel that folds away, and drawn on the map; clicking one centres
- * the map on it.
- */
 export default function WitnessPanel({ shared, world, bytes, map }: WitnessPanelProps) {
     const config = "config" in shared ? shared.config : null;
     const [load, setLoad] = useState<EvalLoad>({ status: "loading" });

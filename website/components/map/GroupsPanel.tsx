@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { groupState, type LegendGroup, showPrefabs } from "@/lib/world-map/prefab-visibility";
+import { groupState, type LegendGroup, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
 
 interface GroupRowProps {
     entry: LegendGroup;
@@ -66,10 +66,6 @@ function GroupRow({ entry, shown, onChange, outlined = false }: GroupRowProps) {
     );
 }
 
-/**
- * The map's filters: the world's entity groups, each a toggle for all its prefabs that expands to one per prefab, and
- * its set pieces, a toggle that expands to one per layout name.
- */
 export default function GroupsPanel(props: GroupsPanelProps) {
     const { legend, shown, onChange, setPieces, shownSetPieces, onSetPiecesChange } = props;
     return (

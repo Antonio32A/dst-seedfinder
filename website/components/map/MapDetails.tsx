@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId } from "react";
-import type { Probe } from "@/lib/world-map/map-probe";
+import type { Probe } from "@/lib/world-map/view/map-probe";
 
 const coordinate = (value: number) => value.toFixed(2);
 const tiles = (value: number) => Number(value.toFixed(2)).toString();
@@ -13,7 +13,6 @@ interface MapDetailsProps {
     onOpenSetPiece: (index: number) => void;
 }
 
-/** What a click on the map picked: the entity and its tile, the set piece, or the tile alone. Escape closes it. */
 export default function MapDetails({ probe: { entity, setPiece, tile }, onClose, onOpenSetPiece }: MapDetailsProps) {
     const titleId = useId();
 
