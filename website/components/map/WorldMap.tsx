@@ -58,6 +58,7 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
         let mounted: MapCanvas | null = null;
         try {
             mounted = mountMapCanvas(canvas.current!, world, layer);
+            mounted.terrain.catch((caught: unknown) => setError(caught instanceof Error ? caught.message : String(caught)));
             setMap(mounted);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught));

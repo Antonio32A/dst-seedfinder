@@ -3,7 +3,7 @@ import { createEntityRenderer } from "./entity-renderer";
 import { createHighlightRenderer } from "./highlight-renderer";
 import { fitView, type MapView, panBy, type Size, turnView, type WorldPoint, zoomAt } from "./map-view";
 import { createSetPieceRenderer } from "./set-piece-renderer";
-import { createTileRenderer } from "./tile-renderer";
+import { createTerrainRenderer } from "./terrain-renderer";
 import type { WitnessShape } from "./witness-overlay";
 import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
 import type { GeneratedWorld } from "./world-dump";
@@ -13,8 +13,11 @@ const PIXELS_PER_LINE = 16;
 const TURN_MS = 180;
 const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
 const TYPING_TARGETS = "input:not([type=checkbox], [type=radio]), textarea, select, [contenteditable]";
+const BACKGROUND = [22, 17, 14] as const;
 
 export interface MapCanvas {
+    /** Settles once the terrain is drawn, rejecting with a readable error when the map art can't be downloaded. */
+    terrain: Promise<void>;
     /** Turns the map by `steps` of 45 degrees, animated: positive is the game's rotate right (E). */
     turn: (steps: number) => void;
     /** Draws the entities of the `shown` prefabs, and hides the rest. */
@@ -35,14 +38,14 @@ export interface MapCanvas {
 }
 
 /**
- * Draws the world's tiles, its set pieces' outlines and its entity layer on the canvas, sized to the canvas's CSS box,
- * and pans on drag, zooms to the cursor on wheel and turns on Q/E like the game. It opens fitted to the world, with
- * every prefab and set piece hidden. Throws when the browser can't draw it.
+ * Draws the world's terrain like the game's map screen, its set pieces' outlines and its entity layer on the canvas,
+ * sized to the canvas's CSS box, and pans on drag, zooms to the cursor on wheel and turns on Q/E like the game. It opens
+ * fitted to the world, with every prefab and set piece hidden. Throws when the browser can't draw it.
  */
 export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
-    const tiles = createTileRenderer(gl, world);
+    const terrain = createTerrainRenderer(gl, world, () => redraw());
     const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
     const entities = createEntityRenderer(gl, layer);
     const highlights = createHighlightRenderer(gl);
@@ -64,9 +67,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
                 else turning = null;
             }
             gl.viewport(0, 0, canvas.width, canvas.height);
-            gl.clearColor(0, 0, 0, 0);
+            const [red, green, blue] = BACKGROUND;
+            gl.clearColor(red / 255, green / 255, blue / 255, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            tiles.draw(view, viewport);
+            terrain.draw(view, viewport);
             setPieces.draw(view, viewport);
             entities.draw(view, viewport);
             overlay?.draw(view, viewport);
@@ -122,6 +126,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     addEventListener("keydown", pressed);
 
     return {
+        terrain: terrain.built,
         turn,
         show: (shown) => {
             entities.show(shown);
@@ -155,7 +160,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             resized.disconnect();
             for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
             removeEventListener("keydown", pressed);
-            tiles.dispose();
+            terrain.dispose();
             setPieces.dispose();
             entities.dispose();
             highlights.dispose();

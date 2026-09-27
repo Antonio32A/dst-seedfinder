@@ -24,6 +24,10 @@ export default function MapScreen({ route, share }: { route: MapRoute; share?: s
                     </div>
                     <Link href="/" className="link-button">back to search</Link>
                 </header>
+                <p className="map-credit">
+                    <span>Game art © Klei Entertainment</span>
+                    <span>Not affiliated with Klei</span>
+                </p>
                 {"error" in route ? (
                         <>
                             <p className="notice notice--error map-screen__notice" role="alert">{route.error}</p>
