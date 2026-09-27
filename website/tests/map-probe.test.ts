@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { MAP_GROUPS } from "../lib/world-map/entity-layer";
-import type { GroupVisibility } from "../lib/world-map/group-visibility";
 import { createMapProbe, PICK_RADIUS } from "../lib/world-map/map-probe";
 import { worldToScreen } from "../lib/world-map/map-view";
 import type { GeneratedWorld } from "../lib/world-map/world-dump";
@@ -31,7 +29,8 @@ const GRASSLAND: GeneratedWorld = {
     ]
 };
 
-const ALL_SHOWN = Object.fromEntries(MAP_GROUPS.map(({ id }) => [id, true])) as GroupVisibility;
+const ALL_SHOWN: ReadonlySet<string> = new Set(["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"]);
+const NO_TREES: ReadonlySet<string> = new Set(["pigking"]);
 
 describe("the map probe", () => {
     it("names the tile under a point", () => {
@@ -62,6 +61,17 @@ describe("the map probe", () => {
         expect(probe.at({ x: 9, z: 19 }, 2, ALL_SHOWN).entity).toMatchObject({ prefab: "pigking", index: 0, x: 10, z: 20 });
     });
 
+    it("names the tile under the entity it picks, rather than the one under the point", () => {
+        const tiles = GRASSLAND.tiles.slice();
+        tiles[55 * 100 + 53] = 7;
+        const probe = createMapProbe({ ...GRASSLAND, tiles });
+        expect(probe.at({ x: 9, z: 19 }, 0.1, ALL_SHOWN).tile).toEqual({ name: "GRASS", displayName: "Grass Turf" });
+        expect(probe.at({ x: 9, z: 19 }, 2, ALL_SHOWN)).toMatchObject({
+            entity: { prefab: "pigking" },
+            tile: { name: "FOREST", displayName: "Forest Turf" }
+        });
+    });
+
     it("picks no entity when none is within the radius, and still names the tile", () => {
         expect(createMapProbe(GRASSLAND).at({ x: 3, z: 3 }, 2, ALL_SHOWN)).toEqual({
             tile: { name: "GRASS", displayName: "Grass Turf" },
@@ -69,19 +79,17 @@ describe("the map probe", () => {
         });
     });
 
-    it("never picks an entity of a hidden group, and picks the nearest shown one instead", () => {
+    it("never picks an entity of a hidden prefab, and picks the nearest shown one instead", () => {
         const probe = createMapProbe(GRASSLAND);
-        const noTrees = { ...ALL_SHOWN, trees: false };
-        expect(probe.at({ x: 0, z: 0 }, 2, noTrees).entity).toBeNull();
+        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES).entity).toBeNull();
         expect(probe.at({ x: 3, z: 8 }, 20, ALL_SHOWN).entity).toMatchObject({ prefab: "evergreen", index: 1 });
-        expect(probe.at({ x: 3, z: 8 }, 20, noTrees).entity).toMatchObject({ prefab: "pigking" });
+        expect(probe.at({ x: 3, z: 8 }, 20, NO_TREES).entity).toMatchObject({ prefab: "pigking" });
     });
 
-    it("picks the instances of the prefab searched for even when its group is hidden", () => {
+    it("picks the instances of the prefab searched for even when it's hidden", () => {
         const probe = createMapProbe(GRASSLAND);
-        const noTrees = { ...ALL_SHOWN, trees: false };
-        expect(probe.at({ x: 0, z: 0 }, 2, noTrees, "evergreen").entity).toMatchObject({ prefab: "evergreen", index: 1 });
-        expect(probe.at({ x: 0, z: 0 }, 2, noTrees, "pigking").entity).toBeNull();
+        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, "evergreen").entity).toMatchObject({ prefab: "evergreen", index: 1 });
+        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, "pigking").entity).toBeNull();
     });
 
     const VIEWPORT = { width: 800, height: 600 };
@@ -106,7 +114,7 @@ describe("the map probe", () => {
         const names = ["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"];
         const world = { ...GRASSLAND, prefabs: names.map((name) => prefab(name, ...scatter(300))) };
         const probe = createMapProbe(world);
-        const visibility = { ...ALL_SHOWN, landmarks: false };
+        const visibility = new Set(names.filter((name) => name !== "pigking"));
         for (let trial = 0; trial < 500; trial++) {
             const point = { x: (random() - 0.5) * 520, z: (random() - 0.5) * 520 };
             const radius = random() * 60;

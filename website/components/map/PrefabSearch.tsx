@@ -65,7 +65,7 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
                     <input type="search" role="combobox" aria-label="Find a prefab in this world"
                            aria-expanded={open && suggestions.length > 0} aria-controls={listId} aria-autocomplete="list"
                            aria-activedescendant={open && suggestions.length > 0 ? `${listId}-${active}` : undefined}
-                           placeholder="Find in this world, e.g. wormhole, pig king" value={query}
+                           placeholder="Find prefab" value={query}
                            onChange={(event) => {
                                setQuery(event.target.value);
                                setActive(0);

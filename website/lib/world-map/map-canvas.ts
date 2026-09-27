@@ -1,6 +1,5 @@
 import type { EntityLayer } from "./entity-layer";
 import { createEntityRenderer } from "./entity-renderer";
-import type { GroupVisibility } from "./group-visibility";
 import { createHighlightRenderer } from "./highlight-renderer";
 import { fitView, type MapView, panBy, type Size, turnView, type WorldPoint, zoomAt } from "./map-view";
 import { createTileRenderer } from "./tile-renderer";
@@ -15,26 +14,25 @@ const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
 const TYPING_TARGETS = "input:not([type=checkbox], [type=radio]), textarea, select, [contenteditable]";
 
 export interface MapCanvas {
-    fit: () => void;
     /** Turns the map by `steps` of 45 degrees, animated: positive is the game's rotate right (E). */
     turn: (steps: number) => void;
-    /** Draws the entities of the groups `visibility` shows, and hides the rest. */
-    show: (visibility: GroupVisibility) => void;
-    /** Rings `points`, interleaved world `x, z`, over the entities, whichever groups are shown. */
+    /** Draws the entities of the `shown` prefabs, and hides the rest. */
+    show: (shown: ReadonlySet<string>) => void;
+    /** Rings `points`, interleaved world `x, z`, over the entities, whichever prefabs are shown. */
     highlight: (points: Float32Array) => void;
     /** Centres the map on `point`, zooming in to at least `scale` pixels per world unit when given. */
     centre: (point: WorldPoint, scale?: number) => void;
     /** Calls `listener` with the view now and after every redraw, until the returned function is called. */
     watch: (listener: (view: MapView, viewport: Size) => void) => () => void;
-    /** Draws `shapes` over the entities, whatever groups are shown, in place of the witnesses drawn before. */
+    /** Draws `shapes` over the entities, whatever prefabs are shown, in place of the witnesses drawn before. */
     witnesses: (shapes: WitnessShape[]) => void;
     dispose: () => void;
 }
 
 /**
  * Draws the world's tiles and its entity layer on the canvas, sized to the canvas's CSS box, and pans on drag, zooms
- * to the cursor on wheel and turns on Q/E like the game. It starts with every entity group hidden. Throws when the
- * browser can't draw it.
+ * to the cursor on wheel and turns on Q/E like the game. It opens fitted to the world, with every prefab hidden. Throws
+ * when the browser can't draw it.
  */
 export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
@@ -117,10 +115,9 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     addEventListener("keydown", pressed);
 
     return {
-        fit: () => move(fitView(world, viewport, turning?.to ?? view.heading)),
         turn,
-        show: (visibility) => {
-            entities.show(visibility);
+        show: (shown) => {
+            entities.show(shown);
             redraw();
         },
         highlight: (points) => {

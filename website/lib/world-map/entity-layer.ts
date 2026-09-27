@@ -38,18 +38,32 @@ export const MAP_GROUPS: readonly MapGroup[] = [
 
 const OTHER = MAP_GROUPS.length - 1;
 const WORMHOLE = "wormhole";
+const UNMAPPED: ReadonlySet<string> = new Set(["spawnpoint_master", "spawnpoint_multiplayer"]);
+
+/** Whether the map draws a prefab: all but the spawn points, which the portal stands for. */
+export const isMapped = (prefab: string) => !UNMAPPED.has(prefab);
+
+/** A world as its map draws it, with only the prefabs it {@link isMapped maps}. */
+export const mapWorld = <World extends Pick<GeneratedWorld, "prefabs">>(world: World): World => ({
+    ...world,
+    prefabs: world.prefabs.filter(({ name }) => isMapped(name))
+});
 
 export interface EntityLayer {
     /** Interleaved `x, z` world positions, one per dot. */
     positions: Float32Array;
     /** Each dot's index in {@link MAP_GROUPS}. */
     groups: Uint8Array;
-    /** Entities per group, indexed like {@link MAP_GROUPS}. */
-    counts: number[];
+    /** The world's prefab names, in the world's order. */
+    names: string[];
+    /** Each dot's prefab, as its index in {@link names}. */
+    prefabs: Uint16Array;
     /** Interleaved `x, z` of the entry then the exit wormhole, per wormhole link. */
     links: Float32Array;
-    /** The group whose visibility the wormhole links follow, the wormholes' own. */
+    /** The group whose colour the wormhole links take, the wormholes' own. */
     linkGroup: number;
+    /** The prefab whose visibility the wormhole links follow, the wormholes' index in {@link names} (-1 without any). */
+    linkPrefab: number;
 }
 
 /** The index in {@link MAP_GROUPS} of a prefab's group. */
@@ -69,15 +83,19 @@ export function entityLayer(world: Pick<GeneratedWorld, "prefabs" | "links">): E
     const total = counts.reduce((sum, count) => sum + count, 0);
     const positions = new Float32Array(2 * total);
     const groups = new Uint8Array(total);
-    for (const { name, positions: centi } of world.prefabs) {
+    const prefabs = new Uint16Array(total);
+    world.prefabs.forEach(({ name, positions: centi }, prefab) => {
         const group = groupOf(name);
         const dot = next[group];
         groups.fill(group, dot, dot + centi.length / 2);
+        prefabs.fill(prefab, dot, dot + centi.length / 2);
         for (let at = 0; at < centi.length; at++) positions[2 * dot + at] = centi[at] / 100;
         next[group] += centi.length / 2;
-    }
-    const wormholes = world.prefabs.find(({ name }) => name === WORMHOLE)?.positions ?? new Int32Array(0);
+    });
+    const linkPrefab = world.prefabs.findIndex(({ name }) => name === WORMHOLE);
+    const wormholes = world.prefabs[linkPrefab]?.positions ?? new Int32Array(0);
     const ends = [...world.links].flatMap((wormhole) => [wormholes[2 * wormhole], wormholes[2 * wormhole + 1]]);
     const links = Float32Array.from(ends, (centi) => centi / 100);
-    return { positions, groups, counts, links, linkGroup: groupOf(WORMHOLE) };
+    const names = world.prefabs.map(({ name }) => name);
+    return { positions, groups, names, prefabs, links, linkGroup: groupOf(WORMHOLE), linkPrefab };
 }

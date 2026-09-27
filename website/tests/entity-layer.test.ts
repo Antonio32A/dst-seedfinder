@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { entityLayer, MAP_GROUPS } from "../lib/world-map/entity-layer";
+import { entityLayer, MAP_GROUPS, mapWorld } from "../lib/world-map/entity-layer";
 
 const prefab = (name: string, ...positions: number[]) => ({ name, positions: new Int32Array(positions) });
 
@@ -21,23 +21,25 @@ const dots = ({ positions, groups }: ReturnType<typeof entityLayer>) => [...grou
     rounded(positions[2 * index + 1])
 ]);
 
-const countOf = (counts: readonly number[], id: string) =>
-    counts[MAP_GROUPS.findIndex((group) => group.id === id)];
-
 describe("the entity layer", () => {
-    it("counts every entity in its catalog group", () => {
-        const { counts } = entityLayer(WORLD);
-        expect(countOf(counts, "trees")).toBe(2);
-        expect(countOf(counts, "spawn & travel")).toBe(4);
-        expect(countOf(counts, "landmarks")).toBe(1);
-        expect(counts.reduce((total, count) => total + count, 0)).toBe(8);
+    it("leaves the spawn points out of the map's world, keeping the portal, the wormholes and the sinkholes", () => {
+        const world = {
+            prefabs: [
+                prefab("spawnpoint_multiplayer", 0, 0, 100, 100),
+                prefab("multiplayer_portal", 0, 0),
+                prefab("spawnpoint_master", 0, 0),
+                prefab("cave_entrance", 500, 0),
+                ...WORLD.prefabs
+            ],
+            links: WORLD.links
+        };
+        const mapped = mapWorld(world);
+        expect(mapped.prefabs.map(({ name }) => name))
+            .toEqual(["multiplayer_portal", "cave_entrance", "evergreen", "wormhole", "pigking", "a_prefab_from_a_newer_game"]);
+        expect(mapped.links).toBe(world.links);
     });
 
-    it("puts a prefab the catalog doesn't know in the other group", () => {
-        expect(countOf(entityLayer(WORLD).counts, "other")).toBe(1);
-    });
-
-    it("places a dot for every entity at its world position", () => {
+    it("places a dot for every entity at its world position, in its group or in other outside the catalog", () => {
         expect(dots(entityLayer(WORLD))).toEqual(expect.arrayContaining([
             ["trees", 1.5, -4],
             ["trees", -0.01, 0.25],
@@ -51,15 +53,28 @@ describe("the entity layer", () => {
         expect(entityLayer(WORLD).groups).toHaveLength(8);
     });
 
+    it("knows each dot's prefab", () => {
+        const layer = entityLayer(WORLD);
+        const named = [...layer.prefabs].map((prefab, dot) => [layer.names[prefab], rounded(layer.positions[2 * dot])]);
+        expect(named).toEqual(expect.arrayContaining([
+            ["evergreen", 1.5],
+            ["wormhole", 8],
+            ["pigking", 10],
+            ["a_prefab_from_a_newer_game", 3]
+        ]));
+        expect(layer.prefabs).toHaveLength(8);
+    });
+
     it("draws the groups listed first on top of the rest", () => {
         const order = [...new Set(dots(entityLayer(WORLD)).map(([group]) => group))];
         expect(order).toEqual(["other", "trees", "landmarks", "spawn & travel"]);
     });
 
-    it("draws each wormhole link from its entry wormhole to its exit, shown with the wormholes' group", () => {
-        const { links, linkGroup } = entityLayer(WORLD);
+    it("draws each wormhole link from its entry wormhole to its exit, in their group's colour and shown with them", () => {
+        const { links, linkGroup, linkPrefab } = entityLayer(WORLD);
         expect([...links].map(rounded)).toEqual([0, 0, 8, -8, 8, -8, 0, 0, 12, 0.4, -0.6, -24, -0.6, -24, 12, 0.4]);
         expect(MAP_GROUPS[linkGroup].id).toBe("spawn & travel");
+        expect(entityLayer(WORLD).names[linkPrefab]).toBe("wormhole");
     });
 
     it("gives every group its own colour", () => {

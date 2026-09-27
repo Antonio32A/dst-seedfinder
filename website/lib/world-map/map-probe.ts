@@ -1,7 +1,5 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
 import { TILES } from "@/lib/catalog/world";
-import { groupOf, MAP_GROUPS, type MapGroupId } from "./entity-layer";
-import type { GroupVisibility } from "./group-visibility";
 import { type MapView, type ScreenPoint, screenToWorld, type Size, worldBounds, type WorldPoint } from "./map-view";
 import type { GeneratedWorld } from "./world-dump";
 
@@ -26,22 +24,23 @@ export interface ProbedEntity {
 }
 
 export interface Probe {
+    /** The tile under the entity, or under the point without one. */
     tile: ProbedTile | null;
     entity: ProbedEntity | null;
 }
 
 export interface MapProbe {
     /**
-     * What the map shows at `point`: its tile, and the entity nearest it within `radius` world units among the groups
-     * `visibility` shows and the `highlighted` prefab's instances.
+     * What the map shows at `point`: its tile, and the entity nearest it within `radius` world units among the instances
+     * of the `shown` prefabs and of the `highlighted` one.
      */
-    at: (point: WorldPoint, radius: number, visibility: GroupVisibility, highlighted?: string | null) => Probe;
+    at: (point: WorldPoint, radius: number, shown: ReadonlySet<string>, highlighted?: string | null) => Probe;
     /** What the map shows under `cursor` at `view`: {@link at} the world point there, within {@link PICK_RADIUS}. */
     under: (
             view: MapView,
             viewport: Size,
             cursor: ScreenPoint,
-            visibility: GroupVisibility,
+            shown: ReadonlySet<string>,
             highlighted?: string | null
     ) => Probe;
 }
@@ -57,7 +56,6 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
         return { column, row };
     };
 
-    const groups: MapGroupId[] = world.prefabs.map(({ name }) => MAP_GROUPS[groupOf(name)].id);
     const total = world.prefabs.reduce((sum, { positions }) => sum + positions.length / 2, 0);
     const prefabs = new Uint16Array(total);
     const indices = new Uint32Array(total);
@@ -108,24 +106,21 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
         return { name, displayName: TILES[name]?.displayName ?? name };
     };
 
-    const at: MapProbe["at"] = (point, radius, visibility, highlighted = null) => {
-        const shown = (prefab: number) => visibility[groups[prefab]] || world.prefabs[prefab].name === highlighted;
-        const found = nearest(point, radius, shown);
-        const prefab = found === null ? "" : world.prefabs[prefabs[found]].name;
+    const at: MapProbe["at"] = (point, radius, shown, highlighted = null) => {
+        const found = nearest(point, radius, (prefab) => {
+            const { name } = world.prefabs[prefab];
+            return shown.has(name) || name === highlighted;
+        });
+        if (found === null) return { tile: tileAt(point), entity: null };
+        const prefab = world.prefabs[prefabs[found]].name;
         return {
-            tile: tileAt(point),
-            entity: found === null ? null : {
-                prefab,
-                displayName: prefabName(prefab),
-                index: indices[found],
-                x: xs[found],
-                z: zs[found]
-            }
+            tile: tileAt({ x: xs[found], z: zs[found] }),
+            entity: { prefab, displayName: prefabName(prefab), index: indices[found], x: xs[found], z: zs[found] }
         };
     };
     return {
         at,
-        under: (view, viewport, cursor, visibility, highlighted) =>
-            at(screenToWorld(view, viewport, cursor), PICK_RADIUS / view.scale, visibility, highlighted)
+        under: (view, viewport, cursor, shown, highlighted) =>
+            at(screenToWorld(view, viewport, cursor), PICK_RADIUS / view.scale, shown, highlighted)
     };
 }

@@ -1,5 +1,4 @@
-import { PREFAB_BY_ID } from "@/lib/catalog/world";
-import { MAP_GROUPS } from "./entity-layer";
+import { groupOf, MAP_GROUPS } from "./entity-layer";
 import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "./gl-program";
 import type { MapView, Size } from "./map-view";
 import type { WitnessShape } from "./witness-overlay";
@@ -95,10 +94,7 @@ export interface WitnessRenderer {
     dispose: () => void;
 }
 
-const groupColour = (prefab: string) => {
-    const group = PREFAB_BY_ID.get(prefab)?.group ?? "other";
-    return (MAP_GROUPS.find(({ id }) => id === group) ?? MAP_GROUPS[MAP_GROUPS.length - 1]).colour.map((channel) => channel / 255);
-};
+const groupColour = (prefab: string) => MAP_GROUPS[groupOf(prefab)].colour.map((channel) => channel / 255);
 
 /**
  * Draws witness shapes: each mark as a ring around a dot in its entity group's colour, each segment as a line, dashed

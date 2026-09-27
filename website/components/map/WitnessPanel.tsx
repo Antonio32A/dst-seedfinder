@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import type { Criterion, Platform } from "@/lib/config/seedfinder-config";
+import type { Criterion } from "@/lib/config/seedfinder-config";
 import { describeWitness } from "@/lib/jobs/witness-text";
 import { type EvalLoad, evaluateWorld } from "@/lib/world-map/evaluate-world";
 import type { MapCanvas } from "@/lib/world-map/map-canvas";
-import { parseMapConfig } from "@/lib/world-map/map-route";
+import type { MapConfig } from "@/lib/world-map/map-route";
 import { witnessShapes } from "@/lib/world-map/witness-overlay";
 import type { GeneratedWorld } from "@/lib/world-map/world-dump";
 import type { WorldEval } from "@/lib/world-map/world-eval";
 
 interface WitnessPanelProps {
-    share: string;
-    platform: Platform;
+    shared: MapConfig;
     world: GeneratedWorld;
     bytes: Uint8Array;
     map: MapCanvas | null;
@@ -60,9 +59,11 @@ function WitnessChecks({ evaluation, criterion, world, map }: WitnessChecksProps
     );
 }
 
-/** The checks of a map link's search on its world, listed and drawn on the map; clicking one centres the map on it. */
-export default function WitnessPanel({ share, platform, world, bytes, map }: WitnessPanelProps) {
-    const shared = useMemo(() => parseMapConfig(share, platform), [share, platform]);
+/**
+ * The checks of a map link's search on its world, in a panel that folds away, and drawn on the map; clicking one centres
+ * the map on it.
+ */
+export default function WitnessPanel({ shared, world, bytes, map }: WitnessPanelProps) {
     const config = "config" in shared ? shared.config : null;
     const [load, setLoad] = useState<EvalLoad>({ status: "loading" });
 
@@ -80,7 +81,8 @@ export default function WitnessPanel({ share, platform, world, bytes, map }: Wit
         ? `The search in this link can't be read: ${shared.error}`
         : load.status === "failed" ? load.error : null;
     return (
-            <aside className="map__witnesses">
+            <details className="map-bar map__witnesses" open>
+                <summary>Search</summary>
                 {error !== null ? (
                         <p className="notice notice--error" role="alert">{error}</p>
                 ) : load.status === "ready" ? (
@@ -89,6 +91,6 @@ export default function WitnessPanel({ share, platform, world, bytes, map }: Wit
                 ) : (
                         <p className="hint" role="status">Checking the search on this world...</p>
                 )}
-            </aside>
+            </details>
     );
 }
