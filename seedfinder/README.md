@@ -57,7 +57,8 @@ build/seedfinder --threads 1 -- gen 123456 --platform windows
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them.
 - `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).
 
-`world eval --config F --world DUMP.dstw [--json] [--fast]` checks one config against one world dump.
+`world eval --config F --world DUMP.dstw [--json] [--fast]` checks one config against one world dump. Both read the
+format of [docs/world-dump.md](../docs/world-dump.md) (version 2, older dumps have to be regenerated).
 
 - `--time-limit` stops the search, `--start-seed` with the printed `next_seed` continues it.
 - Pass `--threads` in a container, the runtime's default is the host's CPU count, not the quota.
@@ -87,3 +88,5 @@ ln -s "$PWD/scripts/groundtruth/groundtruth-worldgen" "<DST install>/mods/"  # o
 scripts/groundtruth/run_worldgen.sh fresh 1-10  # one launch per seed -> build/groundtruth/data/worlds/<seed>.json
 python3 scripts/groundtruth/world_dump.py --platform linux build/groundtruth/data/worlds/1.json 1.dstw
 ```
+
+`world_dump.py` writes every entity of the world, also those of prefabs outside the catalog.

@@ -256,9 +256,10 @@ search [--start-seed S] [--limit N] [--time-limit T] [--json] CONFIG.json
 | `--time-limit T` | seconds > 0, fractional (ms precision) | none | Stop once T seconds have passed. It's checked between batches, so it may overshoot slightly. Work in flight at the deadline is dropped and counts as not scanned. |
 | `--json` | | off | Print only the job result object (below) instead of lines. |
 
-`seedfinder world find` implements this (see `seedfinder/README.md` for its extra flags). The exit
-status is 0 with at least one hit, 1 with none, and 2 on a config, usage or runtime error. stderr carries progress
-and isn't part of the contract.
+`seedfinder world find` implements this (see `seedfinder/README.md` for its extra flags). With `--worlds DIR`, it
+decides seeds on world dumps ([world-dump.md](world-dump.md)) instead of generating them, like `seedfinder world eval`
+does on one. The exit status is 0 with at least one hit, 1 with none, and 2 on a config, usage or runtime error.
+stderr carries progress and isn't part of the contract.
 
 **Line mode.** Every hit prints as `<seed> {json}` on stdout, in scan order. Each is printed once it and every
 earlier seed are decided. The last line is `done {json}`:

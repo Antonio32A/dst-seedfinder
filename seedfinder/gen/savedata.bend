@@ -1,6 +1,5 @@
 import Base
 import ../f64/repr.bend as F64Repr
-import ../f64/arith.bend as F64Arith
 import ./centi.bend as Centi
 import ../worldsim/grid.bend as Grid
 import ../ocean/ents.bend as OceanEnts
@@ -12,22 +11,12 @@ import ./job.bend as GenJob
 # same world's savedata: the dump mod writes every position with printf("%.2f") (trailing zeros cut), and
 # AddWorldEntities adds the pocket dimension containers at (0, 0) when the world has none.
 
-def magnitude(+k: U32) -> U32:
-  Bool.pick(U32, (k >= 2147483648 : U32), (0 - k : U32), k)
-
-def whole_flag(+k: U32) -> U32:
-  Bool.to_u32(U32.is_zero(U32.mod(magnitude(k), 100)))
-
-def inst_of(+v: U32, +index: U32, +xk: U32, +zk: U32) -> FilterWorld.Inst:
-  FilterWorld.Inst{v, index, F64Arith.div(F64Repr.from_i32(xk), Centi.hundred()), F64Arith.div(F64Repr.from_i32(zk), Centi.hundred()), xk, zk,
-    (whole_flag(xk) .|. (whole_flag(zk) << 1n) : U32)}
-
 def insts_of(ents: List<&2, OceanEnts.Ent>, +v: U32, +index: U32, +windows: Bool) -> List<&2, FilterWorld.Inst>:
   match ents:
     case Nil{}:
       Nil{}
     case Con{OceanEnts.Ent{_, +x, +z, _, _}, rest}:
-      inst_of(v, index, Centi.centi(x, windows), Centi.centi(z, windows)) <> insts_of(rest, v, (index + 1 : U32), windows)
+      FilterWorld.inst_of(v, index, Centi.centi(x, windows), Centi.centi(z, windows)) <> insts_of(rest, v, (index + 1 : U32), windows)
 
 def is_pocket(+v: U32) -> Bool:
   U32.is_eq(v, GenTagsData.vocab_shadow_container()) || U32.is_eq(v, GenTagsData.vocab_rabbitkinghorn_container())
