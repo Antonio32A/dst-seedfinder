@@ -29,7 +29,7 @@ export interface OceanBlur {
 }
 
 const inWindow = (at: number, length: number, radius: number) =>
-        Math.min(length, at + radius + 1) - Math.max(0, at - radius);
+    Math.min(length, at + radius + 1) - Math.max(0, at - radius);
 
 function boxMeans(texels: Uint8Array, channel: number, { width, height }: Size, radius: number) {
     const rowSums = new Uint32Array(width * height);

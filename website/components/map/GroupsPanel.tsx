@@ -55,7 +55,8 @@ function GroupRow({ entry, shown, onChange, outlined = false }: GroupRowProps) {
                                         <label className="map-group__toggle" title={prefab}>
                                             <input type="checkbox" checked={shown.has(prefab)} onChange={(event) =>
                                                     onChange(showPrefabs(shown, [prefab], event.target.checked))}/>
-                                            <span>{displayName} <span className="map__count">{count(instances)}</span></span>
+                                            <span>{displayName} <span
+                                                    className="map__count">{count(instances)}</span></span>
                                         </label>
                                     </li>
                             ))}

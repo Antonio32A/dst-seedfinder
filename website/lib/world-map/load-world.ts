@@ -44,7 +44,11 @@ export async function loadWorld(seed: number, platform: Platform, signal: AbortS
         worker.terminate();
         if (reply.type === "failed") throw new Error(`The world generation stopped unexpectedly: ${reply.error}`);
         const dump = parseWorldDump(reply.bytes);
-        return dump.status === "generated" ? { status: "ready", world: dump, bytes: reply.bytes } : { status: "gave-up" };
+        return dump.status === "generated" ? {
+            status: "ready",
+            world: dump,
+            bytes: reply.bytes
+        } : { status: "gave-up" };
     } catch (error) {
         return { status: "failed", error: message(error) };
     }

@@ -24,5 +24,10 @@ export function parseWorldEval(output: string): WorldEval | null {
     const entries = listed(fields.entries);
     const [first] = listed(fields.matched_entries);
     const entry = typeof first === "number" ? first : 0;
-    return { matched: fields.match, entry, entries: entries.length, witnesses: parseWitnesses(asRecord(entries[entry]).results) };
+    return {
+        matched: fields.match,
+        entry,
+        entries: entries.length,
+        witnesses: parseWitnesses(asRecord(entries[entry]).results)
+    };
 }

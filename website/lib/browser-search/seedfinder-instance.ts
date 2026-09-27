@@ -30,7 +30,11 @@ const factory = import(/* @vite-ignore */ new URL("/wasm/seedfinder.mjs", self.l
 export function runSeedfinder({ module, args, files = {}, print, printErr }: SeedfinderRun): Promise<SeedfinderExit> {
     return new Promise((resolve) => {
         let fs: SeedfinderFS | null = null;
-        const exit = (code: number, error: unknown) => resolve({ code, error: error === null ? null : String(error), fs });
+        const exit = (code: number, error: unknown) => resolve({
+            code,
+            error: error === null ? null : String(error),
+            fs
+        });
         factory.then((seedfinder) => seedfinder({
             arguments: args,
             instantiateWasm: (imports: WebAssembly.Imports, receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void) => {
@@ -48,8 +52,10 @@ export function runSeedfinder({ module, args, files = {}, print, printErr }: See
                     for (const [path, data] of Object.entries(files)) fs.writeFile(path, data);
                 }
             ],
-            print: print ?? (() => {}),
-            printErr: printErr ?? (() => {}),
+            print: print ?? (() => {
+            }),
+            printErr: printErr ?? (() => {
+            }),
             onExit: (code: number) => exit(code, null),
             onAbort: (reason: unknown) => exit(-1, reason)
         })).catch((error: unknown) => exit(-1, error));

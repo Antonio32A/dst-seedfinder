@@ -27,10 +27,30 @@ describe("POST /api/jobs", () => {
     });
 
     const refusals = [
-        { name: "a streamed body over the limit", status: 413, headers: JSON_TYPE, body: () => chunkedBody(MAX_BODY_BYTES + 1) },
-        { name: "a buffered body over the limit", status: 413, headers: JSON_TYPE, body: () => " ".repeat(MAX_BODY_BYTES + 1) },
-        { name: "no Content-Type", status: 415, headers: {}, body: () => new TextEncoder().encode(JSON.stringify(SEARCH_REQUEST)) },
-        { name: "Content-Type: text/plain", status: 415, headers: { "Content-Type": "text/plain" }, body: () => JSON.stringify(SEARCH_REQUEST) },
+        {
+            name: "a streamed body over the limit",
+            status: 413,
+            headers: JSON_TYPE,
+            body: () => chunkedBody(MAX_BODY_BYTES + 1)
+        },
+        {
+            name: "a buffered body over the limit",
+            status: 413,
+            headers: JSON_TYPE,
+            body: () => " ".repeat(MAX_BODY_BYTES + 1)
+        },
+        {
+            name: "no Content-Type",
+            status: 415,
+            headers: {},
+            body: () => new TextEncoder().encode(JSON.stringify(SEARCH_REQUEST))
+        },
+        {
+            name: "Content-Type: text/plain",
+            status: 415,
+            headers: { "Content-Type": "text/plain" },
+            body: () => JSON.stringify(SEARCH_REQUEST)
+        },
         {
             name: "a form body",
             status: 415,

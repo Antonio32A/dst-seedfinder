@@ -63,7 +63,8 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
             <div className="map__search">
                 <div className="map__search-box">
                     <input type="search" role="combobox" aria-label="Find a prefab or set piece in this world"
-                           aria-expanded={open && suggestions.length > 0} aria-controls={listId} aria-autocomplete="list"
+                           aria-expanded={open && suggestions.length > 0} aria-controls={listId}
+                           aria-autocomplete="list"
                            aria-activedescendant={open && suggestions.length > 0 ? `${listId}-${active}` : undefined}
                            placeholder="Find prefab" value={query}
                            onChange={(event) => {

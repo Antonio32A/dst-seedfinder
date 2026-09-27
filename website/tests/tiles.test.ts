@@ -21,7 +21,7 @@ describe("the tile table", () => {
 
     it("colours land the way the game's map draws it at full brightness", () => {
         const drawn: Record<string, [number, number, number]> = {
-            GRASS: [174, 168, 66], FOREST: [102, 110, 55], SAVANNA: [193, 145, 54], DESERT_DIRT: [199, 163, 84],
+            GRASS: [174, 168, 66], FOREST: [102, 110, 55], SAVANNA: [193, 145, 54], DESERT_DIRT: [199, 163, 84]
         };
         for (const [name, colour] of Object.entries(drawn)) {
             const error = TILES[name].color.map((channel, index) => Math.abs(channel - colour[index]));

@@ -9,10 +9,10 @@ const RANKS = new Map([[LOW, 10], [HIGH, 20], [LEVEL_WITH_HIGH, 20]]);
 const rankOf = (tile: number) => RANKS.get(tile);
 
 const grid = (rows: number[][]) =>
-        ({ width: rows[0].length, height: rows.length, tiles: new Uint16Array(rows.flat()) });
+    ({ width: rows[0].length, height: rows.length, tiles: new Uint16Array(rows.flat()) });
 
 const quads = (interleaved: Uint16Array) => Array.from({ length: interleaved.length / 3 }, (_, index) =>
-        [...interleaved.subarray(3 * index, 3 * index + 3)]);
+    [...interleaved.subarray(3 * index, 3 * index + 3)]);
 
 const SIDE_OFFSETS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const CORNER_OFFSETS = [[1, -1], [1, 1], [-1, 1], [-1, -1]];

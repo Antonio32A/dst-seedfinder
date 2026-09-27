@@ -78,15 +78,16 @@ export default function WitnessPanel({ shared, world, bytes, map }: WitnessPanel
     }, [config, bytes]);
 
     const error = "error" in shared
-        ? `The search in this link can't be read: ${shared.error}`
-        : load.status === "failed" ? load.error : null;
+            ? `The search in this link can't be read: ${shared.error}`
+            : load.status === "failed" ? load.error : null;
     return (
             <details className="map-bar map__witnesses" open>
                 <summary>Search</summary>
                 {error !== null ? (
                         <p className="notice notice--error" role="alert">{error}</p>
                 ) : load.status === "ready" ? (
-                        <WitnessChecks evaluation={load.evaluation} criterion={config?.criteria?.[load.evaluation.entry]}
+                        <WitnessChecks evaluation={load.evaluation}
+                                       criterion={config?.criteria?.[load.evaluation.entry]}
                                        world={world} map={map}/>
                 ) : (
                         <p className="hint" role="status">Checking the search on this world...</p>

@@ -23,11 +23,21 @@ const SEARCH: SeedfinderConfig = {
             passive: true,
             tasks: { required: ["Killer bees!"] },
             setpieces: [{ required: { MooseNest: 1 } }],
-            counts: [{ prefab: ["rook", "knight"], min: 1 }, { prefab: "beefalo", near: { prefab: "grass", within: 20 } }],
+            counts: [{ prefab: ["rook", "knight"], min: 1 }, {
+                prefab: "beefalo",
+                near: { prefab: "grass", within: 20 }
+            }],
             distances: [{ from: "pigking", to: ["evergreen", "flower"], max: 50 }],
             tiles: [{ from: "GRASS", to: ["DECIDUOUS"], max: 30 }]
         },
-        { routes: [{ from: "moonbase", visit: ["walrus_camp", ["spiderden", "sapling"]], to: "cave_entrance", max: 5000 }] }
+        {
+            routes: [{
+                from: "moonbase",
+                visit: ["walrus_camp", ["spiderden", "sapling"]],
+                to: "cave_entrance",
+                max: 5000
+            }]
+        }
     ]
 };
 
@@ -42,7 +52,11 @@ describe("the map's legend", () => {
                 { prefab: "deciduoustree", displayName: "Birchnut Tree", count: 1 },
                 { prefab: "evergreen", displayName: "Evergreen", count: 2 }
             ]],
-            ["other", 1, [{ prefab: "a_prefab_from_a_newer_game", displayName: "a_prefab_from_a_newer_game", count: 1 }]]
+            ["other", 1, [{
+                prefab: "a_prefab_from_a_newer_game",
+                displayName: "a_prefab_from_a_newer_game",
+                count: 1
+            }]]
         ]);
     });
 });

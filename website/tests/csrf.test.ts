@@ -76,7 +76,11 @@ const REFUSED: Provenance[] = [
         name: `Origin: ${origin}`,
         origin
     })),
-    { name: "Sec-Fetch-Site: same-origin with Origin: https://evil.example", site: "same-origin", origin: "https://evil.example" }
+    {
+        name: "Sec-Fetch-Site: same-origin with Origin: https://evil.example",
+        site: "same-origin",
+        origin: "https://evil.example"
+    }
 ];
 
 const ALLOWED: Provenance[] = [

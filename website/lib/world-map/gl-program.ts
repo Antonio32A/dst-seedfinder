@@ -35,12 +35,12 @@ export function buildProgram(gl: WebGL2RenderingContext, vertexShader: string, f
 
 /** Binds a new buffer holding `data` to `attribute` of the bound vertex array; `divisor` 1 makes it per instance. */
 export function vertexBuffer(
-        gl: WebGL2RenderingContext,
-        program: WebGLProgram,
-        attribute: string,
-        data: Float32Array,
-        size: number,
-        divisor = 0
+    gl: WebGL2RenderingContext,
+    program: WebGLProgram,
+    attribute: string,
+    data: Float32Array,
+    size: number,
+    divisor = 0
 ): WebGLBuffer {
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);

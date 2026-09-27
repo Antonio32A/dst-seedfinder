@@ -72,7 +72,10 @@ describe("login", () => {
         "sends an off-site return path %s forged into the state cookie to /",
         async (forged) => {
             const state = randomToken();
-            const response = await callback({ code: discordCode(newProfile()), state }, `${state}.${encodeURIComponent(forged)}`);
+            const response = await callback({
+                code: discordCode(newProfile()),
+                state
+            }, `${state}.${encodeURIComponent(forged)}`);
             expect(response.status).toBe(307);
             expect(redirectPath(response)).toBe("seedfinder.test /");
         }

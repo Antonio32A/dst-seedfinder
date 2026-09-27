@@ -8,7 +8,7 @@ export const SET_PIECE_COLOUR = [255, 100, 40] as const;
 
 /** The set pieces a map shows when it opens: every one the set piece rules of `search` name, in any of its options. */
 export const defaultShownSetPieces = (search?: SeedfinderConfig): Set<string> => new Set((search?.criteria ?? [])
-        .flatMap(({ setpieces = [] }) => setpieces.flatMap(({ required = {} }) => Object.keys(required))));
+    .flatMap(({ setpieces = [] }) => setpieces.flatMap(({ required = {} }) => Object.keys(required))));
 
 /** How many times the world placed each layout, by its name, none when its dump doesn't say. */
 export function setPieceCounts(world: Pick<GeneratedWorld, "setPieces">): Map<string, number> {
@@ -28,8 +28,8 @@ export function setPieceLegend(world: Pick<GeneratedWorld, "setPieces">): Legend
         group: { id: "set pieces", name: "Set pieces", colour: SET_PIECE_COLOUR },
         count: world.setPieces!.length,
         prefabs: [...counts]
-                .map(([name, count]) => ({ prefab: name, displayName: name, count }))
-                .sort((a, b) => a.displayName.localeCompare(b.displayName))
+            .map(([name, count]) => ({ prefab: name, displayName: name, count }))
+            .sort((a, b) => a.displayName.localeCompare(b.displayName))
     };
 }
 
@@ -98,7 +98,7 @@ export function setPieceDetails(world: Pick<GeneratedWorld, "prefabs" | "setPiec
         height: (bounds[3] - bounds[1]) / 100 / TILE_SIZE,
         transform: TRANSFORM_WORDS[transform & 7],
         members: [...counts]
-                .map(([prefab, count]) => ({ prefab, displayName: prefabName(prefab), count }))
-                .sort((a, b) => b.count - a.count || a.displayName.localeCompare(b.displayName))
+            .map(([prefab, count]) => ({ prefab, displayName: prefabName(prefab), count }))
+            .sort((a, b) => b.count - a.count || a.displayName.localeCompare(b.displayName))
     };
 }

@@ -5,7 +5,12 @@ const WORLD = { width: 425, height: 400 };
 const VIEWPORT = { width: 800, height: 600 };
 const TILE = 4;
 
-const edges = { left: -2 * WORLD.width - 2, right: 2 * WORLD.width - 2, top: -2 * WORLD.height - 2, bottom: 2 * WORLD.height - 2 };
+const edges = {
+    left: -2 * WORLD.width - 2,
+    right: 2 * WORLD.width - 2,
+    top: -2 * WORLD.height - 2,
+    bottom: 2 * WORLD.height - 2
+};
 
 describe("the map view", () => {
     it.each([45, 90, 180, 315])("fits the whole world in the viewport, filling one side, at heading %i", (heading) => {
@@ -86,8 +91,14 @@ describe("the map view", () => {
 
     it("stops zooming in at a few screen pixels per world unit and out at a speck", () => {
         const view = fitView(WORLD, VIEWPORT);
-        expect(zoomAt(view, VIEWPORT, { x: 0, y: 0 }, 1e6).scale).toBe(zoomAt(view, VIEWPORT, { x: 0, y: 0 }, 1e7).scale);
-        expect(zoomAt(view, VIEWPORT, { x: 0, y: 0 }, 1e-6).scale).toBe(zoomAt(view, VIEWPORT, { x: 0, y: 0 }, 1e-7).scale);
+        expect(zoomAt(view, VIEWPORT, { x: 0, y: 0 }, 1e6).scale).toBe(zoomAt(view, VIEWPORT, {
+            x: 0,
+            y: 0
+        }, 1e7).scale);
+        expect(zoomAt(view, VIEWPORT, { x: 0, y: 0 }, 1e-6).scale).toBe(zoomAt(view, VIEWPORT, {
+            x: 0,
+            y: 0
+        }, 1e-7).scale);
     });
 
     it.each([0, 45, 180])("drags the world along with the pointer at heading %i", (heading) => {

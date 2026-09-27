@@ -3,7 +3,12 @@
 import type { ReactNode } from "react";
 import { MAX_RULES_PER_SECTION } from "@/lib/config/seedfinder-config";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
-import { MAP_SIZE_TILES, NEW_WORLD_ROW, type WorldRows, type WorldSection as Section } from "@/lib/criteria/world-rules";
+import {
+    MAP_SIZE_TILES,
+    NEW_WORLD_ROW,
+    type WorldRows,
+    type WorldSection as Section
+} from "@/lib/criteria/world-rules";
 import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
 import RouteRuleRow from "./RouteRuleRow";

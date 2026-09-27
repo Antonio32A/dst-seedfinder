@@ -52,7 +52,10 @@ describe("the set pieces' legend", () => {
 describe("the set pieces a map shows", () => {
     it("starts with none without a search, or with a search that names none", () => {
         expect([...defaultShownSetPieces()]).toEqual([]);
-        expect([...defaultShownSetPieces({ version: 1, criteria: [{ counts: [{ prefab: "pigking", min: 1 }] }] })]).toEqual([]);
+        expect([...defaultShownSetPieces({
+            version: 1,
+            criteria: [{ counts: [{ prefab: "pigking", min: 1 }] }]
+        })]).toEqual([]);
     });
 
     it("shows every set piece the search's set piece rules name, in every option", () => {
@@ -93,7 +96,11 @@ describe("a set piece's details", () => {
 
     it("sizes a set piece by its bounds, which needn't be whole tiles", () => {
         const circle = piece("CropCircle", -50832, -9232, 368);
-        expect(setPieceDetails({ ...WORLD, setPieces: [circle] }, 0)).toMatchObject({ width: 1.84, height: 1.84, members: [] });
+        expect(setPieceDetails({ ...WORLD, setPieces: [circle] }, 0)).toMatchObject({
+            width: 1.84,
+            height: 1.84,
+            members: []
+        });
     });
 
     it.each([
@@ -105,7 +112,10 @@ describe("a set piece's details", () => {
         { source: "ocean-room", word: "ocean room" },
         { source: "unknown", word: "unknown" }
     ] as const)("says where a $source set piece comes from", ({ source, word }) => {
-        expect(setPieceDetails({ ...WORLD, setPieces: [piece("Any", 0, 0, 400, [], { source })] }, 0).source).toBe(word);
+        expect(setPieceDetails({
+            ...WORLD,
+            setPieces: [piece("Any", 0, 0, 400, [], { source })]
+        }, 0).source).toBe(word);
     });
 
     it.each([
@@ -118,6 +128,9 @@ describe("a set piece's details", () => {
         { transform: 6, words: "rotated 180°" },
         { transform: 7, words: "flipped, rotated 90° anticlockwise" }
     ])("says how transform $transform turned the layout", ({ transform, words }) => {
-        expect(setPieceDetails({ ...WORLD, setPieces: [piece("Any", 0, 0, 400, [], { transform })] }, 0).transform).toBe(words);
+        expect(setPieceDetails({
+            ...WORLD,
+            setPieces: [piece("Any", 0, 0, 400, [], { transform })]
+        }, 0).transform).toBe(words);
     });
 });

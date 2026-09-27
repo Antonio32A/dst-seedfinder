@@ -10,7 +10,9 @@ const MACHINE = JSON.stringify({ cpuName: "Test CPU", cores: 64, ghz: 3, dollars
 const label = (jobId: string) => `dst-seedfinder:${jobId}`;
 
 async function credits(userId: string): Promise<number> {
-    return (await db().prepare("SELECT credit_units FROM users WHERE id = ?").bind(userId).first<{ credit_units: number }>())?.credit_units ?? 0;
+    return (await db().prepare("SELECT credit_units FROM users WHERE id = ?").bind(userId).first<{
+        credit_units: number
+    }>())?.credit_units ?? 0;
 }
 
 async function reserve(userId: string, units: number): Promise<void> {
@@ -45,12 +47,21 @@ describe("the cron sweep", () => {
             updated_at: now - 60 * MINUTE,
             machine: MACHINE
         });
-        lost = await seedJob(owner, { status: "queued", cost: null, finished_at: null, max_cost: 5000, updated_at: now - 6 * MINUTE });
+        lost = await seedJob(owner, {
+            status: "queued",
+            cost: null,
+            finished_at: null,
+            max_cost: 5000,
+            updated_at: now - 6 * MINUTE
+        });
         await reserve(owner, 20000 + 5000);
         creditsBefore = await credits(owner);
         for (const id of [healthy, othersLive, othersFinished]) rows.set(id, await loadJob(id));
 
-        const instances = [{ id: 7001, label: label(stuck) }, { id: 7002, label: label(healthy) }, { id: 7003, label: label(othersLive) }];
+        const instances = [{ id: 7001, label: label(stuck) }, { id: 7002, label: label(healthy) }, {
+            id: 7003,
+            label: label(othersLive)
+        }];
         network.use(
             http.get(`${VAST_API}/v1/instances`, ({ request }) => {
                 const filter = new URL(request.url).searchParams.get("select_filters");
@@ -76,7 +87,11 @@ describe("the cron sweep", () => {
     });
 
     it("settles a quiet search whose room is gone, free", async () => {
-        expect(await loadJob(lost)).toMatchObject({ status: "failed", cost: 0, error: "The search was lost. Your credits were refunded." });
+        expect(await loadJob(lost)).toMatchObject({
+            status: "failed",
+            cost: 0,
+            error: "The search was lost. Your credits were refunded."
+        });
     });
 
     it("refunds what the settled searches didn't use", async () => {

@@ -38,7 +38,7 @@ export function landLayers(land: LandTiles, rankOf: (tile: number) => number | u
     const { width, height, tiles } = land;
     const outside = tiles.reduce((highest, tile) => Math.max(highest, tile), 0) + 1;
     const ranks = Float64Array.from({ length: outside + 1 }, (_, tile) =>
-            (tile === outside ? undefined : rankOf(tile)) ?? -Infinity);
+        (tile === outside ? undefined : rankOf(tile)) ?? -Infinity);
     const row = width + 2;
     const padded = new Uint32Array(row * (height + 2)).fill(outside);
     for (let tz = 0; tz < height; tz++) padded.set(tiles.subarray(tz * width, (tz + 1) * width), (tz + 1) * row + 1);
@@ -49,11 +49,11 @@ export function landLayers(land: LandTiles, rankOf: (tile: number) => number | u
     const edges = new Map<number, number[]>();
     const quadsOf = (quads: Map<number, number[]>, tile: number) => quads.get(tile) ?? quads.set(tile, []).get(tile)!;
     const touches = (offsets: number[], at: number, tile: number) =>
-            offsets.reduce((bits, step, bit) => bits | (padded[at + step] === tile ? 1 << bit : 0), 0);
+        offsets.reduce((bits, step, bit) => bits | (padded[at + step] === tile ? 1 << bit : 0), 0);
     const bleed = (tx: number, tz: number, at: number, tile: number) => {
         const sides = touches(sideSteps, at, tile);
         const corners = CORNER_SIDES.reduce((bits, next, bit) =>
-                (sides & next ? bits & ~(1 << bit) : bits), touches(cornerSteps, at, tile));
+            (sides & next ? bits & ~(1 << bit) : bits), touches(cornerSteps, at, tile));
         const cell = corners === 0 ? 1 + sides : sides === 0 ? 17 + corners : MIXED_CELLS[sides][corners];
         quadsOf(edges, tile).push(tx, tz, cell);
     };
@@ -65,7 +65,7 @@ export function landLayers(land: LandTiles, rankOf: (tile: number) => number | u
             neighbourSteps.forEach((step, index) => {
                 const neighbour = padded[at + step];
                 const firstAbove = ranks[neighbour] > rank
-                        && neighbourSteps.findIndex((earlier) => padded[at + earlier] === neighbour) === index;
+                    && neighbourSteps.findIndex((earlier) => padded[at + earlier] === neighbour) === index;
                 if (firstAbove) bleed(tx, tz, at, neighbour);
             });
         }

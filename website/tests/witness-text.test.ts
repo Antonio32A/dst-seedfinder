@@ -14,6 +14,13 @@ describe("a witness described", () => {
             to: at("pigking", 0, 12),
             wormholes: [{ entry: at("wormhole", 0, 1), exit: at("wormhole", 0, 11) }]
         })).toBe("Distance rule 2: multiplayer_portal -> pigking: 12 units (3 tiles), 1 wormhole jump");
-        expect(describeWitness({ section: "counts", index: 0, ok: false, count: 2, total: 3, instances: [] })).toBe("Count rule 1: 2 of 3 nearby");
+        expect(describeWitness({
+            section: "counts",
+            index: 0,
+            ok: false,
+            count: 2,
+            total: 3,
+            instances: []
+        })).toBe("Count rule 1: 2 of 3 nearby");
     });
 });

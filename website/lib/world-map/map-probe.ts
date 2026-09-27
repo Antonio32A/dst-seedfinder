@@ -149,7 +149,11 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
         });
         if (found === null) {
             const piece = setPieceAt(point, (name) => shown.setPieces.has(name) || isSearched("set piece", name));
-            return { tile: tileAt(point), entity: null, setPiece: piece === null ? null : setPieceDetails(world, piece) };
+            return {
+                tile: tileAt(point),
+                entity: null,
+                setPiece: piece === null ? null : setPieceDetails(world, piece)
+            };
         }
         const prefab = world.prefabs[prefabs[found]].name;
         return {

@@ -63,8 +63,8 @@ export interface SetPieceRenderer {
  * screen width with a dark edge, so they read on any tile.
  */
 export function createSetPieceRenderer(
-        gl: WebGL2RenderingContext,
-        setPieces: readonly DumpSetPiece[]
+    gl: WebGL2RenderingContext,
+    setPieces: readonly DumpSetPiece[]
 ): SetPieceRenderer {
     const ends = Float32Array.from(setPieces.flatMap(({ bounds }) => {
         const [x0, z0, x1, z1] = [...bounds].map((centi) => centi / 100);

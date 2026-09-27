@@ -15,7 +15,10 @@ describe("OPTIONS", () => {
         search = await startSearch(user.session);
     });
 
-    it.each(ENDPOINTS.filter(({ access }) => access === "preflight").map((endpoint) => ({ ...endpoint, key: endpointKey(endpoint) })))(
+    it.each(ENDPOINTS.filter(({ access }) => access === "preflight").map((endpoint) => ({
+        ...endpoint,
+        key: endpointKey(endpoint)
+    })))(
         "$key only lists the route's methods, even for a cross-origin preflight",
         async (endpoint) => {
             const before = await loadJob(search.id);
@@ -42,7 +45,10 @@ describe("HEAD /api/runner/[id]", () => {
     });
 
     it("is 405 even with the search's own token, so it can't start the search", async () => {
-        const response = await api(`/api/runner/${search.id}`, { method: "HEAD", headers: { Authorization: `Bearer ${search.token}` } });
+        const response = await api(`/api/runner/${search.id}`, {
+            method: "HEAD",
+            headers: { Authorization: `Bearer ${search.token}` }
+        });
         expect(response.status).toBe(405);
         expect(response.headers.get("Allow")).toBe("GET, OPTIONS, POST");
         expect((await loadJob(search.id))?.status).toBe("starting");

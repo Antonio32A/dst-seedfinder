@@ -16,14 +16,7 @@ import {
 import { validateConfig } from "@/lib/config/validate-config";
 import { asRecord, isRecord } from "@/lib/records";
 import { asArray, asStrings, clamp, newKey, nonEmpty } from "./state-helpers";
-import {
-    NEW_WORLD_ROW,
-    worldIssues,
-    worldRowCount,
-    type WorldRows,
-    worldRowsOf,
-    worldSections
-} from "./world-rules";
+import { NEW_WORLD_ROW, worldIssues, worldRowCount, type WorldRows, worldRowsOf, worldSections } from "./world-rules";
 
 export type BiomeChoice = "include" | "exclude";
 export type CountMode = "atLeast" | "exactly" | "between" | "none";
@@ -98,7 +91,17 @@ const TASK_IDS = TASKS.map((task) => task.id);
 
 /** `passive` groups only check seeds the other groups already pick. */
 export function emptyGroup(passive = false): CriteriaGroup {
-    return { key: newKey(), passive, biomes: {}, swaps: {}, rules: [], counts: [], distances: [], tiles: [], routes: [] };
+    return {
+        key: newKey(),
+        passive,
+        biomes: {},
+        swaps: {},
+        rules: [],
+        counts: [],
+        distances: [],
+        tiles: [],
+        routes: []
+    };
 }
 
 export function defaultState(): SearchState {

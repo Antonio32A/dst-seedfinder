@@ -26,12 +26,12 @@ export function searchPrefabs(world: SearchedWorld, query: string): MapMatch[] {
     const starts = (match: MapMatch) => texts(match).some((text) => text.startsWith(needle));
     return [
         ...world.prefabs.map(({ name, positions }): MapMatch =>
-                ({ kind: "prefab", name, displayName: prefabName(name), count: positions.length / 2 })),
+            ({ kind: "prefab", name, displayName: prefabName(name), count: positions.length / 2 })),
         ...[...setPieceCounts(world)].map(([name, count]): MapMatch =>
-                ({ kind: "set piece", name, displayName: name, count }))
+            ({ kind: "set piece", name, displayName: name, count }))
     ]
-            .filter((match) => texts(match).some((text) => text.includes(needle)))
-            .sort((a, b) => Number(starts(b)) - Number(starts(a)) || a.displayName.localeCompare(b.displayName));
+        .filter((match) => texts(match).some((text) => text.includes(needle)))
+        .sort((a, b) => Number(starts(b)) - Number(starts(a)) || a.displayName.localeCompare(b.displayName));
 }
 
 /**
@@ -55,4 +55,4 @@ export function instancesOf(world: SearchedWorld, { kind, name }: MapTarget): Wo
  * and one back to the last.
  */
 export const stepInstance = (current: number | null, count: number, step: number): number =>
-        ((current ?? (step > 0 ? -1 : count)) + step + count) % count;
+    ((current ?? (step > 0 ? -1 : count)) + step + count) % count;

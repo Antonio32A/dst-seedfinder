@@ -30,15 +30,24 @@ const GRASSLAND: GeneratedWorld = {
 };
 
 const NO_SET_PIECES: ReadonlySet<string> = new Set();
-const ALL_SHOWN = { prefabs: new Set(["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"]), setPieces: NO_SET_PIECES };
+const ALL_SHOWN = {
+    prefabs: new Set(["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"]),
+    setPieces: NO_SET_PIECES
+};
 const NO_TREES = { prefabs: new Set(["pigking"]), setPieces: NO_SET_PIECES };
 
 describe("the map probe", () => {
     it("names the tile under a point", () => {
         const probe = createMapProbe(WORLD);
         expect(probe.at({ x: -3, z: -3 }, 1, ALL_SHOWN).tile).toEqual({ name: "FOREST", displayName: "Forest Turf" });
-        expect(probe.at({ x: -8, z: 1.5 }, 1, ALL_SHOWN).tile).toEqual({ name: "IMPASSABLE", displayName: "Impassable" });
-        expect(probe.at({ x: 3.9, z: -5.9 }, 1, ALL_SHOWN).tile).toEqual({ name: "A_NEWER_TURF", displayName: "A_NEWER_TURF" });
+        expect(probe.at({ x: -8, z: 1.5 }, 1, ALL_SHOWN).tile).toEqual({
+            name: "IMPASSABLE",
+            displayName: "Impassable"
+        });
+        expect(probe.at({ x: 3.9, z: -5.9 }, 1, ALL_SHOWN).tile).toEqual({
+            name: "A_NEWER_TURF",
+            displayName: "A_NEWER_TURF"
+        });
     });
 
     it.each([
@@ -60,7 +69,12 @@ describe("the map probe", () => {
             z: 0.25,
             setPiece: null
         });
-        expect(probe.at({ x: 9, z: 19 }, 2, ALL_SHOWN).entity).toMatchObject({ prefab: "pigking", index: 0, x: 10, z: 20 });
+        expect(probe.at({ x: 9, z: 19 }, 2, ALL_SHOWN).entity).toMatchObject({
+            prefab: "pigking",
+            index: 0,
+            x: 10,
+            z: 20
+        });
     });
 
     it("names the tile under the entity it picks, rather than the one under the point", () => {
@@ -91,23 +105,29 @@ describe("the map probe", () => {
 
     it("picks the instances of the prefab searched for even when it's hidden", () => {
         const probe = createMapProbe(GRASSLAND);
-        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, { kind: "prefab", name: "evergreen" }).entity).toMatchObject({ prefab: "evergreen", index: 1 });
+        expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, {
+            kind: "prefab",
+            name: "evergreen"
+        }).entity).toMatchObject({ prefab: "evergreen", index: 1 });
         expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, { kind: "prefab", name: "pigking" }).entity).toBeNull();
     });
 
     const VIEWPORT = { width: 800, height: 600 };
     it.each([0, 45, 90, 135, 180, 270, 315].flatMap((heading) => [0.05, 1, 12].map((scale) => ({ heading, scale }))))(
-            "picks the dot under the cursor at $scale px per unit and heading $heading",
-            ({ heading, scale }) => {
-                const probe = createMapProbe({ ...GRASSLAND, prefabs: [prefab("pigking", 1000, 2000)] });
-                const view = { centerX: 3, centerZ: 3, scale, heading };
-                const dot = worldToScreen(view, VIEWPORT, { x: 10, z: 20 });
-                const off = (pixels: number, angle: number) => ({ x: dot.x + pixels * Math.cos(angle), y: dot.y + pixels * Math.sin(angle) });
-                for (const angle of [0, 1, 2.5, 4]) {
-                    expect(probe.under(view, VIEWPORT, off(PICK_RADIUS - 0.5, angle), ALL_SHOWN).entity).toMatchObject({ prefab: "pigking" });
-                    expect(probe.under(view, VIEWPORT, off(PICK_RADIUS + 0.5, angle), ALL_SHOWN).entity).toBeNull();
-                }
+        "picks the dot under the cursor at $scale px per unit and heading $heading",
+        ({ heading, scale }) => {
+            const probe = createMapProbe({ ...GRASSLAND, prefabs: [prefab("pigking", 1000, 2000)] });
+            const view = { centerX: 3, centerZ: 3, scale, heading };
+            const dot = worldToScreen(view, VIEWPORT, { x: 10, z: 20 });
+            const off = (pixels: number, angle: number) => ({
+                x: dot.x + pixels * Math.cos(angle),
+                y: dot.y + pixels * Math.sin(angle)
+            });
+            for (const angle of [0, 1, 2.5, 4]) {
+                expect(probe.under(view, VIEWPORT, off(PICK_RADIUS - 0.5, angle), ALL_SHOWN).entity).toMatchObject({ prefab: "pigking" });
+                expect(probe.under(view, VIEWPORT, off(PICK_RADIUS + 0.5, angle), ALL_SHOWN).entity).toBeNull();
             }
+        }
     );
 
     it("picks the nearest entity anywhere on the map or past its edge, like checking every one of them", () => {
@@ -122,17 +142,17 @@ describe("the map probe", () => {
             const point = { x: (random() - 0.5) * 520, z: (random() - 0.5) * 520 };
             const radius = random() * 60;
             const expected = world.prefabs
-                    .filter(({ name }) => name !== "pigking")
-                    .flatMap(({ name, positions }) => Array.from({ length: positions.length / 2 }, (_, index) => ({
-                        prefab: name,
-                        index,
-                        distance: Math.hypot(positions[2 * index] / 100 - point.x, positions[2 * index + 1] / 100 - point.z)
-                    })))
-                    .filter(({ distance }) => distance <= radius)
-                    .sort((a, b) => a.distance - b.distance)[0];
+                .filter(({ name }) => name !== "pigking")
+                .flatMap(({ name, positions }) => Array.from({ length: positions.length / 2 }, (_, index) => ({
+                    prefab: name,
+                    index,
+                    distance: Math.hypot(positions[2 * index] / 100 - point.x, positions[2 * index + 1] / 100 - point.z)
+                })))
+                .filter(({ distance }) => distance <= radius)
+                .sort((a, b) => a.distance - b.distance)[0];
             const entity = probe.at(point, radius, visibility).entity;
             const picked = (found: { prefab: string; index: number } | null | undefined) =>
-                    found ? { prefab: found.prefab, index: found.index } : null;
+                found ? { prefab: found.prefab, index: found.index } : null;
             expect(picked(entity)).toEqual(picked(expected));
         }
     });
@@ -163,15 +183,25 @@ const shownWith = (...setPieces: string[]) => ({ prefabs: ALL_SHOWN.prefabs, set
 describe("the map probe on set pieces", () => {
     it("says which set piece an entity is part of", () => {
         const probe = createMapProbe(KINGDOM);
-        expect(probe.at({ x: 10, z: 20 }, 1, ALL_SHOWN).entity).toMatchObject({ prefab: "pigking", setPiece: { index: 0, name: "DefaultPigking" } });
-        expect(probe.at({ x: 30, z: 30 }, 1, ALL_SHOWN).entity).toMatchObject({ prefab: "evergreen", setPiece: { index: 1, name: "Grove" } });
+        expect(probe.at({ x: 10, z: 20 }, 1, ALL_SHOWN).entity).toMatchObject({
+            prefab: "pigking",
+            setPiece: { index: 0, name: "DefaultPigking" }
+        });
+        expect(probe.at({ x: 30, z: 30 }, 1, ALL_SHOWN).entity).toMatchObject({
+            prefab: "evergreen",
+            setPiece: { index: 1, name: "Grove" }
+        });
         expect(probe.at({ x: 1.5, z: -4 }, 1, ALL_SHOWN).entity).toMatchObject({ prefab: "evergreen", setPiece: null });
     });
 
     it("picks the shown set piece whose bounds hold the point when there's no dot near it, with its details", () => {
         const probe = createMapProbe(KINGDOM);
         const found = probe.at({ x: 0, z: 30 }, 1, shownWith("DefaultPigking"));
-        expect(found).toMatchObject({ entity: null, tile: { name: "GRASS" }, setPiece: { index: 0, name: "DefaultPigking", source: "room" } });
+        expect(found).toMatchObject({
+            entity: null,
+            tile: { name: "GRASS" },
+            setPiece: { index: 0, name: "DefaultPigking", source: "room" }
+        });
         expect(found.setPiece!.members.map(({ prefab }) => prefab).sort()).toEqual(["pigking", "sanityrock"]);
         expect(probe.at({ x: -7, z: 30 }, 1, shownWith("DefaultPigking")).setPiece).toBeNull();
         expect(probe.at({ x: 0, z: 30 }, 1, ALL_SHOWN).setPiece).toBeNull();
@@ -186,13 +216,19 @@ describe("the map probe on set pieces", () => {
         const probe = createMapProbe(KINGDOM);
         const all = shownWith("DefaultPigking", "CropCircle", "Grove");
         expect(probe.at({ x: 4, z: 20 }, 1, all).setPiece).toMatchObject({ name: "CropCircle" });
-        expect(probe.at({ x: 4, z: 20 }, 1, shownWith("DefaultPigking")).setPiece).toMatchObject({ name: "DefaultPigking" });
+        expect(probe.at({
+            x: 4,
+            z: 20
+        }, 1, shownWith("DefaultPigking")).setPiece).toMatchObject({ name: "DefaultPigking" });
         expect(probe.at({ x: 27, z: 34 }, 0.1, all).setPiece).toMatchObject({ name: "Grove" });
     });
 
     it("picks the instances of the set piece searched for even when they're hidden", () => {
         const probe = createMapProbe(KINGDOM);
-        expect(probe.at({ x: 4, z: 20 }, 1, ALL_SHOWN, { kind: "set piece", name: "CropCircle" }).setPiece).toMatchObject({ name: "CropCircle" });
+        expect(probe.at({ x: 4, z: 20 }, 1, ALL_SHOWN, {
+            kind: "set piece",
+            name: "CropCircle"
+        }).setPiece).toMatchObject({ name: "CropCircle" });
         expect(probe.at({ x: 4, z: 20 }, 1, ALL_SHOWN, { kind: "prefab", name: "CropCircle" }).setPiece).toBeNull();
     });
 

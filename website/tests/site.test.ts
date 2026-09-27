@@ -7,7 +7,10 @@ import { api, type Call, randomToken, SECRETS, signIn, startSearch, useWorker, w
 useWorker();
 
 const CLIENT = fileURLToPath(new URL("../dist/client", import.meta.url));
-const SCRIPT = readdirSync(CLIENT, { recursive: true, encoding: "utf8" }).find((file) => file.startsWith("_next/") && file.endsWith(".js"));
+const SCRIPT = readdirSync(CLIENT, {
+    recursive: true,
+    encoding: "utf8"
+}).find((file) => file.startsWith("_next/") && file.endsWith(".js"));
 
 const SECURITY_HEADERS = {
     "cross-origin-opener-policy": "same-origin",
@@ -28,7 +31,11 @@ describe("every response carries the security headers", () => {
         { name: "an API response", path: "/api/me" },
         { name: "an API refusal", path: "/api/jobs" },
         { name: "a CSRF refusal", path: "/api/auth/logout", call: { method: "POST", site: "cross-site" } },
-        { name: "a runner refusal", path: `/api/runner/${crypto.randomUUID()}`, call: { headers: { Authorization: `Bearer ${randomToken()}` } } },
+        {
+            name: "a runner refusal",
+            path: `/api/runner/${crypto.randomUUID()}`,
+            call: { headers: { Authorization: `Bearer ${randomToken()}` } }
+        },
         { name: "an OPTIONS answer", path: "/api/jobs", call: { method: "OPTIONS" } },
         { name: "a login redirect", path: "/api/auth/login" }
     ];

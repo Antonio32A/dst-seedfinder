@@ -108,7 +108,10 @@ const SECTIONS: Record<string, (reader: Reader, world: GeneratedWorld) => void> 
         world.tiles = reader.copy(Uint16Array, world.width * world.height);
     },
     ENTS: (reader, world) => {
-        world.prefabs = repeat(reader, () => ({ name: reader.string(), positions: reader.copy(Int32Array, 2 * reader.u32()) }));
+        world.prefabs = repeat(reader, () => ({
+            name: reader.string(),
+            positions: reader.copy(Int32Array, 2 * reader.u32())
+        }));
     },
     WORM: (reader, world) => {
         world.links = reader.copy(Uint32Array, 2 * reader.u32());

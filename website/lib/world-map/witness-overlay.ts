@@ -44,7 +44,10 @@ function travel(from: WitnessInstance, to: WitnessInstance, wormholes: WormholeJ
 const CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
 
 const outline = ({ x, z }: WitnessTile): Line[] => {
-    const corners = CORNERS.map(([dx, dz]) => ({ x: x + dx * WORLD_UNITS_PER_TILE / 2, z: z + dz * WORLD_UNITS_PER_TILE / 2 }));
+    const corners = CORNERS.map(([dx, dz]) => ({
+        x: x + dx * WORLD_UNITS_PER_TILE / 2,
+        z: z + dz * WORLD_UNITS_PER_TILE / 2
+    }));
     return corners.map((from, corner) => ({ from, to: corners[(corner + 1) % corners.length], jump: false }));
 };
 
@@ -57,9 +60,15 @@ const joined = (parts: Parts[]): Parts => ({
 
 const SECTION_PARTS: SectionParts = {
     counts: ({ instances }) =>
-        joined(instances.map((instance) => (instance.near ? travel(instance, instance.near, []) : { ...NOTHING, instances: [instance] }))),
+        joined(instances.map((instance) => (instance.near ? travel(instance, instance.near, []) : {
+            ...NOTHING,
+            instances: [instance]
+        }))),
     tiles: ({ from_tile: from, to_tile: to }) =>
-        from && to ? { ...NOTHING, lines: [...outline(from), ...outline(to), { from: point(from), to: point(to), jump: false }] } : NOTHING,
+        from && to ? {
+            ...NOTHING,
+            lines: [...outline(from), ...outline(to), { from: point(from), to: point(to), jump: false }]
+        } : NOTHING,
     distances: ({ from, to, wormholes }) => (from && to ? travel(from, to, wormholes) : NOTHING),
     routes: ({ legs }) => joined(legs.map(({ from, to, wormholes }) => travel(from, to, wormholes)))
 };

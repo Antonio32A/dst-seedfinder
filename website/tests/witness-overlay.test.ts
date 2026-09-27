@@ -71,7 +71,11 @@ describe("a witness on the map", () => {
 
     it("marks a plain count's instances without lines", () => {
         const shape = witnessShape({ section: "counts", index: 0, ok: true, count: 1, instances: [at("cane", 3, 4)] });
-        expect(shape).toEqual({ marks: [{ prefab: "cane", at: { x: 3, z: 4 }, ok: true }], segments: [], focus: { x: 3, z: 4 } });
+        expect(shape).toEqual({
+            marks: [{ prefab: "cane", at: { x: 3, z: 4 }, ok: true }],
+            segments: [],
+            focus: { x: 3, z: 4 }
+        });
     });
 
     it("outlines a tile check's from and to tiles, and links them", () => {
@@ -86,7 +90,12 @@ describe("a witness on the map", () => {
         const corners = (segments: typeof shape.segments) => segments.map(({ from }) => [from.x, from.z]);
         expect(corners(shape.segments.slice(0, 4))).toEqual([[-524, -156], [-520, -156], [-520, -152], [-524, -152]]);
         expect(corners(shape.segments.slice(4, 8))).toEqual([[-512, -156], [-508, -156], [-508, -152], [-512, -152]]);
-        expect(shape.segments[8]).toEqual({ from: { x: -522, z: -154 }, to: { x: -510, z: -154 }, ok: true, jump: false });
+        expect(shape.segments[8]).toEqual({
+            from: { x: -522, z: -154 },
+            to: { x: -510, z: -154 },
+            ok: true,
+            jump: false
+        });
         expect(shape.marks).toEqual([]);
         expect(shape.focus).toEqual({ x: -516, z: -154 });
     });
@@ -107,9 +116,21 @@ describe("a witness on the map", () => {
         const [plain, near] = witnessShapes(
             [
                 { section: "counts", index: 0, ok: true, count: 3, instances: [] },
-                { section: "counts", index: 1, ok: true, count: 1, total: 2, instances: [{ ...at("rook", 1, 2), near: at("knight", 10, 0.5) }] }
+                {
+                    section: "counts",
+                    index: 1,
+                    ok: true,
+                    count: 1,
+                    total: 2,
+                    instances: [{ ...at("rook", 1, 2), near: at("knight", 10, 0.5) }]
+                }
             ],
-            { counts: [{ prefab: ["rook", "knight"], min: 1 }, { prefab: "rook", near: { prefab: "knight", within: 20 } }] },
+            {
+                counts: [{ prefab: ["rook", "knight"], min: 1 }, {
+                    prefab: "rook",
+                    near: { prefab: "knight", within: 20 }
+                }]
+            },
             world
         );
         expect(plain.marks).toEqual([

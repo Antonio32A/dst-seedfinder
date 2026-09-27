@@ -64,7 +64,12 @@ function Stops({ row, update }: { row: RouteRow; update: Update }) {
                     {row.stops.map((stop, index) => (
                             <li key={stop.key} className="route-stop">
                                 <PrefabSetField label={`Stop ${index + 1}`} ids={stop.prefabs}
-                                                onChange={(prefabs) => update({ stops: replaceByKey(row.stops, { ...stop, prefabs }) })}
+                                                onChange={(prefabs) => update({
+                                                    stops: replaceByKey(row.stops, {
+                                                        ...stop,
+                                                        prefabs
+                                                    })
+                                                })}
                                                 blocked={routeConflict(row, index)} autoOpen/>
                                 <StopActions row={row} index={index} update={update}
                                              onRemove={() => removeStop(stop.key)}/>

@@ -107,7 +107,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             event.preventDefault();
             const box = canvas.getBoundingClientRect();
             const pixels = event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? PIXELS_PER_LINE : 1);
-            move(zoomAt(view, viewport, { x: event.clientX - box.left, y: event.clientY - box.top }, Math.exp(-pixels * ZOOM_PER_PIXEL)));
+            move(zoomAt(view, viewport, {
+                x: event.clientX - box.left,
+                y: event.clientY - box.top
+            }, Math.exp(-pixels * ZOOM_PER_PIXEL)));
         }
     };
     for (const [type, listener] of Object.entries(listeners)) canvas.addEventListener(type, listener as EventListener, { passive: false });
@@ -144,7 +147,12 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             highlights.highlight(points);
             redraw();
         },
-        centre: (point, scale = 0) => move({ ...view, centerX: point.x, centerZ: point.z, scale: Math.max(view.scale, scale) }),
+        centre: (point, scale = 0) => move({
+            ...view,
+            centerX: point.x,
+            centerZ: point.z,
+            scale: Math.max(view.scale, scale)
+        }),
         watch: (listener) => {
             watchers.add(listener);
             listener(view, viewport);

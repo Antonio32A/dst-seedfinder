@@ -288,10 +288,19 @@ export type SeededJob = Partial<Pick<JobRow, "status" | "max_cost" | "cost" | "u
 export async function seedJob(userId: string, fields: SeededJob = {}): Promise<string> {
     const id = randomUUID();
     const now = Date.now();
-    const row = { status: "done", max_cost: 20000, cost: 0, updated_at: now, started_at: null, machine: null, finished_at: now, ...fields };
+    const row = {
+        status: "done",
+        max_cost: 20000,
+        cost: 0,
+        updated_at: now,
+        started_at: null,
+        machine: null,
+        finished_at: now, ...fields
+    };
     await db()
         .prepare(
-            `INSERT INTO jobs (id, user_id, status, config, wanted, max_cost, cost, created_at, updated_at, started_at, machine, finished_at)
+            `INSERT INTO jobs (id, user_id, status, config, wanted, max_cost, cost, created_at, updated_at, started_at,
+                               machine, finished_at)
              VALUES (?, ?, ?, '{"version":1,"platform":"windows"}', 1, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(id, userId, row.status, row.max_cost, row.cost, now, row.updated_at, row.started_at, row.machine, row.finished_at)

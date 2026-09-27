@@ -10,7 +10,10 @@ export interface EvalRequest {
 
 export type EvalReply = { type: "evaluated"; evaluation: WorldEval } | { type: "failed"; error: string };
 
-export type EvalLoad = { status: "loading" } | { status: "ready"; evaluation: WorldEval } | { status: "failed"; error: string };
+export type EvalLoad = { status: "loading" } | { status: "ready"; evaluation: WorldEval } | {
+    status: "failed";
+    error: string
+};
 
 /**
  * Evaluates `config` on a world dump's bytes in a worker, like `seedfinder world eval`. Aborting the signal stops the

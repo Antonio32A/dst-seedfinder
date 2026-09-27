@@ -34,7 +34,12 @@ describe("the prefab search", () => {
             { kind: "prefab", name: "pigking", displayName: "Pig King", count: 1 },
             { kind: "prefab", name: "pigtorch", displayName: "Pig Torch", count: 2 }
         ]);
-        expect(searchPrefabs(WORLD, "WORM")).toEqual([{ kind: "prefab", name: "wormhole", displayName: "Worm Hole", count: 2 }]);
+        expect(searchPrefabs(WORLD, "WORM")).toEqual([{
+            kind: "prefab",
+            name: "wormhole",
+            displayName: "Worm Hole",
+            count: 2
+        }]);
     });
 
     it("finds prefabs the catalog doesn't know, by their id", () => {
@@ -53,7 +58,7 @@ describe("the prefab search", () => {
 
     it("gives a prefab's instances in savedata order", () => {
         expect(instancesOf(WORLD, { kind: "prefab", name: "evergreen" }))
-                .toEqual([{ x: 1.5, z: -4 }, { x: -0.01, z: 0.25 }, { x: 30, z: 30 }]);
+            .toEqual([{ x: 1.5, z: -4 }, { x: -0.01, z: 0.25 }, { x: 30, z: 30 }]);
         expect(instancesOf(WORLD, { kind: "prefab", name: "not_in_this_world" })).toEqual([]);
     });
 
@@ -63,18 +68,26 @@ describe("the prefab search", () => {
             { kind: "prefab", name: "pigtorch", displayName: "Pig Torch", count: 2 },
             { kind: "set piece", name: "DefaultPigking", displayName: "DefaultPigking", count: 1 }
         ]);
-        expect(searchPrefabs(SET_WORLD, "moose")).toEqual([{ kind: "set piece", name: "MooseNest", displayName: "MooseNest", count: 2 }]);
+        expect(searchPrefabs(SET_WORLD, "moose")).toEqual([{
+            kind: "set piece",
+            name: "MooseNest",
+            displayName: "MooseNest",
+            count: 2
+        }]);
         expect(searchPrefabs(WORLD, "moose")).toEqual([]);
     });
 
     it("gives a set piece's instances at their centres, in placement order", () => {
-        expect(instancesOf(SET_WORLD, { kind: "set piece", name: "MooseNest" })).toEqual([{ x: 140, z: -144 }, { x: -60, z: 168 }]);
+        expect(instancesOf(SET_WORLD, { kind: "set piece", name: "MooseNest" })).toEqual([{ x: 140, z: -144 }, {
+            x: -60,
+            z: 168
+        }]);
         expect(instancesOf(WORLD, { kind: "set piece", name: "MooseNest" })).toEqual([]);
     });
 
     it("cycles through every instance in savedata order, forwards from the first and backwards from the last", () => {
         const visit = (step: number) => Array.from({ length: 4 }).reduce<number[]>((visited) =>
-                [...visited, stepInstance(visited.at(-1) ?? null, 3, step)], []);
+            [...visited, stepInstance(visited.at(-1) ?? null, 3, step)], []);
         expect(visit(1)).toEqual([0, 1, 2, 0]);
         expect(visit(-1)).toEqual([2, 1, 0, 2]);
     });

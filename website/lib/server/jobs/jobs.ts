@@ -75,9 +75,14 @@ export async function loadUserJob(db: D1Database, id: string, userId: string): P
 export async function updateActiveJob(db: D1Database, id: string, update: ActiveJobUpdate): Promise<void> {
     await db
         .prepare(
-            `UPDATE jobs SET status = ?, instance_id = COALESCE(?, instance_id), machine = COALESCE(?, machine),
-         started_at = COALESCE(?, started_at), updated_at = ?
-       WHERE id = ? AND cost IS NULL`
+            `UPDATE jobs
+             SET status = ?,
+                 instance_id = COALESCE(?, instance_id),
+                 machine = COALESCE(?, machine),
+                 started_at  = COALESCE(?, started_at),
+                 updated_at  = ?
+             WHERE id = ?
+               AND cost IS NULL`
         )
         .bind(
             update.status,
@@ -113,9 +118,12 @@ export async function settleJob(
             .bind(settlement.status, settlement.costUnits, settlement.result, settlement.error, now, now, job.id),
         db
             .prepare(
-                `DELETE FROM jobs WHERE user_id = ?1 AND cost IS NOT NULL AND id NOT IN (
-           SELECT id FROM jobs WHERE user_id = ?1 AND cost IS NOT NULL ORDER BY finished_at DESC LIMIT ?2
-         )`
+                `DELETE
+                 FROM jobs
+                 WHERE user_id = ?1
+                   AND cost IS NOT NULL
+                   AND id NOT IN
+                       (SELECT id FROM jobs WHERE user_id = ?1 AND cost IS NOT NULL ORDER BY finished_at DESC LIMIT ?2)`
             )
             .bind(job.user_id, MAX_ACTIVE_SEARCHES)
     ]);

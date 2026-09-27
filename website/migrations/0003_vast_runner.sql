@@ -1,7 +1,8 @@
 UPDATE users
 SET credit_units = MIN(100000, credit_units + (SELECT COALESCE(SUM(max_cost), 0)
                                                FROM jobs
-                                               WHERE jobs.user_id = users.id AND jobs.cost IS NULL));
+                                               WHERE jobs.user_id = users.id
+                                                 AND jobs.cost IS NULL));
 
 CREATE TABLE jobs_new
 (

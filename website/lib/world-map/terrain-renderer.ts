@@ -2,7 +2,7 @@ import { TILES } from "@/lib/catalog/world";
 import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "./gl-program";
 import { landLayers } from "./land-layers";
 import type { MapView, Size } from "./map-view";
-import { oceanTextures, type OceanSurface } from "./ocean-textures";
+import { type OceanSurface, oceanTextures } from "./ocean-textures";
 import type { GeneratedWorld } from "./world-dump";
 
 const MAP_EDGE = "/world-map/map_edge.png";
@@ -137,7 +137,10 @@ export interface TerrainRenderer {
 async function loadTexture(gl: WebGL2RenderingContext, url: string, filter: GLenum) {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`The map art couldn't be downloaded: ${url} answered ${response.status}.`);
-    const image = await createImageBitmap(await response.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    const image = await createImageBitmap(await response.blob(), {
+        premultiplyAlpha: "none",
+        colorSpaceConversion: "none"
+    });
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + NOISE_UNIT);
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -166,9 +169,9 @@ function smoothTexture(gl: WebGL2RenderingContext, unit: number): WebGLTexture {
  * and it calls `onBuilt` once it can.
  */
 export function createTerrainRenderer(
-        gl: WebGL2RenderingContext,
-        world: GeneratedWorld,
-        onBuilt: () => void
+    gl: WebGL2RenderingContext,
+    world: GeneratedWorld,
+    onBuilt: () => void
 ): TerrainRenderer {
     const art = (tile: number) => {
         const name = world.tileNames.get(tile) ?? "";
@@ -266,12 +269,12 @@ export function createTerrainRenderer(
     const loads = [loadTexture(gl, MAP_EDGE, gl.NEAREST), loadTexture(gl, PAPER, gl.LINEAR),
         ...urls.map((url) => loadTexture(gl, url, gl.NEAREST))];
     const built = Promise.all(loads)
-            .then(([mapEdge, paper, ...noises]) => {
-                if (disposed) return;
-                build(mapEdge, paper, new Map(urls.map((url, index) => [url, noises[index]])));
-                onBuilt();
-            })
-            .finally(() => loads.forEach((load) => load.then((texture) => gl.deleteTexture(texture), () => undefined)));
+        .then(([mapEdge, paper, ...noises]) => {
+            if (disposed) return;
+            build(mapEdge, paper, new Map(urls.map((url, index) => [url, noises[index]])));
+            onBuilt();
+        })
+        .finally(() => loads.forEach((load) => load.then((texture) => gl.deleteTexture(texture), () => undefined)));
 
     return {
         built,

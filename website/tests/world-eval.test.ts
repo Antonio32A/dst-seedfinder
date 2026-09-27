@@ -6,7 +6,15 @@ const PIGKING = { prefab: "pigking", index: 0, x: -512, z: -120 };
 
 const TASKS = { section: "tasks", index: 0, ok: true };
 const COUNT = { section: "counts", index: 0, ok: false, count: 0, instances: [] };
-const DISTANCE = { section: "distances", index: 0, ok: true, distance: 822.774, from: PORTAL, to: PIGKING, wormholes: [] };
+const DISTANCE = {
+    section: "distances",
+    index: 0,
+    ok: true,
+    distance: 822.774,
+    from: PORTAL,
+    to: PIGKING,
+    wormholes: []
+};
 
 const output = (fields: object) => `1 ${JSON.stringify({ platform: "linux", ...fields })}`;
 
