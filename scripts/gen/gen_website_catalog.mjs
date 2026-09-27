@@ -52,8 +52,17 @@ const landTileRow = ({ name, display_name, in_forest_worlds }) => ({
     ...((in_forest_worlds?.worlds ?? 0) > 0 ? { inDefaultWorlds: true } : {}),
 });
 
-const mapTileEntry = ({ name, display_name, class: kind, minimap_color }) =>
-    [name, { displayName: display_name ?? titleCase(name), kind, color: minimap_color }];
+const mapTileEntry = ({ name, display_name, class: kind, color, minimap_noise, minimap_rank, ocean_minimap_color }) => [
+    name,
+    {
+        displayName: display_name ?? titleCase(name),
+        kind,
+        color,
+        ...(minimap_noise ? { minimapNoise: `/world-map/noise/${minimap_noise}.png` } : {}),
+        ...(minimap_rank ? { minimapRank: minimap_rank } : {}),
+        ...(ocean_minimap_color ? { oceanMinimapColor: ocean_minimap_color } : {}),
+    },
+];
 
 const MAX_LINE_LENGTH = 120;
 const INDENT = "    ";
@@ -110,6 +119,9 @@ export interface MapTile {
     displayName: string;
     kind: "land" | "ocean" | "impassable" | "invalid";
     color: [r: number, g: number, b: number];
+    minimapNoise?: string;
+    minimapRank?: number;
+    oceanMinimapColor?: [r: number, g: number, b: number];
 }
 
 export interface NamedAnchor {

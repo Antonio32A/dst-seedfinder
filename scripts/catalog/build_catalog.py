@@ -27,6 +27,7 @@ GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/s
 
 sys.path.insert(0, HERE)
 import ktex  # noqa: E402
+import map_textures  # noqa: E402
 import names as handnames  # noqa: E402
 from summarize_world import summarize  # noqa: E402
 
@@ -642,32 +643,30 @@ def build_tasks(static):
     return out
 
 
-MINIMAP_PAPER = "images/minimap_paper.tex"
-OCEAN_NOISE = "ocean_noise.tex"
-
-
-def minimap_texture_means(static):
+def paper_colour():
     if not os.path.isdir(GAME_DIR):
-        return {}
-    textures = {t.get("minimap_noise", MINIMAP_PAPER) for t in static["tiles"].values()} - {OCEAN_NOISE}
-    means = {}
-    for name in sorted(textures):
-        path = os.path.join(GAME_DIR, "data", name)
-        with open(path if os.path.exists(path) else os.path.join(GAME_DIR, "data/levels/textures", name), "rb") as f:
-            means[name] = ktex.mean_rgb(f.read())
-    return means
+        return None
+    with open(os.path.join(GAME_DIR, "data", map_textures.MINIMAP_PAPER), "rb") as f:
+        return list(ktex.mean_rgb(f.read()))
 
 
-def minimap_color(tile, means):
-    noise = tile.get("minimap_noise", MINIMAP_PAPER)
-    if noise == OCEAN_NOISE:
-        return tile["ground_minimap_color"][:3]
-    return list(means[noise]) if noise in means else None
+def ocean_minimap_color(tile):
+    return tile["ground_minimap_color"][:3] if tile["ocean"] and "ground_minimap_color" in tile else None
+
+
+def land_noise(tile):
+    return tile["minimap_noise"].removesuffix(".tex") if tile["land"] and "minimap_noise" in tile else None
+
+
+def tile_colour(tile, paper):
+    if land_noise(tile) and os.path.isdir(GAME_DIR):
+        return map_textures.land_colour(GAME_DIR, land_noise(tile))
+    return ocean_minimap_color(tile) or paper
 
 
 def build_tiles(static, worlds):
     names = static["names"]
-    means = minimap_texture_means(static)
+    paper = paper_colour()
     seen = collections.defaultdict(list)
     n_with_tiles = 0
     for w in worlds.values():
@@ -687,7 +686,10 @@ def build_tiles(static, worlds):
             "land": t["land"], "ocean": t["ocean"], "noise": t["noise"], "legacy": t.get("legacy", False),
             "display_name": label or handnames.TILE_NAMES.get(name) or (t.get("ground_name") if t.get("ground_name") != name else None),
             "turf_prefab": "turf_" + turf if turf else None,
-            "minimap_color": minimap_color(t, means),
+            "color": tile_colour(t, paper),
+            "minimap_noise": land_noise(t) if counts else None,
+            "minimap_rank": t.get("minimap_rank") if t["land"] else None,
+            "ocean_minimap_color": ocean_minimap_color(t),
             "in_forest_worlds": {"worlds": len(counts), "share": round(len(counts) / n_with_tiles, 4) if n_with_tiles else 0,
                                  "min_tiles": min(counts) if counts else 0, "max_tiles": max(counts) if counts else 0,
                                  "median_tiles": statistics.median(counts) if counts else 0},

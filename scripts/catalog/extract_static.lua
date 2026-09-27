@@ -560,8 +560,8 @@ for k, v in pairs(custom_names) do customization_proxies[k] = v end
 -- Tiles
 
 local function layer_properties(layers, id)
-    for _, layer in ipairs(layers or {}) do
-        if layer[1] == id then return layer[2] end
+    for rank, layer in ipairs(layers or {}) do
+        if layer[1] == id then return layer[2], rank end
     end
     return {}
 end
@@ -572,6 +572,7 @@ for name, id in pairs(GetWorldTileMap()) do
     local ground_names = rawget(_G, "GROUND_NAMES")
     local turf = ground_tiles and ground_tiles.turf and ground_tiles.turf[id]
     local ground_colors = layer_properties(ground_tiles.ground, id).colors
+    local minimap_layer, minimap_rank = layer_properties(ground_tiles.minimap, id)
     tiles_out[name] = {
         id = id,
         land = TileGroupManager:IsLandTile(id),
@@ -582,7 +583,8 @@ for name, id in pairs(GetWorldTileMap()) do
         ground_name = ground_names and ground_names[id] or nil,
         turf = turf and turf.name or nil,
         legacy = WORLD_TILES[name] == nil,
-        minimap_noise = layer_properties(ground_tiles.minimap, id).noise_texture,
+        minimap_noise = minimap_layer.noise_texture,
+        minimap_rank = minimap_rank,
         ground_minimap_color = ground_colors and ground_colors.minimap_color or nil,
     }
 end
