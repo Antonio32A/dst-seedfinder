@@ -21,12 +21,13 @@ Build config:
 
 ## Configuration
 
-The website sets these on the instance when it creates it; `run.sh` refuses to start without them:
-
 - `CALLBACK_URL`: the backend URL for this job
 - `RUNNER_TOKEN`: the job's bearer token
 - `JOB_LIMIT`, `JOB_TIME_LIMIT`, `JOB_START_SEED`: passed to `seedfinder world find` as `--limit`, `--time-limit` and
   `--start-seed`
 
-The package is private, so the website also needs `GHCR_USER` (the GitHub user that owns it) and `GHCR_PULL_TOKEN` (a
-token with only `read:packages`; it ends up on every instance's host) to let Vast.ai pull it.
+The package is private, so the website also needs:
+- `GHCR_USER` (the GitHub user that owns it) 
+- `GHCR_PULL_TOKEN` (a token with only `read:packages`) to let Vast.ai pull it. This will be shared between all
+machines/instances, but it's not a big deal since it just contains this image + the API will only let you use
+the same callback once.

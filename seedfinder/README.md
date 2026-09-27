@@ -1,8 +1,7 @@
 # seedfinder
 
-The CLI that searches the 2^32 seeds of a Don't Starve Together forest (build 747465, default settings only) for
-worlds matching a filter. `setpiece` filters on set pieces from the command line, `world` filters on the whole world
-with a JSON config, see [docs/config.md](../docs/config.md).
+The real deal. 
+Searches all 2^32 seeds of a DST forest world for worlds matching a filter (see [docs/config.md](../docs/config.md)).
 
 ## Requirements
 
@@ -13,7 +12,7 @@ with a JSON config, see [docs/config.md](../docs/config.md).
 - 16 GB of RAM for the build (40 GB free for the trace build).
 - Only for the WebAssembly build: [Emscripten](https://emscripten.org) 3.1.35 or newer (`emcc` on `PATH`, or `EMCC`).
 
-Only to regenerate `seedfinder/data/` (it's committed, a normal build doesn't need this):
+Only to regenerate `seedfinder/data/` (it's committed, since it only changes every DST update):
 - Don't Starve Together installed through Steam (`DST_GAME` overrides the install path).
 - python3, clang, curl, tar, unzip.
 
@@ -27,8 +26,8 @@ scripts/bend.sh seedfinder/main.bend --check-only  # type-check only
 scripts/proof.sh -j 3                              # the laws (LAWS.bend, laws/), run before committing
 ```
 
-- Use `scripts/build.sh`, not a plain `scripts/bend.sh seedfinder/main.bend -o ...`, or the compiler eats all your RAM.
-- If the build fails with "machine stack overflowed", retry it.
+- Use `scripts/build.sh`, not a plain `scripts/bend.sh seedfinder/main.bend -o ...`, or the compiler eats all your RAM (yum!).
+- If the build fails with "machine stack overflowed", retry it. Yes, this is shitty. No, I don't know what causes it.
 - The website's build copies `build/wasm/`, so build wasm first.
 
 A binary built on a new distro needs a recent glibc. To run it somewhere else, emit the C and compile it there:
