@@ -1,5 +1,5 @@
-import { buildProgram, vertexBuffer } from "./gl-program";
-import { type MapView, type Size, worldBounds, worldToScreen } from "./map-view";
+import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "./gl-program";
+import { type MapView, type Size, worldBounds } from "./map-view";
 import { tilePalette } from "./tile-palette";
 import type { GeneratedWorld } from "./world-dump";
 
@@ -8,15 +8,12 @@ const PALETTE_ROW = 256;
 const VERTEX_SHADER = `#version 300 es
 in vec2 corner;
 uniform vec2 gridSize;
-uniform vec2 origin;
-uniform vec2 alongX;
-uniform vec2 alongZ;
-uniform vec2 viewport;
+uniform vec4 bounds;
 out vec2 grid;
+${VIEW_TRANSFORM}
 
 void main() {
-    vec2 screen = origin + corner.x * alongX + corner.y * alongZ;
-    gl_Position = vec4(2.0 * screen.x / viewport.x - 1.0, 1.0 - 2.0 * screen.y / viewport.y, 0.0, 1.0);
+    gl_Position = clipped(onScreen(bounds.xy + corner * bounds.zw));
     grid = corner * gridSize;
 }`;
 
@@ -76,18 +73,13 @@ export function createTileRenderer(gl: WebGL2RenderingContext, world: GeneratedW
 
     const bounds = worldBounds(world);
     gl.uniform2f(uniform("gridSize"), world.width, world.height);
+    gl.uniform4f(uniform("bounds"), bounds.left, bounds.top, bounds.width, bounds.height);
 
     return {
         draw: (view, viewport) => {
             gl.useProgram(program);
             gl.bindVertexArray(vertices);
-            const origin = worldToScreen(view, viewport, { x: bounds.left, z: bounds.top });
-            const xEnd = worldToScreen(view, viewport, { x: bounds.left + bounds.width, z: bounds.top });
-            const zEnd = worldToScreen(view, viewport, { x: bounds.left, z: bounds.top + bounds.height });
-            gl.uniform2f(uniform("origin"), origin.x, origin.y);
-            gl.uniform2f(uniform("alongX"), xEnd.x - origin.x, xEnd.y - origin.y);
-            gl.uniform2f(uniform("alongZ"), zEnd.x - origin.x, zEnd.y - origin.y);
-            gl.uniform2f(uniform("viewport"), viewport.width, viewport.height);
+            setViewUniforms(gl, program, view, viewport);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         },
         dispose: () => {

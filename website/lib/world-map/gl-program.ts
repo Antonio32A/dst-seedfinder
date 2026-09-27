@@ -1,3 +1,20 @@
+import { type MapView, type Size, worldToScreen } from "./map-view";
+
+/** The GLSL that places a world point `(x, z)` on screen, from the uniforms {@link setViewUniforms} sets. */
+export const VIEW_TRANSFORM = `
+uniform vec2 origin;
+uniform vec2 alongX;
+uniform vec2 alongZ;
+uniform vec2 viewport;
+
+vec2 onScreen(vec2 world) {
+    return origin + world.x * alongX + world.y * alongZ;
+}
+
+vec4 clipped(vec2 screen) {
+    return vec4(2.0 * screen.x / viewport.x - 1.0, 1.0 - 2.0 * screen.y / viewport.y, 0.0, 1.0);
+}`;
+
 function compile(gl: WebGL2RenderingContext, type: GLenum, source: string) {
     const shader = gl.createShader(type)!;
     gl.shaderSource(shader, source);
@@ -33,4 +50,16 @@ export function vertexBuffer(
     gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
     gl.vertexAttribDivisor(location, divisor);
     return buffer;
+}
+
+/** Sets the {@link VIEW_TRANSFORM} uniforms of `program`, the program in use, to draw at `view` from {@link worldToScreen}. */
+export function setViewUniforms(gl: WebGL2RenderingContext, program: WebGLProgram, view: MapView, viewport: Size): void {
+    const origin = worldToScreen(view, viewport, { x: 0, z: 0 });
+    const unitX = worldToScreen(view, viewport, { x: 1, z: 0 });
+    const unitZ = worldToScreen(view, viewport, { x: 0, z: 1 });
+    const uniform = (name: string) => gl.getUniformLocation(program, name);
+    gl.uniform2f(uniform("origin"), origin.x, origin.y);
+    gl.uniform2f(uniform("alongX"), unitX.x - origin.x, unitX.y - origin.y);
+    gl.uniform2f(uniform("alongZ"), unitZ.x - origin.x, unitZ.y - origin.y);
+    gl.uniform2f(uniform("viewport"), viewport.width, viewport.height);
 }

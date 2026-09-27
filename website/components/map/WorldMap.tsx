@@ -10,6 +10,7 @@ import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/map-canvas";
 import type { GeneratedWorld } from "@/lib/world-map/world-dump";
 import MapTooltip from "./MapTooltip";
 import PrefabSearch from "./PrefabSearch";
+import WitnessPanel from "./WitnessPanel";
 
 const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> = {
     loading: "Generating the world in your browser...",
@@ -17,7 +18,12 @@ const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> 
     unsupported: "This browser can't run the seedfinder: it needs WebAssembly threads."
 };
 
-function WorldCanvas({ world }: { world: GeneratedWorld }) {
+function WorldCanvas({ world, bytes, platform, share }: {
+    world: GeneratedWorld;
+    bytes: Uint8Array;
+    platform: Platform;
+    share?: string;
+}) {
     const canvas = useRef<HTMLCanvasElement>(null);
     const map = useRef<MapCanvas | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -76,11 +82,12 @@ function WorldCanvas({ world }: { world: GeneratedWorld }) {
                             </Toggle>
                     ))}
                 </div>
+                {share !== undefined && <WitnessPanel share={share} platform={platform} world={world} bytes={bytes} map={mounted}/>}
             </div>
     );
 }
 
-export default function WorldMap({ platform, seed }: { platform: Platform; seed: number }) {
+export default function WorldMap({ platform, seed, share }: { platform: Platform; seed: number; share?: string }) {
     const [load, setLoad] = useState<WorldLoad>({ status: "loading" });
 
     useEffect(() => {
@@ -92,7 +99,7 @@ export default function WorldMap({ platform, seed }: { platform: Platform; seed:
         return () => controller.abort();
     }, [platform, seed]);
 
-    if (load.status === "ready") return <WorldCanvas world={load.world}/>;
+    if (load.status === "ready") return <WorldCanvas world={load.world} bytes={load.bytes} platform={platform} share={share}/>;
     if (load.status === "failed") return <p className="notice notice--error" role="alert">{load.error}</p>;
     return <p className={load.status === "loading" ? "hint" : "notice notice--warning"} role="status">{NOTICES[load.status]}</p>;
 }

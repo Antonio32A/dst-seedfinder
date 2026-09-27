@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { encodeShareParam } from "../lib/criteria/search-state";
 import { api, type Call, randomToken, SECRETS, signIn, startSearch, useWorker, worker } from "./harness";
 
 useWorker();
@@ -47,6 +48,13 @@ describe("every response carries the security headers", () => {
         const response = await api("/map/windows/1");
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toMatch(/^text\/html/);
+        expect(await response.text()).toContain("DST Seedfinder");
+        expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
+    });
+
+    it("on a world map with a search, which serves the app", async () => {
+        const response = await api(`/map/linux/1?c=${encodeShareParam({ version: 1, platform: "windows" })}`);
+        expect(response.status).toBe(200);
         expect(await response.text()).toContain("DST Seedfinder");
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
     });

@@ -1,7 +1,7 @@
 import { type EntityLayer, MAP_GROUPS } from "./entity-layer";
-import { buildProgram, vertexBuffer } from "./gl-program";
+import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "./gl-program";
 import type { GroupVisibility } from "./group-visibility";
-import { type MapView, type Size, worldToScreen } from "./map-view";
+import type { MapView, Size } from "./map-view";
 
 const MIN_DOT_RADIUS = 2.5;
 const MAX_DOT_RADIUS = 8;
@@ -10,20 +10,8 @@ const LINK_HALF_WIDTH = 1.25;
 
 const unit = (channel: number) => channel / 255;
 
-const TRANSFORM = `
-uniform vec2 origin;
-uniform vec2 alongX;
-uniform vec2 alongZ;
-uniform vec2 viewport;
+const TRANSFORM = `${VIEW_TRANSFORM}
 uniform uint shown;
-
-vec2 onScreen(vec2 world) {
-    return origin + world.x * alongX + world.y * alongZ;
-}
-
-vec4 clipped(vec2 screen) {
-    return vec4(2.0 * screen.x / viewport.x - 1.0, 1.0 - 2.0 * screen.y / viewport.y, 0.0, 1.0);
-}
 
 bool hidden(float group) {
     return ((shown >> uint(group)) & 1u) == 0u;
@@ -120,17 +108,10 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
 
     return {
         draw: (view, viewport) => {
-            const origin = worldToScreen(view, viewport, { x: 0, z: 0 });
-            const unitX = worldToScreen(view, viewport, { x: 1, z: 0 });
-            const unitZ = worldToScreen(view, viewport, { x: 0, z: 1 });
             for (const program of programs) {
                 gl.useProgram(program);
-                const uniform = (name: string) => gl.getUniformLocation(program, name);
-                gl.uniform2f(uniform("origin"), origin.x, origin.y);
-                gl.uniform2f(uniform("alongX"), unitX.x - origin.x, unitX.y - origin.y);
-                gl.uniform2f(uniform("alongZ"), unitZ.x - origin.x, unitZ.y - origin.y);
-                gl.uniform2f(uniform("viewport"), viewport.width, viewport.height);
-                gl.uniform1ui(uniform("shown"), shown);
+                setViewUniforms(gl, program, view, viewport);
+                gl.uniform1ui(gl.getUniformLocation(program, "shown"), shown);
             }
             gl.enable(gl.BLEND);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);

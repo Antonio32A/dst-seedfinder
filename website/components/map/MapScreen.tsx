@@ -11,7 +11,7 @@ const WorldMap = dynamic(() => import("./WorldMap"), {
     loading: () => <p className="hint" role="status">Loading the map...</p>
 });
 
-export default function MapScreen({ route }: { route: MapRoute }) {
+export default function MapScreen({ route, share }: { route: MapRoute; share?: string }) {
     return (
             <main className="content">
                 <header className="header">
@@ -32,7 +32,7 @@ export default function MapScreen({ route }: { route: MapRoute }) {
                             <h2 id="map-title" className="section-title">
                                 Seed {route.seed} on {PLATFORM_NAMES[route.platform]}
                             </h2>
-                            <WorldMap platform={route.platform} seed={route.seed}/>
+                            <WorldMap platform={route.platform} seed={route.seed} share={share}/>
                         </section>
                 )}
             </main>

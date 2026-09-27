@@ -1,6 +1,6 @@
 export interface SeedfinderFS {
     mkdirTree: (path: string) => void;
-    writeFile: (path: string, data: string) => void;
+    writeFile: (path: string, data: string | Uint8Array) => void;
     readFile: (path: string) => Uint8Array<ArrayBuffer>;
 }
 
@@ -8,7 +8,7 @@ export interface SeedfinderRun {
     module: WebAssembly.Module;
     /** The runtime's arguments, then `--`, then the seedfinder's own. */
     args: string[];
-    files?: Record<string, string>;
+    files?: Record<string, string | Uint8Array>;
     print?: (line: string) => void;
     printErr?: (line: string) => void;
 }

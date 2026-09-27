@@ -12,7 +12,7 @@ export type DumpReply = { type: "dump"; bytes: Uint8Array<ArrayBuffer> } | { typ
 
 export type WorldLoad =
     | { status: "loading" }
-    | { status: "ready"; world: GeneratedWorld }
+    | { status: "ready"; world: GeneratedWorld; bytes: Uint8Array }
     | { status: "gave-up" }
     | { status: "unsupported" }
     | { status: "failed"; error: string };
@@ -44,7 +44,7 @@ export async function loadWorld(seed: number, platform: Platform, signal: AbortS
         worker.terminate();
         if (reply.type === "failed") throw new Error(`The world generation stopped unexpectedly: ${reply.error}`);
         const dump = parseWorldDump(reply.bytes);
-        return dump.status === "generated" ? { status: "ready", world: dump } : { status: "gave-up" };
+        return dump.status === "generated" ? { status: "ready", world: dump, bytes: reply.bytes } : { status: "gave-up" };
     } catch (error) {
         return { status: "failed", error: message(error) };
     }

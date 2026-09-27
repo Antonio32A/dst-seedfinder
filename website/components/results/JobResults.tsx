@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { memo, useId, useMemo, useState } from "react";
 import { SET_PIECE_BY_ID, SET_PIECE_KINDS, SWAPS, TASK_BY_ID } from "@/lib/catalog/level";
-import { DEFAULT_PLATFORM, type Platform } from "@/lib/config/seedfinder-config";
+import { DEFAULT_PLATFORM, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import type { JobView } from "@/lib/jobs/job-events";
 import {
     type LevelTable,
@@ -13,10 +13,9 @@ import {
     type SearchOutput,
     SEED_SPACE,
     type StopReason,
-    type Witness,
-    type WitnessInstance,
-    type WitnessSection
+    type Witness
 } from "@/lib/jobs/job-result";
+import { describeWitness, plural } from "@/lib/jobs/witness-text";
 import { mapPath } from "@/lib/world-map/map-route";
 
 export type ShownJob = Pick<JobView, "status" | "config" | "result" | "error">;
@@ -28,11 +27,8 @@ export interface JobResultsProps {
 }
 
 const HITS_PREVIEW = 10;
-const UNITS_PER_TILE = 4;
 
 const COMPACT = new Intl.NumberFormat("en", { notation: "compact", maximumSignificantDigits: 3 });
-const WHOLE = new Intl.NumberFormat();
-const DISTANCE = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
 const STOP_TEXT: Record<StopReason, string> = {
     limit: "Stopped: found as many as wanted",
@@ -52,35 +48,6 @@ const ACTIVE_TEXT: Partial<Record<JobView["status"], string>> = {
     queued: "Seeds show up here once the search starts.",
     starting: "Seeds show up here once the search starts.",
     running: "Seeds show up here as soon as they're found."
-};
-
-const WITNESS_LABELS: Record<WitnessSection, string> = {
-    counts: "Count",
-    distances: "Distance",
-    tiles: "Tiles",
-    routes: "Route"
-};
-
-const plural = (count: number, one: string, many = `${one}s`) => `${WHOLE.format(count)} ${count === 1 ? one : many}`;
-
-const distance = (units: number) => `${DISTANCE.format(units)} units (${DISTANCE.format(units / UNITS_PER_TILE)} tiles)`;
-
-const chain = (instances: (WitnessInstance | undefined)[]) =>
-        instances.map((instance) => instance?.prefab ?? "?").join(" -> ");
-
-const jumps = (count: number) => (count > 0 ? `, ${plural(count, "wormhole jump")}` : "");
-
-type WitnessFigures = { [S in WitnessSection]: (witness: Extract<Witness, { section: S }>) => string };
-
-const WITNESS_FIGURES: WitnessFigures = {
-    counts: (witness) =>
-            witness.total === undefined ? `${WHOLE.format(witness.count)} found` : `${WHOLE.format(witness.count)} of ${WHOLE.format(witness.total)} nearby`,
-    tiles: (witness) => plural(witness.distance, "tile step"),
-    distances: (witness) =>
-            witness.distance === null
-                    ? "no pair"
-                    : `${chain([witness.from, witness.to])}: ${distance(witness.distance)}${jumps(witness.wormholes.length)}`,
-    routes: (witness) => `${chain(witness.stops)}: ${distance(witness.length)}`
 };
 
 const KIND_ORDER = new Map(SET_PIECE_KINDS.map((kind, index) => [kind.id, index]));
@@ -120,8 +87,7 @@ function WitnessList({ results }: { results: Witness[] }) {
                 {results.map((witness) => (
                         <li key={`${witness.section}-${witness.index}`}>
                             <span className={witness.ok ? "witness__ok" : "witness__failed"}>{witness.ok ? "ok" : "failed"}</span>{" "}
-                            {WITNESS_LABELS[witness.section]} rule {witness.index + 1}:{" "}
-                            {(WITNESS_FIGURES[witness.section] as (witness: Witness) => string)(witness)}
+                            {describeWitness(witness)}
                         </li>
                 ))}
             </ul>
@@ -164,11 +130,13 @@ function WorldSummary({ hit: { level, results }, id }: { hit: SearchHit; id: str
 const HitRow = memo(function HitRow({
                                         hit,
                                         platform,
+                                        config,
                                         showOption,
                                         onCopy
                                     }: {
     hit: SearchHit;
     platform: Platform;
+    config: SeedfinderConfig;
     showOption: boolean;
     onCopy: JobResultsProps["onCopy"];
 }) {
@@ -184,7 +152,7 @@ const HitRow = memo(function HitRow({
                             onClick={() => onCopy(seed, `Seed ${seed}`)}>
                         copy
                     </button>
-                    <Link href={mapPath(platform, hit.seed)} className="link-button"
+                    <Link href={mapPath(platform, hit.seed, config)} className="link-button"
                           aria-label={`Map of seed ${seed} on ${platform}`}>
                         map
                     </Link>
@@ -225,9 +193,10 @@ function ScanSummary({ search }: { search: SearchOutput }) {
     );
 }
 
-function HitList({ hits, platform, showOption, onCopy }: {
+function HitList({ hits, platform, config, showOption, onCopy }: {
     hits: SearchHit[];
     platform: Platform;
+    config: SeedfinderConfig;
     showOption: boolean;
     onCopy: JobResultsProps["onCopy"]
 }) {
@@ -237,7 +206,7 @@ function HitList({ hits, platform, showOption, onCopy }: {
             <>
                 <ol className="hits">
                     {visible.map((hit) => (
-                            <HitRow key={hit.seed} hit={hit} platform={platform} showOption={showOption}
+                            <HitRow key={hit.seed} hit={hit} platform={platform} config={config} showOption={showOption}
                                     onCopy={onCopy}/>
                     ))}
                 </ol>
@@ -302,7 +271,7 @@ function SearchSummary({ job, search, onCopy, further }: JobResultsProps & { sea
                 {hits.length === 0 ? (
                         <p className="muted">{emptyText}</p>
                 ) : (
-                        <HitList hits={hits} platform={job.config.platform ?? DEFAULT_PLATFORM}
+                        <HitList hits={hits} platform={job.config.platform ?? DEFAULT_PLATFORM} config={job.config}
                                  showOption={(job.config.criteria?.length ?? 0) > 1} onCopy={onCopy}/>
                 )}
                 {canContinue && <SearchFurther startSeed={nextSeed} further={further}/>}

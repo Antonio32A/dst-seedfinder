@@ -4,6 +4,8 @@ import type { GroupVisibility } from "./group-visibility";
 import { createHighlightRenderer } from "./highlight-renderer";
 import { fitView, type MapView, panBy, type Size, turnView, type WorldPoint, zoomAt } from "./map-view";
 import { createTileRenderer } from "./tile-renderer";
+import type { WitnessShape } from "./witness-overlay";
+import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
 import type { GeneratedWorld } from "./world-dump";
 
 const ZOOM_PER_PIXEL = 0.002;
@@ -20,10 +22,12 @@ export interface MapCanvas {
     show: (visibility: GroupVisibility) => void;
     /** Rings `points`, interleaved world `x, z`, over the entities, whichever groups are shown. */
     highlight: (points: Float32Array) => void;
-    /** Centres the map on `point`, zooming in to at least `scale` pixels per world unit. */
-    centre: (point: WorldPoint, scale: number) => void;
+    /** Centres the map on `point`, zooming in to at least `scale` pixels per world unit when given. */
+    centre: (point: WorldPoint, scale?: number) => void;
     /** Calls `listener` with the view now and after every redraw, until the returned function is called. */
     watch: (listener: (view: MapView, viewport: Size) => void) => () => void;
+    /** Draws `shapes` over the entities, whatever groups are shown, in place of the witnesses drawn before. */
+    witnesses: (shapes: WitnessShape[]) => void;
     dispose: () => void;
 }
 
@@ -39,6 +43,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     const entities = createEntityRenderer(gl, layer);
     const highlights = createHighlightRenderer(gl);
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
+    let overlay: WitnessRenderer | null = null;
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
     let view: MapView = fitView(world, viewport);
     let frame = 0;
@@ -59,6 +64,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             gl.clear(gl.COLOR_BUFFER_BIT);
             tiles.draw(view, viewport);
             entities.draw(view, viewport);
+            overlay?.draw(view, viewport);
             highlights.draw(view, viewport);
             for (const watcher of watchers) watcher(view, viewport);
         });
@@ -121,11 +127,16 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             highlights.highlight(points);
             redraw();
         },
-        centre: (point, scale) => move({ ...view, centerX: point.x, centerZ: point.z, scale: Math.max(view.scale, scale) }),
+        centre: (point, scale = 0) => move({ ...view, centerX: point.x, centerZ: point.z, scale: Math.max(view.scale, scale) }),
         watch: (listener) => {
             watchers.add(listener);
             listener(view, viewport);
             return () => watchers.delete(listener);
+        },
+        witnesses: (shapes) => {
+            overlay?.dispose();
+            overlay = createWitnessRenderer(gl, shapes);
+            redraw();
         },
         dispose: () => {
             cancelAnimationFrame(frame);
@@ -135,6 +146,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             tiles.dispose();
             entities.dispose();
             highlights.dispose();
+            overlay?.dispose();
         }
     };
 }

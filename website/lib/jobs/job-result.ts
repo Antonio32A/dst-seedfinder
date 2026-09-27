@@ -186,6 +186,9 @@ const witness: Parser<Witness> = (value) => {
     return parsed ? ({ ...parsed, section } as Witness) : undefined;
 };
 
+/** The world checks (parts B-E) of a results array, without its level-table checks. */
+export const parseWitnesses = (results: unknown): Witness[] => listOf(witness)(results) ?? [];
+
 const SWAP_CATEGORIES: SwapCategory[] = ["grass", "twigs", "berries"];
 
 const prefabSwaps: Parser<LevelTable["prefab_swaps"]> = (value) => {
