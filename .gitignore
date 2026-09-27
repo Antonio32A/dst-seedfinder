@@ -20,3 +20,4 @@ scripts/gen/out/*
 !scripts/gen/out/pow_windows_exceptions.txt
 .scratch/
 /build/
+.worktrees/
