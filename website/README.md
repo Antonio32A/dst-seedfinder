@@ -42,7 +42,7 @@ The bindings (the `DB` D1 database, the `JobRoom` and `Dispatcher` Durable Objec
 ## Local development
 
 ```sh
-npm install
+npm ci
 cp .dev.vars.example .dev.vars   # then fill it in
 npx wrangler d1 migrations apply dst-seedfinder --local
 npm run dev
