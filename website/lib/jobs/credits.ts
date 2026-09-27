@@ -2,7 +2,7 @@ const UNITS_PER_CREDIT = 100;
 const CREDITS_PER_DOLLAR_HOUR_SECOND = 40;
 
 export const MAX_DOLLARS_PER_HOUR = 0.5;
-export const DAILY_CREDITS = 5000;
+export const DAILY_CREDITS = 10_000;
 export const DEFAULT_MAX_COST = 100;
 export const MIN_MAX_COST = 20;
 export const MAX_MAX_COST = 1_000_000;
