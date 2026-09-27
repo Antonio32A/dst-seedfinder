@@ -1,4 +1,4 @@
-"""Reads Klei KTEX textures (the game's .tex files)."""
+"""Klei KTEX textures (the game's .tex files), decoded as Mesa does: DXT interpolants are floored."""
 import functools
 import struct
 
@@ -23,7 +23,13 @@ def colour_texels(blocks, always_four_colours):
     return np.take_along_axis(palettes, indices[:, :, None].astype(np.int64), 1)
 
 
-def dxt5_alpha(blocks):
+def dxt3_texels(blocks):
+    texels = colour_texels(blocks[:, 8:], True)
+    texels[:, :, 3] = np.stack([blocks[:, :8] & 0xF, blocks[:, :8] >> 4], -1).reshape(-1, 16) * 17
+    return texels
+
+
+def dxt5_texels(blocks):
     a0, a1 = blocks[:, 0:1].astype(np.int64), blocks[:, 1:2].astype(np.int64)
     steps = np.arange(1, 7)
     eight_alphas = ((7 - steps) * a0 + steps * a1) // 7
@@ -32,22 +38,8 @@ def dxt5_alpha(blocks):
     palettes = np.concatenate([a0, a1, np.where(a0 > a1, eight_alphas, six_alphas)], 1)
     bits = np.pad(blocks[:, 2:8], ((0, 0), (0, 2))).copy().view("<u8")
     indices = bits >> 3 * np.arange(16, dtype=np.uint64) & 7
-    return np.take_along_axis(palettes, indices.astype(np.int64), 1)
-
-
-def dxt1_texels(blocks):
-    return colour_texels(blocks, False)
-
-
-def dxt3_texels(blocks):
     texels = colour_texels(blocks[:, 8:], True)
-    texels[:, :, 3] = np.stack([blocks[:, :8] & 0xF, blocks[:, :8] >> 4], -1).reshape(-1, 16) * 17
-    return texels
-
-
-def dxt5_texels(blocks):
-    texels = colour_texels(blocks[:, 8:], True)
-    texels[:, :, 3] = dxt5_alpha(blocks[:, :8])
+    texels[:, :, 3] = np.take_along_axis(palettes, indices.astype(np.int64), 1)
     return texels
 
 
@@ -58,29 +50,20 @@ def block_pixels(block_size, block_texels, raw, width, height):
     return pixels.reshape(4 * blocks_high, 4 * blocks_wide, 4)[:height, :width].astype(np.uint8)
 
 
-def rgba_pixels(raw, width, height):
-    return raw.reshape(height, width, 4)
-
-
-def rgb_pixels(raw, width, height):
-    return np.concatenate([raw.reshape(height, width, 3), np.full((height, width, 1), 255, np.uint8)], -1)
-
-
 PIXEL_FORMATS = {
-    0: functools.partial(block_pixels, 8, dxt1_texels),
+    0: functools.partial(block_pixels, 8, functools.partial(colour_texels, always_four_colours=False)),
     1: functools.partial(block_pixels, 16, dxt3_texels),
     2: functools.partial(block_pixels, 16, dxt5_texels),
-    4: rgba_pixels,
-    5: rgb_pixels,
+    4: lambda raw, width, height: raw.reshape(height, width, 4),
+    5: lambda raw, width, height: np.concatenate(
+        [raw.reshape(height, width, 3), np.full((height, width, 1), 255, np.uint8)], -1),
 }
 
 
 def decode(data, mip=0, flip=False, unpremultiply=False):
-    """The pixels of one mip of a KTEX texture, as a (height, width, 4) uint8 RGBA array.
+    """A (height, width, 4) uint8 RGBA array, rows in stored order (OpenGL's: the first row is v = 0, the bottom).
 
-    Rows come in stored order, which is OpenGL's: the first row is texture coordinate v = 0, the bottom of the image.
-    `flip` turns them top-down instead. `unpremultiply` divides the colour by alpha, for textures stored
-    premultiplied; fully transparent pixels stay black.
+    `unpremultiply` leaves fully transparent pixels black.
     """
     assert data[:4] == b"KTEX", "not a KTEX texture"
     header, = struct.unpack_from("<I", data, 4)
@@ -98,5 +81,5 @@ def decode(data, mip=0, flip=False, unpremultiply=False):
 
 
 def mean_rgb(data):
-    """The mean RGB of a KTEX texture's full-size mip, as rounded 0-255 ints."""
+    """Of the full-size mip, rounded."""
     return tuple(round(channel) for channel in decode(data)[:, :, :3].reshape(-1, 3).mean(0).tolist())

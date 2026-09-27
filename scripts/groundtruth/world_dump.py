@@ -20,15 +20,12 @@ VERSION = 2
 PLATFORMS = {None: 0, "windows": 1, "linux": 2}
 
 
-def centi_text(k):
-    sign = "-" if k < 0 else ""
-    whole, fraction = divmod(abs(k), 100)
-    return f"{sign}{whole}" if not fraction else f"{sign}{whole}." + f"{fraction:02d}".rstrip("0")
-
-
 def centi(value):
     k = round(value * 100)
-    if centi_text(k) != json.dumps(value):
+    sign = "-" if k < 0 else ""
+    whole, fraction = divmod(abs(k), 100)
+    text = f"{sign}{whole}" if not fraction else f"{sign}{whole}." + f"{fraction:02d}".rstrip("0")
+    if text != json.dumps(value):
         raise ValueError(f"coordinate {value!r} is not printed with at most 2 decimals")
     return k
 

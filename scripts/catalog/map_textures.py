@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Writes the game textures the website's world map draws with to website/public/world-map/. See README.md.
+"""Writes the textures the website's world map draws with to website/public/world-map/ (README.md).
 
-usage: python3 map_textures.py [--out DIR]
+usage: python3 map_textures.py [--catalog CATALOG] [--out DIR]
 """
 import argparse
 import functools
@@ -32,11 +32,7 @@ def png_chunk(kind, data):
 
 
 def encode_png(pixels):
-    """A lossless 8-bit PNG of a (height, width, channels) uint8 array: RGB or RGBA for 3 or 4 channels.
-
-    Rows are left unfiltered: decoded DXT blocks repeat a few colours each, which deflate packs better on its own than
-    after any PNG filter.
-    """
+    """Rows are left unfiltered: decoded DXT blocks repeat a few colours, which deflate packs better unfiltered."""
     height, width, channels = pixels.shape
     header = struct.pack(">IIBBBBB", width, height, 8, PNG_COLOUR_TYPES[channels], 0, 0, 0)
     rows = np.concatenate([np.zeros((height, 1), np.uint8), pixels.reshape(height, width * channels)], 1)
@@ -45,7 +41,6 @@ def encode_png(pixels):
 
 
 def read_texture(game_dir, name):
-    """The full-size mip of one of the install's textures, by its path under data/."""
     with open(os.path.join(game_dir, "data", name), "rb") as f:
         return ktex.decode(f.read())
 
@@ -60,15 +55,12 @@ def full_cell_tint(game_dir):
 
 
 def land_colour(game_dir, noise):
-    """A land tile's flat colour on the map at full brightness, as rounded 0-255 ints: the mean RGB of map_edge's
-    cell 01 (the cell a layer draws on its own tiles) times the mean RGB of the tile's minimap noise."""
+    """Map_edge cell 01 is the one a layer draws on its own tiles."""
     noise_mean = read_texture(game_dir, NOISE_TEXTURE % noise)[:, :, :3].mean((0, 1))
     return [round(channel) for channel in (full_cell_tint(game_dir) * noise_mean / 255).tolist()]
 
 
 def write_map_textures(game_dir, noises, out_dir):
-    """Writes the full-size mips, rows in stored order: each named minimap noise (`levels/textures/<name>.tex`) as
-    `noise/<name>.png` RGB, map_edge as `map_edge.png` RGBA and the minimap paper as `minimap_paper.png` RGB."""
     os.makedirs(os.path.join(out_dir, "noise"), exist_ok=True)
     images = {"noise/%s.png" % name: read_texture(game_dir, NOISE_TEXTURE % name)[:, :, :3] for name in noises}
     images["map_edge.png"] = read_texture(game_dir, MAP_EDGE)

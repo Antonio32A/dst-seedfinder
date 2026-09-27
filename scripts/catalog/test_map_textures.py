@@ -6,7 +6,8 @@ import zlib
 
 import numpy as np
 
-from map_textures import encode_png, land_colour, write_map_textures
+from map_textures import (MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, encode_png, land_colour,
+                          write_map_textures)
 from test_ktex import RGB, RGBA, ktex
 
 CHANNELS = {0: 1, 2: 3, 6: 4}
@@ -79,19 +80,18 @@ def read_output(out_dir, name):
 
 class WriteMapTextures(unittest.TestCase):
     def setUp(self):
-        self.game_dir = tempfile.mkdtemp()
-        self.out_dir = tempfile.mkdtemp()
+        self.game_dir = self.enterContext(tempfile.TemporaryDirectory())
+        self.out_dir = self.enterContext(tempfile.TemporaryDirectory())
         self.grass = noisy_pixels(4, 2, 3)
         self.edge = noisy_pixels(2, 4, 4)
         self.paper = noisy_pixels(2, 2, 3)
-        write_texture(self.game_dir, "levels/textures/mini_grass_noise.tex", RGB,
-                      [(2, 4, self.grass), (1, 2, noisy_pixels(2, 1, 3))])
-        write_texture(self.game_dir, "levels/tiles/map_edge.tex", RGBA, [(4, 2, self.edge)])
-        write_texture(self.game_dir, "images/minimap_paper.tex", RGB, [(2, 2, self.paper)])
+        write_texture(self.game_dir, NOISE_TEXTURE % "grass", RGB, [(2, 4, self.grass), (1, 2, noisy_pixels(2, 1, 3))])
+        write_texture(self.game_dir, MAP_EDGE, RGBA, [(4, 2, self.edge)])
+        write_texture(self.game_dir, MINIMAP_PAPER, RGB, [(2, 2, self.paper)])
 
     def test_writes_each_noise_texture_as_its_full_size_rgb_mip(self):
-        write_map_textures(self.game_dir, ["mini_grass_noise"], self.out_dir)
-        np.testing.assert_array_equal(read_output(self.out_dir, "noise/mini_grass_noise.png"), self.grass)
+        write_map_textures(self.game_dir, ["grass"], self.out_dir)
+        np.testing.assert_array_equal(read_output(self.out_dir, "noise/grass.png"), self.grass)
 
     def test_writes_map_edge_rgba_as_stored_and_the_paper_as_rgb(self):
         write_map_textures(self.game_dir, [], self.out_dir)
@@ -101,16 +101,16 @@ class WriteMapTextures(unittest.TestCase):
 
 class LandColour(unittest.TestCase):
     def test_is_the_mean_of_map_edge_cell_01_times_the_mean_noise(self):
-        game_dir = tempfile.mkdtemp()
+        game_dir = self.enterContext(tempfile.TemporaryDirectory())
         edge = np.zeros((4, 4, 4), np.uint8)
         edge[2:, 2:] = [200, 100, 50, 255]
-        write_texture(game_dir, "levels/tiles/map_edge.tex", RGBA, [(4, 4, edge)])
-        with open(os.path.join(game_dir, "data/levels/tiles/map_edge.xml"), "w") as f:
+        write_texture(game_dir, MAP_EDGE, RGBA, [(4, 4, edge)])
+        with open(os.path.join(game_dir, "data", MAP_EDGE_ATLAS), "w") as f:
             f.write('<Atlas><Elements><Element name="02" u1="0" u2="0.5" v1="0" v2="0.5" />'
                     '<Element name="01" u1="0.5" u2="1" v1="0.5" v2="1" /></Elements></Atlas>')
         noise = np.array([[[255, 128, 0], [255, 0, 0]]], np.uint8)
-        write_texture(game_dir, "levels/textures/mini_grass_noise.tex", RGB, [(2, 1, noise)])
-        self.assertEqual(land_colour(game_dir, "mini_grass_noise"), [200, 25, 0])
+        write_texture(game_dir, NOISE_TEXTURE % "grass", RGB, [(2, 1, noise)])
+        self.assertEqual(land_colour(game_dir, "grass"), [200, 25, 0])
 
 
 if __name__ == "__main__":
