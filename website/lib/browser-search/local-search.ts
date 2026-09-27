@@ -3,6 +3,7 @@ import type { JobStatus } from "@/lib/jobs/job-events";
 import type { SearchOutput } from "@/lib/jobs/job-result";
 import { type DoneSummary, exitKind, parseOutputLine } from "@/lib/jobs/runner-output";
 import { type Chunk, LocalScan } from "./local-scan";
+import { compileSeedfinder } from "./seedfinder-wasm";
 
 /** The search thread plus its share of the layout helper threads. */
 export const CORES_PER_THREAD = 1.35;
@@ -12,7 +13,6 @@ export const SEARCH_TARGETS = ["browser", "cloud"] as const;
 export type SearchTarget = (typeof SEARCH_TARGETS)[number];
 export const DEFAULT_SEARCH_TARGET: SearchTarget = "browser";
 
-const WASM_URL = "/wasm/seedfinder.wasm";
 const UPDATE_MS = 200;
 
 export interface LocalRun {
@@ -54,19 +54,6 @@ interface Slot {
     configError: string | null;
     lastError: string | null;
 }
-
-let compiled: Promise<WebAssembly.Module> | null = null;
-
-const compileSeedfinder = () => {
-    compiled ??= fetch(WASM_URL)
-        .then((response) => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.arrayBuffer();
-        })
-        .then((bytes) => WebAssembly.compile(bytes));
-    compiled.catch(() => (compiled = null));
-    return compiled;
-};
 
 /**
  * `onChange` fires at most every `UPDATE_MS` and once at the end. The returned function stops the search, keeping its

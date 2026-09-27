@@ -29,6 +29,13 @@ describe("the tile table", () => {
         expect(brightness).toEqual([...brightness].sort((a, b) => b - a));
     });
 
+    it("draws the open sea in the game's own minimap colours, not its noise texture", () => {
+        expect(TILES.OCEAN_COASTAL.color).toEqual([23, 51, 62]);
+        expect(TILES.OCEAN_SWELL.color).toEqual([14, 34, 61]);
+        expect(TILES.OCEAN_ROUGH.color).toEqual([19, 20, 40]);
+        expect(TILES.OCEAN_HAZARDOUS.color).toEqual([8, 8, 14]);
+    });
+
     it("draws impassable ground in the paper colour", () => {
         const [red, green, blue] = TILES.IMPASSABLE.color;
         expect([green, blue]).toEqual([red, red]);

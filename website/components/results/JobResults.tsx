@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { memo, useId, useMemo, useState } from "react";
 import { SET_PIECE_BY_ID, SET_PIECE_KINDS, SWAPS, TASK_BY_ID } from "@/lib/catalog/level";
+import { DEFAULT_PLATFORM, type Platform } from "@/lib/config/seedfinder-config";
 import type { JobView } from "@/lib/jobs/job-events";
 import {
     type LevelTable,
@@ -15,6 +17,7 @@ import {
     type WitnessInstance,
     type WitnessSection
 } from "@/lib/jobs/job-result";
+import { mapPath } from "@/lib/world-map/map-route";
 
 export type ShownJob = Pick<JobView, "status" | "config" | "result" | "error">;
 
@@ -160,10 +163,12 @@ function WorldSummary({ hit: { level, results }, id }: { hit: SearchHit; id: str
 
 const HitRow = memo(function HitRow({
                                         hit,
+                                        platform,
                                         showOption,
                                         onCopy
                                     }: {
     hit: SearchHit;
+    platform: Platform;
     showOption: boolean;
     onCopy: JobResultsProps["onCopy"];
 }) {
@@ -179,6 +184,10 @@ const HitRow = memo(function HitRow({
                             onClick={() => onCopy(seed, `Seed ${seed}`)}>
                         copy
                     </button>
+                    <Link href={mapPath(platform, hit.seed)} className="link-button"
+                          aria-label={`Map of seed ${seed} on ${platform}`}>
+                        map
+                    </Link>
                     {showOption && hit.entry !== null &&
                             <span className="tag tag--accent">Option {hit.entry + 1}</span>}
                     <button
@@ -216,8 +225,9 @@ function ScanSummary({ search }: { search: SearchOutput }) {
     );
 }
 
-function HitList({ hits, showOption, onCopy }: {
+function HitList({ hits, platform, showOption, onCopy }: {
     hits: SearchHit[];
+    platform: Platform;
     showOption: boolean;
     onCopy: JobResultsProps["onCopy"]
 }) {
@@ -227,7 +237,8 @@ function HitList({ hits, showOption, onCopy }: {
             <>
                 <ol className="hits">
                     {visible.map((hit) => (
-                            <HitRow key={hit.seed} hit={hit} showOption={showOption} onCopy={onCopy}/>
+                            <HitRow key={hit.seed} hit={hit} platform={platform} showOption={showOption}
+                                    onCopy={onCopy}/>
                     ))}
                 </ol>
                 <div className="results__actions">
@@ -291,7 +302,8 @@ function SearchSummary({ job, search, onCopy, further }: JobResultsProps & { sea
                 {hits.length === 0 ? (
                         <p className="muted">{emptyText}</p>
                 ) : (
-                        <HitList hits={hits} showOption={(job.config.criteria?.length ?? 0) > 1} onCopy={onCopy}/>
+                        <HitList hits={hits} platform={job.config.platform ?? DEFAULT_PLATFORM}
+                                 showOption={(job.config.criteria?.length ?? 0) > 1} onCopy={onCopy}/>
                 )}
                 {canContinue && <SearchFurther startSeed={nextSeed} further={further}/>}
             </div>

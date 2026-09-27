@@ -13,6 +13,7 @@ import {
     SEARCH_TARGETS,
     type SearchTarget
 } from "@/lib/browser-search/local-search";
+import { canRunSeedfinder } from "@/lib/browser-search/seedfinder-wasm";
 import { useLocalSearch } from "@/lib/browser-search/use-local-search";
 import { copyText } from "@/lib/client/clipboard";
 import { useAccount } from "@/lib/client/use-account";
@@ -101,7 +102,7 @@ export default function SeedFinderApp() {
         if (initial) setState(fromSeedfinderConfig(initial));
         if (hasCustomSettings(initial)) notify(`Search loaded. ${SETTINGS_DROPPED_NOTICE}`);
         const logicalCores = Math.max(1, navigator.hardwareConcurrency || 1);
-        const supported = typeof WebAssembly === "object" && typeof SharedArrayBuffer === "function" && globalThis.crossOriginIsolated === true;
+        const supported = canRunSeedfinder();
         setCores(logicalCores);
         setThreads(clamp(stored?.threads ?? Math.floor(logicalCores / CORES_PER_THREAD), 1, logicalCores));
         setBrowserSupported(supported);

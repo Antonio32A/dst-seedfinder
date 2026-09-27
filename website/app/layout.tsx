@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import ThemeToggle from "@/components/shell/ThemeToggle";
+import { LocalSearchProvider } from "@/lib/browser-search/use-local-search";
 import { THEME_INIT_SCRIPT } from "@/lib/client/theme";
 import "./globals.css";
 
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </head>
             <body>
             <div className="container">
-                {children}
+                <LocalSearchProvider>{children}</LocalSearchProvider>
                 <footer className="footer">
                     <span>© {new Date().getFullYear()} Antonio32A</span>
                     <ThemeToggle/>

@@ -1,0 +1,20 @@
+.map__canvas {
+    display: block;
+    width: 100%;
+    height: min(75vh, 880px);
+    background: var(--surface);
+    cursor: grab;
+    touch-action: none;
+}
+
+.map__canvas:active {
+    cursor: grabbing;
+}
+
+.map__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+    margin-top: 8px;
+}

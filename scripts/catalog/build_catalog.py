@@ -649,7 +649,7 @@ OCEAN_NOISE = "ocean_noise.tex"
 def minimap_texture_means(static):
     if not os.path.isdir(GAME_DIR):
         return {}
-    textures = {t.get("minimap_noise", MINIMAP_PAPER) for t in static["tiles"].values()}
+    textures = {t.get("minimap_noise", MINIMAP_PAPER) for t in static["tiles"].values()} - {OCEAN_NOISE}
     means = {}
     for name in sorted(textures):
         path = os.path.join(GAME_DIR, "data", name)
@@ -660,8 +660,9 @@ def minimap_texture_means(static):
 
 def minimap_color(tile, means):
     noise = tile.get("minimap_noise", MINIMAP_PAPER)
-    tint = tile["ground_minimap_color"][:3] if noise == OCEAN_NOISE else (255, 255, 255)
-    return [round(m * c / 255) for m, c in zip(means[noise], tint)] if noise in means else None
+    if noise == OCEAN_NOISE:
+        return tile["ground_minimap_color"][:3]
+    return list(means[noise]) if noise in means else None
 
 
 def build_tiles(static, worlds):

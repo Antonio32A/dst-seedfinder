@@ -13,8 +13,9 @@ the install path; without the game the catalog silently loses its icons, tile co
 the full-size mip of the noise texture named by the tile's minimap def in the game's `tiledefs.lua` (the
 `levels/textures/*.tex` files of the install, decoded by `ktex.py`):
 
-- Ocean tiles whose minimap noise is `ocean_noise` multiply its mean by the RGB of their ground def's
-  `colors.minimap_color` (the colour `world.lua` hands to `MapLayerManager:SetMinimapColor`, over 255).
+- Ocean tiles whose minimap noise is `ocean_noise` take the RGB of their ground def's `colors.minimap_color` (the
+  colour `world.lua` hands to `MapLayerManager:SetMinimapColor`), ignoring its alpha. `ocean_noise` is a data-noise
+  texture, not a colour, so its mean isn't used.
 - Tiles without a minimap def (`IMPASSABLE`, the walls, the noise tiles, ...) get the mean of
   `images/minimap_paper.tex`, the minimap's background.
 

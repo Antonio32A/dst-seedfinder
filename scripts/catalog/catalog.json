@@ -30456,9 +30456,9 @@
    "display_name": "Ocean (coastal)",
    "turf_prefab": null,
    "minimap_color": [
-    8,
-    27,
-    22
+    23,
+    51,
+    62
    ],
    "in_forest_worlds": {
     "worlds": 311,
@@ -30502,9 +30502,9 @@
    "display_name": "Ocean (swell)",
    "turf_prefab": null,
    "minimap_color": [
-    5,
-    18,
-    22
+    14,
+    34,
+    61
    ],
    "in_forest_worlds": {
     "worlds": 311,
@@ -30525,9 +30525,9 @@
    "display_name": "Ocean (rough)",
    "turf_prefab": null,
    "minimap_color": [
-    7,
-    11,
-    14
+    19,
+    20,
+    40
    ],
    "in_forest_worlds": {
     "worlds": 311,
@@ -30548,9 +30548,9 @@
    "display_name": "Ocean (brine pool)",
    "turf_prefab": null,
    "minimap_color": [
-    14,
-    46,
-    33
+    40,
+    87,
+    93
    ],
    "in_forest_worlds": {
     "worlds": 311,
@@ -30594,9 +30594,9 @@
    "display_name": "Ocean (hazardous)",
    "turf_prefab": null,
    "minimap_color": [
-    3,
-    4,
-    5
+    8,
+    8,
+    14
    ],
    "in_forest_worlds": {
     "worlds": 311,
@@ -30617,9 +30617,9 @@
    "display_name": "Ocean (waterlogged)",
    "turf_prefab": null,
    "minimap_color": [
-    14,
-    46,
-    33
+    40,
+    87,
+    93
    ],
    "in_forest_worlds": {
     "worlds": 311,

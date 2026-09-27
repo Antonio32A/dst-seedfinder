@@ -4,6 +4,7 @@
 
 Features:
 - local search (WASM version of seedfinder)
+- world map of any seed (`/map/<windows|linux>/<seed>`), generated in the browser from the same WASM build
 - cloud search which runs on Vast.ai (uses [runner](../runner/README.md))
 - log in with Discord
 - credit system (for rate limiting)
@@ -13,7 +14,7 @@ Features:
 - Node 22 or newer.
 - The WebAssembly build (`../scripts/build.sh wasm`, see [seedfinder/README.md](../seedfinder/README.md)).
   `npm run build` copies it from `../build/wasm/` into `public/wasm/` and fails without it. `npm run dev` works
-  without it, but local search is off.
+  without it, but local search and the world map are off.
 - A Discord application for OAuth2.
 - For remote searches: a Vast.ai API key and the runner image pushed to a registry (`../runner/build.sh --push`).
 

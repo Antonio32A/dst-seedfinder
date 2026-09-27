@@ -39,6 +39,7 @@ button:hover:not(:disabled),
     padding: 0;
     color: var(--accent);
     font-weight: 600;
+    text-decoration: none;
     background: none;
     gap: 0;
 }
