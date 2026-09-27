@@ -6,6 +6,11 @@ import ../filters/straight.bend as Straight
 import ../filters/world.bend as FilterWorld
 import ../filters/dump.bend as FilterDump
 import ../f64/repr.bend as F64Repr
+import ../rng/pcg.bend as Pcg
+import ../worldsim/grid.bend as Grid
+import ../ocean/ents.bend as OceanEnts
+import ../gen/job.bend as GenJob
+import ../gen/savedata.bend as SaveData
 
 # Lane F (filters and search) laws. Each law is followed by its proof def of the same name, in this file.
 # Rules: tiny U32 golden values, each probed alone first.
@@ -97,4 +102,58 @@ law world_group_by_name:
   {FilterWorld.group_of([FilterDump.Prefab{"not_a_prefab", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], "wormhole", 338) == [FilterWorld.Inst{338, 0, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 28400, 4294955696, 3}, FilterWorld.Inst{338, 1, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 4294918896, 4294953246, 1}] : List<&2, FilterWorld.Inst>}
 
 def world_group_by_name():
+  {==}
+
+# The world dump writer, section by section, on the same world as the reader laws above.
+law dump_writes_tile_names:
+  {FilterDump.tile_names_section([FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}]) == [84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0] : List<&2, U32>}
+
+def dump_writes_tile_names():
+  {==}
+
+law dump_writes_tiles:
+  {FilterDump.tiles_section([393222, 1]) == [84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0] : List<&2, U32>}
+
+def dump_writes_tiles():
+  {==}
+
+law dump_writes_entities:
+  {FilterDump.entities_section([FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}]) == [69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255] : List<&2, U32>}
+
+def dump_writes_entities():
+  {==}
+
+law dump_writes_links:
+  {FilterDump.links_section([FilterDump.Link{0, 1}, FilterDump.Link{1, 0}]) == [87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+
+def dump_writes_links():
+  {==}
+
+law dump_writes_gave_up:
+  {FilterDump.bytes(FilterDump.GaveUp{7, 2}) == [68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0] : List<&2, U32>}
+
+def dump_writes_gave_up():
+  {==}
+
+law dump_writes_generated:
+  {FilterDump.bytes(FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}]}) == [68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+
+def dump_writes_generated():
+  {==}
+
+# A 3 x 3 world on Linux (IMPASSABLE in the middle of GRASS) with, oldest first, a wormhole, a wormhole_MARKER (outside
+# the catalog), an armorgrass at (0.125, -0.125) (a rounding tie) and the other wormhole: the dump of its savedata reads
+# back as the filters' world of it.
+law dump_round_trip:
+  {FilterWorld.of_bytes(FilterDump.bytes(SaveData.dump(7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11}], 3}))) == Done{FilterWorld.Generated{SaveData.world(7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11}], 3}), 2}} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+
+def dump_round_trip():
+  {==}
+
+# The same world on Windows: every prefab in name order (the catalog's or not, and the pocket dimension containers at
+# (0, 0)), instances in savedata order, and the tie rounded away from zero.
+law dump_prefabs_in_name_order:
+  {FilterDump.prefabs(SaveData.dump(7, True{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11}], 3})) == [FilterDump.Prefab{"armorgrass", [FilterDump.Position{13, 4294967283}]}, FilterDump.Prefab{"rabbitkinghorn_container", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"shadow_container", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}, FilterDump.Prefab{"wormhole_MARKER", [FilterDump.Position{60200, 10600}]}] : List<&2, FilterDump.Prefab>}
+
+def dump_prefabs_in_name_order():
   {==}

@@ -148,3 +148,85 @@ def is_dump(words: List<&2, U32>) -> Bool:
 def of_bytes(bytes: List<&2, U32>) -> Result<&1, &1, U32 & String, Dump>:
   +words = words_of(bytes, Nil{})
   Bool.pick(Result<&1, &1, U32 & String, Dump>, is_dump(words), versioned(words), Fail{(2, "not a world dump")})
+
+def string_bytes(s: String) -> List<&2, U32>:
+  match s:
+    case SNil{}:
+      Nil{}
+    case SCon{Chr{+b}, rest}:
+      b <> string_bytes(rest)
+
+def string_field(s: String) -> List<&2, U32>:
+  +raw = string_bytes(s)
+  +n = U32.from_nat(List.length(&2, U32, raw))
+  List.append(&2, U32, bytes_of([n]), List.append(&2, U32, raw, List.replicate(U32, U32.to_nat(((4 - (n .&. 3)) .&. 3 : U32)), 0)))
+
+def entries_bytes(~A: Data, ~entry: A -> List<&2, U32>, items: List<&2, A>) -> List<&2, U32>:
+  match items:
+    case Nil{}:
+      Nil{}
+    case Con{+item, rest}:
+      List.append(&2, U32, entry(item), entries_bytes(~A, ~entry, rest))
+
+def counted_bytes(~A: Data, ~entry: A -> List<&2, U32>, +items: List<&2, A>) -> List<&2, U32>:
+  List.append(&2, U32, bytes_of([U32.from_nat(List.length(&2, A, items))]), entries_bytes(~A, ~entry, items))
+
+def section(+tag: U32, +payload: List<&2, U32>) -> List<&2, U32>:
+  List.append(&2, U32, bytes_of([tag, U32.from_nat(List.length(&2, U32, payload))]), payload)
+
+def tile_name_bytes(n: TileName) -> List<&2, U32>:
+  match n:
+    case TileName{+id, +name}:
+      List.append(&2, U32, bytes_of([id]), string_field(name))
+
+# The TNAM section of these tile names, in the given order.
+def tile_names_section(+names: List<&2, TileName>) -> List<&2, U32>:
+  section(1296125524, counted_bytes(~TileName, ~tile_name_bytes, names))
+
+# The TILE section of tiles packed two u16 per word (the first in the low half, a zero high half after an odd count).
+def tiles_section(+tiles: List<&2, U32>) -> List<&2, U32>:
+  section(1162627412, bytes_of(tiles))
+
+def position_words(positions: List<&2, Position>) -> List<&2, U32>:
+  match positions:
+    case Nil{}:
+      Nil{}
+    case Con{Position{+xk, +zk}, rest}:
+      xk <> zk <> position_words(rest)
+
+def prefab_bytes(p: Prefab) -> List<&2, U32>:
+  match p:
+    case Prefab{+name, +positions}:
+      List.append(&2, U32, string_field(name), bytes_of(U32.from_nat(List.length(&2, Position, positions)) <> position_words(positions)))
+
+# The ENTS section of these prefabs, in the given order.
+def entities_section(+prefabs: List<&2, Prefab>) -> List<&2, U32>:
+  section(1398033989, counted_bytes(~Prefab, ~prefab_bytes, prefabs))
+
+def link_words(links: List<&2, Link>) -> List<&2, U32>:
+  match links:
+    case Nil{}:
+      Nil{}
+    case Con{Link{+entry, +exit}, rest}:
+      entry <> exit <> link_words(rest)
+
+# The WORM section of these links, in the given order.
+def links_section(+links: List<&2, Link>) -> List<&2, U32>:
+  section(1297239895, bytes_of(U32.from_nat(List.length(&2, Link, links)) <> link_words(links)))
+
+# A world dump's file bytes: the header, then a generated world's TNAM, TILE, ENTS and WORM sections.
+def bytes(d: Dump) -> List<&2, U32>:
+  match d:
+    case GaveUp{+seed, +platform}:
+      bytes_of([magic(), 2, seed, 0, platform])
+    case Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links}:
+      List.concat(&2, U32, [bytes_of([magic(), 2, seed, 1, platform, build, width, height]), tile_names_section(tile_names), tiles_section(tiles),
+        entities_section(prefabs), links_section(links)])
+
+# The prefabs of a dump (none when its world generation gave up).
+def prefabs(+d: Dump) -> List<&2, Prefab>:
+  match d:
+    case Generated{_, _, _, _, _, _, _, +found, _}:
+      found
+    case GaveUp{_, _}:
+      Nil{}

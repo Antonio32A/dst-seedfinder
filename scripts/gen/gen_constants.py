@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Writes data/constants.bend from out/constants_c.json (gen_constants.cpp: KK initial positions, blur kernel),
-out/constants.json (extract_constants.lua: placement circle positions) and the perlin permutation, read out of the
+out/constants.json (extract_constants.lua: placement circle positions), the perlin permutation, read out of the
 Linux dedicated server binary and, when DST_WINDOWS_EXE names it, the Windows one (the only 512-byte table
-p[i] = p[i + 256] of a permutation of 0..255 that both contain). `-` prints the module instead."""
+p[i] = p[i + 256] of a permutation of 0..255 that both contain), and the game build (the install's version.txt).
+`-` prints the module instead."""
 import os
 import sys
 from pathlib import Path
@@ -43,7 +44,9 @@ def main():
     c = blob.sidecar("constants_c.json")
     lua = blob.sidecar("constants.json")
     m = blob.Module("constants", "scripts/gen/gen_constants.py",
-                    "KK initial positions, blur kernel, placement circles, perlin permutation.")
+                    "KK initial positions, blur kernel, placement circles, perlin permutation, game build.")
+    m.comment("The build number of the game the data was generated from.")
+    m.const("game_build", int((GAME / "version.txt").read_text().strip()))
     m.table("kk_positions", [f64_units(x) + f64_units(y) for x, y in c["kk_positions"]],
             "Row v: the initial KK position of vertex v (x then y, f64 bits, 4 units each): random_point() number v "
             "of a fresh minstd_rand over [0, 425]^2; island vertices continue the sequence.")

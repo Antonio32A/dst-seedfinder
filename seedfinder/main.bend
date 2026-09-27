@@ -7,6 +7,7 @@ import ./search/report.bend as SearchReport
 import ./search/scan.bend as SearchScan
 import ./search/eval.bend as SearchEval
 import ./gen/run.bend as GenRun
+import ./gen/dump.bend as GenDump
 
 # Usage (default world settings):
 #   seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...]
@@ -20,6 +21,9 @@ import ./gen/run.bend as GenRun
 #     decided on worlds generated in memory (or on DIR/<seed>.dstw dumps with --worlds)
 #   seedfinder world show FROM [TO] [--config filters.json]
 #     level table of seeds FROM..TO, one JSON line each (the config is only validated)
+#   seedfinder world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH
+#     parallel worldgen of seeds SEED..TO into world dumps (docs/world-dump.md): PATH is the dump of SEED, or with TO
+#     an existing folder for PATH/<seed>.dstw; one line per seed
 #   seedfinder gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]
 #     forest worldgen of seeds SEED..TO, one line per seed (`--times`: one line per stage of every attempt)
 #   the worldgen trace stages are in the debug binary built from trace.bend (seedfinder_trace trace ...)
@@ -53,7 +57,7 @@ def gen(+args: List<&2, String>) -> IO(Unit):
     GenRun.seeds(Nat.add(U32.to_nat((to - from : U32)), 1n), from, windows, Config.is_member(args, "--times"), native)
 
 def usage() -> IO(Unit):
-  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] | seedfinder setpiece show FROM [TO] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] | seedfinder gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]")
+  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] | seedfinder setpiece show FROM [TO] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] | seedfinder world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH | seedfinder gen SEED [TO] [--platform windows|linux] [--times] [--kk native|bend]")
 
 def trace_moved() -> IO(Unit):
   IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] (scripts/build.sh trace)")
@@ -67,7 +71,8 @@ def world(+args: List<&2, String>) -> IO(Unit):
   +mode = Args.word(args, 0n)
   Bool.pick(IO(Unit), String.eq(mode, "show"), world_show(args),
     Bool.pick(IO(Unit), String.eq(mode, "find"), world_find(args),
-      Bool.pick(IO(Unit), String.eq(mode, "eval"), SearchEval.run(args), usage())))
+      Bool.pick(IO(Unit), String.eq(mode, "eval"), SearchEval.run(args),
+        Bool.pick(IO(Unit), String.eq(mode, "dump"), GenDump.run(args), usage()))))
 
 def run(+command: String, +args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(command, "setpiece"), setpiece(args),

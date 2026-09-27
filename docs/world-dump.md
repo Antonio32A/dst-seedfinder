@@ -1,9 +1,10 @@
 # World dump format (`.dstw`, format 2)
 
 A `.dstw` file holds one generated forest world: its tile map, every entity the world generation saved and the
-wormhole links. `seedfinder world eval --world` and `seedfinder world find --worlds DIR` read it, and
-`scripts/groundtruth/world_dump.py` writes it from a world dumped on the real dedicated server. The file describes
-itself: it carries every name it uses, so reading it needs no catalog or game data.
+wormhole links. `seedfinder world eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world
+dump` writes it for the worlds the seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on
+the real dedicated server. The file describes itself: it carries every name it uses, so reading it needs no catalog or
+game data.
 
 ## 1. Conventions
 

@@ -22,7 +22,7 @@ def word(+args: List<&2, String>, i: Nat) -> String:
   Maybe.default(&2, String, List.get(&2, String, args, i), "")
 
 def value_flags() -> List<&2, String>:
-  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--kk"]
+  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--kk", "-o"]
 
 def flag_value(args: List<&2, String>, +flag: String) -> Maybe<&2, String>:
   match args:
@@ -41,51 +41,51 @@ def is_inline_flag(flags: List<&2, String>, +arg: String) -> Bool:
       String.starts_with(arg, flag ++ "=") || is_inline_flag(rest, arg)
 
 def arg_kind(+arg: String) -> U32:
-  Bool.pick(U32, Bool.not(String.starts_with(arg, "--")), 0,
+  Bool.pick(U32, Config.is_member(value_flags(), arg), 2,
     Bool.pick(U32, String.eq(arg, "--json") || is_inline_flag(value_flags(), arg), 1,
-      Bool.pick(U32, Config.is_member(value_flags(), arg), 2, 3)))
+      Bool.pick(U32, String.starts_with(arg, "--"), 3, 0)))
 
-def with_positional(+kind: U32, +arg: String, rest: Result<&1, &1, U32 & String, List<&2, String>>) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def with_positional(+kind: U32, +arg: String, +prefix: String, rest: Result<&1, &1, U32 & String, List<&2, String>>) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match rest:
     case Fail{failure}:
-      Bool.pick(Result<&1, &1, U32 & String, List<&2, String>>, U32.is_eq(kind, 3), Fail{(2, "search: unknown option " ++ arg)}, Fail{failure})
+      Bool.pick(Result<&1, &1, U32 & String, List<&2, String>>, U32.is_eq(kind, 3), Fail{(2, prefix ++ "unknown option " ++ arg)}, Fail{failure})
     case Done{+given}:
-      Bool.pick(Result<&1, &1, U32 & String, List<&2, String>>, U32.is_eq(kind, 3), Fail{(2, "search: unknown option " ++ arg)},
+      Bool.pick(Result<&1, &1, U32 & String, List<&2, String>>, U32.is_eq(kind, 3), Fail{(2, prefix ++ "unknown option " ++ arg)},
         Done{Bool.pick(List<&2, String>, U32.is_zero(kind), arg <> given, given)})
 
-def positionals(args: List<&2, String>, skip: Bool) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def positionals(args: List<&2, String>, skip: Bool, +prefix: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match args:
     case Nil{}:
-      Bool.pick(Result<&1, &1, U32 & String, List<&2, String>>, skip, Fail{(2, "search: the last option is missing its value")}, Done{Nil{}})
+      Bool.pick(Result<&1, &1, U32 & String, List<&2, String>>, skip, Fail{(2, prefix ++ "the last option is missing its value")}, Done{Nil{}})
     case Con{+arg, rest}:
       +kind = Bool.pick(U32, skip, 1, arg_kind(arg))
-      with_positional(kind, arg, positionals(rest, U32.is_eq(kind, 2)))
+      with_positional(kind, arg, prefix, positionals(rest, U32.is_eq(kind, 2), prefix))
 
-def number_or_fail(m: Maybe<&2, U32>, +name: String, +text: String) -> Result<&1, &1, U32 & String, U32>:
+def number_or_fail(m: Maybe<&2, U32>, +prefix: String, +name: String, +text: String) -> Result<&1, &1, U32 & String, U32>:
   match m:
     case None{}:
-      Fail{(2, "search: " ++ name ++ " must be an integer in 0..4294967295, got \"" ++ text ++ "\"")}
+      Fail{(2, prefix ++ name ++ " must be an integer in 0..4294967295, got \"" ++ text ++ "\"")}
     case Some{n}:
       Done{n}
 
-def number_arg(m: Maybe<&2, String>, +fallback: U32, +name: String) -> Result<&1, &1, U32 & String, U32>:
+def number_arg(m: Maybe<&2, String>, +fallback: U32, +prefix: String, +name: String) -> Result<&1, &1, U32 & String, U32>:
   match m:
     case None{}:
       Done{fallback}
     case Some{+text}:
-      number_or_fail(U32.read(text), name, text)
+      number_or_fail(U32.read(text), prefix, name, text)
 
 def start_seed(flag: Maybe<&2, String>, from: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
   match flag:
     case None{}:
-      number_arg(from, 0, "FROM")
+      number_arg(from, 0, "search: ", "FROM")
     case Some{+text}:
       Bool.pick(Result<&1, &1, U32 & String, U32>, Maybe.is_some(&2, String, from), Fail{(2, "search: give the start seed either as FROM or as --start-seed")},
-        number_or_fail(U32.read(text), "--start-seed", text))
+        number_or_fail(U32.read(text), "search: ", "--start-seed", text))
 
 def total_of(to: Maybe<&2, String>, +start: U32) -> Result<&1, &1, U32 & String, Nat>:
   do Result<&1, &1, U32 & String, Nat>:
-    +end : U32 <- number_arg(to, (start - 1 : U32), "TO")
+    +end : U32 <- number_arg(to, (start - 1 : U32), "search: ", "TO")
     return Nat.add(U32.to_nat((end - start : U32)), 1n)
 
 def max_limit() -> U32:
@@ -138,7 +138,7 @@ def platform_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
       Done{0}
     case Some{+text}:
       Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "windows"), Done{1},
-        Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "linux"), Done{2}, Fail{(2, "search: --platform must be windows or linux, got \"" ++ text ++ "\"")}))
+        Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "linux"), Done{2}, Fail{(2, "--platform must be windows or linux, got \"" ++ text ++ "\"")}))
 
 # The --kk flag: the KK engine, native (the C KK, the default) or bend (kk.bend, for validation).
 def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:
@@ -160,11 +160,11 @@ def at_most_two(+given: List<&2, String>) -> Result<&1, &1, U32 & String, Unit>:
 
 def query_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Query>:
   do Result<&1, &1, U32 & String, Query>:
-    +given : List<&2, String> <- positionals(List.drop(&2, String, args, 1n), False{})
+    +given : List<&2, String> <- positionals(List.drop(&2, String, args, 1n), False{}, "search: ")
     few : Unit <- at_most_two(given)
     +start : U32 <- start_seed(flag_value(args, "--start-seed"), List.get(&2, String, given, 0n))
     +total : Nat <- total_of(List.get(&2, String, given, 1n), start)
-    +asked : U32 <- number_arg(flag_value(args, "--limit"), max_limit(), "--limit")
+    +asked : U32 <- number_arg(flag_value(args, "--limit"), max_limit(), "search: ", "--limit")
     +limit : U32 <- limit_in_range(asked)
     +time_ms : Nat <- time_limit(flag_value(args, "--time-limit"))
     +platform : U32 <- platform_flag(flag_value(args, "--platform"))
@@ -180,3 +180,49 @@ def query_json(+q: Query) -> Bool:
   match q:
     case Query{_, _, _, _, +json, _, _, _, _}:
       json
+
+# A world dump query: seeds from..from + total - 1, the platform, the KK engine (kk_flag) and the output path, a
+# folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed.
+type Dump is Data:
+  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool}
+
+def dump_usage() -> String:
+  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH"
+
+def dump_out(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, String>:
+  match m:
+    case None{}:
+      Fail{(2, dump_usage())}
+    case Some{+path}:
+      Done{path}
+
+def dump_seed(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
+  match m:
+    case None{}:
+      Fail{(2, dump_usage())}
+    case Some{+text}:
+      number_or_fail(U32.read(text), "dump: ", "SEED", text)
+
+def dump_total(rest: List<&2, String>, +from: U32) -> Result<&1, &1, U32 & String, Nat>:
+  match rest:
+    case Nil{}:
+      Done{1n}
+    case Con{+to, Nil{}}:
+      do Result<&1, &1, U32 & String, Nat>:
+        +end : U32 <- number_or_fail(U32.read(to), "dump: ", "TO", to)
+        Bool.pick(Result<&1, &1, U32 & String, Nat>, (end < from : U32), Fail{(2, "dump: TO must not be below SEED")},
+          Done{Nat.add(U32.to_nat((end - from : U32)), 1n)})
+    case _:
+      Fail{(2, dump_usage())}
+
+# The world dump query of `world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH` (args start
+# with "dump"; the platform defaults to windows).
+def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
+  do Result<&1, &1, U32 & String, Dump>:
+    +given : List<&2, String> <- positionals(List.drop(&2, String, args, 1n), False{}, "dump: ")
+    +from : U32 <- dump_seed(List.head(&2, String, given))
+    +total : Nat <- dump_total(List.drop(&2, String, given, 1n), from)
+    +platform : U32 <- platform_flag(flag_value(args, "--platform"))
+    +native : Bool <- kk_flag(flag_value(args, "--kk"))
+    +out : String <- dump_out(flag_value(args, "-o"))
+    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n)}

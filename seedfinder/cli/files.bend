@@ -69,3 +69,35 @@ def read_bytes(+prefix: String, +path: String) -> IO(Result<&1, &1, U32 & String
   do IO<Result<&1, &1, U32 & String, List<&2, U32>>>:
     opened : Result<&1, &1, U32 & String, File> <- File.open(path, "r")
     bytes_opened(opened, prefix, path)
+
+def unwritable(+prefix: String, +path: String, failure: U32 & String) -> U32 & String:
+  (code, reason) = failure
+  (2, prefix ++ "cannot write " ++ path ++ ": " ++ reason)
+
+def writable(+prefix: String, +path: String, result: Result<&1, &1, U32 & String, Unit>) -> Result<&1, &1, U32 & String, Unit>:
+  match result:
+    case Fail{failure}:
+      Fail{unwritable(prefix, path, failure)}
+    case Done{done}:
+      Done{done}
+
+def write_closed(got: File & Result<&1, &1, U32 & String, Unit>, +prefix: String, +path: String) -> IO(Result<&1, &1, U32 & String, Unit>):
+  (file, result) = got
+  do IO<Result<&1, &1, U32 & String, Unit>>:
+    File.close(file)
+    IO.pure(Result<&1, &1, U32 & String, Unit>, writable(prefix, path, result))
+
+def write_opened(opened: Result<&1, &1, U32 & String, File>, bytes: List<&2, U32>, +prefix: String, +path: String) -> IO(Result<&1, &1, U32 & String, Unit>):
+  match opened:
+    case Fail{failure}:
+      IO.pure(Result<&1, &1, U32 & String, Unit>, Fail{unwritable(prefix, path, failure)})
+    case Done{file}:
+      do IO<Result<&1, &1, U32 & String, Unit>>:
+        got : File & Result<&1, &1, U32 & String, Unit> <- File.write_bytes(file, bytes)
+        write_closed(got, prefix, path)
+
+# Writes the bytes to a file, replacing it. A failure is (2, "<prefix>cannot write <path>: <reason>").
+def write_bytes(+prefix: String, +path: String, bytes: List<&2, U32>) -> IO(Result<&1, &1, U32 & String, Unit>):
+  do IO<Result<&1, &1, U32 & String, Unit>>:
+    opened : Result<&1, &1, U32 & String, File> <- File.open(path, "w")
+    write_opened(opened, bytes, prefix, path)
