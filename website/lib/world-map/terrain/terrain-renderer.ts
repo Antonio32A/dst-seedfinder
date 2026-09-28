@@ -1,12 +1,10 @@
-import { TILES } from "@/lib/catalog/world";
+import { MAP_TEXTURES, TILES } from "@/lib/catalog/world";
 import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "@/lib/world-map/canvas/gl-program";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { landLayers } from "./land-layers";
 import { oceanTextures } from "./ocean-textures";
 
-const MAP_EDGE = "/world-map/map_edge.png";
-const PAPER = "/world-map/minimap_paper.png";
 const PIXELS_PER_TILE = 4;
 const FORGOTTEN_BRIGHTNESS = 0.7;
 const QUAD_COMPONENTS = 3;
@@ -189,7 +187,7 @@ export function createTerrainRenderer(
     let disposed = false;
 
     const urls = [...new Set([...world.tileNames.keys()].flatMap((tile) => noiseOf(tile) ?? []))];
-    const loads = [loadTexture(gl, MAP_EDGE, gl.NEAREST), loadTexture(gl, PAPER, gl.LINEAR),
+    const loads = [loadTexture(gl, MAP_TEXTURES.mapEdge, gl.NEAREST), loadTexture(gl, MAP_TEXTURES.minimapPaper, gl.LINEAR),
         ...urls.map((url) => loadTexture(gl, url, gl.NEAREST))];
     const built = Promise.all(loads).then(([mapEdge, paper, ...noises]) => {
         if (disposed) return;

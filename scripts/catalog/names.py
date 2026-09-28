@@ -106,33 +106,19 @@ VARIANT_GROUPS = {
 }
 
 
-ICON_OVERRIDES = {
-    "rock1": "rock.png",
-    "rock2": "rock_gold.png",
-    "moonglass_rock": "rock_moonglass.png",
-    "evergreen_normal": "evergreen.png",
-    "evergreen_short": "evergreen.png",
-    "evergreen_tall": "evergreen.png",
-    "evergreen_sparse": "evergreen_lumpy.png",
-    "evergreen_stump": "evergreen_stump.png",
-    "twiggy_normal": "twiggy.png",
-    "twiggy_tall": "twiggy.png",
-    "deciduoustree_stump": "tree_leaf_stump.png",
-    "twiggytree": "twiggy.png",
-    "hermithouse_construction1": "hermitcrab_home.png",
-    "beebox_hermit": "beebox_hermitcrab.png",
-    "cave_entrance": "cave_closed.png",
-    "sculpture_rook": "sculpture_rookbody_full.png",
-    "sculpture_knight": "sculpture_knightbody_full.png",
-    "sculpture_bishop": "sculpture_bishopbody_full.png",
-    "moon_altar_rock_glass": "moon_altar_glass_rock.png",
-    "moon_altar_rock_idol": "moon_altar_idol_rock.png",
-    "moon_altar_rock_seed": "moon_altar_seed_rock.png",
-    "antlion_spawner": "antlion.png",
-    "deerspawningground": "klaus_sack.png",
-    "flower_cave": "bulb_plant.png",
-    "flower_cave_double": "bulb_plant.png",
-    "flower_cave_triple": "bulb_plant.png",
+SPAWNED_ICONS = {
+    "antlion_spawner": "antlion",
+    "crabking_spawner": "crabking",
+    "wagstaff_machinery_marker": "wagstaff_machinery",
+    "seastack_spawner_rough": "seastack",
+    "seastack_spawner_swell": "seastack",
+    "waterplant_spawner_rough": "waterplant",
+    "wobster_den_spawner_shore": "wobster_den",
+}
+
+CAPTURED_ICONS = {
+    "shell_cluster": "flotsam_heavy.png",
+    "storage_robot": "storage_robot_broken.png",
 }
 
 

@@ -299,69 +299,11 @@ def add_special_sources(ss, static):
 # Names, groups, icons
 
 
-def prefab_files():
-    """prefab name -> defining file (literal Prefab("name", ...) calls), plus the text of every prefab file."""
-    out = {}
-    texts = {}
-    pattern = re.compile(r'Prefab\(\s*"([A-Za-z0-9_]+)"')
-    for path in sorted(glob.glob(os.path.join(SCRIPTS, "prefabs/*.lua"))):
-        with open(path, errors="replace") as f:
-            text = f.read()
-        rel = os.path.relpath(path, SCRIPTS)
-        texts[rel] = text
-        for m in pattern.finditer(text):
-            out.setdefault(m.group(1), rel)
-    return out, texts
-
-
-def minimap_icons_in(text):
-    icons = []
-    for line in text.splitlines():
-        if "SetIcon(" in line and not line.lstrip().startswith("--"):
-            icons += re.findall(r'"([^"]+\.png)"', line.split("SetIcon(", 1)[1])
-    return icons
-
-
-def preferred_icon(prefab, base, icons):
-    for stem in (prefab, base):
-        if stem and stem + ".png" in icons:
-            return stem + ".png"
-    return icons[0] if len(icons) == 1 else None
-
-
-def candidate_files(prefab, base, files, texts):
-    out = []
-    if prefab in files:
-        out.append(files[prefab])
-    for stem in (prefab, base, re.sub(r"_?\d+$", "", prefab)):
-        for rel in ("prefabs/%s.lua" % stem, "prefabs/%ss.lua" % stem):
-            if stem and rel in texts and rel not in out:
-                out.append(rel)
-    return out
-
-
-def plain_icons(prefab, icons):
-    if "stump" in prefab or "burnt" in prefab:
-        return icons
-    return [i for i in icons if not re.search(r"_(burnt|stump)\.png$", i)]
-
-
-def minimap_from_files(prefab, base, files, texts, atlases):
-    for rel in candidate_files(prefab, base, files, texts):
-        icons = plain_icons(prefab, sorted({i for i in minimap_icons_in(texts[rel]) if i in atlases["minimap"]}))
-        best = preferred_icon(prefab, base, icons)
-        if best:
-            return dict(atlases["minimap"][best], element=best, match="prefab_file", file=rel)
-        if icons:
-            return {"candidates": icons, "file": rel}
-    return None
-
-
 def load_atlases():
     atlases = {"minimap": {}, "inventory": {}}
     if not os.path.isdir(GAME_DIR):
         return atlases
-    for xml in sorted(glob.glob(os.path.join(GAME_DIR, "data/minimap/minimap_data*.xml"))):
+    for xml in (os.path.join(GAME_DIR, "data", path) for path in map_textures.MINIMAP_ATLASES):
         root = ET.parse(xml).getroot()
         tex = root.find("Texture").get("filename")
         for el in root.iter("Element"):
@@ -378,43 +320,32 @@ def load_atlases():
     return atlases
 
 
-def icon_for(prefab, files, texts, atlases):
+def minimap_icon(prefab, table, atlas):
+    """The prefab's minimap icon as the game draws it: the constructor's own MiniMapEntity calls, the icon of what a
+    spawner spawns, or an icon captured from the running game."""
+    if prefab in handnames.SPAWNED_ICONS:
+        row, match = table[handnames.SPAWNED_ICONS[prefab]], "spawned:" + handnames.SPAWNED_ICONS[prefab]
+    elif prefab in handnames.CAPTURED_ICONS:
+        row, match = dict(table[prefab], icon=handnames.CAPTURED_ICONS[prefab]), "captured"
+    elif prefab in table:
+        row, match = table[prefab], "game"
+    else:
+        return None
+    if row["icon"] not in atlas:
+        return None
+    return dict(atlas[row["icon"]], element=row["icon"], match=match,
+                **{key: row[key] for key in ("priority", "over_fog") if key in row})
+
+
+def icon_for(prefab, atlases, minimap_icons):
     icons = {}
     inv = atlases["inventory"].get(prefab + ".tex")
     if inv:
         icons["inventory"] = dict(inv, element=prefab + ".tex", match="name")
-    override = handnames.ICON_OVERRIDES.get(prefab)
-    if override in atlases["minimap"]:
-        icons["minimap"] = dict(atlases["minimap"][override], element=override, match="hand")
-        return icons
-    mm = atlases["minimap"].get(prefab + ".png")
-    if mm:
-        icons["minimap"] = dict(mm, element=prefab + ".png", match="name")
-        return icons
-    if inv:
-        return icons
-    found = minimap_from_files(prefab, handnames.variant_base(prefab), files, texts, atlases)
-    if found and "candidates" in found:
-        icons["minimap_candidates"] = found["candidates"]
-    elif found:
-        icons["minimap"] = found
+    minimap = minimap_icon(prefab, minimap_icons, atlases["minimap"])
+    if minimap:
+        icons["minimap"] = minimap
     return icons
-
-
-ICON_DONOR_GROUPS = {"trees", "rocks", "plants", "statues"}
-
-
-def with_variant_icons(entries):
-    by_id = {e["id"]: e for e in entries}
-    for e in entries:
-        if "minimap" in e["icons"] or not e["variant_of"] or e["group"] not in ICON_DONOR_GROUPS:
-            continue
-        donor = by_id.get(e["variant_of"])
-        if donor is None or "minimap" not in donor["icons"]:
-            donor = next((d for d in entries if d["variant_of"] == e["variant_of"] and d["id"] != e["id"]
-                          and d["icons"].get("minimap", {}).get("match") in ("name", "prefab_file")), None)
-        if donor and "minimap" in donor["icons"]:
-            e["icons"]["minimap"] = dict(donor["icons"]["minimap"], match="variant:" + donor["id"])
 
 
 def display_name(prefab, names):
@@ -787,7 +718,7 @@ def static_only_reason(prefab, sources, cave_only):
     return "rare: only in set pieces " + ", ".join(sorted({s["name"] for s in sources if s["default"]}))
 
 
-def build_prefabs(static, ss, emp, n_worlds, atlases, files, texts, cave_only, layout_reach):
+def build_prefabs(static, ss, emp, n_worlds, atlases, minimap_icons, cave_only, layout_reach):
     names = static["names"]
     swaps = swap_info(static)
     moon_rooms = moon_room_names(static)
@@ -795,7 +726,7 @@ def build_prefabs(static, ss, emp, n_worlds, atlases, files, texts, cave_only, l
     out = []
     for prefab in sorted(set(ss.prefabs) | set(emp)):
         sources = ss.sources(prefab) if prefab in ss.prefabs else []
-        icons = icon_for(prefab, files, texts, atlases)
+        icons = icon_for(prefab, atlases, minimap_icons)
         tags = source_tags(sources, moon_rooms, moon_layouts)
         name, name_source = display_name(prefab, names)
         entry = {
@@ -820,7 +751,6 @@ def build_prefabs(static, ss, emp, n_worlds, atlases, files, texts, cave_only, l
         if not sources:
             entry["not_in_static_set"] = True
         out.append(entry)
-    with_variant_icons(out)
     return out
 
 
@@ -863,9 +793,9 @@ def main():
     ss = build_static_set(static, layout_reach)
     cave_only = cave_only_prefabs(static, layout_reach, ss)
     atlases = load_atlases()
-    files, texts = prefab_files()
+    minimap_icons = load_json(os.path.join(INPUTS, "minimap_icons.json"))
 
-    prefabs = build_prefabs(static, ss, emp_prefabs, n_worlds, atlases, files, texts, cave_only, layout_reach)
+    prefabs = build_prefabs(static, ss, emp_prefabs, n_worlds, atlases, minimap_icons, cave_only, layout_reach)
     tiles, n_tile_worlds = build_tiles(static, worlds)
     empirical_only = sorted(p["id"] for p in prefabs if p.get("not_in_static_set"))
     static_only = sorted(p["id"] for p in prefabs if p["id"] not in emp_prefabs)

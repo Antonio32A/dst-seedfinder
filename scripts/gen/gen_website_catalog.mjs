@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const catalogPath = process.argv[2] ?? path.join(root, "scripts", "catalog", "catalog.json");
 const outPath = path.join(root, "website", "lib", "catalog", "world.ts");
+const textureDir = path.join(root, "website", "public", "world-map");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+const textures = JSON.parse(readFileSync(path.join(root, "scripts", "catalog", "map_textures.json"), "utf8"));
+const iconRects = JSON.parse(readFileSync(path.join(textureDir, textures.iconSheet.rects), "utf8")).icons;
+const textureUrl = (file) => `/world-map/${file}`;
 
 const GROUP_ORDER = [
     "spawn & travel", "bosses & spawners", "landmarks", "clockwork", "sculptures", "statues", "trees", "rocks", "plants",
@@ -34,7 +38,13 @@ const orderedGroups = [...GROUP_ORDER.filter((group) => groups.includes(group)),
 const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 const titleCase = (name) => name.toLowerCase().split("_").map(capitalize).join(" ");
 
-const prefabRow = ({ id, display_name, group, variant_of, default_reachable, empirical, swap }) => ({
+const iconRow = ({ element, priority, over_fog }) => {
+    if (!(element in iconRects)) throw new Error(`no sprite sheet rect for the minimap icon ${element}`);
+    const { x, y, w, h } = iconRects[element];
+    return { x, y, w, h, ...(priority ? { priority } : {}), ...(over_fog ? { overFog: true } : {}) };
+};
+
+const prefabRow = ({ id, display_name, group, variant_of, default_reachable, empirical, swap, icons }) => ({
     id,
     name: display_name,
     group,
@@ -44,6 +54,7 @@ const prefabRow = ({ id, display_name, group, variant_of, default_reachable, emp
     ...(empirical.unique ? { unique: true } : {}),
     ...(empirical.worlds > 0 ? { counts: [empirical.min, empirical.median, empirical.max] } : {}),
     ...(swap ? { swapOption: swap.option } : {}),
+    ...(icons.minimap ? { icon: iconRow(icons.minimap) } : {}),
 });
 
 const landTileRow = ({ name, display_name, in_forest_worlds }) => ({
@@ -58,7 +69,7 @@ const mapTileEntry = ({ name, display_name, class: kind, color, minimap_noise, m
         displayName: display_name ?? titleCase(name),
         kind,
         color,
-        ...(minimap_noise ? { minimapNoise: `/world-map/noise/${minimap_noise}.png` } : {}),
+        ...(minimap_noise ? { minimapNoise: textureUrl(textures.noise[minimap_noise]) } : {}),
         ...(minimap_rank ? { minimapRank: minimap_rank } : {}),
         ...(ocean_minimap_color ? { oceanMinimapColor: ocean_minimap_color } : {}),
     },
@@ -101,6 +112,17 @@ export interface WorldPrefab {
     unique?: true;
     counts?: [min: number, median: number, max: number];
     swapOption?: string;
+    icon?: MapIcon;
+}
+
+/** The prefab's minimap icon: its UV rect on the sprite sheet in texels (stored rows: u = x / width, v = y / height). */
+export interface MapIcon {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    priority?: number;
+    overFog?: true;
 }
 
 export interface PrefabGroup {
@@ -128,6 +150,12 @@ export interface NamedAnchor {
     id: string;
     label: string;
 }
+
+export const MAP_TEXTURES = {
+    mapEdge: ${JSON.stringify(textureUrl(textures.mapEdge))},
+    minimapPaper: ${JSON.stringify(textureUrl(textures.minimapPaper))},
+    iconSheet: { url: ${JSON.stringify(textureUrl(textures.iconSheet.file))}, width: ${textures.iconSheet.width}, height: ${textures.iconSheet.height} }
+} as const;
 
 export const PREFABS: WorldPrefab[] = [
 ${rows(catalog.prefabs.map(prefabRow))}

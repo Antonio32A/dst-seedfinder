@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import vinext from "vinext";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { SECURITY_HEADERS } from "./lib/server/security-headers";
+import { headersFile } from "./lib/server/static-headers";
 
 export default defineConfig({
     plugins: [
@@ -15,8 +16,7 @@ export default defineConfig({
             },
             generateBundle() {
                 if (this.environment.name !== "client") return;
-                const lines = Object.entries(SECURITY_HEADERS).map(([name, value]) => `  ${name}: ${value}\n`);
-                this.emitFile({ type: "asset", fileName: "_headers", source: `/*\n${lines.join("")}` });
+                this.emitFile({ type: "asset", fileName: "_headers", source: headersFile() });
             }
         },
         vinext(),

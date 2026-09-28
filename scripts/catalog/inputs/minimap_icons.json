@@ -1,0 +1,1884 @@
+{
+ "abigail_flower": {
+  "icon": "abigail_flower.png"
+ },
+ "abysspillar_trial": {
+  "icon": "vault_switch.png"
+ },
+ "adventure_portal": {
+  "icon": "portal.png"
+ },
+ "ancient_altar": {
+  "icon": "tab_crafting_table.png",
+  "priority": 5
+ },
+ "ancient_altar_broken": {
+  "icon": "tab_crafting_table.png",
+  "priority": 5
+ },
+ "ancienttree_gem": {
+  "icon": "ancienttree_gem.png",
+  "priority": 3
+ },
+ "ancienttree_gem_waxed": {
+  "icon": "ancienttree_gem.png",
+  "priority": 3
+ },
+ "ancienttree_nightvision": {
+  "icon": "ancienttree_nightvision.png",
+  "priority": 3
+ },
+ "ancienttree_nightvision_waxed": {
+  "icon": "ancienttree_nightvision.png",
+  "priority": 3
+ },
+ "antlion": {
+  "icon": "antlion.png",
+  "priority": 1
+ },
+ "antlion_sinkhole": {
+  "icon": "sinkhole.png"
+ },
+ "archive_cookpot": {
+  "icon": "cookpot_archive.png"
+ },
+ "archive_lockbox_dispencer": {
+  "icon": "archive_knowledge_dispensary.png"
+ },
+ "archive_moon_statue": {
+  "icon": "archive_moon_statue2.png"
+ },
+ "archive_orchestrina_main": {
+  "icon": "archive_orchestrina_main.png"
+ },
+ "archive_pillar": {
+  "icon": "pillar_archive.png"
+ },
+ "archive_portal": {
+  "icon": "archive_portal.png"
+ },
+ "archive_rune_statue": {
+  "icon": "archive_runes.png"
+ },
+ "archive_switch": {
+  "icon": "archive_power_switch.png"
+ },
+ "arrowsign_post": {
+  "icon": "sign.png"
+ },
+ "atrium_gate": {
+  "icon": "atrium_gate.png"
+ },
+ "atrium_idol": {
+  "icon": "atrium_overgrowth.png"
+ },
+ "atrium_key_icon": {
+  "icon": "atrium_key.png",
+  "over_fog": true,
+  "priority": 15
+ },
+ "atrium_light": {
+  "icon": "atrium_light.png"
+ },
+ "atrium_overgrowth": {
+  "icon": "atrium_overgrowth.png"
+ },
+ "atrium_rubble": {
+  "icon": "atrium_rubble.png"
+ },
+ "atrium_statue": {
+  "icon": "atrium_statue.png"
+ },
+ "atrium_statue_facing": {
+  "icon": "atrium_statue.png"
+ },
+ "backpack": {
+  "icon": "backpack.png"
+ },
+ "balatro_machine": {
+  "icon": "balatro_machine.png",
+  "priority": 5
+ },
+ "balloon_mapicon": {
+  "icon": "balloonspeed.png",
+  "over_fog": true,
+  "priority": 21
+ },
+ "balloons_empty": {
+  "icon": "balloons_empty.png"
+ },
+ "bananabush": {
+  "icon": "bananabush.png"
+ },
+ "bananabush_waxed": {
+  "icon": "bananabush.png"
+ },
+ "basalt": {
+  "icon": "basalt.png"
+ },
+ "basalt_pillar": {
+  "icon": "basalt.png"
+ },
+ "batcave": {
+  "icon": "batcave.png"
+ },
+ "battlesong_container": {
+  "icon": "battlesong_container.png"
+ },
+ "beargerfur_sack": {
+  "icon": "beargerfur_sack.png"
+ },
+ "beebox": {
+  "icon": "beebox.png"
+ },
+ "beebox_hermit": {
+  "icon": "beebox_hermitcrab.png"
+ },
+ "beefalo_groomer": {
+  "icon": "yotb_beefalowardrobe.png"
+ },
+ "beehive": {
+  "icon": "beehive.png"
+ },
+ "beemine": {
+  "icon": "beemine.png"
+ },
+ "beemine_maxwell": {
+  "icon": "beemine.png"
+ },
+ "beequeenhive": {
+  "icon": "beequeenhive.png"
+ },
+ "beequeenhivegrown": {
+  "icon": "beequeenhivegrown.png"
+ },
+ "bernie_active": {
+  "icon": "bernie.png"
+ },
+ "bernie_big": {
+  "icon": "bernie.png"
+ },
+ "bernie_inactive": {
+  "icon": "bernie.png"
+ },
+ "berrybush": {
+  "icon": "berrybush.png"
+ },
+ "berrybush2": {
+  "icon": "berrybush2.png"
+ },
+ "berrybush2_waxed": {
+  "icon": "berrybush2.png"
+ },
+ "berrybush_juicy": {
+  "icon": "berrybush_juicy.png"
+ },
+ "berrybush_juicy_waxed": {
+  "icon": "berrybush_juicy.png"
+ },
+ "berrybush_waxed": {
+  "icon": "berrybush.png"
+ },
+ "birdcage": {
+  "icon": "birdcage.png"
+ },
+ "birdtrap": {
+  "icon": "birdtrap.png"
+ },
+ "bluemooneye": {
+  "icon": "bluemooneye.png",
+  "over_fog": true
+ },
+ "boat": {
+  "icon": "boat.png",
+  "priority": -1
+ },
+ "boat_ancient": {
+  "icon": "boat_ancient.png",
+  "priority": -1
+ },
+ "boat_grass": {
+  "icon": "boat_grass.png",
+  "priority": -1
+ },
+ "boat_otterden": {
+  "icon": "boat_otterden.png",
+  "priority": -1
+ },
+ "boat_pirate": {
+  "icon": "boat_pirate.png",
+  "priority": -1
+ },
+ "boatrace_checkpoint": {
+  "icon": "boatrace_checkpoint.png"
+ },
+ "boatrace_seastack": {
+  "icon": "boatrace_seastack.png"
+ },
+ "boatrace_seastack_monkey": {
+  "icon": "boatrace_seastack.png"
+ },
+ "boatrace_start": {
+  "icon": "boatrace_start.png"
+ },
+ "bookstation": {
+  "icon": "bookstation.png",
+  "priority": 5
+ },
+ "bullkelp_plant": {
+  "icon": "bullkelp_plant.png"
+ },
+ "buzzardspawner": {
+  "icon": "buzzard.png"
+ },
+ "cactus": {
+  "icon": "cactus.png"
+ },
+ "carnival_host": {
+  "icon": "carnival_host.png",
+  "priority": 5
+ },
+ "carnival_plaza": {
+  "icon": "carnival_plaza.png",
+  "priority": 5
+ },
+ "carnival_prizebooth": {
+  "icon": "carnival_prizebooth.png",
+  "priority": 5
+ },
+ "carnivalgame_feedchicks_station": {
+  "icon": "carnivalgame_feedchicks_station.png"
+ },
+ "carnivalgame_golfgame": {
+  "icon": "carnivalgame_golfgame.png"
+ },
+ "carnivalgame_herding_station": {
+  "icon": "carnivalgame_herding_station.png"
+ },
+ "carnivalgame_memory_station": {
+  "icon": "carnivalgame_memory_station.png"
+ },
+ "carnivalgame_puckdrop_station": {
+  "icon": "carnivalgame_puckdrop_station.png"
+ },
+ "carnivalgame_shooting_station": {
+  "icon": "carnivalgame_shooting_station.png"
+ },
+ "carnivalgame_wheelspin_station": {
+  "icon": "carnivalgame_wheelspin_station.png"
+ },
+ "carpentry_station": {
+  "icon": "carpentry_station.png"
+ },
+ "cartographydesk": {
+  "icon": "cartographydesk.png",
+  "priority": 5
+ },
+ "catcoonden": {
+  "icon": "catcoonden.png"
+ },
+ "cave_banana_burnt": {
+  "icon": "cave_banana_tree_burnt.png"
+ },
+ "cave_banana_stump": {
+  "icon": "cave_banana_tree_stump.png"
+ },
+ "cave_banana_tree": {
+  "icon": "cave_banana_tree.png"
+ },
+ "cave_entrance": {
+  "icon": "cave_closed.png"
+ },
+ "cave_entrance_open": {
+  "icon": "cave_open.png"
+ },
+ "cave_entrance_ruins": {
+  "icon": "cave_closed.png"
+ },
+ "cave_exit": {
+  "icon": "cave_open2.png"
+ },
+ "cave_hole": {
+  "icon": "cave_hole.png"
+ },
+ "cave_vent_rock": {
+  "icon": "cave_vent_rock.png"
+ },
+ "charlie_lecturn": {
+  "icon": "charlie_lectern.png"
+ },
+ "charlie_stage_post": {
+  "icon": "charlie_stage_post.png"
+ },
+ "chessjunk": {
+  "icon": "chessjunk.png"
+ },
+ "chessjunk1": {
+  "icon": "chessjunk.png"
+ },
+ "chessjunk2": {
+  "icon": "chessjunk.png"
+ },
+ "chessjunk3": {
+  "icon": "chessjunk.png"
+ },
+ "chest_mimic": {
+  "icon": "pandoraschest.png"
+ },
+ "chester": {
+  "icon": "chester.png"
+ },
+ "chester_eyebone": {
+  "icon": "chester_eyebone.png",
+  "priority": 7
+ },
+ "coldfirepit": {
+  "icon": "coldfirepit.png",
+  "priority": 1
+ },
+ "compostingbin": {
+  "icon": "compostingbin.png"
+ },
+ "cookpot": {
+  "icon": "cookpot.png"
+ },
+ "cotl_tabernacle_level1": {
+  "icon": "cotl_tabernacle_level1.png",
+  "priority": 1
+ },
+ "cotl_tabernacle_level2": {
+  "icon": "cotl_tabernacle_level2.png",
+  "priority": 1
+ },
+ "cotl_tabernacle_level3": {
+  "icon": "cotl_tabernacle_level3.png",
+  "priority": 1
+ },
+ "crabking": {
+  "icon": "crabking.png"
+ },
+ "crabking_cannontower": {
+  "icon": "crabking_cannontower.png",
+  "incomplete": true
+ },
+ "critterlab": {
+  "icon": "critterlab.png",
+  "priority": 5
+ },
+ "daywalker_pillar": {
+  "icon": "daywalker_pillar.png",
+  "priority": 4
+ },
+ "deciduoustree": {
+  "icon": "tree_leaf.png",
+  "priority": -1
+ },
+ "deciduoustree_burnt": {
+  "icon": "tree_leaf_burnt.png",
+  "priority": -1
+ },
+ "deciduoustree_normal": {
+  "icon": "tree_leaf.png",
+  "priority": -1
+ },
+ "deciduoustree_short": {
+  "icon": "tree_leaf.png",
+  "priority": -1
+ },
+ "deciduoustree_stump": {
+  "icon": "tree_leaf_stump.png",
+  "priority": -1
+ },
+ "deciduoustree_tall": {
+  "icon": "tree_leaf.png",
+  "priority": -1
+ },
+ "deerclopseyeball_sentryward": {
+  "icon": "deerclopseyeball_sentryward_disabled.png",
+  "over_fog": true
+ },
+ "depleted_grass": {
+  "icon": "grass.png"
+ },
+ "diviningrod": {
+  "icon": "diviningrod.png"
+ },
+ "dragonboat_body": {
+  "icon": "boat_yotd.png",
+  "priority": -1
+ },
+ "dragonboat_shadowboat": {
+  "icon": "boat_yotd.png",
+  "priority": -1
+ },
+ "dragonflychest": {
+  "icon": "dragonflychest.png"
+ },
+ "dragonflyfurnace": {
+  "icon": "dragonfly_furnace.png"
+ },
+ "driftwood_small1": {
+  "icon": "driftwood_small1.png",
+  "priority": -1
+ },
+ "driftwood_small2": {
+  "icon": "driftwood_small1.png",
+  "priority": -1
+ },
+ "driftwood_tall": {
+  "icon": "driftwood_small1.png",
+  "priority": -1
+ },
+ "dropperweb": {
+  "icon": "whitespider_den.png"
+ },
+ "dustmothden": {
+  "icon": "dustmothden.png"
+ },
+ "elixir_container": {
+  "icon": "elixir_container.png"
+ },
+ "evergreen": {
+  "icon": "evergreen.png",
+  "priority": -1
+ },
+ "evergreen_burnt": {
+  "icon": "evergreen_burnt.png",
+  "priority": -1
+ },
+ "evergreen_normal": {
+  "icon": "evergreen.png",
+  "priority": -1
+ },
+ "evergreen_short": {
+  "icon": "evergreen.png",
+  "priority": -1
+ },
+ "evergreen_sparse": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "evergreen_sparse_normal": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "evergreen_sparse_short": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "evergreen_sparse_tall": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "evergreen_stump": {
+  "icon": "evergreen_stump.png",
+  "priority": -1
+ },
+ "evergreen_tall": {
+  "icon": "evergreen.png",
+  "priority": -1
+ },
+ "eyeturret": {
+  "icon": "eyeball_turret.png"
+ },
+ "fast_farmplot": {
+  "icon": "farm3.png"
+ },
+ "firepit": {
+  "icon": "firepit.png",
+  "priority": 1
+ },
+ "firesuppressor": {
+  "icon": "firesuppressor.png",
+  "priority": 5
+ },
+ "fish_box": {
+  "icon": "fish_box.png",
+  "priority": 4
+ },
+ "fishingnet": {
+  "icon": "boat_net.png"
+ },
+ "floatinglantern": {
+  "icon": "floatinglantern.png",
+  "over_fog": true
+ },
+ "flower_cave": {
+  "icon": "bulb_plant.png"
+ },
+ "flower_cave_double": {
+  "icon": "bulb_plant.png"
+ },
+ "flower_cave_double_withered": {
+  "icon": "bulb_plant_withered.png"
+ },
+ "flower_cave_triple": {
+  "icon": "bulb_plant.png"
+ },
+ "flower_cave_triple_withered": {
+  "icon": "bulb_plant_withered.png"
+ },
+ "flower_cave_withered": {
+  "icon": "bulb_plant_withered.png"
+ },
+ "friendlyfruitfly": {
+  "icon": "friendlyfruitfly.png",
+  "priority": 5
+ },
+ "gelblob_storage": {
+  "icon": "gelblob_storage.png"
+ },
+ "glommer": {
+  "icon": "glommer.png",
+  "priority": 5
+ },
+ "glommerflower": {
+  "icon": "glommerflower.png",
+  "priority": 5
+ },
+ "grass": {
+  "icon": "grass.png"
+ },
+ "grass_waxed": {
+  "icon": "grass.png"
+ },
+ "gravestone": {
+  "icon": "gravestones.png"
+ },
+ "greenmooneye": {
+  "icon": "greenmooneye.png",
+  "over_fog": true
+ },
+ "grotto_pool_big": {
+  "icon": "grotto_pool_big.png"
+ },
+ "grotto_pool_small": {
+  "icon": "grotto_pool_small.png"
+ },
+ "hermit_pearl": {
+  "icon": "hermit_pearl.png",
+  "priority": 7
+ },
+ "hermitcrab_lightpost": {
+  "icon": "hermitcrab_lightpost.png"
+ },
+ "hermitcrab_teashop": {
+  "icon": "hermitcrab_teashop.png"
+ },
+ "hermithotspring": {
+  "icon": "hermithotspring.png"
+ },
+ "hermithotspring_constr": {
+  "icon": "hermithotspring_constr.png"
+ },
+ "hermithouse": {
+  "icon": "hermitcrab_home2.png"
+ },
+ "hermithouse2": {
+  "icon": "hermitcrab_home2.png"
+ },
+ "hermithouse_construction1": {
+  "icon": "hermitcrab_home.png"
+ },
+ "hermithouse_construction2": {
+  "icon": "hermitcrab_home2.png"
+ },
+ "hermithouse_construction3": {
+  "icon": "hermitcrab_home2.png"
+ },
+ "homesign": {
+  "icon": "sign.png"
+ },
+ "hotspring": {
+  "icon": "hotspring.png"
+ },
+ "houndmound": {
+  "icon": "hound_mound.png"
+ },
+ "hutch": {
+  "icon": "hutch.png"
+ },
+ "hutch_fishbowl": {
+  "icon": "hutch_fishbowl.png",
+  "priority": 7
+ },
+ "icebox": {
+  "icon": "icebox.png"
+ },
+ "icefishing_hole": {
+  "icon": "icefishing_hole.png"
+ },
+ "icepack": {
+  "icon": "icepack.png"
+ },
+ "insanityrock": {
+  "icon": "obelisk.png"
+ },
+ "junk_pile": {
+  "icon": "junk_pile.png"
+ },
+ "junk_pile_big": {
+  "icon": "junk_pile_big.png",
+  "priority": 1
+ },
+ "kitcoonden": {
+  "icon": "kitcoonden.png"
+ },
+ "klaus_sack": {
+  "icon": "klaus_sack.png",
+  "incomplete": true
+ },
+ "krampus_sack": {
+  "icon": "krampus_sack.png"
+ },
+ "lava_pond": {
+  "icon": "lava_pond.png"
+ },
+ "lichen": {
+  "icon": "lichen.png"
+ },
+ "lighter": {
+  "icon": "lighter.png"
+ },
+ "lightflier_flower": {
+  "icon": "bulb_plant.png"
+ },
+ "lightning_rod": {
+  "icon": "lightningrod.png"
+ },
+ "livingtree": {
+  "icon": "livingtree.png"
+ },
+ "livingtree_halloween": {
+  "icon": "livingtree.png"
+ },
+ "lucy": {
+  "icon": "lucy_axe.png"
+ },
+ "lunar_forge": {
+  "icon": "lunar_forge.png",
+  "priority": 5
+ },
+ "lunarrift_crystal_big": {
+  "icon": "lunar_rift_crystals.png"
+ },
+ "lunarrift_crystal_small": {
+  "icon": "lunar_rift_crystals.png"
+ },
+ "lunarrift_portal": {
+  "icon": "lunarrift_portal.png",
+  "over_fog": true,
+  "priority": 22
+ },
+ "lunarthrall_plant": {
+  "icon": "lunarthrall_plant.png",
+  "priority": 5
+ },
+ "lureplant": {
+  "icon": "eyeplant.png",
+  "incomplete": true
+ },
+ "madscience_lab": {
+  "icon": "madscience_lab.png"
+ },
+ "magician_chest": {
+  "icon": "magician_chest.png"
+ },
+ "marblepillar": {
+  "icon": "marblepillar.png"
+ },
+ "marbleshrub": {
+  "icon": "marbleshrub1.png",
+  "priority": -1
+ },
+ "marbleshrub_normal": {
+  "icon": "marbleshrub1.png",
+  "priority": -1
+ },
+ "marbleshrub_short": {
+  "icon": "marbleshrub1.png",
+  "priority": -1
+ },
+ "marbleshrub_tall": {
+  "icon": "marbleshrub1.png",
+  "priority": -1
+ },
+ "marbleshrub_waxed": {
+  "icon": "marbleshrub1.png",
+  "priority": -1
+ },
+ "marbletree": {
+  "icon": "marbletree.png",
+  "priority": -1
+ },
+ "marbletree_1": {
+  "icon": "marbletree.png",
+  "priority": -1
+ },
+ "marbletree_2": {
+  "icon": "marbletree.png",
+  "priority": -1
+ },
+ "marbletree_3": {
+  "icon": "marbletree.png",
+  "priority": -1
+ },
+ "marbletree_4": {
+  "icon": "marbletree.png",
+  "priority": -1
+ },
+ "marsh_bush": {
+  "icon": "marsh_bush.png",
+  "priority": -1
+ },
+ "marsh_bush_waxed": {
+  "icon": "marsh_bush.png",
+  "priority": -1
+ },
+ "marsh_tree": {
+  "icon": "marshtree.png",
+  "priority": -1
+ },
+ "mast": {
+  "icon": "mast.png"
+ },
+ "mast_broken": {
+  "icon": "mast.png"
+ },
+ "mast_malbatross": {
+  "icon": "mast_malbatross.png"
+ },
+ "mast_yotd": {
+  "icon": "mast_yotd.png"
+ },
+ "meatrack": {
+  "icon": "meatrack.png"
+ },
+ "meatrack_hermit": {
+  "icon": "meatrack_hermit.png"
+ },
+ "meatrack_hermit_multi": {
+  "icon": "meatrack_hermit_multi.png"
+ },
+ "megaflare_minimap": {
+  "icon": "flare.png",
+  "over_fog": true,
+  "priority": 21
+ },
+ "merm_armory": {
+  "icon": "merm_armory.png"
+ },
+ "merm_armory_upgraded": {
+  "icon": "merm_armory_upgraded.png"
+ },
+ "merm_toolshed": {
+  "icon": "merm_toolshed.png"
+ },
+ "merm_toolshed_upgraded": {
+  "icon": "merm_toolshed_upgraded.png"
+ },
+ "mermhouse": {
+  "icon": "mermhouse.png"
+ },
+ "mermhouse_crafted": {
+  "icon": "mermhouse_crafted.png"
+ },
+ "mermthrone": {
+  "icon": "merm_king_carpet.png"
+ },
+ "mermthrone_construction": {
+  "icon": "merm_king_carpet_construction.png"
+ },
+ "mermwatchtower": {
+  "icon": "merm_guard_tower.png"
+ },
+ "messagebottletreasure_marker": {
+  "icon": "messagebottletreasure_marker.png",
+  "priority": 6
+ },
+ "mighty_gym": {
+  "icon": "mighty_gym.png"
+ },
+ "migration_portal": {
+  "icon": "wormhole.png"
+ },
+ "miniflare_minimap": {
+  "icon": "flare.png",
+  "over_fog": true,
+  "priority": 21
+ },
+ "minotaur": {
+  "icon": "atrium_key.png",
+  "over_fog": true,
+  "priority": 15
+ },
+ "minotaurchest": {
+  "icon": "minotaurchest.png"
+ },
+ "monkeybarrel": {
+  "icon": "monkeybarrel.png"
+ },
+ "monkeyhut": {
+  "icon": "monkeyhut.png"
+ },
+ "monkeyisland_portal": {
+  "icon": "monkey_island_portal.png",
+  "priority": 1
+ },
+ "monkeyqueen": {
+  "icon": "monkey_queen.png",
+  "priority": 1
+ },
+ "monkeytail": {
+  "icon": "monkeytail.png"
+ },
+ "monkeytail_waxed": {
+  "icon": "monkeytail.png"
+ },
+ "monstormmarker_debug": {
+  "icon": "moonstormmarker0.png",
+  "over_fog": true,
+  "priority": 21
+ },
+ "moon_altar": {
+  "icon": "moon_altar.png",
+  "priority": 5
+ },
+ "moon_altar_astral": {
+  "icon": "moon_altar_astral.png",
+  "priority": 5
+ },
+ "moon_altar_cosmic": {
+  "icon": "moon_altar_cosmic.png",
+  "priority": 5
+ },
+ "moon_altar_crown": {
+  "icon": "moon_altar_crown_piece.png"
+ },
+ "moon_altar_glass": {
+  "icon": "moon_altar_glass_piece.png"
+ },
+ "moon_altar_icon": {
+  "icon": "moon_altar_icon_piece.png"
+ },
+ "moon_altar_idol": {
+  "icon": "moon_altar_idol_piece.png"
+ },
+ "moon_altar_rock_glass": {
+  "icon": "moon_altar_glass_rock.png"
+ },
+ "moon_altar_rock_idol": {
+  "icon": "moon_altar_idol_rock.png"
+ },
+ "moon_altar_rock_seed": {
+  "icon": "moon_altar_seed_rock.png"
+ },
+ "moon_altar_seed": {
+  "icon": "moon_altar_seed_piece.png"
+ },
+ "moon_altar_ward": {
+  "icon": "moon_altar_ward_piece.png"
+ },
+ "moon_device": {
+  "icon": "moon_device_construction1.png"
+ },
+ "moon_device_construction1": {
+  "icon": "moon_device_construction1.png"
+ },
+ "moon_device_construction2": {
+  "icon": "moon_device_construction1.png"
+ },
+ "moon_tree": {
+  "icon": "moon_tree.png",
+  "priority": -1
+ },
+ "moon_tree_normal": {
+  "icon": "moon_tree.png",
+  "priority": -1
+ },
+ "moon_tree_short": {
+  "icon": "moon_tree.png",
+  "priority": -1
+ },
+ "moon_tree_tall": {
+  "icon": "moon_tree.png",
+  "priority": -1
+ },
+ "moon_tree_waxed": {
+  "icon": "moon_tree.png",
+  "priority": -1
+ },
+ "moonbase": {
+  "icon": "moonbase.png",
+  "priority": 4
+ },
+ "moondial": {
+  "icon": "moondial.png",
+  "incomplete": true,
+  "over_fog": true
+ },
+ "moonglass_rock": {
+  "icon": "rock_moonglass.png"
+ },
+ "moonglass_wobster_den": {
+  "icon": "wobster_den.png"
+ },
+ "moonrockseed_icon": {
+  "icon": "moonrockseed.png",
+  "over_fog": true,
+  "priority": 11
+ },
+ "moonspiderden": {
+  "icon": "spidermoonden.png"
+ },
+ "moonstormmarker_big": {
+  "icon": "moonstormmarker0.png",
+  "over_fog": true,
+  "priority": 21
+ },
+ "multiplayer_portal": {
+  "icon": "portal_dst.png"
+ },
+ "multiplayer_portal_moonrock": {
+  "icon": "portal_dst.png"
+ },
+ "multiplayer_portal_moonrock_constr": {
+  "icon": "portal_dst.png"
+ },
+ "mushroom_farm": {
+  "icon": "mushroom_farm.png"
+ },
+ "mushtree_medium": {
+  "icon": "mushroom_tree_med.png"
+ },
+ "mushtree_medium_stump": {
+  "icon": "mushroom_tree_stump.png"
+ },
+ "mushtree_moon": {
+  "icon": "mushtree_moon.png"
+ },
+ "mushtree_moon_stump": {
+  "icon": "mushroom_tree_stump.png"
+ },
+ "mushtree_small": {
+  "icon": "mushroom_tree_small.png"
+ },
+ "mushtree_small_stump": {
+  "icon": "mushroom_tree_stump.png"
+ },
+ "mushtree_tall": {
+  "icon": "mushroom_tree.png"
+ },
+ "mushtree_tall_stump": {
+  "icon": "mushroom_tree_stump.png"
+ },
+ "mushtree_tall_webbed": {
+  "icon": "mushroom_tree_webbed.png"
+ },
+ "nightlight": {
+  "icon": "nightlight.png"
+ },
+ "nightmaregrowth": {
+  "icon": "nightmaregrowth.png"
+ },
+ "nightmarelight": {
+  "icon": "nightmarelight.png"
+ },
+ "oasis_cactus": {
+  "icon": "oasis_cactus.png"
+ },
+ "oasislake": {
+  "icon": "oasis.png"
+ },
+ "ocean_trawler": {
+  "icon": "ocean_trawler.png"
+ },
+ "oceanfish_shoalspawner": {
+  "icon": "oceanfish_shoalspawner.png"
+ },
+ "oceantree": {
+  "icon": "oceantree_tall.png",
+  "priority": -1
+ },
+ "oceantree_burnt": {
+  "icon": "oceantree_burnt.png",
+  "priority": -1
+ },
+ "oceantree_normal": {
+  "icon": "oceantree_tall.png",
+  "priority": -1
+ },
+ "oceantree_pillar": {
+  "icon": "oceantree_pillar_small.png"
+ },
+ "oceantree_short": {
+  "icon": "oceantree_tall.png",
+  "priority": -1
+ },
+ "oceantree_stump": {
+  "icon": "oceantree_stump.png",
+  "priority": -1
+ },
+ "oceantree_tall": {
+  "icon": "oceantree_tall.png",
+  "priority": -1
+ },
+ "oceantree_waxed": {
+  "icon": "oceantree_tall.png",
+  "priority": -1
+ },
+ "oceanvine": {
+  "icon": "oceanvine.png"
+ },
+ "oceanvine_cocoon": {
+  "icon": "oceanvine_cocoon.png"
+ },
+ "oceanwhirlbigportalexit": {
+  "icon": "oceanwhirlbigportalexit.png"
+ },
+ "oceanwhirlportal": {
+  "icon": "oceanwhirlportal.png"
+ },
+ "offering_pot": {
+  "icon": "offering_pot.png"
+ },
+ "offering_pot_upgraded": {
+  "icon": "offering_pot_upgraded.png"
+ },
+ "orangemooneye": {
+  "icon": "orangemooneye.png",
+  "over_fog": true
+ },
+ "otterden": {
+  "icon": "otter_den.png"
+ },
+ "otterden_dead": {
+  "icon": "otter_den.png"
+ },
+ "palmconetree": {
+  "icon": "palmcone_tree.png",
+  "priority": -1
+ },
+ "palmconetree_normal": {
+  "icon": "palmcone_tree.png",
+  "priority": -1
+ },
+ "palmconetree_short": {
+  "icon": "palmcone_tree.png",
+  "priority": -1
+ },
+ "palmconetree_tall": {
+  "icon": "palmcone_tree.png",
+  "priority": -1
+ },
+ "palmconetree_waxed": {
+  "icon": "palmcone_tree.png",
+  "priority": -1
+ },
+ "pandoraschest": {
+  "icon": "pandoraschest.png"
+ },
+ "penguin_ice": {
+  "icon": "penguin.png",
+  "priority": 1
+ },
+ "perdshrine": {
+  "icon": "perdshrine.png",
+  "priority": 5
+ },
+ "piggyback": {
+  "icon": "piggyback.png"
+ },
+ "pighouse": {
+  "icon": "pighouse.png"
+ },
+ "pigking": {
+  "icon": "pigking.png",
+  "priority": 1
+ },
+ "pigshrine": {
+  "icon": "pigshrine.png",
+  "priority": 5
+ },
+ "pirate_flag_pole": {
+  "icon": "pirate_flag_pole.png"
+ },
+ "pirate_stash": {
+  "icon": "pirate_stash.png"
+ },
+ "plant_normal_ground": {
+  "icon": "plant_normal_ground.png"
+ },
+ "pond": {
+  "icon": "pond.png"
+ },
+ "pond_cave": {
+  "icon": "pond_cave.png"
+ },
+ "pond_mos": {
+  "icon": "pond_mos.png"
+ },
+ "portableblender": {
+  "icon": "portableblender.png"
+ },
+ "portablecookpot": {
+  "icon": "portablecookpot.png"
+ },
+ "portablefirepit": {
+  "icon": "portablefirepit.png",
+  "priority": 1
+ },
+ "portablespicer": {
+  "icon": "portablespicer.png"
+ },
+ "portabletent": {
+  "icon": "portabletent.png"
+ },
+ "punchingbag": {
+  "icon": "punchingbag.png"
+ },
+ "punchingbag_lunar": {
+  "icon": "punchingbag_lunar.png"
+ },
+ "punchingbag_shadow": {
+  "icon": "punchingbag_shadow.png"
+ },
+ "purplemooneye": {
+  "icon": "purplemooneye.png",
+  "over_fog": true
+ },
+ "quagmire_crabtrap": {
+  "icon": "birdtrap.png"
+ },
+ "quagmire_evergreen": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "quagmire_evergreen_normal": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "quagmire_evergreen_small": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "quagmire_evergreen_stump": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "quagmire_evergreen_tall": {
+  "icon": "evergreen_lumpy.png",
+  "priority": -1
+ },
+ "quagmire_mealingstone": {
+  "icon": "quagmire_mealingstone.png",
+  "priority": 5
+ },
+ "quagmire_mushroomstump": {
+  "icon": "quagmire_mushroomstump.png"
+ },
+ "quagmire_spotspice_shrub": {
+  "icon": "quagmire_spotspiceshrub.png"
+ },
+ "quagmire_sugarwoodtree": {
+  "icon": "quagmire_sugarwoodtree.png",
+  "priority": -1
+ },
+ "quagmire_sugarwoodtree_normal": {
+  "icon": "quagmire_sugarwoodtree.png",
+  "priority": -1
+ },
+ "quagmire_sugarwoodtree_small": {
+  "icon": "quagmire_sugarwoodtree.png",
+  "priority": -1
+ },
+ "quagmire_sugarwoodtree_tall": {
+  "icon": "quagmire_sugarwoodtree.png",
+  "priority": -1
+ },
+ "quagmire_swampigelder": {
+  "icon": "pigking.png",
+  "priority": 1
+ },
+ "rabbithouse": {
+  "icon": "rabbit_house.png"
+ },
+ "rainometer": {
+  "icon": "rainometer.png"
+ },
+ "redmooneye": {
+  "icon": "redmooneye.png",
+  "over_fog": true
+ },
+ "reeds": {
+  "icon": "reeds.png"
+ },
+ "researchlab": {
+  "icon": "researchlab.png",
+  "priority": 5
+ },
+ "researchlab2": {
+  "icon": "researchlab2.png",
+  "priority": 5
+ },
+ "researchlab3": {
+  "icon": "researchlab3.png",
+  "priority": 5
+ },
+ "researchlab4": {
+  "icon": "researchlab4.png",
+  "priority": 5
+ },
+ "resurrectionstatue": {
+  "icon": "resurrect.png"
+ },
+ "resurrectionstone": {
+  "icon": "resurrection_stone.png"
+ },
+ "rock1": {
+  "icon": "rock.png"
+ },
+ "rock2": {
+  "icon": "rock_gold.png"
+ },
+ "rock_avocado_bush": {
+  "icon": "rock_avocado.png"
+ },
+ "rock_avocado_bush_waxed": {
+  "icon": "rock_avocado.png"
+ },
+ "rock_avocado_fruit_sprout_sapling": {
+  "icon": "rock_avocado.png"
+ },
+ "rock_flintless": {
+  "icon": "rock_flintless.png"
+ },
+ "rock_flintless_low": {
+  "icon": "rock_flintless.png"
+ },
+ "rock_flintless_med": {
+  "icon": "rock_flintless.png"
+ },
+ "rock_ice": {
+  "icon": "iceboulder.png"
+ },
+ "rock_ice_temperature": {
+  "icon": "iceboulder.png"
+ },
+ "rock_moon": {
+  "icon": "rock_moon.png"
+ },
+ "rock_moon_shell": {
+  "icon": "rock_moon.png"
+ },
+ "rock_petrified_tree": {
+  "icon": "petrified_tree.png"
+ },
+ "rock_petrified_tree_med": {
+  "icon": "petrified_tree.png"
+ },
+ "rock_petrified_tree_old": {
+  "icon": "petrified_tree.png"
+ },
+ "rock_petrified_tree_short": {
+  "icon": "petrified_tree.png"
+ },
+ "rock_petrified_tree_tall": {
+  "icon": "petrified_tree.png"
+ },
+ "ruins_bowl": {
+  "icon": "relic.png"
+ },
+ "ruins_cavein_obstacle": {
+  "icon": "ruins_cavein_obstacle.png"
+ },
+ "ruins_chair": {
+  "icon": "relic.png"
+ },
+ "ruins_chipbowl": {
+  "icon": "relic.png"
+ },
+ "ruins_plate": {
+  "icon": "relic.png"
+ },
+ "ruins_rubble_chair": {
+  "icon": "relic.png"
+ },
+ "ruins_rubble_table": {
+  "icon": "relic.png"
+ },
+ "ruins_rubble_vase": {
+  "icon": "relic.png"
+ },
+ "ruins_statue_head": {
+  "icon": "statue_ruins.png"
+ },
+ "ruins_statue_head_nogem": {
+  "icon": "statue_ruins.png"
+ },
+ "ruins_statue_mage": {
+  "icon": "statue_ruins.png"
+ },
+ "ruins_statue_mage_nogem": {
+  "icon": "statue_ruins.png"
+ },
+ "ruins_table": {
+  "icon": "relic.png"
+ },
+ "ruins_vase": {
+  "icon": "relic.png"
+ },
+ "sacred_chest": {
+  "icon": "sacred_chest.png"
+ },
+ "saladfurnace": {
+  "icon": "dragonfly_furnace.png"
+ },
+ "saltbox": {
+  "icon": "saltbox.png"
+ },
+ "saltlick": {
+  "icon": "saltlick.png"
+ },
+ "saltlick_improved": {
+  "icon": "saltlick_improved.png"
+ },
+ "saltstack": {
+  "icon": "saltstack.png"
+ },
+ "sanityrock": {
+  "icon": "obelisk.png"
+ },
+ "sapling": {
+  "icon": "sapling.png"
+ },
+ "sapling_moon": {
+  "icon": "sapling.png"
+ },
+ "sapling_moon_waxed": {
+  "icon": "sapling.png"
+ },
+ "sapling_waxed": {
+  "icon": "sapling.png"
+ },
+ "scarecrow": {
+  "icon": "scarecrow.png"
+ },
+ "sculptingtable": {
+  "icon": "sculpting_station.png",
+  "priority": 5
+ },
+ "sculpture_bishop": {
+  "icon": "sculpture_bishopbody_fixed.png"
+ },
+ "sculpture_bishopbody": {
+  "icon": "sculpture_bishopbody_fixed.png"
+ },
+ "sculpture_bishophead": {
+  "icon": "sculpture_bishophead.png"
+ },
+ "sculpture_knight": {
+  "icon": "sculpture_knightbody_fixed.png"
+ },
+ "sculpture_knightbody": {
+  "icon": "sculpture_knightbody_fixed.png"
+ },
+ "sculpture_knighthead": {
+  "icon": "sculpture_knighthead.png"
+ },
+ "sculpture_rook": {
+  "icon": "sculpture_rookbody_fixed.png"
+ },
+ "sculpture_rookbody": {
+  "icon": "sculpture_rookbody_fixed.png"
+ },
+ "sculpture_rooknose": {
+  "icon": "sculpture_rooknose.png"
+ },
+ "seafaring_prototyper": {
+  "icon": "seafaring_prototyper.png",
+  "priority": 5
+ },
+ "seastack": {
+  "icon": "seastack.png"
+ },
+ "sentryward": {
+  "icon": "sentryward.png",
+  "over_fog": true
+ },
+ "sewing_mannequin": {
+  "icon": "sewing_mannequin.png"
+ },
+ "shadow_forge": {
+  "icon": "shadow_forge.png",
+  "priority": 5
+ },
+ "shadowrift_portal": {
+  "icon": "shadowrift_portal.png",
+  "over_fog": true,
+  "priority": 22
+ },
+ "sharkboi_ice_hazard": {
+  "icon": "iceboulder.png"
+ },
+ "shell_cluster": {
+  "icon": "singingshell_cluster.png"
+ },
+ "shellweaver": {
+  "icon": "shellweaver.png",
+  "incomplete": true,
+  "priority": 5
+ },
+ "siestahut": {
+  "icon": "siestahut.png"
+ },
+ "sisturn": {
+  "icon": "sisturn.png"
+ },
+ "slingshotammo_container": {
+  "icon": "slingshotammo_container.png"
+ },
+ "slow_farmplot": {
+  "icon": "farm2.png"
+ },
+ "slurtlehole": {
+  "icon": "slurtle_den.png"
+ },
+ "spicepack": {
+  "icon": "spicepack.png"
+ },
+ "spiderden": {
+  "icon": "spiderden_1.png"
+ },
+ "spiderden_2": {
+  "icon": "spiderden_2.png"
+ },
+ "spiderden_3": {
+  "icon": "spiderden_3.png"
+ },
+ "spiderhole": {
+  "icon": "cavespider_den.png"
+ },
+ "stalagmite": {
+  "icon": "stalagmite.png"
+ },
+ "stalagmite_full": {
+  "icon": "stalagmite.png"
+ },
+ "stalagmite_low": {
+  "icon": "stalagmite.png"
+ },
+ "stalagmite_med": {
+  "icon": "stalagmite.png"
+ },
+ "stalagmite_tall": {
+  "icon": "stalagmite_tall.png"
+ },
+ "stalagmite_tall_full": {
+  "icon": "stalagmite_tall.png"
+ },
+ "stalagmite_tall_low": {
+  "icon": "stalagmite_tall.png"
+ },
+ "stalagmite_tall_med": {
+  "icon": "stalagmite_tall.png"
+ },
+ "statue_marble": {
+  "icon": "statue_small.png"
+ },
+ "statue_marble_muse": {
+  "icon": "statue_small.png"
+ },
+ "statue_marble_pawn": {
+  "icon": "statue_small.png"
+ },
+ "statueglommer": {
+  "icon": "statueglommer.png",
+  "priority": 5
+ },
+ "statueharp": {
+  "icon": "statue_small.png"
+ },
+ "statueharp_hedgespawner": {
+  "icon": "statue_small.png"
+ },
+ "statuemaxwell": {
+  "icon": "statue.png"
+ },
+ "storage_robot": {
+  "icon": "storage_robot.png",
+  "priority": 5
+ },
+ "sunkenchest": {
+  "icon": "sunkenchest.png"
+ },
+ "supertacklecontainer": {
+  "icon": "supertacklecontainer.png"
+ },
+ "support_pillar": {
+  "icon": "support_pillar.png"
+ },
+ "support_pillar_dreadstone": {
+  "icon": "support_pillar_dreadstone.png"
+ },
+ "support_pillar_dreadstone_scaffold": {
+  "icon": "support_pillar_dreadstone.png"
+ },
+ "support_pillar_scaffold": {
+  "icon": "support_pillar.png"
+ },
+ "table_winters_feast": {
+  "icon": "table_winters_feast.png"
+ },
+ "tacklecontainer": {
+  "icon": "tacklecontainer.png"
+ },
+ "tacklestation": {
+  "icon": "tacklestation.png",
+  "priority": 5
+ },
+ "tallbirdnest": {
+  "icon": "tallbirdnest.png"
+ },
+ "telebase": {
+  "icon": "telebase.png"
+ },
+ "teleportato_base": {
+  "icon": "teleportato.png",
+  "priority": 1
+ },
+ "tent": {
+  "icon": "tent.png"
+ },
+ "tentacle_pillar": {
+  "icon": "tentacle_pillar.png"
+ },
+ "tentacle_pillar_atrium": {
+  "icon": "tentacle_pillar.png"
+ },
+ "tentacle_pillar_hole": {
+  "icon": "tentacle_pillar.png"
+ },
+ "terrarium": {
+  "icon": "terrarium.png"
+ },
+ "terrariumchest": {
+  "icon": "terrariumchest.png"
+ },
+ "toadstool_cap": {
+  "icon": "toadstool_hole.png"
+ },
+ "townportal": {
+  "icon": "townportal.png",
+  "over_fog": true
+ },
+ "trap": {
+  "icon": "rabbittrap.png"
+ },
+ "trap_bramble": {
+  "icon": "trap_bramble.png"
+ },
+ "trap_starfish": {
+  "icon": "star_trap.png"
+ },
+ "trap_teeth": {
+  "icon": "trap_teeth.png"
+ },
+ "trap_teeth_maxwell": {
+  "icon": "trap_teeth.png"
+ },
+ "treasurechest": {
+  "icon": "treasurechest.png"
+ },
+ "tree_rock": {
+  "icon": "tree_rock.png"
+ },
+ "tree_rock1": {
+  "icon": "tree_rock.png"
+ },
+ "tree_rock1_normal": {
+  "icon": "tree_rock.png"
+ },
+ "tree_rock1_short": {
+  "icon": "tree_rock.png"
+ },
+ "tree_rock2": {
+  "icon": "tree_rock.png"
+ },
+ "tree_rock2_normal": {
+  "icon": "tree_rock.png"
+ },
+ "tree_rock2_short": {
+  "icon": "tree_rock.png"
+ },
+ "trophyscale_fish": {
+  "icon": "trophyscale_fish.png",
+  "priority": 5
+ },
+ "trophyscale_oversizedveggies": {
+  "icon": "trophyscale_oversizedveggies.png",
+  "priority": 5
+ },
+ "turfcraftingstation": {
+  "icon": "turfcraftingstation.png",
+  "priority": 5
+ },
+ "twiggy_normal": {
+  "icon": "twiggy.png",
+  "priority": -1
+ },
+ "twiggy_old": {
+  "icon": "twiggy.png",
+  "priority": -1
+ },
+ "twiggy_short": {
+  "icon": "twiggy.png",
+  "priority": -1
+ },
+ "twiggy_tall": {
+  "icon": "twiggy.png",
+  "priority": -1
+ },
+ "twiggytree": {
+  "icon": "twiggy.png",
+  "priority": -1
+ },
+ "underwater_salvageable": {
+  "icon": "flotsam_heavy.png"
+ },
+ "vault_decon_switch": {
+  "icon": "vault_switch.png"
+ },
+ "vault_decon_switch_reset": {
+  "icon": "vault_switch.png"
+ },
+ "vault_decon_switch_reset2": {
+  "icon": "vault_switch.png"
+ },
+ "vault_key_exit": {
+  "icon": "vault_lobby_exit.png"
+ },
+ "vault_key_icon": {
+  "icon": "vault_key.png",
+  "over_fog": true,
+  "priority": 15
+ },
+ "vault_lobby_exit": {
+  "icon": "vault_lobby_exit.png"
+ },
+ "vault_pillar_guard_constr": {
+  "icon": "vault_pillar_guard_dormant.png"
+ },
+ "vault_pillar_guard_dormant": {
+  "icon": "vault_pillar_guard_dormant.png"
+ },
+ "vault_rune": {
+  "icon": "vault_rune.png"
+ },
+ "vault_statue": {
+  "icon": "vault_statue_king.png"
+ },
+ "vault_teleporter": {
+  "icon": "vault_teleporter.png"
+ },
+ "wagboss_robot_constructionsite": {
+  "icon": "wagboss_robot_constructionsite.png"
+ },
+ "wagpunk_workstation": {
+  "icon": "wagpunk_workstation.png",
+  "priority": 5
+ },
+ "wagstaff_machinery": {
+  "icon": "wagstaff_machinery.png",
+  "priority": 5
+ },
+ "walrus_camp": {
+  "icon": "igloo.png"
+ },
+ "wardrobe": {
+  "icon": "wardrobe.png"
+ },
+ "wargshrine": {
+  "icon": "wargshrine.png",
+  "priority": 5
+ },
+ "wasphive": {
+  "icon": "wasphive.png"
+ },
+ "waterplant": {
+  "icon": "barnacle_plant.png"
+ },
+ "waterplant_baby": {
+  "icon": "barnacle_plant.png"
+ },
+ "waterplant_rock": {
+  "icon": "barnacle_rock.png"
+ },
+ "watertree_pillar": {
+  "icon": "oceantree_pillar.png"
+ },
+ "wendy_resurrectiongrave": {
+  "icon": "wendy_resurrectiongrave.png"
+ },
+ "winona_battery_high": {
+  "icon": "winona_battery_high.png"
+ },
+ "winona_battery_low": {
+  "icon": "winona_battery_low.png"
+ },
+ "winona_catapult": {
+  "icon": "winona_catapult.png"
+ },
+ "winona_spotlight": {
+  "icon": "winona_spotlight.png"
+ },
+ "winona_teleport_pad": {
+  "icon": "winona_teleport_pad.png"
+ },
+ "winter_deciduoustree": {
+  "icon": "winter_deciduoustree.png",
+  "priority": -1
+ },
+ "winter_palmconetree": {
+  "icon": "winter_palmconetree.png",
+  "priority": -1
+ },
+ "winter_tree": {
+  "icon": "winter_tree.png",
+  "priority": -1
+ },
+ "winter_twiggytree": {
+  "icon": "winter_twiggytree.png",
+  "priority": -1
+ },
+ "winterometer": {
+  "icon": "winterometer.png"
+ },
+ "wintersfeastoven": {
+  "icon": "wintersfeastoven.png"
+ },
+ "wobster_den": {
+  "icon": "wobster_den.png"
+ },
+ "wobybig": {
+  "icon": "wobybig.png"
+ },
+ "wobysmall": {
+  "icon": "wobysmall.png"
+ },
+ "wormhole": {
+  "icon": "wormhole.png",
+  "priority": 5
+ },
+ "wormhole_limited_1": {
+  "icon": "wormhole_sick.png"
+ },
+ "wx78_drone_delivery": {
+  "icon": "wx78_drone_delivery.png"
+ },
+ "wx78_drone_delivery_small": {
+  "icon": "wx78_drone_delivery_small.png"
+ },
+ "wx78_drone_zap": {
+  "icon": "wx78_drone_zap.png"
+ },
+ "wx78_possessedbody": {
+  "icon": "wx78_possessedbody.png",
+  "incomplete": true
+ },
+ "wx78_scanner": {
+  "icon": "wx78_scanner_item.png"
+ },
+ "wx78_scanner_item": {
+  "icon": "wx78_scanner_item.png"
+ },
+ "wx78_scanner_succeeded": {
+  "icon": "wx78_scanner_item.png"
+ },
+ "wx78_shadowdrone_debuffer": {
+  "icon": "wx78_shadowdrone_debuffer.png"
+ },
+ "wx78_shadowdrone_harvester": {
+  "icon": "wx78_shadowdrone_harvester.png"
+ },
+ "yellowmooneye": {
+  "icon": "yellowmooneye.png",
+  "over_fog": true
+ },
+ "yot_catcoonshrine": {
+  "icon": "yot_catcoonshrine.png",
+  "priority": 5
+ },
+ "yotb_beefaloshrine": {
+  "icon": "yotb_beefaloshrine.png",
+  "priority": 5
+ },
+ "yotb_post": {
+  "icon": "yotb_post.png"
+ },
+ "yotb_sewingmachine": {
+  "icon": "yotb_sewingmachine.png"
+ },
+ "yotb_stage": {
+  "icon": "yotb_stagebooth.png"
+ },
+ "yotc_carrat_gym_direction": {
+  "icon": "yotc_carrat_gym_direction.png"
+ },
+ "yotc_carrat_gym_reaction": {
+  "icon": "yotc_carrat_gym_reaction.png"
+ },
+ "yotc_carrat_gym_speed": {
+  "icon": "yotc_carrat_gym_speed.png"
+ },
+ "yotc_carrat_gym_stamina": {
+  "icon": "yotc_carrat_gym_stamina.png"
+ },
+ "yotc_carrat_race_checkpoint": {
+  "icon": "yotc_carrat_race_checkpoint.png"
+ },
+ "yotc_carrat_race_finish": {
+  "icon": "yotc_carrat_race_finish.png"
+ },
+ "yotc_carrat_race_start": {
+  "icon": "yotc_carrat_race_start.png"
+ },
+ "yotc_carrat_scale": {
+  "icon": "yotc_carrat_scale.png"
+ },
+ "yotc_carratshrine": {
+  "icon": "yotc_carratshrine.png",
+  "priority": 5
+ },
+ "yotd_dragonshrine": {
+  "icon": "yotd_dragonshrine.png",
+  "priority": 5
+ },
+ "yoth_knightshrine": {
+  "icon": "yoth_knightshrine.png",
+  "priority": 5
+ },
+ "yotr_decor_1": {
+  "icon": "yotr_decor_1.png",
+  "priority": 1
+ },
+ "yotr_decor_2": {
+  "icon": "yotr_decor_2.png",
+  "priority": 1
+ },
+ "yotr_fightring": {
+  "icon": "yotr_fightring.png",
+  "incomplete": true
+ },
+ "yotr_rabbitshrine": {
+  "icon": "yotr_rabbitshrine.png",
+  "priority": 5
+ },
+ "yots_lantern_post": {
+  "icon": "yots_lantern_post.png"
+ },
+ "yots_snakeshrine": {
+  "icon": "yots_snakeshrine.png",
+  "priority": 5
+ }
+}

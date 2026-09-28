@@ -29,26 +29,68 @@ separate pass, from each ocean tile's ground colour. Colours are `[r, g, b]` (0-
 The texture names and ranks come from `inputs/static.json` (`minimap_noise`, `minimap_rank`, `ground_minimap_color`).
 Only the numbers are committed.
 
+## Minimap icons
+
+`icons.minimap` of each prefab is what the game itself draws for it. `minimap_icons.py` runs every game prefab's
+constructor under `extract_minimap_icons.lua` (the master simulation, with stubs for everything the constructors touch)
+and records what each tells its `MiniMapEntity`: the last icon, priority and draw-over-fog flag. Prefabs whose last
+`SetEnabled` is false, or that never set an icon, have none. The table is snapshotted in `inputs/minimap_icons.json`
+(`incomplete: true` marks a constructor that still crashed after setting its icon):
+
+```sh
+python3 scripts/catalog/minimap_icons.py
+```
+
+`build_catalog.py` resolves the icon name in the atlases the game loads, `minimap_data1.xml` then `minimap_data2.xml`
+(`minimap_data.xml` is legacy: the game never loads it, and its rects differ). `icons.minimap.match` says where the
+icon came from:
+
+- `game`: the prefab's own constructor.
+- `spawned:<prefab>`: a spawner with no icon of its own, given the icon of what it spawns (`names.SPAWNED_ICONS`).
+  Only `seastack_spawner_rough` is verified against a capture of the game's map. Unverified: `antlion_spawner`,
+  `crabking_spawner`, `wagstaff_machinery_marker`, `seastack_spawner_swell`, `waterplant_spawner_rough` and
+  `wobster_den_spawner_shore`.
+- `captured`: the icon the running game showed for a prefab whose constructor sets another one (`names.CAPTURED_ICONS`:
+  `shell_cluster` draws `flotsam_heavy.png`, `storage_robot` draws `storage_robot_broken.png`).
+
+Bunch spawners (`bunch:` sources) have no icon of their own: the game scatters several copies around each, so the
+marker's single icon only approximates them.
+
 ## Map textures
 
 `map_textures.py` writes the textures the website's map draws with to `website/public/world-map/`, as lossless PNGs of
 the full-size mip, rows in stored order (the first row is texture coordinate v = 0, as the game uploads it):
 
-- `noise/<name>.png`: every `minimap_noise` of `catalog.json`, RGB.
-- `map_edge.png`: `levels/tiles/map_edge.tex`, RGBA, with its straight alpha exactly as stored
+- `noise/<name>.<hash>.png`: every `minimap_noise` of `catalog.json`, RGB.
+- `map_edge.<hash>.png`: `levels/tiles/map_edge.tex`, RGBA, with its straight alpha exactly as stored
   (`levels/tiles/map_edge.xml` places its 48 cells).
-- `minimap_paper.png`: `images/minimap_paper.tex`, RGB.
+- `minimap_paper.<hash>.png`: `images/minimap_paper.tex`, RGB.
+- `minimap_icons.<hash>.png` and `minimap_icon_rects.<hash>.json`: the minimap icons the catalog uses, and where each
+  sits on the sheet.
+
+Every file's name carries the first 10 hex digits of the SHA-256 of its bytes, so the deployed files are served with
+`Cache-Control: public, max-age=31536000, immutable` (one `/world-map/*` rule in the generated `_headers`, next to the
+security headers). Files the run didn't write are deleted, and `map_textures.json` lists which file each texture went
+to: `gen_website_catalog.mjs` reads it for the texture URLs of `website/lib/catalog/world.ts`.
+
+The sprite sheet is 2048 wide, and its RGBA is the atlas' as stored: premultiplied alpha, which the game blends as if
+it were straight alpha. Each icon keeps its native size, is surrounded by at least 32 texels of its own edge texels (what
+clamping to the edge samples), and sits in a cell aligned to 32 texels. Sampling down to mip 4 (a sixteenth), bilinear
+reach included, therefore never blends neighbouring icons. The rects are each element's UV rect in sheet texels, in
+stored rows (`u = x / width`, `v = y / height`). Atlas elements have their edges on half texels: a 63 wide icon is a rect
+`w = 63` starting half a texel into 64 texels, and is drawn 63 px (9.84375 world units) wide. Priorities are per prefab
+(`world.ts` `icon.priority`), not per icon.
 
 It needs the game install (`DST_GAME` overrides the path) and reads `catalog.json`, so rerun it after
-`build_catalog.py`:
+`build_catalog.py`, then regenerate `world.ts`:
 
 ```sh
-python3 scripts/catalog/map_textures.py
+python3 scripts/catalog/map_textures.py && node scripts/gen/gen_website_catalog.mjs
 ```
 
 The output is deterministic, and committed because the site build has no game install. `ktex.py` decodes the textures
 the way Mesa's OpenGL driver does, pixel for pixel (DXT interpolants round down). `python3 -m unittest discover -s
-scripts/catalog` tests the decoder and the writer.
+scripts/catalog` tests the decoder, the icon extractor, the icon resolution and the writer.
 
 The art is © Klei Entertainment and used under Klei's Player Creation Guidelines, which allow it as long as the site
 stays free and credits the art to Klei with a notice that the site isn't affiliated with Klei.
@@ -79,5 +121,6 @@ Needs tools that aren't in the repo, given by environment variables:
    `build_catalog.py --collect` and `build_catalog.py` again.
 5. Check the output: `cross_check.empirical_not_static` must be empty, and any prefab with `name_source: "fallback"`
    needs a name in `names.py`.
-6. Regenerate what depends on it: `scripts/gen/regen.sh`, `node scripts/gen/gen_website_catalog.mjs` and
-   `python3 scripts/catalog/map_textures.py`.
+6. Regenerate what depends on it: `scripts/gen/regen.sh`, `python3 scripts/catalog/map_textures.py` and
+   `node scripts/gen/gen_website_catalog.mjs`. `regen.sh` (step 3) already reruns `minimap_icons.py`; check that
+   `SPAWNED_ICONS` and `CAPTURED_ICONS` in `names.py` still hold.

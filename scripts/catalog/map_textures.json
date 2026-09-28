@@ -1,0 +1,30 @@
+{
+ "iconSheet": {
+  "file": "minimap_icons.efd1e6e86a.png",
+  "height": 1088,
+  "rects": "minimap_icon_rects.d17bd63744.json",
+  "width": 2048
+ },
+ "mapEdge": "map_edge.859bee0330.png",
+ "minimapPaper": "minimap_paper.cfd82ee005.png",
+ "noise": {
+  "mini_carpet2_noise": "noise/mini_carpet2_noise.4c94ea776c.png",
+  "mini_carpet_noise": "noise/mini_carpet_noise.aa796e02a2.png",
+  "mini_checker_noise": "noise/mini_checker_noise.0f8a2fea64.png",
+  "mini_cobblestone_noise": "noise/mini_cobblestone_noise.e0cf851c84.png",
+  "mini_deciduous_noise": "noise/mini_deciduous_noise.cb58c37de9.png",
+  "mini_desert_dirt_noise": "noise/mini_desert_dirt_noise.1a76375f38.png",
+  "mini_dirt_noise": "noise/mini_dirt_noise.670f24cdb9.png",
+  "mini_dock_noise": "noise/mini_dock_noise.7c47d95d2f.png",
+  "mini_forest_noise": "noise/mini_forest_noise.3d569bf6d1.png",
+  "mini_grass2_noise": "noise/mini_grass2_noise.73c3e60072.png",
+  "mini_grass_noise": "noise/mini_grass_noise.4e9e60cb10.png",
+  "mini_marsh_noise": "noise/mini_marsh_noise.13cb0827a6.png",
+  "mini_meteor": "noise/mini_meteor.3895471edc.png",
+  "mini_mosaictiles_grey_noise": "noise/mini_mosaictiles_grey_noise.838d70e8ad.png",
+  "mini_pebblebeach": "noise/mini_pebblebeach.f1fd3ec5b1.png",
+  "mini_rocky_noise": "noise/mini_rocky_noise.c13cf96727.png",
+  "mini_shellbeach_noise": "noise/mini_shellbeach_noise.243f27e7bc.png",
+  "mini_woodfloor_noise": "noise/mini_woodfloor_noise.ae3c8c56b4.png"
+ }
+}

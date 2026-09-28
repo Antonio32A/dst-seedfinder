@@ -17,7 +17,7 @@ describe("the tile table", () => {
     it("gives every land tile of the default worlds a minimap noise texture the site serves", () => {
         for (const { name } of LAND_TILES.filter((tile) => tile.inDefaultWorlds)) {
             const noise = TILES[name].minimapNoise ?? "";
-            expect(noise).toMatch(/^\/world-map\/noise\/\w+\.png$/);
+            expect(noise).toMatch(/^\/world-map\/noise\/\w+\.[0-9a-f]{10}\.png$/);
             expect(existsSync(join(PUBLIC, noise))).toBe(true);
         }
     });
