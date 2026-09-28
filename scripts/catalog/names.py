@@ -116,6 +116,11 @@ SPAWNED_ICONS = {
     "wobster_den_spawner_shore": "wobster_den",
 }
 
+CONDITIONAL_ICONS = {
+    "rock_ice": "its icon is only enabled while the boulder has grown (RockIce growth stages); a freshly generated world "
+                "has them all unformed, and the capture drew none of its 53",
+}
+
 CAPTURED_ICONS = {
     "shell_cluster": "flotsam_heavy.png",
     "storage_robot": "storage_robot_broken.png",

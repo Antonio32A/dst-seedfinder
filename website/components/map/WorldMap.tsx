@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Platform } from "@/lib/config/seedfinder-config";
-import { entityLayer, mapWorld } from "@/lib/world-map/legend/entity-layer";
+import { entityLayer, MAP_GROUPS, mapWorld } from "@/lib/world-map/legend/entity-layer";
 import { loadWorld, type WorldLoad } from "@/lib/world-map/world/load-world";
 import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/canvas/map-canvas";
 import { createMapProbe, type Probe } from "@/lib/world-map/view/map-probe";
@@ -43,6 +43,12 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     const search = shared && "config" in shared ? shared.config : undefined;
     const [shownPrefabs, setShownPrefabs] = useState<ReadonlySet<string>>(() => defaultShown(search));
     const [shownSetPieces, setShownSetPieces] = useState<ReadonlySet<string>>(() => defaultShownSetPieces(search));
+    const [shownLinks, setShownLinks] = useState(false);
+    const links = useMemo(() => layer.links.length === 0 ? null : {
+        shown: shownLinks,
+        colour: MAP_GROUPS[layer.linkGroup].colour,
+        onChange: setShownLinks
+    }, [layer, shownLinks]);
     const shown = useMemo(() => ({ prefabs: shownPrefabs, setPieces: shownSetPieces }), [shownPrefabs, shownSetPieces]);
     const [searched, setSearched] = useState<MapTarget | null>(null);
     const [picked, setPicked] = useState<Probe | null>(null);
@@ -78,6 +84,10 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     }, [map, shownSetPieces]);
 
     useEffect(() => {
+        map?.showLinks(shownLinks);
+    }, [map, shownLinks]);
+
+    useEffect(() => {
         map?.highlightSetPieces(highlighted);
     }, [map, highlighted]);
 
@@ -88,7 +98,7 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
                 <MapPointer probe={probe} map={map} canvas={canvas} shown={shown} searched={searched}
                             onPick={setPicked}/>
                 <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} setPieces={setPieces}
-                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces}/>
+                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links}/>
                 <MapCorner seed={seed} map={map}/>
                 <div className="map-side">
                     <div className="map-bar">

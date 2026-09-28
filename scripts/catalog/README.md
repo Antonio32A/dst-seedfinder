@@ -46,12 +46,27 @@ python3 scripts/catalog/minimap_icons.py
 icon came from:
 
 - `game`: the prefab's own constructor.
-- `spawned:<prefab>`: a spawner with no icon of its own, given the icon of what it spawns (`names.SPAWNED_ICONS`).
-  Only `seastack_spawner_rough` is verified against a capture of the game's map. Unverified: `antlion_spawner`,
-  `crabking_spawner`, `wagstaff_machinery_marker`, `seastack_spawner_swell`, `waterplant_spawner_rough` and
-  `wobster_den_spawner_shore`.
+- `spawned:<prefab>`: a spawner with no icon of its own, given the icon of what it spawns (`names.SPAWNED_ICONS`). The
+  icon is only what the spawner would look like: a capture of the game's map shows it draws nothing at these markers
+  (`antlion_spawner`, `crabking_spawner`, `wagstaff_machinery_marker`, `seastack_spawner_rough`,
+  `seastack_spawner_swell`, `waterplant_spawner_rough` and `wobster_den_spawner_shore`), only what they spawn.
 - `captured`: the icon the running game showed for a prefab whose constructor sets another one (`names.CAPTURED_ICONS`:
   `shell_cluster` draws `flotsam_heavy.png`, `storage_robot` draws `storage_robot_broken.png`).
+
+### Drawn by default
+
+Each prefab carries `default_shown`: whether the game's map draws its icon in a freshly generated world, which the
+website's Filters start from. It is true for every prefab with an icon except those with a `hidden_by_default` reason
+(present for the exceptions only):
+
+- `spawned:` icons: the spawner marker itself is never drawn.
+- `names.CONDITIONAL_ICONS`: prefabs whose constructor sets an icon but enables it only in some state. `rock_ice` is
+  enabled by its growth stage, and a new world has none grown (the capture drew none of its 53).
+
+Prefabs without an icon are not `default_shown`; the website still lets them be toggled, as dots. Exploration fog is
+not modelled: the game draws icons only over explored ground. Other prefabs disable their icon at runtime
+(`beequeenhive` off its base, `oceanvine_cocoon` when burnt, `beemine` when deactivated, `cave_entrance` on a
+client-hosted server without shards); none of that applies to a new world's default state, so they stay default-on.
 
 Bunch spawners (`bunch:` sources) have no icon of their own: the game scatters several copies around each, so the
 marker's single icon only approximates them.

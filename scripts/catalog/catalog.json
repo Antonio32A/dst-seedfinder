@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "game_build": "747465",
- "generated": "2026-09-28",
+ "generated": "2026-09-29",
  "shard": "forest",
  "preset": "SURVIVAL_TOGETHER",
  "worlds": {
@@ -12054,6 +12054,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -12094,6 +12095,8 @@
      "priority": 1
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12133,6 +12136,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 93,
     "share": 0.2971,
@@ -12172,6 +12176,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 2,
     "share": 0.0064,
@@ -12221,6 +12226,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 59,
     "share": 0.1885,
@@ -12260,6 +12266,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 2,
     "share": 0.0064,
@@ -12325,6 +12332,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 161,
     "share": 0.5144,
@@ -12380,6 +12388,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 62,
     "share": 0.1981,
@@ -12419,6 +12428,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12463,6 +12473,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12502,6 +12513,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 50,
     "share": 0.1597,
@@ -12540,6 +12552,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 3,
     "share": 0.0096,
@@ -12580,6 +12593,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -12621,6 +12635,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -12662,6 +12677,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12702,6 +12718,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -12747,6 +12764,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 3,
     "share": 0.0096,
@@ -12791,6 +12809,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12836,6 +12855,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -12876,6 +12896,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12915,6 +12936,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -12964,6 +12986,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 39,
     "share": 0.1246,
@@ -13013,6 +13036,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 85,
     "share": 0.2716,
@@ -13052,6 +13076,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 9,
     "share": 0.0288,
@@ -13120,6 +13145,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -13165,6 +13191,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 9,
     "share": 0.0288,
@@ -13203,6 +13230,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -13243,6 +13271,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -13403,6 +13432,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "swap": {
     "category": "berries",
     "option": "regular berries",
@@ -13457,6 +13487,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 181,
     "share": 0.5783,
@@ -13616,6 +13647,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "swap": {
     "category": "berries",
     "option": "juicy berries",
@@ -13667,6 +13699,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 14,
     "share": 0.0447,
@@ -13708,6 +13741,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 151,
     "share": 0.4824,
@@ -13747,6 +13781,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 32,
     "share": 0.1022,
@@ -13786,6 +13821,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 27,
     "share": 0.0863,
@@ -13825,6 +13861,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 23,
     "share": 0.0735,
@@ -13947,6 +13984,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -13986,6 +14024,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -14036,6 +14075,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 26,
     "share": 0.0831,
@@ -14085,6 +14125,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 261,
     "share": 0.8339,
@@ -14136,6 +14177,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 221,
     "share": 0.7061,
@@ -14168,6 +14210,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 302,
     "share": 0.9649,
@@ -14207,6 +14250,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14252,6 +14296,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14283,6 +14328,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14314,6 +14360,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14345,6 +14392,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 312,
     "share": 0.9968,
@@ -14384,6 +14432,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 36,
     "share": 0.115,
@@ -14423,6 +14472,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 9,
     "share": 0.0288,
@@ -14467,6 +14517,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14516,6 +14567,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14547,6 +14599,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14578,6 +14631,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14622,6 +14676,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 26,
     "share": 0.0831,
@@ -14675,6 +14730,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14723,6 +14779,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14767,6 +14824,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 14,
     "share": 0.0447,
@@ -14809,6 +14867,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14871,6 +14930,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14924,6 +14984,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -14962,6 +15023,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15000,6 +15062,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15045,6 +15108,7 @@
      "priority": 7
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15084,6 +15148,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 148,
     "share": 0.4728,
@@ -15123,6 +15188,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 108,
     "share": 0.345,
@@ -15164,6 +15230,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15203,6 +15270,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 108,
     "share": 0.345,
@@ -15253,6 +15321,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 107,
     "share": 0.3419,
@@ -15291,6 +15360,8 @@
      "match": "spawned:crabking"
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15330,6 +15401,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15400,6 +15472,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 277,
     "share": 0.885,
@@ -15444,6 +15517,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 100,
     "share": 0.3195,
@@ -15481,6 +15555,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15561,6 +15636,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15600,6 +15676,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15641,6 +15718,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15684,6 +15762,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15727,6 +15806,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15758,6 +15838,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15810,6 +15891,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15862,6 +15944,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15914,6 +15997,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -15961,6 +16045,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -16091,6 +16176,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -16145,6 +16231,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 12,
     "share": 0.0383,
@@ -16209,6 +16296,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 26,
     "share": 0.0831,
@@ -16273,6 +16361,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -16312,6 +16401,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 309,
     "share": 0.9872,
@@ -16376,6 +16466,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 14,
     "share": 0.0447,
@@ -16408,6 +16499,7 @@
    ],
    "default_reachable": false,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -16448,6 +16540,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 96,
     "share": 0.3067,
@@ -16492,6 +16585,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 23,
     "share": 0.0735,
@@ -16532,6 +16626,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -16668,6 +16763,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -16699,6 +16795,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 23,
     "share": 0.0735,
@@ -16750,6 +16847,7 @@
      "priority": 1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -16800,6 +16898,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 28,
     "share": 0.0895,
@@ -16844,6 +16943,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -16966,6 +17066,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17113,6 +17214,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17152,6 +17254,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -17192,6 +17295,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -17232,6 +17336,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -17289,6 +17394,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 312,
     "share": 0.9968,
@@ -17320,6 +17426,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17364,6 +17471,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 4,
     "share": 0.0128,
@@ -17396,6 +17504,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17427,6 +17536,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17458,6 +17568,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17489,6 +17600,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17533,6 +17645,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 95,
     "share": 0.3035,
@@ -17572,6 +17685,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -17633,6 +17747,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -17867,6 +17982,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "placed_as": [
     "perma_grass"
    ],
@@ -17942,6 +18058,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "swap": {
     "category": "grass",
     "option": "grass gekko",
@@ -18002,6 +18119,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18134,6 +18252,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18179,6 +18298,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 95,
     "share": 0.3035,
@@ -18228,6 +18348,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 25,
     "share": 0.0799,
@@ -18267,6 +18388,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 3,
     "share": 0.0096,
@@ -18306,6 +18428,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 3,
     "share": 0.0096,
@@ -18338,6 +18461,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18370,6 +18494,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18402,6 +18527,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18441,6 +18567,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18486,6 +18613,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18588,6 +18716,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18632,6 +18761,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 291,
     "share": 0.9297,
@@ -18676,6 +18806,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 39,
     "share": 0.1246,
@@ -18707,6 +18838,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 21,
     "share": 0.0671,
@@ -18756,6 +18888,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 22,
     "share": 0.0703,
@@ -18794,6 +18927,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18832,6 +18966,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18871,6 +19006,7 @@
      "priority": 1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18937,6 +19073,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -18977,6 +19114,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -19016,6 +19154,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19052,6 +19191,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 37,
     "share": 0.1182,
@@ -19097,6 +19237,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19128,6 +19269,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19166,6 +19308,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 282,
     "share": 0.901,
@@ -19221,6 +19364,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 174,
     "share": 0.5559,
@@ -19252,6 +19396,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19296,6 +19441,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 307,
     "share": 0.9808,
@@ -19349,6 +19495,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 108,
     "share": 0.345,
@@ -19413,6 +19560,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 231,
     "share": 0.738,
@@ -19502,6 +19650,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19577,6 +19726,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19615,6 +19765,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 148,
     "share": 0.4728,
@@ -19660,6 +19811,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 1,
     "share": 0.0032,
@@ -19699,6 +19851,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19740,6 +19893,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 159,
     "share": 0.508,
@@ -19771,6 +19925,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 155,
     "share": 0.4952,
@@ -19820,6 +19975,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 312,
     "share": 0.9968,
@@ -19859,6 +20015,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19890,6 +20047,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -19945,6 +20103,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 46,
     "share": 0.147,
@@ -19989,6 +20148,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 10,
     "share": 0.0319,
@@ -20060,6 +20220,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20110,6 +20271,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20147,6 +20309,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20184,6 +20347,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20221,6 +20385,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20266,6 +20431,7 @@
      "priority": 1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20303,6 +20469,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20340,6 +20507,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20385,6 +20553,7 @@
      "priority": 1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20429,6 +20598,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20459,6 +20629,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20489,6 +20660,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20528,6 +20700,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20567,6 +20740,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20606,6 +20780,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20669,6 +20844,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20701,6 +20877,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20763,6 +20940,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20806,6 +20984,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20846,6 +21025,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20891,6 +21071,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20936,6 +21117,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -20975,6 +21157,7 @@
      "priority": 4
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21027,6 +21210,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21093,6 +21277,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21132,6 +21317,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 294,
     "share": 0.9393,
@@ -21172,6 +21358,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21203,6 +21390,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21243,6 +21431,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 309,
     "share": 0.9872,
@@ -21287,6 +21476,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21324,6 +21514,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21355,6 +21546,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21393,6 +21585,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21432,6 +21625,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -21472,6 +21666,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 5,
     "share": 0.016,
@@ -21511,6 +21706,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 3,
     "share": 0.0096,
@@ -21550,6 +21746,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 73,
     "share": 0.2332,
@@ -21589,6 +21786,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 83,
     "share": 0.2652,
@@ -21642,6 +21840,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21680,6 +21879,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21718,6 +21918,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -21757,6 +21958,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 24,
     "share": 0.0767,
@@ -21796,6 +21998,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 26,
     "share": 0.0831,
@@ -21835,6 +22038,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 19,
     "share": 0.0607,
@@ -21874,6 +22078,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 17,
     "share": 0.0543,
@@ -21913,6 +22118,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 78,
     "share": 0.2492,
@@ -21952,6 +22158,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 78,
     "share": 0.2492,
@@ -21991,6 +22198,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 26,
     "share": 0.0831,
@@ -22030,6 +22238,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 26,
     "share": 0.0831,
@@ -22069,6 +22278,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 24,
     "share": 0.0767,
@@ -22108,6 +22318,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 13,
     "share": 0.0415,
@@ -22147,6 +22358,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 20,
     "share": 0.0639,
@@ -22186,6 +22398,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 8,
     "share": 0.0256,
@@ -22235,6 +22448,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 252,
     "share": 0.8051,
@@ -22274,6 +22488,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22312,6 +22527,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22350,6 +22566,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22381,6 +22598,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22412,6 +22630,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22451,6 +22670,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 2,
     "share": 0.0064,
@@ -22496,6 +22716,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22541,6 +22762,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 254,
     "share": 0.8115,
@@ -22586,6 +22808,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 262,
     "share": 0.8371,
@@ -22630,6 +22853,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22699,6 +22923,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 310,
     "share": 0.9904,
@@ -22756,6 +22981,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22842,6 +23068,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22881,6 +23108,7 @@
      "priority": 1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -22922,6 +23150,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 159,
     "share": 0.508,
@@ -22961,6 +23190,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 2,
     "share": 0.0064,
@@ -23012,6 +23242,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 135,
     "share": 0.4313,
@@ -23069,6 +23300,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23119,6 +23351,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 9,
     "share": 0.0288,
@@ -23158,6 +23391,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 95,
     "share": 0.3035,
@@ -23189,6 +23423,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23273,6 +23508,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23316,6 +23552,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23360,6 +23597,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 103,
     "share": 0.3291,
@@ -23407,6 +23645,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -23454,6 +23693,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -23495,6 +23735,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -23536,6 +23777,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -23577,6 +23819,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -23629,6 +23872,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23659,6 +23903,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23698,6 +23943,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 2,
     "share": 0.0064,
@@ -23737,6 +23983,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 2,
     "share": 0.0064,
@@ -23849,6 +24096,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23888,6 +24136,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -23954,6 +24203,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -23993,6 +24243,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 5,
     "share": 0.016,
@@ -24039,6 +24290,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 1,
     "share": 0.0032,
@@ -24085,6 +24337,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -24132,6 +24385,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -24171,6 +24425,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -24321,6 +24576,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "placed_as": [
     "lunar_island_rock1"
    ],
@@ -24444,6 +24700,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "placed_as": [
     "lunar_island_rock2"
    ],
@@ -24496,6 +24753,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -24560,6 +24818,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -24613,6 +24872,8 @@
      "match": "game"
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "its icon is only enabled while the boulder has grown (RockIce growth stages); a freshly generated world has them all unformed, and the capture drew none of its 53",
    "empirical": {
     "worlds": 312,
     "share": 0.9968,
@@ -24657,6 +24918,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -24758,6 +25020,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "placed_as": [
     "lunar_island_rocks"
    ],
@@ -24807,6 +25070,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 160,
     "share": 0.5112,
@@ -24866,6 +25130,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 134,
     "share": 0.4281,
@@ -24914,6 +25179,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -24957,6 +25223,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25126,6 +25393,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "swap": {
     "category": "twigs",
     "option": "regular twigs",
@@ -25188,6 +25456,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25219,6 +25488,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25250,6 +25520,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25298,6 +25569,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25351,6 +25623,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25399,6 +25672,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25485,6 +25759,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25523,6 +25798,8 @@
      "match": "spawned:seastack"
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25561,6 +25838,8 @@
      "match": "spawned:seastack"
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25600,6 +25879,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 8,
     "share": 0.0256,
@@ -25630,6 +25910,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25676,6 +25957,7 @@
      "match": "captured"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25725,6 +26007,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 74,
     "share": 0.2364,
@@ -25757,6 +26040,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25789,6 +26073,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -25821,6 +26106,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26102,6 +26388,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26133,6 +26420,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26179,6 +26467,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26233,6 +26522,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 85,
     "share": 0.2716,
@@ -26272,6 +26562,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 51,
     "share": 0.1629,
@@ -26361,6 +26652,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26405,6 +26697,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 141,
     "share": 0.4505,
@@ -26454,6 +26747,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 192,
     "share": 0.6134,
@@ -26523,6 +26817,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 222,
     "share": 0.7093,
@@ -26554,6 +26849,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26592,6 +26888,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 58,
     "share": 0.1853,
@@ -26635,6 +26932,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 311,
     "share": 0.9936,
@@ -26683,6 +26981,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 311,
     "share": 0.9936,
@@ -26722,6 +27021,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26765,6 +27065,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 306,
     "share": 0.9776,
@@ -26803,6 +27104,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -26876,6 +27178,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 312,
     "share": 0.9968,
@@ -26915,6 +27218,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 9,
     "share": 0.0288,
@@ -26961,6 +27265,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -27026,6 +27331,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 309,
     "share": 0.9872,
@@ -27071,6 +27377,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 214,
     "share": 0.6837,
@@ -27115,6 +27422,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 14,
     "share": 0.0447,
@@ -27165,6 +27473,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 221,
     "share": 0.7061,
@@ -27219,6 +27528,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -27269,6 +27579,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -27322,6 +27633,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -27370,6 +27682,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -27414,6 +27727,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 20,
     "share": 0.0639,
@@ -27458,6 +27772,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 115,
     "share": 0.3674,
@@ -27513,6 +27828,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 114,
     "share": 0.3642,
@@ -27557,6 +27873,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -27627,6 +27944,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 256,
     "share": 0.8179,
@@ -27666,6 +27984,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -27706,6 +28025,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -27746,6 +28066,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 29,
     "share": 0.0927,
@@ -27785,6 +28106,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 21,
     "share": 0.0671,
@@ -27829,6 +28151,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 20,
     "share": 0.0639,
@@ -27870,6 +28193,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -27909,6 +28233,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -27954,6 +28279,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 51,
     "share": 0.1629,
@@ -28098,6 +28424,7 @@
      "priority": -1
     }
    },
+   "default_shown": true,
    "swap": {
     "category": "twigs",
     "option": "twiggy trees",
@@ -28262,6 +28589,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "placed_as": [
     "ground_twigs"
    ],
@@ -28310,6 +28638,8 @@
      "priority": 5
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28341,6 +28671,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 51,
     "share": 0.1629,
@@ -28372,6 +28703,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -28409,6 +28741,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 52,
     "share": 0.1661,
@@ -28457,6 +28790,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28506,6 +28840,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28545,6 +28880,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28583,6 +28919,8 @@
      "match": "spawned:waterplant"
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28621,6 +28959,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28652,6 +28991,7 @@
    ],
    "default_reachable": true,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28691,6 +29031,7 @@
      "match": "name"
     }
    },
+   "default_shown": false,
    "empirical": {
     "worlds": 17,
     "share": 0.0543,
@@ -28736,6 +29077,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -28776,6 +29118,7 @@
      "match": "game"
     }
    },
+   "default_shown": true,
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28814,6 +29157,8 @@
      "match": "spawned:wobster_den"
     }
    },
+   "default_shown": false,
+   "hidden_by_default": "a spawner marker: the game draws nothing at its position, only what it spawns",
    "empirical": {
     "worlds": 313,
     "share": 1.0,
@@ -28846,6 +29191,7 @@
    ],
    "default_reachable": false,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,
@@ -28886,6 +29232,7 @@
      "priority": 5
     }
    },
+   "default_shown": true,
    "placed_as": [
     "wormhole_MARKER"
    ],
@@ -28921,6 +29268,7 @@
    ],
    "default_reachable": false,
    "icons": {},
+   "default_shown": false,
    "empirical": {
     "worlds": 0,
     "share": 0.0,

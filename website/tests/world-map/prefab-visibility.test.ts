@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PREFAB_BY_ID, PREFABS } from "@/lib/catalog/world";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { defaultShown, groupState, mapLegend, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
 
@@ -13,8 +14,6 @@ const WORLD = {
         prefab("multiplayer_portal", 0, 0)
     ]
 };
-
-const SPAWN_AND_TRAVEL = ["cave_entrance", "multiplayer_portal"];
 
 const SEARCH: SeedfinderConfig = {
     version: 1,
@@ -81,25 +80,43 @@ describe("toggling the map's prefabs", () => {
 });
 
 describe("the prefabs a map shows", () => {
-    it("starts with the spawn & travel group, less wormholes and the unmapped spawn points, without a search", () => {
-        expect([...defaultShown()].sort()).toEqual(SPAWN_AND_TRAVEL);
+    const NEVER_DRAWN = [
+        "antlion_spawner", "crabking_spawner", "seastack_spawner_rough", "seastack_spawner_swell",
+        "wagstaff_machinery_marker", "waterplant_spawner_rough", "wobster_den_spawner_shore"
+    ];
+
+    it("starts with what the game's map draws, without a search", () => {
+        const shown = defaultShown();
+        const drawn = ["multiplayer_portal", "wormhole", "cave_entrance", "evergreen", "pigking", "seastack", "rock1", "pighouse"];
+        expect(drawn.filter((prefab) => !shown.has(prefab))).toEqual([]);
+        expect(shown.size).toBe(PREFABS.filter(({ defaultShown }) => defaultShown).length);
+    });
+
+    it("only shows prefabs that have an icon", () => {
+        expect([...defaultShown()].filter((prefab) => !PREFAB_BY_ID.get(prefab)?.icon)).toEqual([]);
+    });
+
+    it("leaves out what the game draws nothing for at world start: spawner markers, unformed ice, spawn points and items", () => {
+        const shown = defaultShown();
+        const hidden = [...NEVER_DRAWN, "rock_ice", "spawnpoint_master", "spawnpoint_multiplayer", "log", "flint"];
+        expect(hidden.filter((prefab) => shown.has(prefab))).toEqual([]);
     });
 
     it("also shows every prefab the search's counts, near filters, distances and routes name, in every option", () => {
-        expect([...defaultShown(SEARCH)].sort()).toEqual([
-            ...SPAWN_AND_TRAVEL, "beefalo", "evergreen", "flower", "grass", "knight", "moonbase", "pigking", "rook",
-            "sapling", "spiderden", "walrus_camp"
-        ].sort());
+        const named = ["beefalo", "evergreen", "flower", "grass", "knight", "moonbase", "pigking", "rook", "sapling", "spiderden", "walrus_camp"];
+        expect([...defaultShown(SEARCH)].filter((prefab) => !defaultShown().has(prefab)).sort())
+            .toEqual(named.filter((prefab) => !defaultShown().has(prefab)).sort());
+        expect(named.filter((prefab) => !defaultShown(SEARCH).has(prefab))).toEqual([]);
     });
 
-    it("shows wormholes when the search names them", () => {
-        const wormholes: SeedfinderConfig = { version: 1, criteria: [{ counts: [{ prefab: "wormhole", min: 1 }] }] };
-        expect(defaultShown(wormholes)).toContain("wormhole");
+    it("shows a named spawner marker although the game doesn't draw it", () => {
+        const spawners: SeedfinderConfig = { version: 1, criteria: [{ counts: [{ prefab: "antlion_spawner", min: 1 }] }] };
+        expect(defaultShown(spawners)).toContain("antlion_spawner");
     });
 
-    it("shows only the spawn & travel group for a search without world rules", () => {
+    it("shows the game's default for a search without world rules", () => {
         const levelOnly: SeedfinderConfig = { version: 1, criteria: [{ tasks: { required: ["Killer bees!"] } }] };
-        expect([...defaultShown(levelOnly)].sort()).toEqual(SPAWN_AND_TRAVEL);
-        expect([...defaultShown({ version: 1 })].sort()).toEqual(SPAWN_AND_TRAVEL);
+        expect(defaultShown(levelOnly)).toEqual(defaultShown());
+        expect(defaultShown({ version: 1 })).toEqual(defaultShown());
     });
 });

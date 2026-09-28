@@ -74,8 +74,6 @@ export interface EntityLayer {
     /** Interleaved `x, z` of the entry then the exit wormhole, per wormhole link. */
     links: Float32Array;
     linkGroup: number;
-    /** The wormholes' index in {@link names}, whose visibility the links follow, -1 without any. */
-    linkPrefab: number;
 }
 
 export const groupOf = (prefab: string) => {
@@ -100,10 +98,9 @@ export function entityLayer(world: Pick<GeneratedWorld, "prefabs" | "links">): E
         for (let at = 0; at < centi.length; at++) positions[2 * dot + at] = centi[at] / 100;
         next[group] += centi.length / 2;
     });
-    const linkPrefab = world.prefabs.findIndex(({ name }) => name === WORMHOLE);
-    const wormholes = world.prefabs[linkPrefab]?.positions ?? new Int32Array(0);
+    const wormholes = world.prefabs.find(({ name }) => name === WORMHOLE)?.positions ?? new Int32Array(0);
     const ends = [...world.links].flatMap((wormhole) => [wormholes[2 * wormhole], wormholes[2 * wormhole + 1]]);
     const links = Float32Array.from(ends, (centi) => centi / 100);
     const names = world.prefabs.map(({ name }) => name);
-    return { positions, groups, names, prefabs, links, linkGroup: groupOf(WORMHOLE), linkPrefab };
+    return { positions, groups, names, prefabs, links, linkGroup: groupOf(WORMHOLE) };
 }

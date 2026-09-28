@@ -1,8 +1,8 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
-import { PREFAB_GROUPS } from "@/lib/catalog/world";
+import { PREFABS } from "@/lib/catalog/world";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
-import { groupOf, isMapped, MAP_GROUPS, type MapGroup } from "./entity-layer";
+import { groupOf, MAP_GROUPS, type MapGroup } from "./entity-layer";
 
 export interface LegendPrefab {
     prefab: string;
@@ -45,16 +45,13 @@ export function showPrefabs(shown: ReadonlySet<string>, prefabs: readonly string
     return next;
 }
 
-const SHOWN_GROUP = "spawn & travel";
-const HIDDEN_FROM_GROUP = "wormhole";
-
-/** The spawn & travel group without wormholes, and every prefab the world rules of `search` name, in any of its options. */
+/** Every prefab the game's map draws an icon for in a freshly generated world, and every prefab the world rules of `search` name, in any of its options. */
 export function defaultShown(search?: SeedfinderConfig): Set<string> {
     const named = (search?.criteria ?? []).flatMap(({ counts = [], distances = [], routes = [] }) => [
         ...counts.flatMap(({ prefab, near }) => [prefab, near?.prefab]),
         ...distances.flatMap(({ from, to }) => [from, to]),
         ...routes.flatMap(({ from, visit, to }) => [from, ...visit, to])
     ]);
-    const group = PREFAB_GROUPS.find(({ id }) => id === SHOWN_GROUP)!.prefabs;
-    return new Set([...group.filter((prefab) => isMapped(prefab) && prefab !== HIDDEN_FROM_GROUP), ...named.flatMap((prefabs) => [prefabs ?? []].flat())]);
+    const drawn = PREFABS.filter(({ defaultShown }) => defaultShown).map(({ id }) => id);
+    return new Set([...drawn, ...named.flatMap((prefabs) => [prefabs ?? []].flat())]);
 }

@@ -337,6 +337,15 @@ def minimap_icon(prefab, table, atlas):
                 **{key: row[key] for key in ("priority", "over_fog") if key in row})
 
 
+def hidden_by_default(prefab, minimap):
+    """Why the game's map doesn't draw the prefab's icon in a freshly generated world, or None when it does."""
+    if minimap is None:
+        return "no minimap icon"
+    if minimap["match"].startswith("spawned:"):
+        return "a spawner marker: the game draws nothing at its position, only what it spawns"
+    return handnames.CONDITIONAL_ICONS.get(prefab)
+
+
 def icon_for(prefab, atlases, minimap_icons):
     icons = {}
     inv = atlases["inventory"].get(prefab + ".tex")
@@ -739,6 +748,10 @@ def build_prefabs(static, ss, emp, n_worlds, atlases, minimap_icons, cave_only, 
             "default_reachable": any(s["default"] for s in sources),
             "icons": icons,
         }
+        reason = hidden_by_default(prefab, icons.get("minimap"))
+        entry["default_shown"] = reason is None
+        if reason and "minimap" in icons:
+            entry["hidden_by_default"] = reason
         if ss.aliases.get(prefab):
             entry["placed_as"] = sorted(ss.aliases[prefab])
         if prefab in swaps:

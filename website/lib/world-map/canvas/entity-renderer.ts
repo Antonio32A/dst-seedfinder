@@ -5,8 +5,6 @@ import { buildProgram, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-p
 const MIN_DOT_RADIUS = 2.5;
 const MAX_DOT_RADIUS = 8;
 const DOT_RADIUS_PER_WORLD_UNIT = 1;
-const LINK_HALF_WIDTH = 0.625;
-const LINK_FEATHER = 1;
 const VISIBILITY_ROW = 256;
 export const VISIBILITY_UNIT = 2;
 
@@ -60,37 +58,6 @@ void main() {
     colour = vec4(mix(fill, fill * 0.3, outline), coverage);
 }`;
 
-const LINK_VERTEX_SHADER = `#version 300 es
-in vec2 corner;
-in vec4 ends;
-uniform float prefab;
-uniform float halfWidth;
-out float across;
-${VISIBILITY_TRANSFORM}
-
-void main() {
-    vec2 entry = onScreen(ends.xy);
-    vec2 exit = onScreen(ends.zw);
-    vec2 along = exit - entry;
-    vec2 normal = length(along) > 0.0 ? normalize(vec2(-along.y, along.x)) : vec2(0.0);
-    across = corner.y * (halfWidth + ${LINK_FEATHER.toFixed(1)});
-    vec2 screen = entry + corner.x * along + across * normal;
-    gl_Position = hidden(prefab) ? vec4(2.0, 2.0, 2.0, 1.0) : clipped(screen);
-}`;
-
-const LINK_FRAGMENT_SHADER = `#version 300 es
-precision highp float;
-uniform vec3 fill;
-uniform float halfWidth;
-in float across;
-out vec4 colour;
-
-void main() {
-    float coverage = clamp((halfWidth - abs(across)) / fwidth(across) + 0.5, 0.0, 1.0);
-    if (coverage <= 0.0) discard;
-    colour = vec4(fill, 0.85 * coverage);
-}`;
-
 export interface EntityRenderer {
     /** Bound to {@link VISIBILITY_UNIT} by {@link draw}. */
     visibility: WebGLTexture;
@@ -117,19 +84,6 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
     gl.useProgram(dotProgram);
     gl.uniform3fv(gl.getUniformLocation(dotProgram, "colours"), MAP_GROUPS.flatMap(({ colour }) => colour.map(unit)));
 
-    const linkProgram = buildProgram(gl, LINK_VERTEX_SHADER, LINK_FRAGMENT_SHADER);
-    const linkVertices = gl.createVertexArray();
-    gl.bindVertexArray(linkVertices);
-    const linkBuffers = [
-        vertexBuffer(gl, linkProgram, "corner", new Float32Array([0, -1, 1, -1, 0, 1, 1, 1]), 2),
-        vertexBuffer(gl, linkProgram, "ends", layer.links, 4, 1)
-    ];
-    gl.useProgram(linkProgram);
-    gl.uniform1f(gl.getUniformLocation(linkProgram, "prefab"), Math.max(0, layer.linkPrefab));
-    gl.uniform1f(gl.getUniformLocation(linkProgram, "halfWidth"), LINK_HALF_WIDTH);
-    gl.uniform3fv(gl.getUniformLocation(linkProgram, "fill"), MAP_GROUPS[layer.linkGroup].colour.map(unit));
-
-    const programs = [linkProgram, dotProgram];
     const visibilityRows = Math.max(1, Math.ceil(layer.names.length / VISIBILITY_ROW));
     const visibility = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + VISIBILITY_UNIT);
@@ -137,32 +91,21 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
     for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.NEAREST);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, VISIBILITY_ROW, visibilityRows, 0, gl.RG, gl.UNSIGNED_BYTE, null);
-    for (const program of programs) {
-        gl.useProgram(program);
-        gl.uniform1i(gl.getUniformLocation(program, "shown"), VISIBILITY_UNIT);
-    }
+    gl.useProgram(dotProgram);
+    gl.uniform1i(gl.getUniformLocation(dotProgram, "shown"), VISIBILITY_UNIT);
 
     const radiusUniform = gl.getUniformLocation(dotProgram, "radius");
-    const viewSetters = programs.map((program) => {
-        gl.useProgram(program);
-        return viewUniforms(gl, program);
-    });
+    const setView = viewUniforms(gl, dotProgram);
 
     return {
         visibility,
         draw: (view, viewport) => {
-            programs.forEach((program, at) => {
-                gl.useProgram(program);
-                viewSetters[at](view, viewport);
-            });
+            gl.useProgram(dotProgram);
+            setView(view, viewport);
             gl.activeTexture(gl.TEXTURE0 + VISIBILITY_UNIT);
             gl.bindTexture(gl.TEXTURE_2D, visibility);
             gl.enable(gl.BLEND);
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-            gl.useProgram(linkProgram);
-            gl.bindVertexArray(linkVertices);
-            gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, layer.links.length / 4);
-            gl.useProgram(dotProgram);
             gl.bindVertexArray(dotVertices);
             const radius = Math.min(MAX_DOT_RADIUS, Math.max(MIN_DOT_RADIUS, view.scale * DOT_RADIUS_PER_WORLD_UNIT));
             gl.uniform1f(radiusUniform, Math.min(largestRadius, radius));
@@ -181,9 +124,9 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
             gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, VISIBILITY_ROW, visibilityRows, gl.RG, gl.UNSIGNED_BYTE, texels);
         },
         dispose: () => {
-            for (const buffer of [...dotBuffers, ...linkBuffers]) gl.deleteBuffer(buffer);
-            for (const vertices of [dotVertices, linkVertices]) gl.deleteVertexArray(vertices);
-            for (const program of programs) gl.deleteProgram(program);
+            for (const buffer of dotBuffers) gl.deleteBuffer(buffer);
+            gl.deleteVertexArray(dotVertices);
+            gl.deleteProgram(dotProgram);
             gl.deleteTexture(visibility);
         }
     };

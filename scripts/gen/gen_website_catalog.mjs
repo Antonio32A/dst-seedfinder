@@ -44,12 +44,13 @@ const iconRow = ({ element, priority, over_fog }) => {
     return { x, y, w, h, ...(priority ? { priority } : {}), ...(over_fog ? { overFog: true } : {}) };
 };
 
-const prefabRow = ({ id, display_name, group, variant_of, default_reachable, empirical, swap, icons }) => ({
+const prefabRow = ({ id, display_name, group, variant_of, default_reachable, default_shown, empirical, swap, icons }) => ({
     id,
     name: display_name,
     group,
     ...(variant_of ? { variantOf: variant_of } : {}),
     ...(default_reachable ? {} : { unreachable: true }),
+    ...(default_shown ? { defaultShown: true } : {}),
     ...(empirical.always ? { always: true } : {}),
     ...(empirical.unique ? { unique: true } : {}),
     ...(empirical.worlds > 0 ? { counts: [empirical.min, empirical.median, empirical.max] } : {}),
@@ -108,6 +109,8 @@ export interface WorldPrefab {
     group: PrefabGroupId;
     variantOf?: string;
     unreachable?: true;
+    /** The game's map draws this prefab's icon in a freshly generated world. */
+    defaultShown?: true;
     always?: true;
     unique?: true;
     counts?: [min: number, median: number, max: number];
@@ -115,7 +118,7 @@ export interface WorldPrefab {
     icon?: MapIcon;
 }
 
-/** The prefab's minimap icon: its UV rect on the sprite sheet in texels (stored rows: u = x / width, v = y / height). */
+/** The prefab's minimap icon: its UV rect on the sprite sheet in texels (top row first: u = x / width, v = y / height). */
 export interface MapIcon {
     x: number;
     y: number;

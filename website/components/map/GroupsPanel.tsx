@@ -19,6 +19,8 @@ interface GroupsPanelProps {
     setPieces: LegendGroup | null;
     shownSetPieces: ReadonlySet<string>;
     onSetPiecesChange: (shown: ReadonlySet<string>) => void;
+    /** The wormhole connection lines toggle, `null` for a world without any. */
+    links: { shown: boolean; colour: readonly number[]; onChange: (shown: boolean) => void } | null;
 }
 
 const count = (value: number) => value.toLocaleString("en-US");
@@ -67,7 +69,7 @@ function GroupRow({ entry, shown, onChange, outlined = false }: GroupRowProps) {
 }
 
 export default function GroupsPanel(props: GroupsPanelProps) {
-    const { legend, shown, onChange, setPieces, shownSetPieces, onSetPiecesChange } = props;
+    const { legend, shown, onChange, setPieces, shownSetPieces, onSetPiecesChange, links } = props;
     return (
             <details className="map-bar map-groups">
                 <summary>Filters</summary>
@@ -77,6 +79,18 @@ export default function GroupsPanel(props: GroupsPanelProps) {
                     ))}
                     {setPieces && (
                             <GroupRow entry={setPieces} shown={shownSetPieces} onChange={onSetPiecesChange} outlined/>
+                    )}
+                    {links && (
+                            <li>
+                                <div className="map-group">
+                                    <label className="map-group__toggle">
+                                        <input type="checkbox" checked={links.shown}
+                                               onChange={(event) => links.onChange(event.target.checked)}/>
+                                        <span className="map__swatch" style={{ background: `rgb(${links.colour.join()})` }}/>
+                                        <span>Wormhole Connections</span>
+                                    </label>
+                                </div>
+                            </li>
                     )}
                 </ul>
             </details>

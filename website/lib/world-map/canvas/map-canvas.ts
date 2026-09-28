@@ -16,6 +16,7 @@ import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { createEntityRenderer } from "./entity-renderer";
 import { createHighlightRenderer } from "./highlight-renderer";
 import { createIconRenderer } from "./icon-renderer";
+import { createLinkRenderer } from "./link-renderer";
 import { createSetPieceRenderer } from "./set-piece-renderer";
 import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
 
@@ -36,6 +37,8 @@ export interface MapCanvas {
     darken: (on: boolean) => void;
     show: (prefabs: ReadonlySet<string>) => void;
     showSetPieces: (layouts: ReadonlySet<string>) => void;
+    /** Shows or hides the wormhole connection lines, drawn over the icons. They start shown. */
+    showLinks: (on: boolean) => void;
     highlightSetPieces: (indices: readonly number[]) => void;
     /** Rings `points`, interleaved world `x, z`, whichever prefabs are shown. */
     highlight: (points: Float32Array) => void;
@@ -56,6 +59,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     const icons = iconLayer(layer);
     const entities = createEntityRenderer(gl, layer, icons.iconed);
     const iconRenderer = createIconRenderer(gl, icons, entities.visibility, layer.names.indexOf(SPAWN), () => redraw());
+    const links = createLinkRenderer(gl, layer);
     const highlights = createHighlightRenderer(gl);
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
@@ -86,6 +90,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             setPieces.draw(view, viewport);
             entities.draw(view, viewport);
             iconRenderer.draw(view, viewport);
+            links.draw(view, viewport);
             overlay?.draw(view, viewport);
             highlights.draw(view, viewport);
             for (const watcher of watchers) watcher(view, viewport);
@@ -157,6 +162,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             setPieces.show(shown);
             redraw();
         },
+        showLinks: (on) => {
+            links.show(on);
+            redraw();
+        },
         highlightSetPieces: (indices) => {
             setPieces.highlight(indices);
             redraw();
@@ -190,6 +199,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             setPieces.dispose();
             entities.dispose();
             iconRenderer.dispose();
+            links.dispose();
             highlights.dispose();
             overlay?.dispose();
         }

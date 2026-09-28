@@ -94,10 +94,9 @@ describe("the entity layer", () => {
         expect(order).toEqual(["other", "trees", "landmarks", "spawn & travel"]);
     });
 
-    it("draws each wormhole link from its entry wormhole to its exit, in their group's colour and shown with them", () => {
-        const { links, linkGroup, linkPrefab } = entityLayer(WORLD);
+    it("draws each wormhole link from its entry wormhole to its exit, in their group's colour", () => {
+        const { links, linkGroup } = entityLayer(WORLD);
         expect([...links].map(rounded)).toEqual([0, 0, 8, -8, 8, -8, 0, 0, 12, 0.4, -0.6, -24, -0.6, -24, 12, 0.4]);
         expect(MAP_GROUPS[linkGroup].id).toBe("spawn & travel");
-        expect(entityLayer(WORLD).names[linkPrefab]).toBe("wormhole");
     });
 });

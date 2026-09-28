@@ -1,6 +1,6 @@
 import unittest
 
-from build_catalog import minimap_icon
+from build_catalog import hidden_by_default, minimap_icon
 
 ATLAS = {name: {"xml": "minimap/minimap_data2.xml", "tex": "minimap/minimap_atlas2.tex"}
          for name in ["antlion.png", "rock.png", "flotsam_heavy.png", "singingshell_cluster.png", "storage_robot_broken.png"]}
@@ -40,3 +40,24 @@ class MinimapIcon(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HiddenByDefault(unittest.TestCase):
+    def test_draws_a_prefab_whose_constructor_gives_it_an_icon(self):
+        self.assertIsNone(hidden_by_default("rock1", minimap_icon("rock1", TABLE, ATLAS)))
+
+    def test_draws_a_captured_icon(self):
+        self.assertIsNone(hidden_by_default("shell_cluster", minimap_icon("shell_cluster", TABLE, ATLAS)))
+
+    def test_hides_a_spawner_marker_because_the_game_draws_nothing_at_it(self):
+        reason = hidden_by_default("antlion_spawner", minimap_icon("antlion_spawner", TABLE, ATLAS))
+        self.assertIn("spawner marker", reason)
+
+    def test_hides_a_prefab_whose_icon_depends_on_its_state(self):
+        atlas = dict(ATLAS, **{"iceboulder.png": {}})
+        icon = minimap_icon("rock_ice", {"rock_ice": {"icon": "iceboulder.png"}}, atlas)
+        self.assertIn("growth", hidden_by_default("rock_ice", icon))
+
+    def test_hides_a_prefab_without_an_icon(self):
+        self.assertEqual(hidden_by_default("beefalo", None), "no minimap icon")
+
