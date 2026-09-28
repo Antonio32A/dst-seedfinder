@@ -60,11 +60,8 @@ PIXEL_FORMATS = {
 }
 
 
-def decode(data, mip=0, flip=False, unpremultiply=False):
-    """A (height, width, 4) uint8 RGBA array, rows in stored order (OpenGL's: the first row is v = 0, the bottom).
-
-    `unpremultiply` leaves fully transparent pixels black.
-    """
+def decode(data, mip=0):
+    """A (height, width, 4) uint8 RGBA array with rows in stored order: OpenGL's, so the first row is v = 0."""
     assert data[:4] == b"KTEX", "not a KTEX texture"
     header, = struct.unpack_from("<I", data, 4)
     pixel_format, n_mips = header >> 4 & 0x1F, header >> 13 & 0x1F
@@ -72,14 +69,4 @@ def decode(data, mip=0, flip=False, unpremultiply=False):
     mips = [struct.unpack_from("<HHHI", data, 8 + 10 * i) for i in range(n_mips)]
     width, height, _, size = mips[mip]
     raw = np.frombuffer(data, np.uint8, size, 8 + 10 * n_mips + sum(m[3] for m in mips[:mip]))
-    pixels = PIXEL_FORMATS[pixel_format](raw, width, height)
-    if unpremultiply:
-        alpha = pixels[:, :, 3:].astype(np.float64)
-        colour = np.where(alpha > 0, np.minimum(pixels[:, :, :3] / np.maximum(alpha, 1) * 255, 255), 0)
-        pixels = np.concatenate([np.rint(colour).astype(np.uint8), pixels[:, :, 3:]], -1)
-    return pixels[::-1] if flip else pixels
-
-
-def mean_rgb(data):
-    """Of the full-size mip, rounded."""
-    return tuple(round(channel) for channel in decode(data)[:, :, :3].reshape(-1, 3).mean(0).tolist())
+    return PIXEL_FORMATS[pixel_format](raw, width, height)

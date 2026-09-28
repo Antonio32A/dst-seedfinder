@@ -83,13 +83,10 @@ details.map-bar * {
 .map-groups {
     grid-area: 2 / 1;
     align-self: start;
-    max-height: 100%;
-    overflow-y: auto;
-}
-
-.map-groups {
     justify-self: start;
     max-width: min(20rem, calc(100vw - 32px));
+    max-height: 100%;
+    overflow-y: auto;
 }
 
 .map-groups > summary {

@@ -30,7 +30,6 @@ const COLOURS: Record<MapGroupId, Colour> = {
     other: [45, 45, 45]
 };
 
-/** The catalog's prefab groups, then "other" for the prefabs outside it. */
 export const MAP_GROUPS: readonly MapGroup[] = [
     ...PREFAB_GROUPS.map(({ id, name }) => ({ id, name, colour: COLOURS[id] })),
     { id: "other", name: "Other", colour: COLOURS.other }
@@ -39,14 +38,12 @@ export const MAP_GROUPS: readonly MapGroup[] = [
 const OTHER = MAP_GROUPS.length - 1;
 const WORMHOLE = "wormhole";
 export const SPAWN = "multiplayer_portal";
+/** The map leaves the spawn points out: the portal stands for them. */
 const UNMAPPED: ReadonlySet<string> = new Set(["spawnpoint_master", "spawnpoint_multiplayer"]);
 
-/** The map leaves the spawn points out: the portal stands for them. */
-export const isMapped = (prefab: string) => !UNMAPPED.has(prefab);
-
-/** The world with only the prefabs it {@link isMapped maps}, and its set pieces' members renumbered to them. */
+/** Drops the unmapped prefabs and renumbers the set pieces' members to the ones left. */
 export function mapWorld<World extends Pick<GeneratedWorld, "prefabs" | "setPieces">>(world: World): World {
-    const kept = world.prefabs.flatMap(({ name }, prefab) => (isMapped(name) ? [prefab] : []));
+    const kept = world.prefabs.flatMap(({ name }, prefab) => (UNMAPPED.has(name) ? [] : [prefab]));
     const renumbered = new Map(kept.map((prefab, index) => [prefab, index]));
     const members = (pairs: Uint32Array) => {
         const mapped: number[] = [];

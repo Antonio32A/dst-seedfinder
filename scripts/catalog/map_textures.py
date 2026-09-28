@@ -41,7 +41,7 @@ def png_chunk(kind, data):
 
 
 def encode_png(pixels):
-    """Rows are left unfiltered: decoded DXT blocks repeat a few colours, which deflate packs better unfiltered."""
+    """Rows are left unfiltered: decoded DXT blocks repeat a few colours, which deflate packs better that way."""
     height, width, channels = pixels.shape
     header = struct.pack(">IIBBBBB", width, height, 8, PNG_COLOUR_TYPES[channels], 0, 0, 0)
     rows = np.concatenate([np.zeros((height, 1), np.uint8), pixels.reshape(height, width * channels)], 1)
@@ -64,13 +64,13 @@ def full_cell_tint(game_dir):
 
 
 def land_colour(game_dir, noise):
-    """Map_edge cell 01 is the one a layer draws on its own tiles."""
+    """The game draws a tile layer with map_edge cell 01: the cell for a tile whose neighbours are all the same layer."""
     noise_mean = read_texture(game_dir, NOISE_TEXTURE % noise)[:, :, :3].mean((0, 1))
     return [round(channel) for channel in (full_cell_tint(game_dir) * noise_mean / 255).tolist()]
 
 
 def minimap_elements(game_dir):
-    """Element name -> (atlas texture, u1, u2, v1, v2) of the atlases the game loads for the minimap: data1, then data2."""
+    """Element name -> (atlas texture, u1, u2, v1, v2). The first atlas to name an element wins, as in the game."""
     elements = {}
     for atlas in MINIMAP_ATLASES:
         root = ET.parse(os.path.join(game_dir, "data", atlas)).getroot()
@@ -84,25 +84,20 @@ def minimap_elements(game_dir):
 Icon = collections.namedtuple("Icon", "levels x y w h")
 
 
-def crop(pixels, top, bottom, left, right):
-    """The rows top..bottom and columns left..right of `pixels`, repeating its edge texels where they lie outside."""
-    height, width = pixels.shape[:2]
-    inside = pixels[max(top, 0):min(bottom, height), max(left, 0):min(right, width)]
-    return np.pad(inside, [(max(-top, 0), max(bottom - height, 0)), (max(-left, 0), max(right - width, 0)), (0, 0)], mode="edge")
-
-
 def aligned_span(low, high):
-    """The CELL_ALIGN aligned texel span around low..high, ICON_GUTTER texels wider on each side."""
+    """The CELL_ALIGN aligned span of texels around low..high, at least ICON_GUTTER texels wider on each side."""
     return (CELL_ALIGN * math.floor((low - ICON_GUTTER) / CELL_ALIGN), CELL_ALIGN * math.ceil((high + ICON_GUTTER) / CELL_ALIGN))
 
 
 def read_icons(game_dir, names):
-    """Name -> Icon: the atlas texels around an element's UV rect at each of SHEET_MIPS mip levels, premultiplied as the
-    atlas stores them, and the rect itself (x, y, w, h) inside level 0. The region is the rect plus ICON_GUTTER texels
-    on every side, widened to CELL_ALIGN texels, so its mips are the atlas' own mips (the game samples those, not a
-    filter of the top level) and a bilinear reach of up to ICON_GUTTER texels sees what the game sees. The atlas edges
-    sit on half texels, so a 63 wide rect spans 64 texels. The atlas stores its rows bottom first, so each level's rows
-    are flipped to read top first, like the PNG the site loads."""
+    """Name -> Icon: each element's cell of atlas texels at each of SHEET_MIPS mip levels, and its rect (x, y, w, h)
+    inside level 0's cell.
+
+    The cell is the rect plus ICON_GUTTER texels on every side, widened to CELL_ALIGN, so each level is the atlas' own
+    mip (the game samples those, which are not a box filter of level 0) and a bilinear tap reaching ICON_GUTTER texels
+    sees what the game sees. Texels stay premultiplied, as the atlas stores them. The atlas' rows run bottom first, so
+    they are flipped to read top first like the PNG. Atlas rects sit on half texels: a 63 wide rect spans 64 texels.
+    """
     elements = minimap_elements(game_dir)
     atlases = {texture: [read_texture(game_dir, texture, mip) for mip in range(SHEET_MIPS)]
                for texture in {elements[name][0] for name in names}}
@@ -113,16 +108,21 @@ def read_icons(game_dir, names):
         x0, x1, y0, y1 = u1 * width, u2 * width, v1 * height, v2 * height
         left, right = aligned_span(x0, x1)
         top, bottom = aligned_span(y0, y1)
-        levels = [crop(pixels, top >> mip, bottom >> mip, left >> mip, right >> mip)[::-1] for mip, pixels in enumerate(atlases[texture])]
+        levels = []
+        for mip, pixels in enumerate(atlases[texture]):
+            t, b, l, r = top >> mip, bottom >> mip, left >> mip, right >> mip
+            level_height, level_width = pixels.shape[:2]
+            inside = pixels[max(t, 0):min(b, level_height), max(l, 0):min(r, level_width)]
+            edges = [(max(-t, 0), max(b - level_height, 0)), (max(-l, 0), max(r - level_width, 0)), (0, 0)]
+            levels.append(np.pad(inside, edges, mode="edge")[::-1])
         icons[name] = Icon(levels, round(x0 - left, 3), round(bottom - y1, 3), round(x1 - x0, 3), round(y1 - y0, 3))
     return icons
 
 
 def pack_icons(icons):
-    """Shelf-packs icons (name -> Icon) into a sheet SHEET_WIDTH wide, each icon's region at a CELL_ALIGN aligned origin,
-    so every mip level of the sheet holds the icons' own mip levels. Returns the sheet's SHEET_MIPS levels (each half the
-    size of the one before) and name -> {x, y, w, h}: each icon's rect in level 0's texels (top row first, so
-    u = x / width and v = y / height)."""
+    """Shelf-packs icons (name -> Icon) SHEET_WIDTH wide, each cell at a CELL_ALIGN aligned origin so that every sheet
+    level holds the icons' own mip levels. Returns the sheet's levels and name -> {x, y, w, h}: each rect in level 0's
+    texels, top row first."""
     origins, rects = {}, {}
     x = y = shelf_height = 0
     for name in sorted(icons, key=lambda name: (-icons[name].levels[0].shape[0], name)):
@@ -143,8 +143,8 @@ def pack_icons(icons):
 
 
 def stack_levels(levels):
-    """One image holding a mip chain: level 0 on the left, the others in a column to its right. Returns it and each
-    level's region in it ({x, y, width, height})."""
+    """One image holding a mip chain: level 0 on the left, the rest in a column to its right. Also returns each level's
+    {x, y, width, height} in it."""
     width, height = levels[0].shape[1], levels[0].shape[0]
     strip = np.zeros((height, width + width // 2, 4), np.uint8)
     regions, column = [], 0
@@ -157,8 +157,8 @@ def stack_levels(levels):
 
 
 def write_map_textures(game_dir, noises, icon_names, out_dir):
-    """Writes every texture as `<stem>.<content hash>.<extension>` and removes the files it didn't write. Returns the
-    manifest: the file each texture went to, relative to out_dir."""
+    """Writes every texture as `<stem>.<content hash>.<extension>`, removes the other files in out_dir, and returns the
+    manifest of the files written, relative to out_dir."""
     levels, rects = pack_icons(read_icons(game_dir, icon_names))
     sheet, regions = stack_levels(levels)
     images = {"noise/" + name: read_texture(game_dir, NOISE_TEXTURE % name)[:, :, :3] for name in noises}

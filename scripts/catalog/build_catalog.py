@@ -26,7 +26,6 @@ REALGEN = os.environ.get("REALGEN_DIR", "")
 GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together"))
 
 sys.path.insert(0, HERE)
-import ktex  # noqa: E402
 import map_textures  # noqa: E402
 import names as handnames  # noqa: E402
 from summarize_world import summarize  # noqa: E402
@@ -586,8 +585,8 @@ def build_tasks(static):
 def paper_colour():
     if not os.path.isdir(GAME_DIR):
         return None
-    with open(os.path.join(GAME_DIR, "data", map_textures.MINIMAP_PAPER), "rb") as f:
-        return list(ktex.mean_rgb(f.read()))
+    paper = map_textures.read_texture(GAME_DIR, map_textures.MINIMAP_PAPER)
+    return [round(channel) for channel in paper[:, :, :3].mean((0, 1)).tolist()]
 
 
 def ocean_minimap_color(tile):

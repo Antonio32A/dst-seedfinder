@@ -9,7 +9,6 @@ const tiles = (value: number) => Number(value.toFixed(2)).toString();
 interface MapDetailsProps {
     probe: Probe;
     onClose: () => void;
-    /** Called with the index of the set piece whose details to show instead. */
     onOpenSetPiece: (index: number) => void;
 }
 

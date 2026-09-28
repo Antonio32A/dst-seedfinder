@@ -1,7 +1,7 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
 import { PREFAB_BY_ID, TILES } from "@/lib/catalog/world";
 import { WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
-import { SPAWN } from "@/lib/world-map/legend/entity-layer";
+import { ICON_WORLD_UNIT_PIXELS } from "@/lib/world-map/legend/icon-layer";
 import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
 import { type SetPieceDetails, setPieceDetails } from "@/lib/world-map/legend/set-pieces";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
@@ -20,8 +20,6 @@ const CELL_SIZE = 16;
 /** In screen pixels: the least an entity can be picked from, whatever its size. */
 export const PICK_RADIUS = 8;
 
-const ICON_WORLD_UNIT_PIXELS = 6.4;
-const SPAWN_MINIMUM_ICON_SIZE = 20;
 const DOT_RANK = -Infinity;
 
 interface Pick {
@@ -195,19 +193,11 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
     });
     const largestIconHalfExtent = Math.max(0, ...icons.map((icon) => (icon === null ? 0 : Math.max(icon.halfWidth, icon.halfHeight))));
 
-    /** The half sizes, in screen pixels, of the rectangle `prefab` is drawn in: the icon renderer's size, with its spawn minimum. */
-    const halfExtents = (prefab: number, scale: number) => {
-        const icon = icons[prefab]!;
-        const grow = world.prefabs[prefab].name === SPAWN
-                ? Math.max(1, SPAWN_MINIMUM_ICON_SIZE / (2 * scale * Math.max(icon.halfWidth, icon.halfHeight)))
-                : 1;
-        return { x: icon.halfWidth * scale * grow, y: icon.halfHeight * scale * grow };
-    };
-
     const covers = (prefab: number, dx: number, dy: number, scale: number) => {
-        if (icons[prefab] === null) return dx * dx + dy * dy <= PICK_RADIUS * PICK_RADIUS;
-        const half = halfExtents(prefab, scale);
-        return Math.abs(dx) <= Math.max(half.x, PICK_RADIUS) && Math.abs(dy) <= Math.max(half.y, PICK_RADIUS);
+        const icon = icons[prefab];
+        if (icon === null) return dx * dx + dy * dy <= PICK_RADIUS * PICK_RADIUS;
+        return Math.abs(dx) <= Math.max(icon.halfWidth * scale, PICK_RADIUS)
+                && Math.abs(dy) <= Math.max(icon.halfHeight * scale, PICK_RADIUS);
     };
 
     const drawnAbove = (a: Pick, b: Pick) => {
@@ -218,7 +208,7 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
     const under: MapProbe["under"] = (view, viewport, cursor, shown, searched = null) => {
         const isShown = shownIn(searched);
         const point = screenToWorld(view, viewport, cursor);
-        const reachPixels = Math.max(PICK_RADIUS, SPAWN_MINIMUM_ICON_SIZE / 2, largestIconHalfExtent * view.scale);
+        const reachPixels = Math.max(PICK_RADIUS, largestIconHalfExtent * view.scale);
         let found: number | null = null;
         let best: Pick = { rank: -Infinity, y: -Infinity, distance: Infinity };
         near(point, Math.SQRT2 * reachPixels / view.scale, (candidate) => {

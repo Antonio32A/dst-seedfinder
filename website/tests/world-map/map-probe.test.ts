@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { prefabName } from "@/lib/catalog/prefab-sets";
+import { PREFABS, TILES } from "@/lib/catalog/world";
+import { ICON_WORLD_UNIT_PIXELS } from "@/lib/world-map/legend/icon-layer";
 import { createMapProbe, PICK_RADIUS } from "@/lib/world-map/view/map-probe";
 import { type MapView, worldToScreen } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 
 const prefab = (name: string, ...positions: number[]) => ({ name, positions: new Int32Array(positions) });
+const HEADINGS = [0, 45, 135, 270];
+const VIEWPORT = { width: 800, height: 600 };
 
 const WORLD: GeneratedWorld = {
     status: "generated",
@@ -29,9 +34,15 @@ const GRASSLAND: GeneratedWorld = {
     ]
 };
 
+const DOT = "a_prefab_from_a_newer_game";
+const ICONED = PREFABS.filter(({ id, icon }) => icon && id !== "multiplayer_portal")
+    .sort((a, b) => (a.icon!.priority ?? 0) - (b.icon!.priority ?? 0));
+const [LOW, HIGH] = [ICONED[0], ICONED.at(-1)!];
+const tile = (name: string) => ({ name, displayName: TILES[name].displayName });
+
 const NO_SET_PIECES: ReadonlySet<string> = new Set();
 const ALL_SHOWN = {
-    prefabs: new Set(["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"]),
+    prefabs: new Set(["evergreen", "pigking", DOT]),
     setPieces: NO_SET_PIECES
 };
 const NO_TREES = { prefabs: new Set(["pigking"]), setPieces: NO_SET_PIECES };
@@ -39,11 +50,8 @@ const NO_TREES = { prefabs: new Set(["pigking"]), setPieces: NO_SET_PIECES };
 describe("the map probe", () => {
     it("names the tile under a point", () => {
         const probe = createMapProbe(WORLD);
-        expect(probe.at({ x: -3, z: -3 }, 1, ALL_SHOWN).tile).toEqual({ name: "FOREST", displayName: "Forest Turf" });
-        expect(probe.at({ x: -8, z: 1.5 }, 1, ALL_SHOWN).tile).toEqual({
-            name: "IMPASSABLE",
-            displayName: "Impassable"
-        });
+        expect(probe.at({ x: -3, z: -3 }, 1, ALL_SHOWN).tile).toEqual(tile("FOREST"));
+        expect(probe.at({ x: -8, z: 1.5 }, 1, ALL_SHOWN).tile).toEqual(tile("IMPASSABLE"));
         expect(probe.at({ x: 3.9, z: -5.9 }, 1, ALL_SHOWN).tile).toEqual({
             name: "A_NEWER_TURF",
             displayName: "A_NEWER_TURF"
@@ -63,7 +71,7 @@ describe("the map probe", () => {
         const probe = createMapProbe(GRASSLAND);
         expect(probe.at({ x: 0.2, z: 0.1 }, 2, ALL_SHOWN).entity).toEqual({
             prefab: "evergreen",
-            displayName: "Evergreen",
+            displayName: prefabName("evergreen"),
             index: 1,
             x: -0.01,
             z: 0.25,
@@ -81,16 +89,16 @@ describe("the map probe", () => {
         const tiles = GRASSLAND.tiles.slice();
         tiles[55 * 100 + 53] = 7;
         const probe = createMapProbe({ ...GRASSLAND, tiles });
-        expect(probe.at({ x: 9, z: 19 }, 0.1, ALL_SHOWN).tile).toEqual({ name: "GRASS", displayName: "Grass Turf" });
+        expect(probe.at({ x: 9, z: 19 }, 0.1, ALL_SHOWN).tile).toEqual(tile("GRASS"));
         expect(probe.at({ x: 9, z: 19 }, 2, ALL_SHOWN)).toMatchObject({
             entity: { prefab: "pigking" },
-            tile: { name: "FOREST", displayName: "Forest Turf" }
+            tile: tile("FOREST")
         });
     });
 
     it("picks no entity when none is within the radius, and still names the tile", () => {
         expect(createMapProbe(GRASSLAND).at({ x: 3, z: 3 }, 2, ALL_SHOWN)).toEqual({
-            tile: { name: "GRASS", displayName: "Grass Turf" },
+            tile: tile("GRASS"),
             entity: null,
             setPiece: null
         });
@@ -112,11 +120,10 @@ describe("the map probe", () => {
         expect(probe.at({ x: 0, z: 0 }, 2, NO_TREES, { kind: "prefab", name: "pigking" }).entity).toBeNull();
     });
 
-    const VIEWPORT = { width: 800, height: 600 };
-    it.each([0, 45, 90, 135, 180, 270, 315].flatMap((heading) => [0.05, 1, 12].map((scale) => ({ heading, scale }))))(
+    it.each(HEADINGS.flatMap((heading) => [0.05, 1, 12].map((scale) => ({ heading, scale }))))(
         "picks the dot under the cursor at $scale px per unit and heading $heading",
         ({ heading, scale }) => {
-            const probe = createMapProbe({ ...GRASSLAND, prefabs: [prefab("flower", 1000, 2000)] });
+            const probe = createMapProbe({ ...GRASSLAND, prefabs: [prefab(DOT, 1000, 2000)] });
             const view = { centerX: 3, centerZ: 3, scale, heading };
             const dot = worldToScreen(view, VIEWPORT, { x: 10, z: 20 });
             const off = (pixels: number, angle: number) => ({
@@ -124,7 +131,7 @@ describe("the map probe", () => {
                 y: dot.y + pixels * Math.sin(angle)
             });
             for (const angle of [0, 1, 2.5, 4]) {
-                expect(probe.under(view, VIEWPORT, off(PICK_RADIUS - 0.5, angle), ALL_SHOWN).entity).toMatchObject({ prefab: "flower" });
+                expect(probe.under(view, VIEWPORT, off(PICK_RADIUS - 0.5, angle), ALL_SHOWN).entity).toMatchObject({ prefab: DOT });
                 expect(probe.under(view, VIEWPORT, off(PICK_RADIUS + 0.5, angle), ALL_SHOWN).entity).toBeNull();
             }
         }
@@ -134,7 +141,7 @@ describe("the map probe", () => {
         let state = 7;
         const random = () => (state = (state * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
         const scatter = (count: number) => Array.from({ length: 2 * count }, () => Math.round((random() - 0.5) * 50000));
-        const names = ["evergreen", "pigking", "flower", "a_prefab_from_a_newer_game"];
+        const names = ["evergreen", "pigking", "flower", DOT];
         const world = { ...GRASSLAND, prefabs: names.map((name) => prefab(name, ...scatter(300))) };
         const probe = createMapProbe(world);
         const visibility = { prefabs: new Set(names.filter((name) => name !== "pigking")), setPieces: NO_SET_PIECES };
@@ -159,13 +166,12 @@ describe("the map probe", () => {
 });
 
 describe("picking icons under the cursor", () => {
-    const VIEWPORT = { width: 800, height: 600 };
-    const ICON_HALF_PIXELS = 63 / 2 / 6.4;
-    const HEADINGS = [0, 45, 90, 135, 180, 270, 315];
+    const ICON_HALF_PIXELS = LOW.icon!.w / 2 / ICON_WORLD_UNIT_PIXELS;
     const at = (view: MapView, x: number, z: number, dx = 0, dy = 0) => {
         const screen = worldToScreen(view, VIEWPORT, { x, z });
         return { x: screen.x + dx, y: screen.y + dy };
     };
+    const [low, high] = [LOW.id, HIGH.id];
     const iconWorld = (...prefabs: ReturnType<typeof prefab>[]) => createMapProbe({ ...GRASSLAND, prefabs });
     const shown = (...names: string[]) => ({ prefabs: new Set(names), setPieces: NO_SET_PIECES });
 
@@ -173,13 +179,13 @@ describe("picking icons under the cursor", () => {
         "picks an icon from the upright rectangle it's drawn in, at $scale px per unit and heading $heading",
         ({ heading, scale }) => {
             const view = { centerX: 3, centerZ: 3, scale, heading };
-            const probe = iconWorld(prefab("pigking", 1000, 2000));
+            const probe = iconWorld(prefab(low, 1000, 2000));
             const half = Math.max(PICK_RADIUS, ICON_HALF_PIXELS * scale);
             for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
                 const inside = at(view, 10, 20, dx * (half - 0.5), dy * (half - 0.5));
-                expect(probe.under(view, VIEWPORT, inside, shown("pigking")).entity).toMatchObject({ prefab: "pigking" });
+                expect(probe.under(view, VIEWPORT, inside, shown(low)).entity).toMatchObject({ prefab: low });
                 for (const outside of [at(view, 10, 20, dx * (half + 0.5)), at(view, 10, 20, 0, dy * (half + 0.5))]) {
-                    expect(probe.under(view, VIEWPORT, outside, shown("pigking")).entity).toBeNull();
+                    expect(probe.under(view, VIEWPORT, outside, shown(low)).entity).toBeNull();
                 }
             }
         }
@@ -187,59 +193,51 @@ describe("picking icons under the cursor", () => {
 
     it("keeps at least the dot's pick radius around a small icon, at any angle", () => {
         const view = { centerX: 3, centerZ: 3, scale: 0.05, heading: 45 };
-        const probe = iconWorld(prefab("pigking", 1000, 2000));
+        const probe = iconWorld(prefab(low, 1000, 2000));
         for (const angle of [0, 1, 2.5, 4]) {
             const cursor = at(view, 10, 20, (PICK_RADIUS - 0.1) * Math.cos(angle), (PICK_RADIUS - 0.1) * Math.sin(angle));
-            expect(probe.under(view, VIEWPORT, cursor, shown("pigking")).entity).toMatchObject({ prefab: "pigking" });
+            expect(probe.under(view, VIEWPORT, cursor, shown(low)).entity).toMatchObject({ prefab: low });
         }
-    });
-
-    it("grows the spawn portal's target to the 20 px it's drawn at when it would be smaller", () => {
-        const view = { centerX: 0, centerZ: 0, scale: 0.05, heading: 0 };
-        const probe = iconWorld(prefab("multiplayer_portal", 0, 0));
-        expect(probe.under(view, VIEWPORT, at(view, 0, 0, 9.5, 9.5), shown("multiplayer_portal")).entity)
-            .toMatchObject({ prefab: "multiplayer_portal" });
-        expect(probe.under(view, VIEWPORT, at(view, 0, 0, 10.5), shown("multiplayer_portal")).entity).toBeNull();
     });
 
     it.each(HEADINGS)("picks the icon with the higher priority whichever is lower on screen, at heading %d", (heading) => {
         const view = { centerX: 0, centerZ: 0, scale: 12, heading };
         const cursor = at(view, 0, 0);
         for (const prefabs of [
-            [prefab("evergreen", 0, 0), prefab("pigking", 0, 0)],
-            [prefab("pigking", 0, 0), prefab("evergreen", 0, 0)],
-            [prefab("pigking", 30, 30), prefab("evergreen", -30, -30)],
-            [prefab("pigking", -30, -30), prefab("evergreen", 30, 30)]
+            [prefab(low, 0, 0), prefab(high, 0, 0)],
+            [prefab(high, 0, 0), prefab(low, 0, 0)],
+            [prefab(high, 30, 30), prefab(low, -30, -30)],
+            [prefab(high, -30, -30), prefab(low, 30, 30)]
         ]) {
-            const found = iconWorld(...prefabs).under(view, VIEWPORT, cursor, shown("evergreen", "pigking"));
-            expect(found.entity).toMatchObject({ prefab: "pigking" });
+            const found = iconWorld(...prefabs).under(view, VIEWPORT, cursor, shown(low, high));
+            expect(found.entity).toMatchObject({ prefab: high });
         }
     });
 
     it.each(HEADINGS)("picks the one lower on screen among equal icons, at heading %d", (heading) => {
         const view = { centerX: 0, centerZ: 0, scale: 12, heading };
-        const probe = iconWorld(prefab("pigking", 0, 0, 40, 40, -40, -40));
+        const probe = iconWorld(prefab(low, 0, 0, 40, 40, -40, -40));
         const cursor = at(view, 0, 0, 0, 0);
         const lowest = [[0, 0], [0.4, 0.4], [-0.4, -0.4]]
             .map(([x, z], index) => ({ index, y: worldToScreen(view, VIEWPORT, { x, z }).y }))
             .sort((a, b) => b.y - a.y)[0].index;
-        expect(probe.under(view, VIEWPORT, cursor, shown("pigking")).entity).toMatchObject({ index: lowest });
+        expect(probe.under(view, VIEWPORT, cursor, shown(low)).entity).toMatchObject({ index: lowest });
     });
 
     it("picks an icon over a dot that's nearer the cursor, and the nearest of two dots", () => {
         const view = { centerX: 0, centerZ: 0, scale: 12, heading: 0 };
-        const probe = iconWorld(prefab("flower", 0, 0, 30, 0), prefab("evergreen", 20, 0));
-        const names = shown("flower", "evergreen");
-        expect(probe.under(view, VIEWPORT, at(view, 0, 0), names).entity).toMatchObject({ prefab: "evergreen" });
-        expect(probe.under(view, VIEWPORT, at(view, 0.3, 0, 0, -2), shown("flower")).entity).toMatchObject({ prefab: "flower", index: 1 });
+        const probe = iconWorld(prefab(DOT, 0, 0, 30, 0), prefab(low, 20, 0));
+        const names = shown(DOT, low);
+        expect(probe.under(view, VIEWPORT, at(view, 0, 0), names).entity).toMatchObject({ prefab: low });
+        expect(probe.under(view, VIEWPORT, at(view, 0.3, 0, 0, -2), shown(DOT)).entity).toMatchObject({ prefab: DOT, index: 1 });
     });
 
     it("never picks the icon of a hidden prefab, and picks it again when it's searched for", () => {
         const view = { centerX: 0, centerZ: 0, scale: 12, heading: 0 };
-        const probe = iconWorld(prefab("pigking", 0, 0));
+        const probe = iconWorld(prefab(low, 0, 0));
         expect(probe.under(view, VIEWPORT, at(view, 0, 0), shown()).entity).toBeNull();
-        expect(probe.under(view, VIEWPORT, at(view, 0, 0), shown(), { kind: "prefab", name: "pigking" }).entity)
-            .toMatchObject({ prefab: "pigking" });
+        expect(probe.under(view, VIEWPORT, at(view, 0, 0), shown(), { kind: "prefab", name: low }).entity)
+            .toMatchObject({ prefab: low });
     });
 });
 

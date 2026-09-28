@@ -13,11 +13,10 @@ export interface LegendPrefab {
 export interface LegendGroup {
     group: Omit<MapGroup, "id"> & { id: string };
     count: number;
-    /** By display name. */
+    /** Sorted by display name. */
     prefabs: LegendPrefab[];
 }
 
-/** The groups with entities in `world`, in {@link MAP_GROUPS} order. */
 export function mapLegend(world: Pick<GeneratedWorld, "prefabs">): LegendGroup[] {
     const legend = MAP_GROUPS.map((group): LegendGroup => ({ group, count: 0, prefabs: [] }));
     for (const { name, positions } of world.prefabs) {
@@ -36,7 +35,6 @@ export function groupState({ prefabs }: LegendGroup, shown: ReadonlySet<string>)
     return on === prefabs.length ? "on" : on === 0 ? "off" : "mixed";
 }
 
-/** Every prefab of `legend`. */
 export const allPrefabs = (legend: readonly LegendGroup[]): Set<string> =>
     new Set(legend.flatMap(({ prefabs }) => prefabs.map(({ prefab }) => prefab)));
 

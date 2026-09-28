@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { groupState, type LegendGroup, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
+import { formatCount } from "./format";
 
 interface GroupRowProps {
     entry: LegendGroup;
     shown: ReadonlySet<string>;
     onChange: (shown: ReadonlySet<string>) => void;
-    /** Whether the group draws outlines rather than dots. */
     outlined?: boolean;
-    /** Called with the prefabs the pointer or focus is on, and none when it leaves. Without it the rows don't highlight. */
+    /** Called with the prefabs under the pointer or focus, and none when it leaves. Rows without it don't highlight. */
     onHighlight?: (prefabs: readonly string[]) => void;
 }
 
@@ -17,7 +17,6 @@ interface GroupsPanelProps {
     legend: LegendGroup[];
     shown: ReadonlySet<string>;
     onChange: (shown: ReadonlySet<string>) => void;
-    /** Called with the prefabs of the row the pointer or focus is on, and none when it leaves, for the map to highlight. */
     onHighlight: (prefabs: readonly string[]) => void;
     /** The world's set pieces, `null` without any. */
     setPieces: LegendGroup | null;
@@ -25,11 +24,8 @@ interface GroupsPanelProps {
     onSetPiecesChange: (shown: ReadonlySet<string>) => void;
     /** The wormhole connection lines toggle, `null` for a world without any. */
     links: { shown: boolean; colour: readonly number[]; onChange: (shown: boolean) => void } | null;
-    /** Shows everything, hides everything, or restores what the map starts with. */
     onSelect: (selection: "all" | "none" | "reset") => void;
 }
-
-const count = (value: number) => value.toLocaleString("en-US");
 
 function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: GroupRowProps) {
     const [expanded, setExpanded] = useState(false);
@@ -59,7 +55,7 @@ function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: Gro
                                onChange={(event) => onChange(showPrefabs(shown, ids, event.target.checked))}/>
                         <span className={`map__swatch${outlined ? " map__swatch--outline" : ""}`}
                               style={outlined ? { borderColor: colour } : { background: colour }}/>
-                        <span>{group.name} <span className="map__count">{count(entry.count)}</span></span>
+                        <span>{group.name} <span className="map__count">{formatCount(entry.count)}</span></span>
                     </label>
                 </div>
                 {expanded && (
@@ -70,7 +66,7 @@ function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: Gro
                                             <input type="checkbox" checked={shown.has(prefab)} onChange={(event) =>
                                                     onChange(showPrefabs(shown, [prefab], event.target.checked))}/>
                                             <span>{displayName} <span
-                                                    className="map__count">{count(instances)}</span></span>
+                                                    className="map__count">{formatCount(instances)}</span></span>
                                         </label>
                                     </li>
                             ))}

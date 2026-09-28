@@ -1,6 +1,6 @@
 import { type EntityLayer, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
-import { buildProgram, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
+import { buildProgram, unitColour, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
 
 const MIN_DOT_RADIUS = 2.5;
 const MAX_DOT_RADIUS = 8;
@@ -11,10 +11,7 @@ export const VISIBILITY_UNIT = 2;
 export const VISIBILITY_SHOWN = 128;
 export const VISIBILITY_HIGHLIGHTED = 255;
 
-const unit = (channel: number) => channel / 255;
-
-/** How near, in world units, an entity is to the hovered one for it to be the hovered one. */
-export const HOVER_MATCH = 0.05;
+const HOVER_MATCH = 0.05;
 
 /** The entity under the cursor: its prefab's index in the entity layer's names, and its world position. */
 export interface HoveredEntity {
@@ -26,9 +23,8 @@ export interface HoveredEntity {
 export const NO_HOVER: HoveredEntity = { prefab: -1, x: 0, z: 0 };
 
 /**
- * GLSL for the visibility texture: per prefab, red is hidden (0), shown ({@link VISIBILITY_SHOWN}) or highlighted
- * ({@link VISIBILITY_HIGHLIGHTED}), and green whether it has an icon. `hovered` is the prefab index then world `x, z` of
- * the entity under the cursor, a negative prefab for none.
+ * GLSL for the visibility texture: per prefab, red is hidden (0), {@link VISIBILITY_SHOWN} or {@link VISIBILITY_HIGHLIGHTED},
+ * green whether it has an icon. `hovered` is the hovered entity's prefab index then world `x, z`; a negative prefab for none.
  */
 export const VISIBILITY_TRANSFORM = `${VIEW_TRANSFORM}
 uniform sampler2D shown;
@@ -105,9 +101,8 @@ export interface EntityRenderer {
 }
 
 /**
- * Which prefabs show, and which are highlighted, is a texture the shaders look each dot's prefab up in, so a toggle
- * uploads a few bytes per prefab. The prefabs `iconed` marks draw no dot: the icon renderer draws them. `accent` is
- * the highlight's `[r, g, b]` in 0-255.
+ * Which prefabs show or are highlighted is a texture the shaders look each dot's prefab up in, so a toggle uploads a
+ * few bytes per prefab. Prefabs `iconed` marks draw no dot: the icon renderer draws them. `accent` is `[r, g, b]` in 0-255.
  */
 export function createEntityRenderer(
     gl: WebGL2RenderingContext,
@@ -126,17 +121,15 @@ export function createEntityRenderer(
     const [, largestPoint] = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array;
     const largestRadius = (largestPoint - 1) / 2;
     gl.useProgram(dotProgram);
-    gl.uniform3fv(gl.getUniformLocation(dotProgram, "colours"), MAP_GROUPS.flatMap(({ colour }) => colour.map(unit)));
-    gl.uniform3fv(gl.getUniformLocation(dotProgram, "accent"), accent.map(unit));
+    gl.uniform3fv(gl.getUniformLocation(dotProgram, "colours"), MAP_GROUPS.flatMap(({ colour }) => unitColour(colour)));
+    gl.uniform3fv(gl.getUniformLocation(dotProgram, "accent"), unitColour(accent));
 
     const visibilityRows = Math.max(1, Math.ceil(layer.names.length / VISIBILITY_ROW));
     const visibility = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + VISIBILITY_UNIT);
     gl.bindTexture(gl.TEXTURE_2D, visibility);
     for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.NEAREST);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, VISIBILITY_ROW, visibilityRows, 0, gl.RG, gl.UNSIGNED_BYTE, null);
-    gl.useProgram(dotProgram);
     gl.uniform1i(gl.getUniformLocation(dotProgram, "shown"), VISIBILITY_UNIT);
 
     const radiusUniform = gl.getUniformLocation(dotProgram, "radius");

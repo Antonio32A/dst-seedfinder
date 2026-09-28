@@ -9,33 +9,32 @@ overrides the install path; without the game the catalog silently loses its icon
 
 ## Tiles on the map
 
-Each of `tiles[]` carries what the website's map needs to draw it the way the game's map screen does. The game draws
-one layer per tile type, in `GroundTiles.minimap` order (the order of `tiledefs.lua`'s `AddTile` calls): each layer
-multiplies a cell of the `levels/tiles/map_edge` atlas by the tile's minimap noise texture. The ocean is drawn in a
-separate pass, from each ocean tile's ground colour. Colours are `[r, g, b]` (0-255).
+Each of `tiles[]` carries what the website's map needs to draw it as the game's map screen does. The game draws one
+layer per tile type, in `GroundTiles.minimap` order (the order of `tiledefs.lua`'s `AddTile` calls), each multiplying a
+cell of the `levels/tiles/map_edge` atlas by the tile's minimap noise texture. The ocean is a separate pass, from each
+ocean tile's ground colour. Colours are `[r, g, b]` (0-255).
 
-- `color`: the tile's flat colour on the map at full brightness, for swatches and anything that isn't drawn per pixel.
+- `color`: the tile's flat colour at full brightness, for swatches.
   - Land tiles with a minimap noise: the mean RGB of `map_edge` cell `01` times the mean RGB of the noise texture.
   - Ocean tiles: their ground def's `colors.minimap_color` (the colour `world.lua` hands to
     `MapLayerManager:SetMinimapColor`), ignoring its alpha.
   - Tiles without a minimap layer (`IMPASSABLE`, the walls, the noise tiles, ...): the mean of
     `images/minimap_paper.tex`, the minimap's background.
-- `minimap_noise`: the name of the tile's minimap noise texture (`levels/textures/<name>.tex`), for the land tiles of
-  the sampled forest worlds; `null` otherwise. `map_textures.py` writes each one to the website.
-- `minimap_rank`: the land tile's position in `GroundTiles.minimap` (1 is drawn first); `null` for the ocean, which
-  has its own pass, and for tiles without a minimap layer.
+- `minimap_noise`: the tile's minimap noise texture (`levels/textures/<name>.tex`), for the land tiles of the sampled
+  forest worlds; `null` otherwise.
+- `minimap_rank`: the land tile's position in `GroundTiles.minimap` (1 is drawn first); `null` for the ocean and for
+  tiles without a minimap layer.
 - `ocean_minimap_color`: an ocean tile's ground `colors.minimap_color` RGB; `null` for the other tiles.
 
 The texture names and ranks come from `inputs/static.json` (`minimap_noise`, `minimap_rank`, `ground_minimap_color`).
-Only the numbers are committed.
 
 ## Minimap icons
 
 `icons.minimap` of each prefab is what the game itself draws for it. `minimap_icons.py` runs every game prefab's
-constructor under `extract_minimap_icons.lua` (the master simulation, with stubs for everything the constructors touch)
-and records what each tells its `MiniMapEntity`: the last icon, priority and draw-over-fog flag. Prefabs whose last
+constructor under `extract_minimap_icons.lua` (the master simulation, with stubs for what the constructors touch) and
+records what each tells its `MiniMapEntity`: the last icon, priority and draw-over-fog flag. Prefabs whose last
 `SetEnabled` is false, or that never set an icon, have none. The table is snapshotted in `inputs/minimap_icons.json`
-(`incomplete: true` marks a constructor that still crashed after setting its icon):
+(`incomplete: true` marks a constructor that crashed after setting its icon):
 
 ```sh
 python3 scripts/catalog/minimap_icons.py
@@ -55,9 +54,8 @@ icon came from:
 
 ### Drawn by default
 
-Each prefab carries `default_shown`: whether the game's map draws its icon in a freshly generated world, which the
-website's Filters start from. It is true for every prefab with an icon except those with a `hidden_by_default` reason
-(present for the exceptions only):
+`default_shown` says whether the game's map draws the prefab's icon in a freshly generated world, which the website's
+Filters start from. It is true for every prefab with an icon except those with a `hidden_by_default` reason:
 
 - `spawned:` icons: the spawner marker itself is never drawn.
 - `names.CONDITIONAL_ICONS`: prefabs whose constructor sets an icon but enables it only in some state. `rock_ice` is
@@ -74,14 +72,14 @@ marker's single icon only approximates them.
 ## Map textures
 
 `map_textures.py` writes the textures the website's map draws with to `website/public/world-map/`, as lossless PNGs of
-the full-size mip, rows in stored order (the first row is texture coordinate v = 0, as the game uploads it):
+the full-size mip, rows in stored order (the first row is v = 0, as the game uploads it):
 
 - `noise/<name>.<hash>.png`: every `minimap_noise` of `catalog.json`, RGB.
 - `map_edge.<hash>.png`: `levels/tiles/map_edge.tex`, RGBA, with its straight alpha exactly as stored
   (`levels/tiles/map_edge.xml` places its 48 cells).
 - `minimap_paper.<hash>.png`: `images/minimap_paper.tex`, RGB.
-- `minimap_icons.<hash>.png` and `minimap_icon_rects.<hash>.json`: the minimap icons the catalog uses, and where each
-  sits on the sheet.
+- `minimap_icons.<hash>.png` and `minimap_icon_rects.<hash>.json`: the sprite sheet of the catalog's minimap icons, and
+  where each sits on it.
 
 Every file's name carries the first 10 hex digits of the SHA-256 of its bytes, so the deployed files are served with
 `Cache-Control: public, max-age=31536000, immutable` (one `/world-map/*` rule in the generated `_headers`, next to the
@@ -109,8 +107,8 @@ python3 scripts/catalog/map_textures.py && node scripts/gen/gen_website_catalog.
 ```
 
 The output is deterministic, and committed because the site build has no game install. `ktex.py` decodes the textures
-the way Mesa's OpenGL driver does, pixel for pixel (DXT interpolants round down). `python3 -m unittest discover -s
-scripts/catalog` tests the decoder, the icon extractor, the icon resolution and the writer.
+the way Mesa's OpenGL driver does, pixel for pixel (DXT interpolants round down). Run the tests with
+`python3 -m unittest discover -s scripts/catalog`.
 
 The art is © Klei Entertainment and used under Klei's Player Creation Guidelines, which allow it as long as the site
 stays free and credits the art to Klei with a notice that the site isn't affiliated with Klei.

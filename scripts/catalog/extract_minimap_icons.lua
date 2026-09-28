@@ -1,7 +1,5 @@
--- Minimap icons of every game prefab.
--- Runs each prefab constructor under the harness stubs as the master simulation and records what it tells its
--- MiniMapEntity (the last icon, priority, draw-over-fog and enabled state), then prints one JSON document on stdout.
--- usage: ../harness/bin/lua-dst extract_minimap_icons.lua > build/minimap_icons.json
+-- Runs each prefab constructor as the master simulation under harness stubs and prints, as JSON, the icon, priority and
+-- draw-over-fog flag its MiniMapEntity was last given.
 local HERE = arg[0]:match("^(.*)/[^/]*$") or "."
 local GS = HERE .. "/../../build/deps/game-scripts"
 package.path = GS .. "/?.lua;" .. package.path
@@ -141,7 +139,7 @@ function CreateEntity(name)
         if adder then
             return function(self)
                 if adder == "MiniMapEntity" then
-                    local mm = new_recorder(); scr.MiniMapEntity = mm; if cur.primary == scr then cur.mm = mm else cur.other = (cur.other or 0) + 1 end
+                    local mm = new_recorder(); scr.MiniMapEntity = mm; if cur.primary == scr then cur.mm = mm end
                     return mm
                 end
                 scr[adder] = sink

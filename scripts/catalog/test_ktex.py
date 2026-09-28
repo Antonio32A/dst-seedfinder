@@ -1,7 +1,7 @@
 import struct
 import unittest
 
-from ktex import decode, mean_rgb
+from ktex import decode
 
 DXT1 = 0
 DXT3 = 1
@@ -25,26 +25,6 @@ def dxt1_block(c0, c1, indices):
 def dxt5_alpha_block(a0, a1, indices):
     bits = sum(index << 3 * i for i, index in enumerate(indices))
     return bytes([a0, a1]) + bits.to_bytes(6, "little")
-
-
-class MeanRgb(unittest.TestCase):
-    def test_solid_dxt1_block_is_its_first_colour(self):
-        self.assertEqual(mean_rgb(ktex(DXT1, [(4, 4, dxt1_block(RED, BLUE, [0] * 16))])), (255, 0, 0))
-
-    def test_dxt1_interpolated_colours_sit_a_third_between_the_endpoints(self):
-        self.assertEqual(mean_rgb(ktex(DXT1, [(4, 4, dxt1_block(RED, BLUE, [2] * 8 + [3] * 8))])), (128, 0, 128))
-
-    def test_dxt1_three_colour_blocks_have_a_midpoint_and_black(self):
-        self.assertEqual(mean_rgb(ktex(DXT1, [(4, 4, dxt1_block(BLUE, RED, [2] * 8 + [3] * 8))])), (64, 0, 64))
-
-    def test_dxt5_colour_follows_the_alpha_block_and_always_has_four_colours(self):
-        block = bytes([255, 0] + [0x92, 0x24, 0x49] * 2) + dxt1_block(BLUE, RED, [2] * 8 + [3] * 8)
-        self.assertEqual(mean_rgb(ktex(DXT5, [(4, 4, block)])), (128, 0, 128))
-
-    def test_only_the_full_size_mip_counts(self):
-        full = dxt1_block(RED, BLUE, [0] * 16) + dxt1_block(BLUE, RED, [0] * 16)
-        texture = ktex(DXT1, [(8, 4, full), (4, 2, dxt1_block(RED, BLUE, [1] * 16))])
-        self.assertEqual(mean_rgb(texture), (128, 0, 128))
 
 
 class Decode(unittest.TestCase):
@@ -77,6 +57,10 @@ class Decode(unittest.TestCase):
         alpha = decode(ktex(DXT5, [(4, 4, block)]))[:, :, 3]
         self.assertEqual(alpha[0].tolist(), [40, 160, 0, 255])
 
+    def test_dxt5_colour_is_always_four_colours(self):
+        block = dxt5_alpha_block(255, 255, [0] * 16) + dxt1_block(BLUE, RED, [2] * 16)
+        self.assertEqual(decode(ktex(DXT5, [(4, 4, block)]))[0, 0].tolist(), [85, 0, 170, 255])
+
     def test_dxt3_alpha_is_four_explicit_bits_per_pixel_low_nibble_first(self):
         block = bytes([0xF0, 0x08] + [0] * 6) + dxt1_block(BLUE, RED, [3] * 16)
         pixels = decode(ktex(DXT3, [(4, 4, block)]))
@@ -96,19 +80,9 @@ class Decode(unittest.TestCase):
         pixels = decode(ktex(DXT1, [(8, 8, b"".join(blocks))]))
         self.assertEqual([pixels[0, 0, 0], pixels[0, 7, 0], pixels[7, 0, 0], pixels[7, 7, 0]], [255, 0, 0, 255])
 
-    def test_smaller_mips_are_cropped_out_of_their_block(self):
+    def test_a_smaller_mip_is_read_after_the_larger_ones_and_cropped_out_of_its_block(self):
         texture = ktex(DXT1, [(4, 4, dxt1_block(RED, RED, [0] * 16)), (2, 2, dxt1_block(BLUE, BLUE, [0] * 16))])
         self.assertEqual(decode(texture, mip=1).tolist(), [[[0, 0, 255, 255]] * 2] * 2)
-
-    def test_rows_come_in_stored_order_unless_flipped(self):
-        texture = ktex(RGB, [(1, 2, bytes([1, 2, 3, 4, 5, 6]))])
-        self.assertEqual(decode(texture, flip=True).tolist(), [[[4, 5, 6, 255]], [[1, 2, 3, 255]]])
-
-    def test_unpremultiplying_divides_the_colour_by_alpha(self):
-        texture = ktex(RGBA, [(3, 1, bytes([50, 100, 0, 128, 0, 0, 0, 0, 9, 9, 9, 255]))])
-        self.assertEqual(decode(texture, unpremultiply=True).tolist(),
-                         [[[100, 199, 0, 128], [0, 0, 0, 0], [9, 9, 9, 255]]])
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ import { type KeyboardEvent, useId, useMemo, useState } from "react";
 import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
 import { instancesOf, type MapMatch, type MapTarget, searchPrefabs, stepInstance } from "@/lib/world-map/legend/prefab-search";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
+import { formatCount } from "./format";
 
 const MAX_SUGGESTIONS = 40;
 const NEAREST: ScrollIntoViewOptions = { block: "nearest" };
@@ -14,8 +15,6 @@ interface PrefabSearchProps {
     map: MapCanvas | null;
     onChange: (target: MapTarget | null) => void;
 }
-
-const count = (value: number) => value.toLocaleString("en-US");
 
 export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps) {
     const listId = useId();
@@ -82,7 +81,7 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
                                             {match.kind === "set piece"
                                                     ? <>{match.name} <span className="map__kind">set piece</span></>
                                                     : <>{match.displayName} <code>{match.name}</code></>}
-                                            <span className="map__count"> {count(match.count)}</span>
+                                            <span className="map__count"> {formatCount(match.count)}</span>
                                         </li>
                                 ))}
                             </ul>
@@ -92,10 +91,10 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
                         <div className="map__found" aria-live="polite">
                             <span>
                                 {chosen.displayName}{chosen.kind === "set piece" && " set piece"}:{" "}
-                                {count(chosen.count)} in this world
+                                {formatCount(chosen.count)} in this world
                                 {shownAt && (
                                         <span className="map__count">
-                                            , showing {count(shownAt.number)} at
+                                            , showing {formatCount(shownAt.number)} at
                                             x {shownAt.x.toFixed(2)}, z {shownAt.z.toFixed(2)}
                                         </span>
                                 )}

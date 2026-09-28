@@ -5,18 +5,20 @@ import type { EntityLayer } from "./entity-layer";
 /** Floats per icon in {@link IconLayer.instances}: world `x, z`, the sheet rect `x, y, w, h`, and the prefab. */
 export const ICON_STRIDE = 7;
 
+/** Sheet pixels per world unit: the size an icon is drawn at. */
+export const ICON_WORLD_UNIT_PIXELS = 6.4;
+
+/** Wide enough that a priority outranks any position. */
 const PRIORITY_SPAN = 1e6;
 
 export interface IconLayer {
     /** {@link ICON_STRIDE} floats per icon, the prefab as its index in the entity layer's names. */
     instances: Float32Array;
-    /** Each icon's draw priority, lowest drawn first. */
     priorities: Int8Array;
     /** Per prefab in the entity layer's names: 1 when it has an icon, 0 when it's a dot. */
     iconed: Uint8Array;
 }
 
-/** An icon for every entity of a prefab that has one. */
 export function iconLayer(layer: EntityLayer): IconLayer {
     const iconed = Uint8Array.from(layer.names, (name) => (PREFAB_BY_ID.get(name)?.icon === undefined ? 0 : 1));
     const dots = Array.from(layer.prefabs.keys()).filter((dot) => iconed[layer.prefabs[dot]] === 1);

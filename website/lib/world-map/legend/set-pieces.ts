@@ -1,21 +1,23 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
 import { type SeedfinderConfig, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
-import type { LegendGroup } from "./prefab-visibility";
+import type { LegendGroup, LegendPrefab } from "./prefab-visibility";
 
 export const SET_PIECE_COLOUR = [255, 100, 40] as const;
 
-/** Every set piece the set piece rules of `search` name, in any of its options. */
 export const defaultShownSetPieces = (search?: SeedfinderConfig): Set<string> => new Set((search?.criteria ?? [])
     .flatMap(({ setpieces = [] }) => setpieces.flatMap(({ required = {} }) => Object.keys(required))));
 
-export function setPieceCounts(world: Pick<GeneratedWorld, "setPieces">): Map<string, number> {
+const tally = (names: Iterable<string>) => {
     const counts = new Map<string, number>();
-    for (const { name } of world.setPieces ?? []) counts.set(name, (counts.get(name) ?? 0) + 1);
+    for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
     return counts;
-}
+};
 
-/** One entry per layout name, `null` when the world has none or its dump doesn't say. */
+export const setPieceCounts = (world: Pick<GeneratedWorld, "setPieces">) =>
+    tally((world.setPieces ?? []).map(({ name }) => name));
+
+/** `null` when the world has none or its dump doesn't say. */
 export function setPieceLegend(world: Pick<GeneratedWorld, "setPieces">): LegendGroup | null {
     const counts = setPieceCounts(world);
     if (counts.size === 0) return null;
@@ -39,12 +41,6 @@ const TRANSFORM_WORDS = [
     "flipped, rotated 90° anticlockwise"
 ];
 
-export interface SetPieceMember {
-    prefab: string;
-    displayName: string;
-    count: number;
-}
-
 export interface SetPieceDetails {
     index: number;
     name: string;
@@ -56,19 +52,14 @@ export interface SetPieceDetails {
     /** The bounds' size, in tiles. */
     width: number;
     height: number;
-    /** How the layout was rotated and flipped. */
     transform: string;
     /** The most common prefab first. */
-    members: SetPieceMember[];
+    members: LegendPrefab[];
 }
 
 export function setPieceDetails(world: Pick<GeneratedWorld, "prefabs" | "setPieces">, index: number): SetPieceDetails {
     const { name, source, transform, xk, zk, bounds, members } = world.setPieces![index];
-    const counts = new Map<string, number>();
-    for (let at = 0; at < members.length; at += 2) {
-        const prefab = world.prefabs[members[at]].name;
-        counts.set(prefab, (counts.get(prefab) ?? 0) + 1);
-    }
+    const counts = tally(Array.from({ length: members.length / 2 }, (_, at) => world.prefabs[members[2 * at]].name));
     return {
         index,
         name,

@@ -8,28 +8,11 @@ import zlib
 
 import numpy as np
 
-from map_textures import (CELL_ALIGN, ICON_GUTTER, MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, SHEET_MIPS, SHEET_WIDTH,
+from map_textures import (CELL_ALIGN, HASH_LENGTH, MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, SHEET_MIPS, SHEET_WIDTH,
                           Icon, encode_png, land_colour, pack_icons, read_icons, stack_levels, write_map_textures)
 from test_ktex import RGB, RGBA, ktex
 
 CHANNELS = {0: 1, 2: 3, 6: 4}
-
-
-def paeth(left, up, up_left):
-    estimate = left + up - up_left
-    distances = [abs(estimate - left), abs(estimate - up), abs(estimate - up_left)]
-    return [left, up, up_left][distances.index(min(distances))]
-
-
-def unfilter(kind, row, previous, channels):
-    out = bytearray(len(row))
-    for i, value in enumerate(row):
-        left = out[i - channels] if i >= channels else 0
-        up = previous[i]
-        up_left = previous[i - channels] if i >= channels else 0
-        predictor = [0, left, up, (left + up) // 2, paeth(left, up, up_left)][kind]
-        out[i] = (value + predictor) & 0xFF
-    return bytes(out)
 
 
 def read_png(data):
@@ -43,14 +26,9 @@ def read_png(data):
     width, height, depth, colour_type = struct.unpack_from(">IIBB", chunks[b"IHDR"])
     assert depth == 8
     channels = CHANNELS[colour_type]
-    stride = width * channels
-    raw = zlib.decompress(chunks[b"IDAT"])
-    rows, previous = [], bytes(stride)
-    for y in range(height):
-        line = raw[y * (stride + 1):(y + 1) * (stride + 1)]
-        previous = unfilter(line[0], line[1:], previous, channels)
-        rows.append(previous)
-    return np.frombuffer(b"".join(rows), np.uint8).reshape(height, width, channels)
+    rows = np.frombuffer(zlib.decompress(chunks[b"IDAT"]), np.uint8).reshape(height, 1 + width * channels)
+    assert not rows[:, 0].any(), "the encoder leaves rows unfiltered"
+    return rows[:, 1:].reshape(height, width, channels)
 
 
 def noisy_pixels(height, width, channels):
@@ -58,14 +36,10 @@ def noisy_pixels(height, width, channels):
 
 
 class EncodePng(unittest.TestCase):
-    def test_rgb_pixels_decode_back_to_themselves(self):
-        pixels = noisy_pixels(5, 7, 3)
-        np.testing.assert_array_equal(read_png(encode_png(pixels)), pixels)
-
-    def test_rgba_pixels_with_smooth_flat_and_noisy_rows_decode_back_to_themselves(self):
-        ramp = np.add.outer(np.arange(16), np.arange(16))[:, :, None] * [3, 5, 7, 11] % 256
-        pixels = np.concatenate([ramp, np.zeros((4, 16, 4)), noisy_pixels(4, 16, 4)]).astype(np.uint8)
-        np.testing.assert_array_equal(read_png(encode_png(pixels)), pixels)
+    def test_rgb_and_rgba_pixels_decode_back_to_themselves(self):
+        for channels in (3, 4):
+            pixels = noisy_pixels(5, 7, channels)
+            np.testing.assert_array_equal(read_png(encode_png(pixels)), pixels)
 
 
 def write_texture(game_dir, name, pixel_format, mips):
@@ -136,12 +110,10 @@ class WriteMapTextures(unittest.TestCase):
 
     def test_names_every_file_after_the_hash_of_its_contents(self):
         manifest = self.write()
-        files = [manifest["mapEdge"], manifest["minimapPaper"], manifest["noise"]["grass"], manifest["iconSheet"]["file"],
-                 manifest["iconSheet"]["rects"]]
-        for name in files:
+        for name in [manifest["mapEdge"], manifest["noise"]["grass"], manifest["iconSheet"]["file"], manifest["iconSheet"]["rects"]]:
             with open(os.path.join(self.out_dir, name), "rb") as f:
-                digest = hashlib.sha256(f.read()).hexdigest()[:10]
-            self.assertRegex(name, r"^(noise/)?[a-z_]+\.%s\.(png|json)$" % digest)
+                digest = hashlib.sha256(f.read()).hexdigest()[:HASH_LENGTH]
+            self.assertRegex(name, r"\.%s\." % digest)
 
     def test_a_texture_changes_name_only_when_its_pixels_change(self):
         before = self.write()
@@ -203,6 +175,8 @@ class PackIcons(unittest.TestCase):
     def test_each_icon_region_sits_at_a_cell_aligned_origin_in_every_mip_level(self):
         icons = self.icons()
         sheet, rects = pack_icons(icons)
+        self.assertEqual([level.shape[:2] for level in sheet],
+                         [(sheet[0].shape[0] >> mip, SHEET_WIDTH >> mip) for mip in range(SHEET_MIPS)])
         for name, icon in icons.items():
             rect = rects[name]
             self.assertEqual((rect["w"], rect["h"]), (icon.w, icon.h))
@@ -215,15 +189,6 @@ class PackIcons(unittest.TestCase):
     def test_the_rect_offset_inside_the_region_carries_into_the_sheet_rect(self):
         _, rects = pack_icons({"a": Icon([solid(64 >> mip, 64 >> mip, 1) for mip in range(SHEET_MIPS)], 36.5, 33.25, 7, 7.5)})
         self.assertEqual(rects["a"], {"x": 36.5, "y": 33.25, "w": 7, "h": 7.5})
-
-    def test_the_sheet_is_as_wide_as_its_constant_and_each_level_halves_the_one_before(self):
-        sheet, _ = pack_icons(self.icons())
-        self.assertEqual(len(sheet), SHEET_MIPS)
-        self.assertEqual(sheet[0].shape[1], SHEET_WIDTH)
-        self.assertEqual(sheet[0].shape[0] % CELL_ALIGN, 0)
-        self.assertGreater(sheet[0].shape[0], 0)
-        for mip, level in enumerate(sheet):
-            self.assertEqual(level.shape[:2], (sheet[0].shape[0] >> mip, SHEET_WIDTH >> mip))
 
 
 class StackLevels(unittest.TestCase):

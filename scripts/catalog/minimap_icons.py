@@ -19,7 +19,7 @@ MEMORY_LIMIT_KB = 16000000
 
 
 def parse_icons(text):
-    """prefab -> {"icon", "priority"?, "over_fog"?, "incomplete"?} from the extractor's JSON object."""
+    """The extractor's JSON as a prefab -> row table, refusing icon names that aren't file names."""
     table = json.loads(text)
     odd = sorted(prefab for prefab, row in table.items() if not ICON_NAME.match(row["icon"]))
     if odd:

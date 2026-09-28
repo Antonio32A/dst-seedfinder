@@ -15,6 +15,9 @@ vec4 clipped(vec2 screen) {
     return vec4(2.0 * screen.x / viewport.x - 1.0, 1.0 - 2.0 * screen.y / viewport.y, 0.0, 1.0);
 }`;
 
+/** An `[r, g, b]` in 0-255 as unit floats. */
+export const unitColour = (colour: readonly number[]) => colour.map((channel) => channel / 255);
+
 function compile(gl: WebGL2RenderingContext, type: GLenum, source: string) {
     const shader = gl.createShader(type)!;
     gl.shaderSource(shader, source);

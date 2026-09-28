@@ -5,10 +5,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const catalogPath = process.argv[2] ?? path.join(root, "scripts", "catalog", "catalog.json");
 const outPath = path.join(root, "website", "lib", "catalog", "world.ts");
-const textureDir = path.join(root, "website", "public", "world-map");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
 const textures = JSON.parse(readFileSync(path.join(root, "scripts", "catalog", "map_textures.json"), "utf8"));
-const iconRects = JSON.parse(readFileSync(path.join(textureDir, textures.iconSheet.rects), "utf8")).icons;
+const iconRects = JSON.parse(readFileSync(path.join(root, "website", "public", "world-map", textures.iconSheet.rects), "utf8")).icons;
 const textureUrl = (file) => `/world-map/${file}`;
 
 const GROUP_ORDER = [
@@ -35,8 +34,7 @@ if (missingAnchors.length > 0) throw new Error(`anchors missing from the catalog
 const groups = [...new Set(catalog.prefabs.map((prefab) => prefab.group))];
 const orderedGroups = [...GROUP_ORDER.filter((group) => groups.includes(group)), ...groups.filter((group) => !GROUP_ORDER.includes(group))];
 
-const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
-const titleCase = (name) => name.toLowerCase().split("_").map(capitalize).join(" ");
+const titleCase = (name) => name.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
 const iconRow = ({ element, priority, over_fog }) => {
     if (!(element in iconRects)) throw new Error(`no sprite sheet rect for the minimap icon ${element}`);

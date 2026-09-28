@@ -1,6 +1,6 @@
 import { type EntityLayer, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
-import { buildProgram, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
+import { buildProgram, unitColour, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
 
 const HALF_WIDTH = 0.625;
 const FEATHER = 1;
@@ -52,7 +52,7 @@ export function createLinkRenderer(gl: WebGL2RenderingContext, layer: EntityLaye
     ];
     gl.useProgram(program);
     gl.uniform1f(gl.getUniformLocation(program, "halfWidth"), HALF_WIDTH);
-    gl.uniform3fv(gl.getUniformLocation(program, "fill"), MAP_GROUPS[layer.linkGroup].colour.map((channel) => channel / 255));
+    gl.uniform3fv(gl.getUniformLocation(program, "fill"), unitColour(MAP_GROUPS[layer.linkGroup].colour));
     const setView = viewUniforms(gl, program);
     let shown = false;
 
