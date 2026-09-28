@@ -85,7 +85,8 @@ Icon = collections.namedtuple("Icon", "pixels x y w h")
 
 def read_icons(game_dir, names):
     """Name -> Icon: the texels an element's UV rect touches, premultiplied as the atlas stores them, and the rect
-    itself (x, y, w, h) inside them. The atlas edges sit on half texels, so a 63 wide rect spans 64 texels."""
+    itself (x, y, w, h) inside them. The atlas edges sit on half texels, so a 63 wide rect spans 64 texels. The atlas
+    stores its rows bottom first, so the icon's rows are flipped to read top first, like the PNG the site loads."""
     elements = minimap_elements(game_dir)
     atlases = {texture: read_texture(game_dir, texture) for texture in {elements[name][0] for name in names}}
     icons = {}
@@ -94,16 +95,16 @@ def read_icons(game_dir, names):
         height, width = atlases[texture].shape[:2]
         x0, x1, y0, y1 = u1 * width, u2 * width, v1 * height, v2 * height
         left, top = math.floor(x0), math.floor(y0)
-        pixels = atlases[texture][top:math.ceil(y1), left:math.ceil(x1)]
-        icons[name] = Icon(pixels, round(x0 - left, 3), round(y0 - top, 3), round(x1 - x0, 3), round(y1 - y0, 3))
+        pixels = atlases[texture][top:math.ceil(y1), left:math.ceil(x1)][::-1]
+        icons[name] = Icon(pixels, round(x0 - left, 3), round(pixels.shape[0] - (y1 - top), 3), round(x1 - x0, 3), round(y1 - y0, 3))
     return icons
 
 
 def pack_icons(icons):
     """Shelf-packs icons (name -> Icon) into a sheet SHEET_WIDTH wide. Each icon gets at least ICON_GUTTER texels of its own
     edge texels on every side (what clamping to the edge samples), filling a cell aligned to CELL_ALIGN, so sampling down to
-    mip 4 never blends neighbours. Returns the sheet and name -> {x, y, w, h}: each icon's UV rect in sheet texels
-    (stored rows, so u = x / width and v = y / height)."""
+    mip 4 never blends neighbours. Returns the sheet and name -> {x, y, w, h}: each icon's rect in sheet texels
+    (top row first, so u = x / width and v = y / height)."""
     cells, sizes = {}, {}
     for name, icon in icons.items():
         height, width = (-(-(side + 2 * ICON_GUTTER) // CELL_ALIGN) * CELL_ALIGN for side in icon.pixels.shape[:2])

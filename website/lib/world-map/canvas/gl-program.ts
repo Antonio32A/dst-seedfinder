@@ -52,14 +52,31 @@ export function vertexBuffer(
     return buffer;
 }
 
+/** A setter of the {@link VIEW_TRANSFORM} uniforms of `program`, looked up once; the program must be in use when it's called. */
+export function viewUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): (view: MapView, viewport: Size) => void {
+    const origin = gl.getUniformLocation(program, "origin");
+    const alongX = gl.getUniformLocation(program, "alongX");
+    const alongZ = gl.getUniformLocation(program, "alongZ");
+    const viewportSize = gl.getUniformLocation(program, "viewport");
+    return (view, viewport) => {
+        const zero = worldToScreen(view, viewport, { x: 0, z: 0 });
+        const unitX = worldToScreen(view, viewport, { x: 1, z: 0 });
+        const unitZ = worldToScreen(view, viewport, { x: 0, z: 1 });
+        gl.uniform2f(origin, zero.x, zero.y);
+        gl.uniform2f(alongX, unitX.x - zero.x, unitX.y - zero.y);
+        gl.uniform2f(alongZ, unitZ.x - zero.x, unitZ.y - zero.y);
+        gl.uniform2f(viewportSize, viewport.width, viewport.height);
+    };
+}
+
 /** Sets the {@link VIEW_TRANSFORM} uniforms of `program`, which must be in use. */
 export function setViewUniforms(gl: WebGL2RenderingContext, program: WebGLProgram, view: MapView, viewport: Size): void {
-    const origin = worldToScreen(view, viewport, { x: 0, z: 0 });
-    const unitX = worldToScreen(view, viewport, { x: 1, z: 0 });
-    const unitZ = worldToScreen(view, viewport, { x: 0, z: 1 });
-    const uniform = (name: string) => gl.getUniformLocation(program, name);
-    gl.uniform2f(uniform("origin"), origin.x, origin.y);
-    gl.uniform2f(uniform("alongX"), unitX.x - origin.x, unitX.y - origin.y);
-    gl.uniform2f(uniform("alongZ"), unitZ.x - origin.x, unitZ.y - origin.y);
-    gl.uniform2f(uniform("viewport"), viewport.width, viewport.height);
+    viewUniforms(gl, program)(view, viewport);
+}
+
+/** Downloads `url` as raw texels: no colour conversion and no alpha premultiplication, whatever the file holds is uploaded. */
+export async function fetchTexels(url: string): Promise<ImageBitmap> {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`The map art couldn't be downloaded: ${url} answered ${response.status}.`);
+    return createImageBitmap(await response.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
 }

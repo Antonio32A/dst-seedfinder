@@ -1,12 +1,13 @@
 import { MAP_TEXTURES, TILES } from "@/lib/catalog/world";
-import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "@/lib/world-map/canvas/gl-program";
+import { buildProgram, fetchTexels, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "@/lib/world-map/canvas/gl-program";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { landLayers } from "./land-layers";
 import { oceanTextures } from "./ocean-textures";
 
 const PIXELS_PER_TILE = 4;
-const FORGOTTEN_BRIGHTNESS = 0.7;
+/** What the game's fog leaves of the colour on explored ground. */
+export const FORGOTTEN_BRIGHTNESS = 0.7;
 const QUAD_COMPONENTS = 3;
 const QUAD_CORNERS = [0, 0, 1, 0, 0, 1, 1, 1];
 const TERRAIN_UNIT = 0;
@@ -136,12 +137,7 @@ export interface TerrainRenderer {
 }
 
 async function loadTexture(gl: WebGL2RenderingContext, url: string, filter: GLenum) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`The map art couldn't be downloaded: ${url} answered ${response.status}.`);
-    const image = await createImageBitmap(await response.blob(), {
-        premultiplyAlpha: "none",
-        colorSpaceConversion: "none"
-    });
+    const image = await fetchTexels(url);
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + NOISE_UNIT);
     gl.bindTexture(gl.TEXTURE_2D, texture);

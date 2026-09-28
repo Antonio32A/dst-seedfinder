@@ -154,14 +154,14 @@ class WriteMapTextures(unittest.TestCase):
     def test_reads_the_minimap_from_data1_then_data2_and_ignores_the_legacy_data0(self):
         write_atlas(self.game_dir, "minimap/minimap_data.xml", "atlas0.tex", 64, {"a.png": (32, 40, 32, 40)}, noisy_pixels(64, 64, 4))
         icons = read_icons(self.game_dir, ["a.png"])
-        np.testing.assert_array_equal(icons["a.png"].pixels, self.atlas1[20:28, 4:12])
+        np.testing.assert_array_equal(icons["a.png"].pixels, self.atlas1[20:28, 4:12][::-1])
 
     def test_an_icon_between_half_texels_keeps_the_texels_it_touches_and_its_own_rect(self):
         icon = read_icons(self.game_dir, ["a.png", "b.png"])["a.png"]
         self.assertEqual(icon.pixels.shape, (8, 8, 4))
         self.assertEqual((icon.x, icon.y, icon.w, icon.h), (0.5, 0.5, 7, 7))
 
-    def test_the_sheet_holds_each_icon_as_stored_at_its_rect(self):
+    def test_the_sheet_holds_each_icon_top_row_first_at_its_rect(self):
         manifest = self.write()
         sheet = read_output(self.out_dir, manifest["iconSheet"]["file"])
         with open(os.path.join(self.out_dir, manifest["iconSheet"]["rects"])) as f:
@@ -169,7 +169,7 @@ class WriteMapTextures(unittest.TestCase):
         self.assertEqual((described["width"], described["height"]), sheet.shape[1::-1])
         self.assertEqual((manifest["iconSheet"]["width"], manifest["iconSheet"]["height"]), sheet.shape[1::-1])
         rect = described["icons"]["b.png"]
-        np.testing.assert_array_equal(sheet[int(rect["y"]):int(rect["y"]) + 8, int(rect["x"]):int(rect["x"]) + 16], self.atlas2[40:48, 0:16])
+        np.testing.assert_array_equal(sheet[int(rect["y"]):int(rect["y"]) + 8, int(rect["x"]):int(rect["x"]) + 16], self.atlas2[40:48, 0:16][::-1])
         self.assertEqual((rect["w"], rect["h"]), (16, 8))
 
 

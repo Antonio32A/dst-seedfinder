@@ -73,11 +73,11 @@ Every file's name carries the first 10 hex digits of the SHA-256 of its bytes, s
 security headers). Files the run didn't write are deleted, and `map_textures.json` lists which file each texture went
 to: `gen_website_catalog.mjs` reads it for the texture URLs of `website/lib/catalog/world.ts`.
 
-The sprite sheet is 2048 wide, and its RGBA is the atlas' as stored: premultiplied alpha, which the game blends as if
-it were straight alpha. Each icon keeps its native size, is surrounded by at least 32 texels of its own edge texels (what
+The sprite sheet is 2048 wide, and its RGBA is the atlas' as stored, with each icon's rows flipped to read top first: premultiplied
+alpha, which the game blends as if it were straight alpha. Each icon keeps its native size, is surrounded by at least 32 texels of its own edge texels (what
 clamping to the edge samples), and sits in a cell aligned to 32 texels. Sampling down to mip 4 (a sixteenth), bilinear
-reach included, therefore never blends neighbouring icons. The rects are each element's UV rect in sheet texels, in
-stored rows (`u = x / width`, `v = y / height`). Atlas elements have their edges on half texels: a 63 wide icon is a rect
+reach included, therefore never blends neighbouring icons. The rects are each element's rect in sheet texels, top row first
+(`u = x / width`, `v = y / height`). Atlas elements have their edges on half texels: a 63 wide icon is a rect
 `w = 63` starting half a texel into 64 texels, and is drawn 63 px (9.84375 world units) wide. Priorities are per prefab
 (`world.ts` `icon.priority`), not per icon.
 

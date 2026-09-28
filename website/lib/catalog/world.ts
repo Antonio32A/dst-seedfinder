@@ -57,7 +57,7 @@ export interface NamedAnchor {
 export const MAP_TEXTURES = {
     mapEdge: "/world-map/map_edge.859bee0330.png",
     minimapPaper: "/world-map/minimap_paper.cfd82ee005.png",
-    iconSheet: { url: "/world-map/minimap_icons.efd1e6e86a.png", width: 2048, height: 1088 }
+    iconSheet: { url: "/world-map/minimap_icons.412fe00e15.png", width: 2048, height: 1088 }
 } as const;
 
 export const PREFABS: WorldPrefab[] = [

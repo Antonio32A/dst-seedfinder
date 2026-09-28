@@ -1,4 +1,5 @@
 import { type EntityLayer, SPAWN } from "@/lib/world-map/legend/entity-layer";
+import { iconLayer } from "@/lib/world-map/legend/icon-layer";
 import { instancesOf } from "@/lib/world-map/legend/prefab-search";
 import type { WitnessShape } from "@/lib/world-map/search/witness-overlay";
 import { createTerrainRenderer } from "@/lib/world-map/terrain/terrain-renderer";
@@ -14,6 +15,7 @@ import {
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { createEntityRenderer } from "./entity-renderer";
 import { createHighlightRenderer } from "./highlight-renderer";
+import { createIconRenderer } from "./icon-renderer";
 import { createSetPieceRenderer } from "./set-piece-renderer";
 import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
 
@@ -51,7 +53,9 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const terrain = createTerrainRenderer(gl, world, () => redraw());
     const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
-    const entities = createEntityRenderer(gl, layer);
+    const icons = iconLayer(layer);
+    const entities = createEntityRenderer(gl, layer, icons.iconed);
+    const iconRenderer = createIconRenderer(gl, icons, entities.visibility, layer.names.indexOf(SPAWN), () => redraw());
     const highlights = createHighlightRenderer(gl);
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
@@ -81,6 +85,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             terrain.draw(view, viewport);
             setPieces.draw(view, viewport);
             entities.draw(view, viewport);
+            iconRenderer.draw(view, viewport);
             overlay?.draw(view, viewport);
             highlights.draw(view, viewport);
             for (const watcher of watchers) watcher(view, viewport);
@@ -137,10 +142,11 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     addEventListener("keydown", pressed);
 
     return {
-        terrain: terrain.built,
+        terrain: Promise.all([terrain.built, iconRenderer.built]).then(() => undefined),
         turn,
         darken: (on) => {
             terrain.darken(on);
+            iconRenderer.darken(on);
             redraw();
         },
         show: (shown) => {
@@ -183,6 +189,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             terrain.dispose();
             setPieces.dispose();
             entities.dispose();
+            iconRenderer.dispose();
             highlights.dispose();
             overlay?.dispose();
         }

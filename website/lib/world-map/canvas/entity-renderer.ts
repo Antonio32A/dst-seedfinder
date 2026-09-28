@@ -1,24 +1,32 @@
-import { type EntityLayer, MAP_GROUPS, SPAWN } from "@/lib/world-map/legend/entity-layer";
+import { type EntityLayer, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
-import { buildProgram, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "./gl-program";
+import { buildProgram, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
 
 const MIN_DOT_RADIUS = 2.5;
 const MAX_DOT_RADIUS = 8;
 const DOT_RADIUS_PER_WORLD_UNIT = 1;
-const SPAWN_RADIUS_SCALE = 2.5;
 const LINK_HALF_WIDTH = 0.625;
 const LINK_FEATHER = 1;
 const VISIBILITY_ROW = 256;
-const VISIBILITY_UNIT = 2;
+export const VISIBILITY_UNIT = 2;
 
 const unit = (channel: number) => channel / 255;
 
-const TRANSFORM = `${VIEW_TRANSFORM}
+/** GLSL for the visibility texture: per prefab, red is whether it shows and green whether it has an icon. */
+export const VISIBILITY_TRANSFORM = `${VIEW_TRANSFORM}
 uniform sampler2D shown;
 
-bool hidden(float prefab) {
+vec2 status(float prefab) {
     int at = int(prefab);
-    return texelFetch(shown, ivec2(at % ${VISIBILITY_ROW}, at / ${VISIBILITY_ROW}), 0).r < 0.5;
+    return texelFetch(shown, ivec2(at % ${VISIBILITY_ROW}, at / ${VISIBILITY_ROW}), 0).rg;
+}
+
+bool hidden(float prefab) {
+    return status(prefab).r < 0.5;
+}
+
+bool iconed(float prefab) {
+    return status(prefab).g > 0.5;
 }`;
 
 const DOT_VERTEX_SHADER = `#version 300 es
@@ -27,17 +35,15 @@ in float group;
 in float prefab;
 uniform vec3 colours[${MAP_GROUPS.length}];
 uniform float radius;
-uniform float spawn;
-uniform float spawnRadius;
 out vec3 fill;
 flat out float dotRadius;
-${TRANSFORM}
+${VISIBILITY_TRANSFORM}
 
 void main() {
     fill = colours[int(group)];
-    dotRadius = prefab == spawn ? spawnRadius : radius;
+    dotRadius = radius;
     gl_PointSize = 2.0 * dotRadius + 1.0;
-    gl_Position = hidden(prefab) ? vec4(2.0, 2.0, 2.0, 1.0) : clipped(onScreen(position));
+    gl_Position = hidden(prefab) || iconed(prefab) ? vec4(2.0, 2.0, 2.0, 1.0) : clipped(onScreen(position));
 }`;
 
 const DOT_FRAGMENT_SHADER = `#version 300 es
@@ -60,7 +66,7 @@ in vec4 ends;
 uniform float prefab;
 uniform float halfWidth;
 out float across;
-${TRANSFORM}
+${VISIBILITY_TRANSFORM}
 
 void main() {
     vec2 entry = onScreen(ends.xy);
@@ -86,13 +92,18 @@ void main() {
 }`;
 
 export interface EntityRenderer {
+    /** Bound to {@link VISIBILITY_UNIT} by {@link draw}. */
+    visibility: WebGLTexture;
     draw: (view: MapView, viewport: Size) => void;
     show: (shown: ReadonlySet<string>) => void;
     dispose: () => void;
 }
 
-/** Which prefabs show is a texture the shaders look each dot's prefab up in, so a toggle uploads one byte per prefab. */
-export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLayer): EntityRenderer {
+/**
+ * Which prefabs show is a texture the shaders look each dot's prefab up in, so a toggle uploads a few bytes per prefab.
+ * The prefabs `iconed` marks draw no dot: the icon renderer draws them.
+ */
+export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLayer, iconed: Uint8Array): EntityRenderer {
     const dotProgram = buildProgram(gl, DOT_VERTEX_SHADER, DOT_FRAGMENT_SHADER);
     const dotVertices = gl.createVertexArray();
     gl.bindVertexArray(dotVertices);
@@ -104,7 +115,6 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
     const [, largestPoint] = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array;
     const largestRadius = (largestPoint - 1) / 2;
     gl.useProgram(dotProgram);
-    gl.uniform1f(gl.getUniformLocation(dotProgram, "spawn"), layer.names.indexOf(SPAWN));
     gl.uniform3fv(gl.getUniformLocation(dotProgram, "colours"), MAP_GROUPS.flatMap(({ colour }) => colour.map(unit)));
 
     const linkProgram = buildProgram(gl, LINK_VERTEX_SHADER, LINK_FRAGMENT_SHADER);
@@ -126,18 +136,25 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
     gl.bindTexture(gl.TEXTURE_2D, visibility);
     for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.NEAREST);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, VISIBILITY_ROW, visibilityRows, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, VISIBILITY_ROW, visibilityRows, 0, gl.RG, gl.UNSIGNED_BYTE, null);
     for (const program of programs) {
         gl.useProgram(program);
         gl.uniform1i(gl.getUniformLocation(program, "shown"), VISIBILITY_UNIT);
     }
 
+    const radiusUniform = gl.getUniformLocation(dotProgram, "radius");
+    const viewSetters = programs.map((program) => {
+        gl.useProgram(program);
+        return viewUniforms(gl, program);
+    });
+
     return {
+        visibility,
         draw: (view, viewport) => {
-            for (const program of programs) {
+            programs.forEach((program, at) => {
                 gl.useProgram(program);
-                setViewUniforms(gl, program, view, viewport);
-            }
+                viewSetters[at](view, viewport);
+            });
             gl.activeTexture(gl.TEXTURE0 + VISIBILITY_UNIT);
             gl.bindTexture(gl.TEXTURE_2D, visibility);
             gl.enable(gl.BLEND);
@@ -148,19 +165,20 @@ export function createEntityRenderer(gl: WebGL2RenderingContext, layer: EntityLa
             gl.useProgram(dotProgram);
             gl.bindVertexArray(dotVertices);
             const radius = Math.min(MAX_DOT_RADIUS, Math.max(MIN_DOT_RADIUS, view.scale * DOT_RADIUS_PER_WORLD_UNIT));
-            gl.uniform1f(gl.getUniformLocation(dotProgram, "radius"), Math.min(largestRadius, radius));
-            const spawnRadius = Math.min(largestRadius, SPAWN_RADIUS_SCALE * radius);
-            gl.uniform1f(gl.getUniformLocation(dotProgram, "spawnRadius"), spawnRadius);
+            gl.uniform1f(radiusUniform, Math.min(largestRadius, radius));
             gl.drawArrays(gl.POINTS, 0, layer.groups.length);
             gl.disable(gl.BLEND);
         },
         show: (shown) => {
-            const texels = new Uint8Array(VISIBILITY_ROW * visibilityRows);
-            layer.names.forEach((name, prefab) => (texels[prefab] = shown.has(name) ? 255 : 0));
+            const texels = new Uint8Array(2 * VISIBILITY_ROW * visibilityRows);
+            layer.names.forEach((name, prefab) => {
+                texels[2 * prefab] = shown.has(name) ? 255 : 0;
+                texels[2 * prefab + 1] = iconed[prefab] * 255;
+            });
             gl.activeTexture(gl.TEXTURE0 + VISIBILITY_UNIT);
             gl.bindTexture(gl.TEXTURE_2D, visibility);
             gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, VISIBILITY_ROW, visibilityRows, gl.RED, gl.UNSIGNED_BYTE, texels);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, VISIBILITY_ROW, visibilityRows, gl.RG, gl.UNSIGNED_BYTE, texels);
         },
         dispose: () => {
             for (const buffer of [...dotBuffers, ...linkBuffers]) gl.deleteBuffer(buffer);

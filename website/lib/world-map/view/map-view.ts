@@ -44,7 +44,7 @@ export const worldBounds = (tiles: Size): WorldBounds => ({
     height: tiles.height * WORLD_UNITS_PER_TILE
 });
 
-const screenAngle = (heading: number) => (90 - heading) * Math.PI / 180;
+export const screenAngle = (heading: number) => (90 - heading) * Math.PI / 180;
 
 export function fitView(tiles: Size, viewport: Size, heading = DEFAULT_HEADING): MapView {
     const bounds = worldBounds(tiles);
