@@ -11,7 +11,7 @@ PREFAB_NAMES = {
     "leif": "Treeguard",
     "buzzardspawner": "Buzzards (circling)",
     "cookiecutter_spawner": "Cookie Cutters (spawner)",
-    "oceanfish_shoalspawner": "Fish shoal",
+    "oceanfish_shoalspawner": "Malbatross",
     "tumbleweedspawner": "Tumbleweeds (spawner)",
     "meteorspawner": "Meteor field",
     "worm_spawner": "Depths Worm (spawner)",
@@ -153,7 +153,8 @@ def _group(names, group):
 GROUPS = {}
 GROUPS.update(_group("multiplayer_portal spawnpoint_master spawnpoint_multiplayer wormhole cave_entrance", "spawn & travel"))
 GROUPS.update(_group("dragonfly_spawner antlion_spawner crabking_spawner beequeenhive moose_nesting_ground "
-                     "deerspawningground leif monkeyqueen hermithouse_construction1 walrus_camp", "bosses & spawners"))
+                     "deerspawningground leif monkeyqueen hermithouse_construction1 walrus_camp oceanfish_shoalspawner",
+                     "bosses & spawners"))
 GROUPS.update(_group("rook knight bishop", "clockwork"))
 GROUPS.update(_group("sculpture_rook sculpture_knight sculpture_bishop", "sculptures"))
 GROUPS.update(_group("statue_marble statue_marble_muse statue_marble_pawn statuemaxwell statueharp marblepillar marbletree "
@@ -179,7 +180,7 @@ GROUPS.update(_group("grass grassgekko sapling sapling_moon berrybush berrybush2
 GROUPS.update(_group("beefalo lightninggoat pigman merm spider_warrior firehound icehound bat fruitdragon carrat_planted "
                      "lightcrab tentacle pighouse mermhouse spiderden moonspiderden rabbithole molehill beehive wasphive "
                      "tallbirdnest houndmound catcoonden pond pond_mos monkeyhut monkeypillar boat_otterden "
-                     "oceanvine_cocoon wobster_den moonglass_wobster_den buzzardspawner oceanfish_shoalspawner "
+                     "oceanvine_cocoon wobster_den moonglass_wobster_den buzzardspawner "
                      "cookiecutter_spawner worm_spawner tumbleweedspawner", "mobs & dens"))
 GROUPS.update(_group("seastack_spawner_swell seastack_spawner_rough waterplant_spawner_rough wobster_den_spawner_shore "
                      "boatfragment03 boatfragment04 boatfragment05 messagebottle driftwood_log boat mast_broken boat_pirate "

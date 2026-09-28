@@ -741,8 +741,8 @@ export const PREFABS: WorldPrefab[] = [
     { "id": "oasislake", "name": "Lake", "group": "landmarks", "always": true, "unique": true, "counts": [1, 1, 1] },
     {
         "id": "oceanfish_shoalspawner",
-        "name": "Fish shoal",
-        "group": "mobs & dens",
+        "name": "Malbatross",
+        "group": "bosses & spawners",
         "always": true,
         "counts": [3, 11, 26]
     },

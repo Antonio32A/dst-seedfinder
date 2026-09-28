@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "game_build": "747465",
- "generated": "2026-09-27",
+ "generated": "2026-09-28",
  "shard": "forest",
  "preset": "SURVIVAL_TOGETHER",
  "worlds": {
@@ -21710,10 +21710,10 @@
   },
   {
    "id": "oceanfish_shoalspawner",
-   "display_name": "Fish shoal",
+   "display_name": "Malbatross",
    "name_source": "hand",
    "game_name": null,
-   "group": "mobs & dens",
+   "group": "bosses & spawners",
    "tags": [
     "ocean"
    ],
