@@ -36,6 +36,10 @@ export function groupState({ prefabs }: LegendGroup, shown: ReadonlySet<string>)
     return on === prefabs.length ? "on" : on === 0 ? "off" : "mixed";
 }
 
+/** Every prefab of `legend`. */
+export const allPrefabs = (legend: readonly LegendGroup[]): Set<string> =>
+    new Set(legend.flatMap(({ prefabs }) => prefabs.map(({ prefab }) => prefab)));
+
 export function showPrefabs(shown: ReadonlySet<string>, prefabs: readonly string[], on: boolean): Set<string> {
     const next = new Set(shown);
     for (const prefab of prefabs) {

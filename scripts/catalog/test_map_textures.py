@@ -8,8 +8,8 @@ import zlib
 
 import numpy as np
 
-from map_textures import (CELL_ALIGN, ICON_GUTTER, MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, SHEET_WIDTH, Icon,
-                          encode_png, land_colour, pack_icons, read_icons, write_map_textures)
+from map_textures import (CELL_ALIGN, ICON_GUTTER, MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, SHEET_MIPS, SHEET_WIDTH,
+                          Icon, encode_png, land_colour, pack_icons, read_icons, stack_levels, write_map_textures)
 from test_ktex import RGB, RGBA, ktex
 
 CHANNELS = {0: 1, 2: 3, 6: 4}
@@ -75,9 +75,13 @@ def write_texture(game_dir, name, pixel_format, mips):
         f.write(ktex(pixel_format, [(w, h, pixels.tobytes()) for w, h, pixels in mips]))
 
 
-def write_atlas(game_dir, atlas, texture, size, elements, pixels):
+def noisy_mips(size):
+    return [noisy_pixels(size >> mip, size >> mip, 4) for mip in range(SHEET_MIPS)]
+
+
+def write_atlas(game_dir, atlas, texture, size, elements, mips):
     """elements: name -> (u1, u2, v1, v2) in texels."""
-    write_texture(game_dir, "minimap/" + texture, RGBA, [(size, size, pixels)])
+    write_texture(game_dir, "minimap/" + texture, RGBA, [(size >> mip, size >> mip, pixels) for mip, pixels in enumerate(mips)])
     rows = "".join('<Element name="%s" u1="%r" u2="%r" v1="%r" v2="%r" />' % (name, x0 / size, x1 / size, y0 / size, y1 / size)
                    for name, (x0, x1, y0, y1) in elements.items())
     with open(os.path.join(game_dir, "data", atlas), "w") as f:
@@ -93,10 +97,13 @@ def solid(height, width, value):
     return np.full((height, width, 4), value, np.uint8)
 
 
-def mip(pixels, level):
-    step = 2 ** level
-    height, width = pixels.shape[:2]
-    return pixels.reshape(height // step, step, width // step, step, -1).astype(float).mean((1, 3))
+def atlas_region(mips, mip, top, bottom, left, right):
+    """The atlas' own `mip` level over the rows top..bottom and columns left..right of level 0, edge texels repeated
+    outside the atlas, rows flipped to read top first."""
+    level = mips[mip]
+    pad = [(max(-top >> mip, 0), max((bottom >> mip) - level.shape[0], 0)), (max(-left >> mip, 0), max((right >> mip) - level.shape[1], 0)), (0, 0)]
+    inside = level[max(top >> mip, 0):bottom >> mip, max(left >> mip, 0):right >> mip]
+    return np.pad(inside, pad, mode="edge")[::-1]
 
 
 class WriteMapTextures(unittest.TestCase):
@@ -106,8 +113,8 @@ class WriteMapTextures(unittest.TestCase):
         self.grass = noisy_pixels(4, 2, 3)
         self.edge = noisy_pixels(2, 4, 4)
         self.paper = noisy_pixels(2, 2, 3)
-        self.atlas1 = noisy_pixels(64, 64, 4)
-        self.atlas2 = noisy_pixels(64, 64, 4)
+        self.atlas1 = noisy_mips(64)
+        self.atlas2 = [pixels ^ 3 for pixels in noisy_mips(64)]
         write_texture(self.game_dir, NOISE_TEXTURE % "grass", RGB, [(2, 4, self.grass), (1, 2, noisy_pixels(2, 1, 3))])
         write_texture(self.game_dir, MAP_EDGE, RGBA, [(4, 2, self.edge)])
         write_texture(self.game_dir, MINIMAP_PAPER, RGB, [(2, 2, self.paper)])
@@ -152,71 +159,82 @@ class WriteMapTextures(unittest.TestCase):
         self.assertFalse(os.path.exists(stale))
 
     def test_reads_the_minimap_from_data1_then_data2_and_ignores_the_legacy_data0(self):
-        write_atlas(self.game_dir, "minimap/minimap_data.xml", "atlas0.tex", 64, {"a.png": (32, 40, 32, 40)}, noisy_pixels(64, 64, 4))
-        icons = read_icons(self.game_dir, ["a.png"])
-        np.testing.assert_array_equal(icons["a.png"].pixels, self.atlas1[20:28, 4:12][::-1])
+        write_atlas(self.game_dir, "minimap/minimap_data.xml", "atlas0.tex", 64, {"a.png": (32, 40, 32, 40)}, noisy_mips(64))
+        icon = read_icons(self.game_dir, ["a.png"])["a.png"]
+        np.testing.assert_array_equal(icon.levels[0], atlas_region(self.atlas1, 0, -32, 64, -32, 64))
 
-    def test_an_icon_between_half_texels_keeps_the_texels_it_touches_and_its_own_rect(self):
+    def test_an_icon_keeps_the_atlas_own_mips_of_its_gutter_widened_region_and_its_own_rect(self):
         icon = read_icons(self.game_dir, ["a.png", "b.png"])["a.png"]
-        self.assertEqual(icon.pixels.shape, (8, 8, 4))
-        self.assertEqual((icon.x, icon.y, icon.w, icon.h), (0.5, 0.5, 7, 7))
+        self.assertEqual(len(icon.levels), SHEET_MIPS)
+        for mip, level in enumerate(icon.levels):
+            self.assertEqual(level.shape, (96 >> mip, 96 >> mip, 4))
+            np.testing.assert_array_equal(level, atlas_region(self.atlas1, mip, -32, 64, -32, 64))
+        self.assertEqual((icon.x, icon.y, icon.w, icon.h), (36.5, 36.5, 7, 7))
 
-    def test_the_sheet_holds_each_icon_top_row_first_at_its_rect(self):
+    def test_a_region_past_the_atlas_edge_repeats_the_edge_texels_at_every_level(self):
+        icon = read_icons(self.game_dir, ["b.png"])["b.png"]
+        self.assertEqual(icon.levels[0].shape, (96, 96, 4))
+        for mip, level in enumerate(icon.levels):
+            np.testing.assert_array_equal(level, atlas_region(self.atlas2, mip, 0, 96, -32, 64))
+
+    def test_the_sheet_holds_each_icon_top_row_first_at_its_rect_in_every_mip_level(self):
         manifest = self.write()
-        sheet = read_output(self.out_dir, manifest["iconSheet"]["file"])
+        strip = read_output(self.out_dir, manifest["iconSheet"]["file"])
         with open(os.path.join(self.out_dir, manifest["iconSheet"]["rects"])) as f:
             described = json.load(f)
-        self.assertEqual((described["width"], described["height"]), sheet.shape[1::-1])
-        self.assertEqual((manifest["iconSheet"]["width"], manifest["iconSheet"]["height"]), sheet.shape[1::-1])
+        levels = [strip[r["y"]:r["y"] + r["height"], r["x"]:r["x"] + r["width"]] for r in manifest["iconSheet"]["levels"]]
+        self.assertEqual((described["width"], described["height"]), levels[0].shape[1::-1])
+        self.assertEqual((manifest["iconSheet"]["width"], manifest["iconSheet"]["height"]), levels[0].shape[1::-1])
+        self.assertEqual([level.shape[:2] for level in levels], [(levels[0].shape[0] >> mip, SHEET_WIDTH >> mip) for mip in range(SHEET_MIPS)])
         rect = described["icons"]["b.png"]
-        np.testing.assert_array_equal(sheet[int(rect["y"]):int(rect["y"]) + 8, int(rect["x"]):int(rect["x"]) + 16], self.atlas2[40:48, 0:16][::-1])
         self.assertEqual((rect["w"], rect["h"]), (16, 8))
+        for mip in range(4):
+            x, y = int(rect["x"]) >> mip, int(rect["y"]) >> mip
+            np.testing.assert_array_equal(levels[mip][y:y + (8 >> mip), x:x + (16 >> mip)], self.atlas2[mip][40 >> mip:48 >> mip, 0:16 >> mip][::-1])
 
 
 class PackIcons(unittest.TestCase):
-    def icons(self):
-        sizes = {"a": (63, 63), "b": (127, 127), "c": (20, 40), "d": (63, 63), "e": (255, 255)}
-        return {name: Icon(solid(h, w, 10 + 40 * i), 0, 0, w, h) for i, (name, (h, w)) in enumerate(sizes.items())}
+    SIZES = {"a": (64, 64), "b": (128, 128), "c": (64, 96), "d": (64, 64), "e": (256, 256)}
 
-    def test_each_icon_sits_at_its_rect_and_keeps_its_native_size(self):
+    def icons(self):
+        return {name: Icon([solid(h >> mip, w >> mip, 10 + 40 * i + mip) for mip in range(SHEET_MIPS)], 0.5 + i, 0.25 * i, w / 2, h / 2)
+                for i, (name, (h, w)) in enumerate(self.SIZES.items())}
+
+    def test_each_icon_region_sits_at_a_cell_aligned_origin_in_every_mip_level(self):
         icons = self.icons()
         sheet, rects = pack_icons(icons)
         for name, icon in icons.items():
             rect = rects[name]
             self.assertEqual((rect["w"], rect["h"]), (icon.w, icon.h))
-            np.testing.assert_array_equal(sheet[rect["y"]:rect["y"] + rect["h"], rect["x"]:rect["x"] + rect["w"]], icon.pixels)
+            x, y = int(rect["x"] - icon.x), int(rect["y"] - icon.y)
+            self.assertEqual((x % CELL_ALIGN, y % CELL_ALIGN), (0, 0))
+            for mip, level in enumerate(sheet):
+                pixels = icon.levels[mip]
+                np.testing.assert_array_equal(level[y >> mip:(y >> mip) + pixels.shape[0], x >> mip:(x >> mip) + pixels.shape[1]], pixels)
 
-    def test_the_rect_offset_inside_the_texels_carries_into_the_sheet_rect(self):
-        _, rects = pack_icons({"a": Icon(solid(8, 8, 1), 0.5, 0.25, 7, 7.5)})
-        self.assertEqual(rects["a"], {"x": ICON_GUTTER + 0.5, "y": ICON_GUTTER + 0.25, "w": 7, "h": 7.5})
+    def test_the_rect_offset_inside_the_region_carries_into_the_sheet_rect(self):
+        _, rects = pack_icons({"a": Icon([solid(64 >> mip, 64 >> mip, 1) for mip in range(SHEET_MIPS)], 36.5, 33.25, 7, 7.5)})
+        self.assertEqual(rects["a"], {"x": 36.5, "y": 33.25, "w": 7, "h": 7.5})
 
-    def test_gutters_repeat_the_icons_edge_texels(self):
-        pixels = noisy_pixels(5, 6, 4)
-        sheet, rects = pack_icons({"a": Icon(pixels, 0, 0, 6, 5)})
-        x, y = rects["a"]["x"], rects["a"]["y"]
-        np.testing.assert_array_equal(sheet[y - ICON_GUTTER:y, x:x + 6], np.repeat(pixels[:1], ICON_GUTTER, 0))
-        np.testing.assert_array_equal(sheet[y:y + 5, x + 6:x + 6 + ICON_GUTTER], np.repeat(pixels[:, -1:], ICON_GUTTER, 1))
-        np.testing.assert_array_equal(sheet[y - 1, x - 1], pixels[0, 0])
-
-    def test_no_mip_down_to_a_sixteenth_blends_neighbouring_icons_into_an_icons_bilinear_reach(self):
-        icons = self.icons()
-        sheet, rects = pack_icons(icons)
-        for level in range(1, 5):
-            reach, step = 2 ** (level + 1), 2 ** level
-            mipped = mip(sheet, level)
-            for name, icon in icons.items():
-                rect = rects[name]
-                rows = slice(int(rect["y"] - reach) // step, -(-int(rect["y"] + rect["h"] + reach) // step))
-                columns = slice(int(rect["x"] - reach) // step, -(-int(rect["x"] + rect["w"] + reach) // step))
-                reached = mipped[rows, columns]
-                np.testing.assert_array_equal(reached, np.broadcast_to(icon.pixels[0, 0], reached.shape),
-                                              err_msg="%s at mip %d" % (name, level))
-
-    def test_the_sheet_is_as_wide_as_its_constant_and_as_tall_as_its_shelves(self):
+    def test_the_sheet_is_as_wide_as_its_constant_and_each_level_halves_the_one_before(self):
         sheet, _ = pack_icons(self.icons())
-        self.assertEqual(sheet.shape[1], SHEET_WIDTH)
-        self.assertEqual(sheet.shape[0] % CELL_ALIGN, 0)
-        self.assertGreater(sheet.shape[0], 0)
+        self.assertEqual(len(sheet), SHEET_MIPS)
+        self.assertEqual(sheet[0].shape[1], SHEET_WIDTH)
+        self.assertEqual(sheet[0].shape[0] % CELL_ALIGN, 0)
+        self.assertGreater(sheet[0].shape[0], 0)
+        for mip, level in enumerate(sheet):
+            self.assertEqual(level.shape[:2], (sheet[0].shape[0] >> mip, SHEET_WIDTH >> mip))
+
+
+class StackLevels(unittest.TestCase):
+    def test_puts_level_0_on_the_left_and_the_other_levels_in_a_column_to_its_right(self):
+        levels = [noisy_pixels(64 >> mip, 128 >> mip, 4) for mip in range(4)]
+        strip, regions = stack_levels(levels)
+        self.assertEqual(strip.shape, (64, 192, 4))
+        self.assertEqual(regions, [{"x": 0, "y": 0, "width": 128, "height": 64}, {"x": 128, "y": 0, "width": 64, "height": 32},
+                                   {"x": 128, "y": 32, "width": 32, "height": 16}, {"x": 128, "y": 48, "width": 16, "height": 8}])
+        for level, region in zip(levels, regions):
+            np.testing.assert_array_equal(strip[region["y"]:region["y"] + region["height"], region["x"]:region["x"] + region["width"]], level)
 
 
 class LandColour(unittest.TestCase):

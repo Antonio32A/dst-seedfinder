@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PREFAB_BY_ID, PREFABS } from "@/lib/catalog/world";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
-import { defaultShown, groupState, mapLegend, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
+import { allPrefabs, defaultShown, groupState, mapLegend, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
 
 const prefab = (name: string, ...positions: number[]) => ({ name, positions: new Int32Array(positions) });
 
@@ -118,5 +118,13 @@ describe("the prefabs a map shows", () => {
         const levelOnly: SeedfinderConfig = { version: 1, criteria: [{ tasks: { required: ["Killer bees!"] } }] };
         expect(defaultShown(levelOnly)).toEqual(defaultShown());
         expect(defaultShown({ version: 1 })).toEqual(defaultShown());
+    });
+});
+
+describe("allPrefabs", () => {
+    it("holds every prefab of the legend and nothing for an empty one", () => {
+        expect([...allPrefabs(mapLegend(WORLD))].sort()).toEqual(
+                ["a_prefab_from_a_newer_game", "deciduoustree", "evergreen", "multiplayer_portal", "wormhole"]);
+        expect(allPrefabs([]).size).toBe(0);
     });
 });

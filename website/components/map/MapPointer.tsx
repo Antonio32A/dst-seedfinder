@@ -45,6 +45,7 @@ export default function MapPointer({ probe, map, canvas, shown, searched, onPick
         const update = () => {
             if (cursor.current === null || drawn.current === null) return;
             const { entity, setPiece } = probeAt(cursor.current, drawn.current);
+            map.hover(entity);
             const name = entity?.displayName ?? setPiece?.name;
             setHovered(name === undefined ? null : { cursor: cursor.current, name });
         };
@@ -56,6 +57,7 @@ export default function MapPointer({ probe, map, canvas, shown, searched, onPick
             },
             pointerleave: () => {
                 cursor.current = null;
+                map.hover(null);
                 setHovered(null);
             },
             pointerdown: (event) => (pressed = clientPoint(event)),
@@ -75,6 +77,7 @@ export default function MapPointer({ probe, map, canvas, shown, searched, onPick
         for (const [type, listener] of Object.entries(listeners)) element.addEventListener(type, listener as EventListener);
         return () => {
             unwatch();
+            map.hover(null);
             for (const [type, listener] of Object.entries(listeners)) element.removeEventListener(type, listener as EventListener);
         };
     }, [map, canvas, probe]);

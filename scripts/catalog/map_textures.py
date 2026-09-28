@@ -29,6 +29,7 @@ PNG_COLOUR_TYPES = {3: 2, 4: 6}
 SHEET_WIDTH = 2048
 ICON_GUTTER = 32
 CELL_ALIGN = 32
+SHEET_MIPS = 6
 HASH_LENGTH = 10
 
 sys.path.insert(0, HERE)
@@ -48,9 +49,9 @@ def encode_png(pixels):
             + png_chunk(b"IDAT", zlib.compress(rows.tobytes(), 9)) + png_chunk(b"IEND", b""))
 
 
-def read_texture(game_dir, name):
+def read_texture(game_dir, name, mip=0):
     with open(os.path.join(game_dir, "data", name), "rb") as f:
-        return ktex.decode(f.read())
+        return ktex.decode(f.read(), mip)
 
 
 @functools.cache
@@ -80,62 +81,91 @@ def minimap_elements(game_dir):
     return elements
 
 
-Icon = collections.namedtuple("Icon", "pixels x y w h")
+Icon = collections.namedtuple("Icon", "levels x y w h")
+
+
+def crop(pixels, top, bottom, left, right):
+    """The rows top..bottom and columns left..right of `pixels`, repeating its edge texels where they lie outside."""
+    height, width = pixels.shape[:2]
+    inside = pixels[max(top, 0):min(bottom, height), max(left, 0):min(right, width)]
+    return np.pad(inside, [(max(-top, 0), max(bottom - height, 0)), (max(-left, 0), max(right - width, 0)), (0, 0)], mode="edge")
+
+
+def aligned_span(low, high):
+    """The CELL_ALIGN aligned texel span around low..high, ICON_GUTTER texels wider on each side."""
+    return (CELL_ALIGN * math.floor((low - ICON_GUTTER) / CELL_ALIGN), CELL_ALIGN * math.ceil((high + ICON_GUTTER) / CELL_ALIGN))
 
 
 def read_icons(game_dir, names):
-    """Name -> Icon: the texels an element's UV rect touches, premultiplied as the atlas stores them, and the rect
-    itself (x, y, w, h) inside them. The atlas edges sit on half texels, so a 63 wide rect spans 64 texels. The atlas
-    stores its rows bottom first, so the icon's rows are flipped to read top first, like the PNG the site loads."""
+    """Name -> Icon: the atlas texels around an element's UV rect at each of SHEET_MIPS mip levels, premultiplied as the
+    atlas stores them, and the rect itself (x, y, w, h) inside level 0. The region is the rect plus ICON_GUTTER texels
+    on every side, widened to CELL_ALIGN texels, so its mips are the atlas' own mips (the game samples those, not a
+    filter of the top level) and a bilinear reach of up to ICON_GUTTER texels sees what the game sees. The atlas edges
+    sit on half texels, so a 63 wide rect spans 64 texels. The atlas stores its rows bottom first, so each level's rows
+    are flipped to read top first, like the PNG the site loads."""
     elements = minimap_elements(game_dir)
-    atlases = {texture: read_texture(game_dir, texture) for texture in {elements[name][0] for name in names}}
+    atlases = {texture: [read_texture(game_dir, texture, mip) for mip in range(SHEET_MIPS)]
+               for texture in {elements[name][0] for name in names}}
     icons = {}
     for name in names:
         texture, u1, u2, v1, v2 = elements[name]
-        height, width = atlases[texture].shape[:2]
+        height, width = atlases[texture][0].shape[:2]
         x0, x1, y0, y1 = u1 * width, u2 * width, v1 * height, v2 * height
-        left, top = math.floor(x0), math.floor(y0)
-        pixels = atlases[texture][top:math.ceil(y1), left:math.ceil(x1)][::-1]
-        icons[name] = Icon(pixels, round(x0 - left, 3), round(pixels.shape[0] - (y1 - top), 3), round(x1 - x0, 3), round(y1 - y0, 3))
+        left, right = aligned_span(x0, x1)
+        top, bottom = aligned_span(y0, y1)
+        levels = [crop(pixels, top >> mip, bottom >> mip, left >> mip, right >> mip)[::-1] for mip, pixels in enumerate(atlases[texture])]
+        icons[name] = Icon(levels, round(x0 - left, 3), round(bottom - y1, 3), round(x1 - x0, 3), round(y1 - y0, 3))
     return icons
 
 
 def pack_icons(icons):
-    """Shelf-packs icons (name -> Icon) into a sheet SHEET_WIDTH wide. Each icon gets at least ICON_GUTTER texels of its own
-    edge texels on every side (what clamping to the edge samples), filling a cell aligned to CELL_ALIGN, so sampling down to
-    mip 4 never blends neighbours. Returns the sheet and name -> {x, y, w, h}: each icon's rect in sheet texels
-    (top row first, so u = x / width and v = y / height)."""
-    cells, sizes = {}, {}
-    for name, icon in icons.items():
-        height, width = (-(-(side + 2 * ICON_GUTTER) // CELL_ALIGN) * CELL_ALIGN for side in icon.pixels.shape[:2])
-        sizes[name] = (height, width)
-        cells[name] = np.pad(icon.pixels, [(ICON_GUTTER, height - icon.pixels.shape[0] - ICON_GUTTER),
-                                           (ICON_GUTTER, width - icon.pixels.shape[1] - ICON_GUTTER), (0, 0)], mode="edge")
+    """Shelf-packs icons (name -> Icon) into a sheet SHEET_WIDTH wide, each icon's region at a CELL_ALIGN aligned origin,
+    so every mip level of the sheet holds the icons' own mip levels. Returns the sheet's SHEET_MIPS levels (each half the
+    size of the one before) and name -> {x, y, w, h}: each icon's rect in level 0's texels (top row first, so
+    u = x / width and v = y / height)."""
     origins, rects = {}, {}
     x = y = shelf_height = 0
-    for name in sorted(cells, key=lambda name: (-sizes[name][0], name)):
-        height, width = sizes[name]
+    for name in sorted(icons, key=lambda name: (-icons[name].levels[0].shape[0], name)):
+        icon = icons[name]
+        height, width = icon.levels[0].shape[:2]
         if x + width > SHEET_WIDTH:
             x, y, shelf_height = 0, y + shelf_height, 0
         origins[name] = (x, y)
-        icon = icons[name]
-        rects[name] = {"x": x + ICON_GUTTER + icon.x, "y": y + ICON_GUTTER + icon.y, "w": icon.w, "h": icon.h}
+        rects[name] = {"x": x + icon.x, "y": y + icon.y, "w": icon.w, "h": icon.h}
         x, shelf_height = x + width, max(shelf_height, height)
-    sheet = np.zeros((y + shelf_height, SHEET_WIDTH, 4), np.uint8)
+    sheet_height = y + shelf_height
+    sheet = [np.zeros((sheet_height >> mip, SHEET_WIDTH >> mip, 4), np.uint8) for mip in range(SHEET_MIPS)]
     for name, (x, y) in origins.items():
-        sheet[y:y + cells[name].shape[0], x:x + cells[name].shape[1]] = cells[name]
+        for mip, level in enumerate(sheet):
+            pixels = icons[name].levels[mip]
+            level[y >> mip:(y >> mip) + pixels.shape[0], x >> mip:(x >> mip) + pixels.shape[1]] = pixels
     return sheet, rects
+
+
+def stack_levels(levels):
+    """One image holding a mip chain: level 0 on the left, the others in a column to its right. Returns it and each
+    level's region in it ({x, y, width, height})."""
+    width, height = levels[0].shape[1], levels[0].shape[0]
+    strip = np.zeros((height, width + width // 2, 4), np.uint8)
+    regions, column = [], 0
+    for mip, level in enumerate(levels):
+        x, top = (0, 0) if mip == 0 else (width, column)
+        strip[top:top + level.shape[0], x:x + level.shape[1]] = level
+        regions.append({"x": x, "y": top, "width": level.shape[1], "height": level.shape[0]})
+        column += level.shape[0] if mip else 0
+    return strip, regions
 
 
 def write_map_textures(game_dir, noises, icon_names, out_dir):
     """Writes every texture as `<stem>.<content hash>.<extension>` and removes the files it didn't write. Returns the
     manifest: the file each texture went to, relative to out_dir."""
-    sheet, rects = pack_icons(read_icons(game_dir, icon_names))
+    levels, rects = pack_icons(read_icons(game_dir, icon_names))
+    sheet, regions = stack_levels(levels)
     images = {"noise/" + name: read_texture(game_dir, NOISE_TEXTURE % name)[:, :, :3] for name in noises}
     images.update(map_edge=read_texture(game_dir, MAP_EDGE), minimap_paper=read_texture(game_dir, MINIMAP_PAPER)[:, :, :3],
                   minimap_icons=sheet)
     payloads = {stem: (encode_png(pixels), "png") for stem, pixels in images.items()}
-    payloads["minimap_icon_rects"] = (json.dumps({"width": sheet.shape[1], "height": sheet.shape[0], "icons": rects},
+    payloads["minimap_icon_rects"] = (json.dumps({"width": levels[0].shape[1], "height": levels[0].shape[0], "icons": rects},
                                                  sort_keys=True).encode(), "json")
     files = {stem: "%s.%s.%s" % (stem, hashlib.sha256(data).hexdigest()[:HASH_LENGTH], extension)
              for stem, (data, extension) in payloads.items()}
@@ -152,7 +182,7 @@ def write_map_textures(game_dir, noises, icon_names, out_dir):
         "mapEdge": files["map_edge"],
         "minimapPaper": files["minimap_paper"],
         "iconSheet": {"file": files["minimap_icons"], "rects": files["minimap_icon_rects"],
-                      "width": sheet.shape[1], "height": sheet.shape[0]},
+                      "width": levels[0].shape[1], "height": levels[0].shape[0], "levels": regions},
     }
 
 

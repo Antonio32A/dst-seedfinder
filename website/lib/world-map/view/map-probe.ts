@@ -1,15 +1,35 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
-import { TILES } from "@/lib/catalog/world";
+import { PREFAB_BY_ID, TILES } from "@/lib/catalog/world";
 import { WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
+import { SPAWN } from "@/lib/world-map/legend/entity-layer";
 import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
 import { type SetPieceDetails, setPieceDetails } from "@/lib/world-map/legend/set-pieces";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
-import { type MapView, type ScreenPoint, screenToWorld, type Size, worldBounds, type WorldPoint } from "./map-view";
+import {
+    type MapView,
+    type ScreenPoint,
+    screenToWorld,
+    type Size,
+    worldBounds,
+    type WorldPoint,
+    worldToScreen
+} from "./map-view";
 
 const CELL_SIZE = 16;
 
-/** In screen pixels. */
+/** In screen pixels: the least an entity can be picked from, whatever its size. */
 export const PICK_RADIUS = 8;
+
+const ICON_WORLD_UNIT_PIXELS = 6.4;
+const SPAWN_MINIMUM_ICON_SIZE = 20;
+const DOT_RANK = -Infinity;
+
+interface Pick {
+    /** The icon's priority, or {@link DOT_RANK} for a dot, which every icon is drawn over. */
+    rank: number;
+    y: number;
+    distance: number;
+}
 
 export interface ProbedTile {
     name: string;
@@ -46,7 +66,12 @@ export interface MapProbe {
      * Without one, the smallest of the `shown` and `searched` set pieces whose bounds hold the point.
      */
     at: (point: WorldPoint, radius: number, shown: MapShown, searched?: MapTarget | null) => Probe;
-    /** {@link at} the world point under `cursor`, within {@link PICK_RADIUS}. */
+    /**
+     * The entity under `cursor`, in screen space at any heading: an icon is picked from the rectangle it's drawn in
+     * (grown to at least {@link PICK_RADIUS} around its position), a dot from within {@link PICK_RADIUS}. Where several
+     * are under the cursor the top-most drawn wins: icons over dots, then the highest priority, then the lowest on
+     * screen, and among dots the nearest. Set pieces are as in {@link at}, at the world point under the cursor.
+     */
     under: (view: MapView, viewport: Size, cursor: ScreenPoint, shown: MapShown, searched?: MapTarget | null) => Probe;
     /** With the tile at the set piece's centre. */
     setPiece: (index: number) => Probe;
@@ -104,25 +129,22 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
         }
     });
 
-    const at: MapProbe["at"] = (point, radius, shown, searched = null) => {
-        const isShown = (kind: MapTarget["kind"], name: string, names: ReadonlySet<string>) =>
+    const shownIn = (searched: MapTarget | null | undefined) =>
+        (kind: MapTarget["kind"], name: string, names: ReadonlySet<string>) =>
             names.has(name) || (searched?.kind === kind && searched.name === name);
+
+    const near = (point: WorldPoint, radius: number, visit: (candidate: number) => void) => {
         const low = cellOf(point.x - radius, point.z - radius);
         const high = cellOf(point.x + radius, point.z + radius);
-        let found: number | null = null;
-        let closest = radius * radius;
         for (let row = low.row; row <= high.row; row++) {
             const end = cellStarts[row * columns + high.column + 1];
-            for (let slot = cellStarts[row * columns + low.column]; slot < end; slot++) {
-                const candidate = byCell[slot];
-                const distance = (xs[candidate] - point.x) ** 2 + (zs[candidate] - point.z) ** 2;
-                const { name } = world.prefabs[prefabs[candidate]];
-                if (distance > closest || !isShown("prefab", name, shown.prefabs)) continue;
-                closest = distance;
-                found = candidate;
-            }
+            for (let slot = cellStarts[row * columns + low.column]; slot < end; slot++) visit(byCell[slot]);
         }
+    };
+
+    const probeOf = (point: WorldPoint, found: number | null, shown: MapShown, searched: MapTarget | null | undefined): Probe => {
         if (found === null) {
+            const isShown = shownIn(searched);
             let piece: number | null = null;
             let smallest = Infinity;
             const [x, z] = [100 * point.x, 100 * point.z];
@@ -151,10 +173,71 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
             setPiece: null
         };
     };
+
+    const at: MapProbe["at"] = (point, radius, shown, searched = null) => {
+        const isShown = shownIn(searched);
+        let found: number | null = null;
+        let closest = radius * radius;
+        near(point, radius, (candidate) => {
+            const distance = (xs[candidate] - point.x) ** 2 + (zs[candidate] - point.z) ** 2;
+            const { name } = world.prefabs[prefabs[candidate]];
+            if (distance > closest || !isShown("prefab", name, shown.prefabs)) return;
+            closest = distance;
+            found = candidate;
+        });
+        return probeOf(point, found, shown, searched);
+    };
+
+    const icons = world.prefabs.map(({ name }) => {
+        const icon = PREFAB_BY_ID.get(name)?.icon;
+        if (icon === undefined) return null;
+        return { halfWidth: icon.w / 2 / ICON_WORLD_UNIT_PIXELS, halfHeight: icon.h / 2 / ICON_WORLD_UNIT_PIXELS, priority: icon.priority ?? 0 };
+    });
+    const largestIconHalfExtent = Math.max(0, ...icons.map((icon) => (icon === null ? 0 : Math.max(icon.halfWidth, icon.halfHeight))));
+
+    /** The half sizes, in screen pixels, of the rectangle `prefab` is drawn in: the icon renderer's size, with its spawn minimum. */
+    const halfExtents = (prefab: number, scale: number) => {
+        const icon = icons[prefab]!;
+        const grow = world.prefabs[prefab].name === SPAWN
+                ? Math.max(1, SPAWN_MINIMUM_ICON_SIZE / (2 * scale * Math.max(icon.halfWidth, icon.halfHeight)))
+                : 1;
+        return { x: icon.halfWidth * scale * grow, y: icon.halfHeight * scale * grow };
+    };
+
+    const covers = (prefab: number, dx: number, dy: number, scale: number) => {
+        if (icons[prefab] === null) return dx * dx + dy * dy <= PICK_RADIUS * PICK_RADIUS;
+        const half = halfExtents(prefab, scale);
+        return Math.abs(dx) <= Math.max(half.x, PICK_RADIUS) && Math.abs(dy) <= Math.max(half.y, PICK_RADIUS);
+    };
+
+    const drawnAbove = (a: Pick, b: Pick) => {
+        if (a.rank !== b.rank) return a.rank > b.rank;
+        return a.rank === DOT_RANK ? a.distance < b.distance : a.y > b.y;
+    };
+
+    const under: MapProbe["under"] = (view, viewport, cursor, shown, searched = null) => {
+        const isShown = shownIn(searched);
+        const point = screenToWorld(view, viewport, cursor);
+        const reachPixels = Math.max(PICK_RADIUS, SPAWN_MINIMUM_ICON_SIZE / 2, largestIconHalfExtent * view.scale);
+        let found: number | null = null;
+        let best: Pick = { rank: -Infinity, y: -Infinity, distance: Infinity };
+        near(point, Math.SQRT2 * reachPixels / view.scale, (candidate) => {
+            const prefab = prefabs[candidate];
+            if (!isShown("prefab", world.prefabs[prefab].name, shown.prefabs)) return;
+            const there = worldToScreen(view, viewport, { x: xs[candidate], z: zs[candidate] });
+            const [dx, dy] = [there.x - cursor.x, there.y - cursor.y];
+            if (!covers(prefab, dx, dy, view.scale)) return;
+            const pick = { rank: icons[prefab]?.priority ?? DOT_RANK, y: there.y, distance: dx * dx + dy * dy };
+            if (!drawnAbove(pick, best)) return;
+            best = pick;
+            found = candidate;
+        });
+        return probeOf(point, found, shown, searched);
+    };
+
     return {
         at,
-        under: (view, viewport, cursor, shown, searched) =>
-            at(screenToWorld(view, viewport, cursor), PICK_RADIUS / view.scale, shown, searched),
+        under,
         setPiece: (index) => {
             const details = setPieceDetails(world, index);
             return { tile: tileAt(details), entity: null, setPiece: details };

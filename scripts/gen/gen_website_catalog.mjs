@@ -157,7 +157,7 @@ export interface NamedAnchor {
 export const MAP_TEXTURES = {
     mapEdge: ${JSON.stringify(textureUrl(textures.mapEdge))},
     minimapPaper: ${JSON.stringify(textureUrl(textures.minimapPaper))},
-    iconSheet: { url: ${JSON.stringify(textureUrl(textures.iconSheet.file))}, width: ${textures.iconSheet.width}, height: ${textures.iconSheet.height} }
+    iconSheet: { url: ${JSON.stringify(textureUrl(textures.iconSheet.file))}, width: ${textures.iconSheet.width}, height: ${textures.iconSheet.height}, levels: ${JSON.stringify(textures.iconSheet.levels)} }
 } as const;
 
 export const PREFABS: WorldPrefab[] = [

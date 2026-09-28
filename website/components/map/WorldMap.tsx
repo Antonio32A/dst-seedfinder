@@ -8,7 +8,7 @@ import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/canvas/map-canva
 import { createMapProbe, type Probe } from "@/lib/world-map/view/map-probe";
 import { parseMapConfig } from "@/lib/world-map/map-route";
 import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
-import { defaultShown, mapLegend } from "@/lib/world-map/legend/prefab-visibility";
+import { allPrefabs, defaultShown, mapLegend } from "@/lib/world-map/legend/prefab-visibility";
 import { defaultShownSetPieces, setPieceLegend } from "@/lib/world-map/legend/set-pieces";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import GroupsPanel from "./GroupsPanel";
@@ -49,8 +49,22 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
         colour: MAP_GROUPS[layer.linkGroup].colour,
         onChange: setShownLinks
     }, [layer, shownLinks]);
-    const shown = useMemo(() => ({ prefabs: shownPrefabs, setPieces: shownSetPieces }), [shownPrefabs, shownSetPieces]);
+    const select = useCallback((selection: "all" | "none" | "reset") => {
+        setShownPrefabs(selection === "all" ? allPrefabs(legend) : selection === "none" ? new Set() : defaultShown(search));
+        setShownSetPieces(selection === "all" ? (setPieces ? allPrefabs([setPieces]) : new Set<string>())
+                : selection === "none" ? new Set() : defaultShownSetPieces(search));
+        setShownLinks(selection === "all");
+    }, [legend, setPieces, search]);
     const [searched, setSearched] = useState<MapTarget | null>(null);
+    const [previewed, setPreviewed] = useState<readonly string[]>([]);
+    const highlightedPrefabs = useMemo<ReadonlySet<string>>(
+            () => new Set(searched?.kind === "prefab" ? [...previewed, searched.name] : previewed),
+            [previewed, searched]
+    );
+    const shown = useMemo(() => ({
+        prefabs: new Set([...shownPrefabs, ...highlightedPrefabs]),
+        setPieces: shownSetPieces
+    }), [shownPrefabs, highlightedPrefabs, shownSetPieces]);
     const [picked, setPicked] = useState<Probe | null>(null);
     const close = useCallback(() => setPicked(null), []);
     const openSetPiece = useCallback((index: number) => setPicked(probe.setPiece(index)), [probe]);
@@ -80,6 +94,10 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     }, [map, shownPrefabs]);
 
     useEffect(() => {
+        map?.highlight(highlightedPrefabs);
+    }, [map, highlightedPrefabs]);
+
+    useEffect(() => {
         map?.showSetPieces(shownSetPieces);
     }, [map, shownSetPieces]);
 
@@ -97,8 +115,10 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
                 {error && <p className="notice notice--error map-screen__notice" role="alert">{error}</p>}
                 <MapPointer probe={probe} map={map} canvas={canvas} shown={shown} searched={searched}
                             onPick={setPicked}/>
-                <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} setPieces={setPieces}
-                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links}/>
+                <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} onHighlight={setPreviewed}
+                             setPieces={setPieces}
+                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links}
+                             onSelect={select}/>
                 <MapCorner seed={seed} map={map}/>
                 <div className="map-side">
                     <div className="map-bar">

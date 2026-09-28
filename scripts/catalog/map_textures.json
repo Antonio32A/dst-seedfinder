@@ -1,8 +1,46 @@
 {
  "iconSheet": {
-  "file": "minimap_icons.412fe00e15.png",
-  "height": 1088,
-  "rects": "minimap_icon_rects.d17bd63744.json",
+  "file": "minimap_icons.f14098f317.png",
+  "height": 1120,
+  "levels": [
+   {
+    "height": 1120,
+    "width": 2048,
+    "x": 0,
+    "y": 0
+   },
+   {
+    "height": 560,
+    "width": 1024,
+    "x": 2048,
+    "y": 0
+   },
+   {
+    "height": 280,
+    "width": 512,
+    "x": 2048,
+    "y": 560
+   },
+   {
+    "height": 140,
+    "width": 256,
+    "x": 2048,
+    "y": 840
+   },
+   {
+    "height": 70,
+    "width": 128,
+    "x": 2048,
+    "y": 980
+   },
+   {
+    "height": 35,
+    "width": 64,
+    "x": 2048,
+    "y": 1050
+   }
+  ],
+  "rects": "minimap_icon_rects.4ac3978efe.json",
   "width": 2048
  },
  "mapEdge": "map_edge.859bee0330.png",

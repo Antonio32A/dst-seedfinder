@@ -106,6 +106,27 @@ details.map-bar * {
     margin-top: 6px;
 }
 
+.map-groups__controls {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.map-groups__control {
+    flex: 1 1 0;
+    padding: 2px 0;
+    border: 1px solid var(--accent);
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    text-transform: capitalize;
+    cursor: pointer;
+}
+
+.map-groups__control:hover {
+    background: var(--accent-soft);
+}
+
 .map-group,
 .map-group__toggle {
     display: flex;

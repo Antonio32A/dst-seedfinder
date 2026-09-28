@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useId, useMemo, useState } from "react";
+import { type KeyboardEvent, useId, useMemo, useState } from "react";
 import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
 import { instancesOf, type MapMatch, type MapTarget, searchPrefabs, stepInstance } from "@/lib/world-map/legend/prefab-search";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
@@ -26,10 +26,6 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
     const [current, setCurrent] = useState<number | null>(null);
     const suggestions = useMemo(() => searchPrefabs(world, query).slice(0, MAX_SUGGESTIONS), [world, query]);
     const instances = useMemo(() => (chosen ? instancesOf(world, chosen) : []), [world, chosen]);
-
-    useEffect(() => {
-        map?.highlight(Float32Array.from(instances.flatMap(({ x, z }) => [x, z])));
-    }, [map, instances]);
 
     const choose = (match: MapMatch | null) => {
         setChosen(match);

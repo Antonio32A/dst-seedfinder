@@ -37,6 +37,7 @@
     --background: #f5f5fa;
     --foreground: #000000;
     --accent: #fc5821;
+    --highlight: #fc5821;
     --danger: #d0312d;
     --surface: color-mix(in srgb, var(--foreground) 5%, transparent);
     --border: color-mix(in srgb, var(--foreground) 25%, transparent);

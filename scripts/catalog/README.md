@@ -88,10 +88,15 @@ Every file's name carries the first 10 hex digits of the SHA-256 of its bytes, s
 security headers). Files the run didn't write are deleted, and `map_textures.json` lists which file each texture went
 to: `gen_website_catalog.mjs` reads it for the texture URLs of `website/lib/catalog/world.ts`.
 
-The sprite sheet is 2048 wide, and its RGBA is the atlas' as stored, with each icon's rows flipped to read top first: premultiplied
-alpha, which the game blends as if it were straight alpha. Each icon keeps its native size, is surrounded by at least 32 texels of its own edge texels (what
-clamping to the edge samples), and sits in a cell aligned to 32 texels. Sampling down to mip 4 (a sixteenth), bilinear
-reach included, therefore never blends neighbouring icons. The rects are each element's rect in sheet texels, top row first
+The sprite sheet is 2048 wide at its full size, and its RGBA is the atlas' as stored, with each icon's rows flipped to
+read top first: premultiplied alpha, which the game blends as if it were straight alpha. Each icon has a cell of the
+atlas around its rect (the rect plus at least 32 texels, aligned to 32 texels), copied as the game sees it, neighbouring
+art included, and edge texels repeated past the atlas' edge. The game samples its atlas trilinearly from a mip chain
+that isn't a box filter of level 0, so the sheet carries the chain too: each of its 6 levels holds every icon's cell
+cut from the atlas' own mip of that level (the cell at `x >> level`, `y >> level`), and the website uploads each level
+as it is instead of generating mipmaps. The PNG stacks the levels: level 0 on the left, levels 1 to 5 in a column to its
+right; `iconSheet.levels` of the manifest (and `world.ts`) gives each one's region in the PNG, and `iconSheet.width` and
+`height` are level 0's. The rects are each element's rect in level 0 sheet texels, top row first
 (`u = x / width`, `v = y / height`). Atlas elements have their edges on half texels: a 63 wide icon is a rect
 `w = 63` starting half a texel into 64 texels, and is drawn 63 px (9.84375 world units) wide. Priorities are per prefab
 (`world.ts` `icon.priority`), not per icon.

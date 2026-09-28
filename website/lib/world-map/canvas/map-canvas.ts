@@ -13,8 +13,8 @@ import {
     zoomAt
 } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
-import { createEntityRenderer } from "./entity-renderer";
-import { createHighlightRenderer } from "./highlight-renderer";
+import { readAccent } from "./accent-colour";
+import { createEntityRenderer, NO_HOVER } from "./entity-renderer";
 import { createIconRenderer } from "./icon-renderer";
 import { createLinkRenderer } from "./link-renderer";
 import { createSetPieceRenderer } from "./set-piece-renderer";
@@ -40,8 +40,10 @@ export interface MapCanvas {
     /** Shows or hides the wormhole connection lines, drawn over the icons. They start shown. */
     showLinks: (on: boolean) => void;
     highlightSetPieces: (indices: readonly number[]) => void;
-    /** Rings `points`, interleaved world `x, z`, whichever prefabs are shown. */
-    highlight: (points: Float32Array) => void;
+    /** Outlines every instance of `prefabs` in the site's highlight orange, showing them even when they're not in {@link show}. */
+    highlight: (prefabs: ReadonlySet<string>) => void;
+    /** Outlines the entity of `prefab` at world `(x, z)`, on top of {@link highlight}, or none for `null`. */
+    hover: (entity: { prefab: string; x: number; z: number } | null) => void;
     /** Zooms in to at least `scale` pixels per world unit. */
     centre: (point: WorldPoint, scale?: number) => void;
     /** Calls `listener` with the view now and after every redraw, until the returned function is called. */
@@ -50,17 +52,17 @@ export interface MapCanvas {
     dispose: () => void;
 }
 
-/** Opens on the spawn portal, or fitted to the world without one, with every prefab and set piece hidden. Throws when the browser can't draw the map. */
+/** Opens on the spawn portal, or fitted to the world without one, with every prefab and set piece hidden. Throws when the browser can't draw the map or the page has no `--highlight` colour to highlight with. */
 export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
+    const accent = readAccent(canvas);
     const terrain = createTerrainRenderer(gl, world, () => redraw());
     const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
     const icons = iconLayer(layer);
-    const entities = createEntityRenderer(gl, layer, icons.iconed);
-    const iconRenderer = createIconRenderer(gl, icons, entities.visibility, layer.names.indexOf(SPAWN), () => redraw());
+    const entities = createEntityRenderer(gl, layer, icons.iconed, accent);
+    const iconRenderer = createIconRenderer(gl, icons, entities.visibility, accent, () => redraw());
     const links = createLinkRenderer(gl, layer);
-    const highlights = createHighlightRenderer(gl);
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
@@ -72,6 +74,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     let frame = 0;
     let grab: { x: number; y: number } | null = null;
     let turning: { from: number; to: number; start: number } | null = null;
+    let hovered = NO_HOVER;
 
     const redraw = () => {
         frame ||= requestAnimationFrame((now) => {
@@ -92,7 +95,6 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             iconRenderer.draw(view, viewport);
             links.draw(view, viewport);
             overlay?.draw(view, viewport);
-            highlights.draw(view, viewport);
             for (const watcher of watchers) watcher(view, viewport);
         });
     };
@@ -170,8 +172,17 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             setPieces.highlight(indices);
             redraw();
         },
-        highlight: (points) => {
-            highlights.highlight(points);
+        highlight: (prefabs) => {
+            entities.highlight(prefabs);
+            redraw();
+        },
+        hover: (entity) => {
+            const prefab = entity === null ? -1 : layer.names.indexOf(entity.prefab);
+            const next = entity === null || prefab === -1 ? NO_HOVER : { prefab, x: entity.x, z: entity.z };
+            if (next.prefab === hovered.prefab && next.x === hovered.x && next.z === hovered.z) return;
+            hovered = next;
+            entities.hover(next);
+            iconRenderer.hover(next);
             redraw();
         },
         centre: (point, scale = 0) => move({
@@ -200,7 +211,6 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             entities.dispose();
             iconRenderer.dispose();
             links.dispose();
-            highlights.dispose();
             overlay?.dispose();
         }
     };

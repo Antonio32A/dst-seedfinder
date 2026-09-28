@@ -74,9 +74,28 @@ export function setViewUniforms(gl: WebGL2RenderingContext, program: WebGLProgra
     viewUniforms(gl, program)(view, viewport);
 }
 
-/** Downloads `url` as raw texels: no colour conversion and no alpha premultiplication, whatever the file holds is uploaded. */
-export async function fetchTexels(url: string): Promise<ImageBitmap> {
+const RAW_TEXELS = { premultiplyAlpha: "none", colorSpaceConversion: "none" } as const;
+
+async function download(url: string): Promise<Blob> {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`The map art couldn't be downloaded: ${url} answered ${response.status}.`);
-    return createImageBitmap(await response.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    return response.blob();
+}
+
+/** Downloads `url` as raw texels: no colour conversion and no alpha premultiplication, whatever the file holds is uploaded. */
+export async function fetchTexels(url: string): Promise<ImageBitmap> {
+    return createImageBitmap(await download(url), RAW_TEXELS);
+}
+
+export interface TexelRegion {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+/** Downloads `url` once and cuts `regions` out of it as raw texels, like {@link fetchTexels}. */
+export async function fetchTexelRegions(url: string, regions: readonly TexelRegion[]): Promise<ImageBitmap[]> {
+    const image = await download(url);
+    return Promise.all(regions.map(({ x, y, width, height }) => createImageBitmap(image, x, y, width, height, RAW_TEXELS)));
 }
