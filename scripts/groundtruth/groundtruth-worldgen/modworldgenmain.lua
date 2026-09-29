@@ -670,16 +670,30 @@ PRE_PROBES.RunMaze = probe_tiles_before_mazes
 PRE_PROBES.GetPointsForMetaMaze = probe_tiles_before_mazes
 
 PROBES.RunCA = function(args)
-    local xs, ys, types = raw_call("GetPointsForSite", args[2])
-    local encoded, count = encode_point_lists({ xs, ys, types })
+    local width, height = raw_call("GetWorldSize")
+    local xs, ys = raw_call("GetSitePolygon", args[2])
+    local x0, y0, x1, y1 = width, height, -1, -1
+    for i = 1, #(xs or {}) do
+        x0, x1 = math.min(x0, math.floor(xs[i]) - 2), math.max(x1, math.ceil(xs[i]) + 2)
+        y0, y1 = math.min(y0, math.floor(ys[i]) - 2), math.max(y1, math.ceil(ys[i]) + 2)
+    end
+    x0, y0, x1, y1 = math.max(0, x0), math.max(0, y0), math.min(width - 1, x1), math.min(height - 1, y1)
+    local rows = {}
+    for y = y0, y1 do
+        local row = {}
+        for x = x0, x1 do
+            row[#row + 1] = raw_call("GetTile", x, y)
+        end
+        rows[#rows + 1] = table.concat(row, ",")
+    end
     probe_record("runca", {
         { "id", encode_string(args[2]) },
         { "iterations", encode_value(args[3]) },
         { "seed_mode", encode_value(args[4]) },
         { "num_random_points", encode_value(args[5]) },
         { "draws_after", encode_number(draws) },
-        { "count", encode_number(count) },
-        { "pts", encoded },
+        { "region", encode_value({ x0, y0, x1, y1 }) },
+        { "tiles", encode_string(table.concat(rows, ";")) },
     })
 end
 
