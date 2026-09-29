@@ -57,7 +57,10 @@ export interface SetPieceDetails {
     members: LegendPrefab[];
 }
 
-export function setPieceDetails(world: Pick<GeneratedWorld, "prefabs" | "setPieces">, index: number): SetPieceDetails {
+export function setPieceDetails(
+    world: Pick<GeneratedWorld, "prefabs" | "setPieces"> & Partial<Pick<GeneratedWorld, "shard">>,
+    index: number
+): SetPieceDetails {
     const { name, source, transform, xk, zk, bounds, members } = world.setPieces![index];
     const counts = tally(Array.from({ length: members.length / 2 }, (_, at) => world.prefabs[members[2 * at]].name));
     return {
@@ -70,7 +73,7 @@ export function setPieceDetails(world: Pick<GeneratedWorld, "prefabs" | "setPiec
         height: (bounds[3] - bounds[1]) / 100 / WORLD_UNITS_PER_TILE,
         transform: TRANSFORM_WORDS[transform & 7],
         members: [...counts]
-            .map(([prefab, count]) => ({ prefab, displayName: prefabName(prefab), count }))
+            .map(([prefab, count]) => ({ prefab, displayName: prefabName(prefab, world.shard), count }))
             .sort((a, b) => b.count - a.count || a.displayName.localeCompare(b.displayName))
     };
 }

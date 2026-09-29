@@ -3,11 +3,11 @@ import type { DumpReply, DumpRequest } from "./load-world";
 
 const DUMP_PATH = "/world.dstw";
 
-onmessage = async ({ data: { module, seed, platform } }: MessageEvent<DumpRequest>) => {
+onmessage = async ({ data: { module, seed, platform, shard } }: MessageEvent<DumpRequest>) => {
     const errors: string[] = [];
     const { code, error, fs } = await runSeedfinder({
         module,
-        args: ["--threads", "1", "--", "world", "dump", String(seed), "--platform", platform, "-o", DUMP_PATH],
+        args: ["--threads", "1", "--", "world", "dump", String(seed), "--platform", platform, "--shard", shard, "-o", DUMP_PATH],
         printErr: (line) => errors.push(line)
     });
     if (code !== 0 || fs === null) {

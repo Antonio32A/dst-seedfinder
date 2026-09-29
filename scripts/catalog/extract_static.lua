@@ -2,6 +2,7 @@
 -- Runs the unmodified game worldgen_main.lua (default forest, SURVIVAL_TOGETHER) under the harness stubs up to
 -- forest_map.Generate, then walks the game's own loaded tables (tasksets, tasks, rooms, layouts, sandboxes, map tags,
 -- bunches, prefab swaps, tiles, strings) and prints one JSON document on stdout.
+-- With CATALOG_SHARD=caves it walks the caves shard instead (DST_CAVE, task set cave_default).
 -- usage: ../harness/bin/lua-dst extract_static.lua > build/static.json
 
 local HERE = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -141,7 +142,7 @@ local startlocations = require("map/startlocations")
 local forest_map = require("map/forest_map")
 local MapTags = require("map/maptags")
 local bunches = require("map/bunches")
-local level = captured.level
+local level = os.getenv("CATALOG_SHARD") == "caves" and require("map/levels").GetDataForLevelID("DST_CAVE") or captured.level
 
 -------------------------------------------------------------------------------------------------------------------
 -- Settings
@@ -196,8 +197,8 @@ end
 -------------------------------------------------------------------------------------------------------------------
 -- Level / task set
 
-local taskset = tasksets.GetGenTasks("default")
-local start_loc = startlocations.GetStartLocation("default")
+local taskset = tasksets.GetGenTasks(level.overrides.task_set)
+local start_loc = startlocations.GetStartLocation(level.overrides.start_location)
 
 local level_info = {
     id = level.id,

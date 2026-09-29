@@ -51,8 +51,8 @@ describe("every response carries the security headers", () => {
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
     });
 
-    it("on a world map, which serves the app", async () => {
-        const response = await api("/map/windows/1");
+    it.each(["/map/windows/1", "/map/windows/forest/1", "/map/windows/caves/1"])("on the world map %s, which serves the app", async (path) => {
+        const response = await api(path);
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toMatch(/^text\/html/);
         expect(await response.text()).toContain("DST Seedfinder");

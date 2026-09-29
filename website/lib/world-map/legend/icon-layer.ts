@@ -1,4 +1,4 @@
-import { PREFAB_BY_ID } from "@/lib/catalog/world";
+import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import { screenAngle } from "@/lib/world-map/view/map-view";
 import type { EntityLayer } from "./entity-layer";
 
@@ -20,13 +20,14 @@ export interface IconLayer {
 }
 
 export function iconLayer(layer: EntityLayer): IconLayer {
-    const iconed = Uint8Array.from(layer.names, (name) => (PREFAB_BY_ID.get(name)?.icon === undefined ? 0 : 1));
+    const { byId } = shardCatalog(layer.shard);
+    const iconed = Uint8Array.from(layer.names, (name) => (byId.get(name)?.icon === undefined ? 0 : 1));
     const dots = Array.from(layer.prefabs.keys()).filter((dot) => iconed[layer.prefabs[dot]] === 1);
     const instances = new Float32Array(ICON_STRIDE * dots.length);
     const priorities = new Int8Array(dots.length);
     dots.forEach((dot, at) => {
         const prefab = layer.prefabs[dot];
-        const { x, y, w, h, priority = 0 } = PREFAB_BY_ID.get(layer.names[prefab])!.icon!;
+        const { x, y, w, h, priority = 0 } = byId.get(layer.names[prefab])!.icon!;
         instances.set([layer.positions[2 * dot], layer.positions[2 * dot + 1], x, y, w, h, prefab], ICON_STRIDE * at);
         priorities[at] = priority;
     });

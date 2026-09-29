@@ -1,5 +1,6 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
-import { PREFAB_BY_ID, TILES } from "@/lib/catalog/world";
+import { shardCatalog } from "@/lib/catalog/shard-catalog";
+import { TILES } from "@/lib/catalog/world";
 import { WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
 import { ICON_WORLD_UNIT_PIXELS } from "@/lib/world-map/legend/icon-layer";
 import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
@@ -162,7 +163,7 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
             tile: tileAt({ x: xs[found], z: zs[found] }),
             entity: {
                 prefab,
-                displayName: prefabName(prefab),
+                displayName: prefabName(prefab, world.shard),
                 index: indices[found],
                 x: xs[found],
                 z: zs[found],
@@ -187,7 +188,7 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
     };
 
     const icons = world.prefabs.map(({ name }) => {
-        const icon = PREFAB_BY_ID.get(name)?.icon;
+        const icon = shardCatalog(world.shard).byId.get(name)?.icon;
         if (icon === undefined) return null;
         return { halfWidth: icon.w / 2 / ICON_WORLD_UNIT_PIXELS, halfHeight: icon.h / 2 / ICON_WORLD_UNIT_PIXELS, priority: icon.priority ?? 0 };
     });

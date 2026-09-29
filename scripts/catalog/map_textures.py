@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes the textures the website's world map draws with to website/public/world-map/ (README.md).
 
-usage: python3 map_textures.py [--catalog CATALOG] [--out DIR] [--manifest FILE]
+usage: python3 map_textures.py [--catalog CATALOG ...] [--out DIR] [--manifest FILE]
 """
 import argparse
 import collections
@@ -200,16 +200,19 @@ def write_map_textures(game_dir, noises, icon_names, out_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--catalog", default=os.path.join(HERE, "catalog.json"))
+    ap.add_argument("--catalog", action="append", help="a catalog whose textures to write; every shard's by default")
     ap.add_argument("--out", default=os.path.join(ROOT, "website/public/world-map"))
     ap.add_argument("--manifest", default=os.path.join(HERE, "map_textures.json"))
     args = ap.parse_args()
     if not os.path.isdir(GAME_DIR):
         sys.exit("no game install at %s (set DST_GAME)" % GAME_DIR)
-    with open(args.catalog) as f:
-        catalog = json.load(f)
-    noises = sorted({tile["minimap_noise"] for tile in catalog["tiles"] if tile.get("minimap_noise")})
-    icon_names = sorted({prefab["icons"]["minimap"]["element"] for prefab in catalog["prefabs"] if "minimap" in prefab["icons"]})
+    catalogs = []
+    for path in args.catalog or [os.path.join(HERE, "catalog.json"), os.path.join(HERE, "cave_catalog.json")]:
+        with open(path) as f:
+            catalogs.append(json.load(f))
+    noises = sorted({tile["minimap_noise"] for catalog in catalogs for tile in catalog["tiles"] if tile.get("minimap_noise")})
+    icon_names = sorted({prefab["icons"]["minimap"]["element"] for catalog in catalogs for prefab in catalog["prefabs"]
+                         if "minimap" in prefab["icons"]})
     manifest = write_map_textures(GAME_DIR, noises, icon_names, args.out)
     with open(args.manifest, "w") as f:
         json.dump(manifest, f, indent=1, sort_keys=True)

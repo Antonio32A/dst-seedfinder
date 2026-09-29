@@ -21,7 +21,8 @@ const WORLD: GeneratedWorld = {
     tileNames: new Map([[1, "IMPASSABLE"], [6, "GRASS"], [7, "FOREST"], [99, "A_NEWER_TURF"]]),
     tiles: new Uint16Array([6, 7, 99, 1, 6, 6]),
     prefabs: [],
-    links: new Uint32Array(0)
+    links: new Uint32Array(0),
+    pillarLinks: new Uint32Array(0)
 };
 
 const GRASSLAND: GeneratedWorld = {

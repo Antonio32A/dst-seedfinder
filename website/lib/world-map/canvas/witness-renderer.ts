@@ -1,3 +1,4 @@
+import type { Shard } from "@/lib/config/seedfinder-config";
 import { groupOf, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
 import type { WitnessShape } from "@/lib/world-map/search/witness-overlay";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
@@ -93,7 +94,7 @@ export interface WitnessRenderer {
     dispose: () => void;
 }
 
-export function createWitnessRenderer(gl: WebGL2RenderingContext, shapes: WitnessShape[]): WitnessRenderer {
+export function createWitnessRenderer(gl: WebGL2RenderingContext, shapes: WitnessShape[], shard: Shard = "forest"): WitnessRenderer {
     const marks = shapes.flatMap((shape) => shape.marks);
     const segments = shapes.flatMap((shape) => shape.segments);
     const ends = Float32Array.from(segments.flatMap(({ from, to }) => [from.x, from.z, to.x, to.z]));
@@ -114,7 +115,7 @@ export function createWitnessRenderer(gl: WebGL2RenderingContext, shapes: Witnes
     const markBuffers = [
         vertexBuffer(gl, markProgram, "position", Float32Array.from(marks.flatMap(({ at }) => [at.x, at.z])), 2),
         vertexBuffer(gl, markProgram, "fill", Float32Array.from(marks.flatMap(({ prefab }) =>
-            MAP_GROUPS[groupOf(prefab)].colour.map((channel) => channel / 255))), 3),
+            MAP_GROUPS[groupOf(prefab, shard)].colour.map((channel) => channel / 255))), 3),
         vertexBuffer(gl, markProgram, "ok", Float32Array.from(marks, ({ ok }) => Number(ok)), 1)
     ];
     const [, largestPoint] = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array;

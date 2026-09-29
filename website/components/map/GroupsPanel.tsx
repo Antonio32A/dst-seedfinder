@@ -24,8 +24,8 @@ interface GroupsPanelProps {
     setPieces: LegendGroup | null;
     shownSetPieces: ReadonlySet<string>;
     onSetPiecesChange: (shown: ReadonlySet<string>) => void;
-    /** The wormhole connection lines toggle, `null` for a world without any. */
-    links: { shown: boolean; colour: readonly number[]; onChange: (shown: boolean) => void } | null;
+    /** The wormhole (tentacle pillar in the caves) connection lines toggle, `null` for a world without any. */
+    links: { label: string; shown: boolean; colour: readonly number[]; onChange: (shown: boolean) => void } | null;
     /** The road toggle, `null` for a world without roads. */
     roads: { shown: boolean; onChange: (shown: boolean) => void } | null;
     onSelect: (selection: "all" | "none" | "reset") => void;
@@ -106,7 +106,7 @@ export default function GroupsPanel(props: GroupsPanelProps) {
                                         <input type="checkbox" checked={links.shown}
                                                onChange={(event) => links.onChange(event.target.checked)}/>
                                         <span className="map__swatch" style={{ background: `rgb(${links.colour.join()})` }}/>
-                                        <span>Wormhole Connections</span>
+                                        <span>{links.label}</span>
                                     </label>
                                 </div>
                             </li>

@@ -1,53 +1,57 @@
 {
  "iconSheet": {
-  "file": "minimap_icons.f14098f317.png",
-  "height": 1120,
+  "file": "minimap_icons.003d3ebe79.png",
+  "height": 1504,
   "levels": [
    {
-    "height": 1120,
+    "height": 1504,
     "width": 2048,
     "x": 0,
     "y": 0
    },
    {
-    "height": 560,
+    "height": 752,
     "width": 1024,
     "x": 2048,
     "y": 0
    },
    {
-    "height": 280,
+    "height": 376,
     "width": 512,
     "x": 2048,
-    "y": 560
+    "y": 752
    },
    {
-    "height": 140,
+    "height": 188,
     "width": 256,
     "x": 2048,
-    "y": 840
+    "y": 1128
    },
    {
-    "height": 70,
+    "height": 94,
     "width": 128,
     "x": 2048,
-    "y": 980
+    "y": 1316
    },
    {
-    "height": 35,
+    "height": 47,
     "width": 64,
     "x": 2048,
-    "y": 1050
+    "y": 1410
    }
   ],
-  "rects": "minimap_icon_rects.4ac3978efe.json",
+  "rects": "minimap_icon_rects.de892a3484.json",
   "width": 2048
  },
  "mapEdge": "map_edge.859bee0330.png",
  "minimapPaper": "minimap_paper.cfd82ee005.png",
  "noise": {
+  "Ground_noise_archive_mini": "noise/Ground_noise_archive_mini.931de65df3.png",
+  "Ground_noise_moon_fungus_mini": "noise/Ground_noise_moon_fungus_mini.7a675b431e.png",
+  "ground_noise_fumarole_mini": "noise/ground_noise_fumarole_mini.b91d352fac.png",
   "mini_carpet2_noise": "noise/mini_carpet2_noise.4c94ea776c.png",
   "mini_carpet_noise": "noise/mini_carpet_noise.aa796e02a2.png",
+  "mini_cave_noise": "noise/mini_cave_noise.0e84fd902e.png",
   "mini_checker_noise": "noise/mini_checker_noise.0f8a2fea64.png",
   "mini_cobblestone_noise": "noise/mini_cobblestone_noise.e0cf851c84.png",
   "mini_deciduous_noise": "noise/mini_deciduous_noise.cb58c37de9.png",
@@ -55,14 +59,23 @@
   "mini_dirt_noise": "noise/mini_dirt_noise.670f24cdb9.png",
   "mini_dock_noise": "noise/mini_dock_noise.7c47d95d2f.png",
   "mini_forest_noise": "noise/mini_forest_noise.3d569bf6d1.png",
+  "mini_fungus_green_noise": "noise/mini_fungus_green_noise.47a1b5012c.png",
+  "mini_fungus_noise": "noise/mini_fungus_noise.eeb9342254.png",
+  "mini_fungus_red_noise": "noise/mini_fungus_red_noise.a8558e4534.png",
   "mini_grass2_noise": "noise/mini_grass2_noise.73c3e60072.png",
   "mini_grass_noise": "noise/mini_grass_noise.4e9e60cb10.png",
   "mini_marsh_noise": "noise/mini_marsh_noise.13cb0827a6.png",
   "mini_meteor": "noise/mini_meteor.3895471edc.png",
   "mini_mosaictiles_grey_noise": "noise/mini_mosaictiles_grey_noise.838d70e8ad.png",
+  "mini_mud_noise": "noise/mini_mud_noise.1c7a09399f.png",
   "mini_pebblebeach": "noise/mini_pebblebeach.f1fd3ec5b1.png",
+  "mini_rock_noise": "noise/mini_rock_noise.152efa3c12.png",
   "mini_rocky_noise": "noise/mini_rocky_noise.c13cf96727.png",
+  "mini_ruinsbrick_noise": "noise/mini_ruinsbrick_noise.ed6c3bfcf3.png",
+  "mini_ruinstile_noise": "noise/mini_ruinstile_noise.1079729413.png",
+  "mini_ruinstrim_noise": "noise/mini_ruinstrim_noise.b3fa8e680f.png",
   "mini_shellbeach_noise": "noise/mini_shellbeach_noise.243f27e7bc.png",
+  "mini_sinkhole_noise": "noise/mini_sinkhole_noise.5086f5d5d9.png",
   "mini_woodfloor_noise": "noise/mini_woodfloor_noise.ae3c8c56b4.png"
  },
  "road": {

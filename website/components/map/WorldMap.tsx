@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Platform } from "@/lib/config/seedfinder-config";
+import type { Platform, Shard } from "@/lib/config/seedfinder-config";
 import { entityLayer, MAP_GROUPS, mapWorld } from "@/lib/world-map/legend/entity-layer";
 import { loadWorld, type WorldLoad } from "@/lib/world-map/world/load-world";
 import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/canvas/map-canvas";
@@ -18,16 +18,19 @@ import MapPointer from "./MapPointer";
 import PrefabSearch from "./PrefabSearch";
 import WitnessPanel from "./WitnessPanel";
 
+const LINK_LABELS: Record<Shard, string> = { forest: "Wormhole Connections", caves: "Tentacle Pillar Connections" };
+
 const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> = {
     loading: "Generating the world in your browser...",
     "gave-up": "This seed's world generation gave up, so there's no world to show.",
     unsupported: "This browser can't run the seedfinder: it needs WebAssembly threads."
 };
 
-function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
+function WorldCanvas({ world: generated, bytes, platform, shard, seed, share }: {
     world: GeneratedWorld;
     bytes: Uint8Array;
     platform: Platform;
+    shard: Shard;
     seed: number;
     share?: string;
 }) {
@@ -39,25 +42,26 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     const legend = useMemo(() => mapLegend(world), [world]);
     const setPieces = useMemo(() => setPieceLegend(world), [world]);
     const probe = useMemo(() => createMapProbe(world), [world]);
-    const shared = useMemo(() => (share === undefined ? null : parseMapConfig(share, platform)), [share, platform]);
+    const shared = useMemo(() => (share === undefined ? null : parseMapConfig(share, platform, shard)), [share, platform, shard]);
     const search = shared && "config" in shared ? shared.config : undefined;
-    const [shownPrefabs, setShownPrefabs] = useState<ReadonlySet<string>>(() => defaultShown(search));
+    const [shownPrefabs, setShownPrefabs] = useState<ReadonlySet<string>>(() => defaultShown(search, shard));
     const [shownSetPieces, setShownSetPieces] = useState<ReadonlySet<string>>(() => defaultShownSetPieces(search));
     const [shownLinks, setShownLinks] = useState(false);
     const links = useMemo(() => layer.links.length === 0 ? null : {
+        label: LINK_LABELS[shard],
         shown: shownLinks,
         colour: MAP_GROUPS[layer.linkGroup].colour,
         onChange: setShownLinks
-    }, [layer, shownLinks]);
+    }, [layer, shard, shownLinks]);
     const [shownRoads, setShownRoads] = useState(true);
     const roads = useMemo(() => (world.roads?.length ? { shown: shownRoads, onChange: setShownRoads } : null), [world, shownRoads]);
     const select = useCallback((selection: "all" | "none" | "reset") => {
-        setShownPrefabs(selection === "all" ? allPrefabs(legend) : selection === "none" ? new Set() : defaultShown(search));
+        setShownPrefabs(selection === "all" ? allPrefabs(legend) : selection === "none" ? new Set() : defaultShown(search, shard));
         setShownSetPieces(selection === "all" ? (setPieces ? allPrefabs([setPieces]) : new Set<string>())
                 : selection === "none" ? new Set() : defaultShownSetPieces(search));
         setShownLinks(selection === "all");
         setShownRoads(selection !== "none");
-    }, [legend, setPieces, search]);
+    }, [legend, setPieces, search, shard]);
     const [searched, setSearched] = useState<MapTarget | null>(null);
     const [previewed, setPreviewed] = useState<readonly string[]>([]);
     const highlightedPrefabs = useMemo<ReadonlySet<string>>(
@@ -138,21 +142,26 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     );
 }
 
-export default function WorldMap({ platform, seed, share }: { platform: Platform; seed: number; share?: string }) {
+export default function WorldMap({ platform, shard, seed, share }: {
+    platform: Platform;
+    shard: Shard;
+    seed: number;
+    share?: string;
+}) {
     const [load, setLoad] = useState<WorldLoad>({ status: "loading" });
 
     useEffect(() => {
         const controller = new AbortController();
         setLoad({ status: "loading" });
-        void loadWorld(seed, platform, controller.signal).then((result) => {
+        void loadWorld(seed, platform, shard, controller.signal).then((result) => {
             if (!controller.signal.aborted) setLoad(result);
         });
         return () => controller.abort();
-    }, [platform, seed]);
+    }, [platform, shard, seed]);
 
     if (load.status === "ready") {
         return (
-                <WorldCanvas key={share} world={load.world} bytes={load.bytes} platform={platform} seed={seed}
+                <WorldCanvas key={share} world={load.world} bytes={load.bytes} platform={platform} shard={shard} seed={seed}
                              share={share}/>
         );
     }

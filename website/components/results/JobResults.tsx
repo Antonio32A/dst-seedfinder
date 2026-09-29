@@ -152,12 +152,10 @@ const HitRow = memo(function HitRow({
                             onClick={() => onCopy(seed, `Seed ${seed}`)}>
                         copy
                     </button>
-                    {catalog.hasWorlds && (
-                            <Link href={mapPath(platform, hit.seed, config)} className="link-button"
-                                  aria-label={`Map of seed ${seed} on ${platform}`}>
-                                map
-                            </Link>
-                    )}
+                    <Link href={mapPath(platform, hit.seed, config)} className="link-button"
+                          aria-label={`Map of seed ${seed} on ${platform}`}>
+                        map
+                    </Link>
                     {showOption && hit.entry !== null &&
                             <span className="tag tag--accent">Option {hit.entry + 1}</span>}
                     <button

@@ -55,6 +55,8 @@ export interface GeneratedWorld extends DumpHeader {
     prefabs: DumpPrefab[];
     /** Interleaved `entry, exit` wormhole instance indices per link. */
     links: Uint32Array;
+    /** Interleaved `entry prefab, entry index, exit prefab, exit index` per tentacle pillar link, in the caves. */
+    pillarLinks: Uint32Array;
     /** Absent without a SETP section. */
     setPieces?: DumpSetPiece[];
     /** Absent without a ROAD section. */
@@ -129,6 +131,9 @@ const SECTIONS: Record<string, (reader: Reader, world: GeneratedWorld) => void> 
     WORM: (reader, world) => {
         world.links = reader.copy(Uint32Array, 2 * reader.u32());
     },
+    PILL: (reader, world) => {
+        world.pillarLinks = reader.copy(Uint32Array, 4 * reader.u32());
+    },
     SETP: (reader, world) => {
         world.setPieces = repeat(reader, () => ({
             name: reader.string(),
@@ -174,7 +179,8 @@ export function parseWorldDump(bytes: Uint8Array): WorldDump {
         tileNames: new Map(),
         tiles: new Uint16Array(0),
         prefabs: [],
-        links: new Uint32Array(0)
+        links: new Uint32Array(0),
+        pillarLinks: new Uint32Array(0)
     };
     while (reader.offset < bytes.length) {
         const tag = reader.ascii(4);

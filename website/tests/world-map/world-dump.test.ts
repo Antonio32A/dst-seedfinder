@@ -136,6 +136,15 @@ describe("reading a world dump", () => {
         expect(generated(caves).shard).toBe("caves");
     });
 
+    it("reads the tentacle pillar links as entry and exit prefab and instance quadruples", () => {
+        const pillars = section("PILL", [u32(2), u32(1), u32(0), u32(1), u32(1), u32(1), u32(1), u32(1), u32(0)]);
+        expect([...generated(concat([world(), pillars])).pillarLinks]).toEqual([1, 0, 1, 1, 1, 1, 1, 0]);
+    });
+
+    it("has no pillar links without a PILL section", () => {
+        expect(generated(world()).pillarLinks).toHaveLength(0);
+    });
+
     it("reads a world whose generation gave up from its 24-byte header", () => {
         expect(parseWorldDump(concat(header(99, 0, 1)))).toEqual({ status: "gave-up", seed: 99, platform: "windows", shard: "forest" });
     });

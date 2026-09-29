@@ -1,5 +1,5 @@
 import { canRunSeedfinder, compileSeedfinder } from "@/lib/browser-search/seedfinder-wasm";
-import type { Platform } from "@/lib/config/seedfinder-config";
+import type { Platform, Shard } from "@/lib/config/seedfinder-config";
 import { workerReply, type WorkerFailure } from "./worker-reply";
 import { type GeneratedWorld, parseWorldDump } from "./world-dump";
 
@@ -7,6 +7,7 @@ export interface DumpRequest {
     module: WebAssembly.Module;
     seed: number;
     platform: Platform;
+    shard: Shard;
 }
 
 export type DumpReply = { type: "dump"; bytes: Uint8Array<ArrayBuffer> } | WorkerFailure;
@@ -21,7 +22,7 @@ export type WorldLoad =
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Generates the seed's world in a worker. Aborting the signal stops the worker, and the result is then meaningless. */
-export async function loadWorld(seed: number, platform: Platform, signal: AbortSignal): Promise<WorldLoad> {
+export async function loadWorld(seed: number, platform: Platform, shard: Shard, signal: AbortSignal): Promise<WorldLoad> {
     if (!canRunSeedfinder()) return { status: "unsupported" };
     try {
         const module = await compileSeedfinder().catch((error: unknown) => {
@@ -29,7 +30,7 @@ export async function loadWorld(seed: number, platform: Platform, signal: AbortS
         });
         signal.throwIfAborted();
         const worker = new Worker(new URL("./world-dump.worker.ts", import.meta.url), { type: "module" });
-        const reply = await workerReply<DumpRequest, DumpReply>(worker, { module, seed, platform }, signal);
+        const reply = await workerReply<DumpRequest, DumpReply>(worker, { module, seed, platform, shard }, signal);
         if (reply.type === "failed") throw new Error(`The world generation stopped unexpectedly: ${reply.error}`);
         const dump = parseWorldDump(reply.bytes);
         if (dump.status === "gave-up") return { status: "gave-up" };

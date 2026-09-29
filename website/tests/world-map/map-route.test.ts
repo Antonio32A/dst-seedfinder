@@ -12,8 +12,21 @@ const CONFIG: SeedfinderConfig = {
 describe("the map route", () => {
     it("links a seed's map on its platform", () => {
         expect(mapPath("linux", 1234)).toBe("/map/linux/1234");
-        expect(parseMapRoute("linux", "1234")).toEqual({ platform: "linux", seed: 1234 });
-        expect(parseMapRoute("windows", "4294967295")).toEqual({ platform: "windows", seed: 4294967295 });
+        expect(parseMapRoute("linux", "1234")).toEqual({ platform: "linux", shard: "forest", seed: 1234 });
+        expect(parseMapRoute("windows", "4294967295")).toEqual({ platform: "windows", shard: "forest", seed: 4294967295 });
+    });
+
+    it("links the forest map at both of its routes and the caves map at its own", () => {
+        expect(mapPath("linux", 1234, undefined, "forest")).toBe("/map/linux/1234");
+        expect(mapPath("linux", 1234, undefined, "caves")).toBe("/map/linux/caves/1234");
+        expect(parseMapRoute("linux", "1234", "forest")).toEqual(parseMapRoute("linux", "1234"));
+        expect(parseMapRoute("linux", "1234", "caves")).toEqual({ platform: "linux", shard: "caves", seed: 1234 });
+    });
+
+    it("links a search result to the route of its shard", () => {
+        const link = new URL(mapPath("linux", 7, { ...CONFIG, shard: "caves" }), "https://example.com");
+        expect(link.pathname).toBe("/map/linux/caves/7");
+        expect(decodeShareParam(link.searchParams.get("c")!)).toEqual({ ...CONFIG, shard: "caves" });
     });
 
     it("carries a search's config in the link", () => {
@@ -24,6 +37,10 @@ describe("the map route", () => {
 
     it("evaluates a linked config on the map's platform", () => {
         expect(parseMapConfig(encodeShareParam(CONFIG), "linux")).toEqual({ config: { ...CONFIG, shard: "forest", platform: "linux" } });
+    });
+
+    it("evaluates a linked config on the map's shard", () => {
+        expect(parseMapConfig(encodeShareParam(CONFIG), "linux", "caves")).toEqual({ config: { ...CONFIG, shard: "caves", platform: "linux" } });
     });
 
     it.each([

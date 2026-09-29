@@ -7,6 +7,33 @@ statistics over a sample of generated worlds.
 Everything here needs `scripts/setup.sh` to have been run, numpy, and the game installed through Steam (`DST_GAME`
 overrides the install path; without the game the catalog silently loses its icons, tile colours and game build).
 
+## The caves catalog
+
+`python3 scripts/catalog/build_catalog.py --shard caves` writes `cave_catalog.json`: the prefabs and tiles of the caves
+shard (`DST_CAVE`, task set `cave_default`), in the shape of the forest catalog's `prefabs[]` and `tiles[]` (without
+settings, tasks and set pieces). Its inputs, snapshotted in `inputs/`:
+
+- `static_caves.json`: `extract_static.lua` run with `CATALOG_SHARD=caves`, which walks the caves' tasks, rooms and
+  layouts (the same static walk as the forest's, so a prefab appears if a cave room, layout, map tag or maze can place
+  it).
+- `worlds_caves.jsonl`: summaries of the real cave worlds in `build/groundtruth/data/worlds_caves/`. Their prefab sets
+  say which prefabs really occur (`empirical`) and which tiles the caves use (`in_caves_worlds`).
+
+Tiles are shard independent apart from which ones the sampled worlds use: a tile gets its `minimap_noise` from whichever
+shard's worlds contain it, and `gen_website_catalog.mjs` merges both.
+
+The build fails when a prefab of the sampled worlds has no display name (`name_source: "fallback"`) or no image (no
+minimap or inventory icon). The prefabs that genuinely have none, which the map draws as dots, are listed in
+`names.NO_IMAGE`; a listed prefab that gains an image fails the build too, so the list can't go stale. Add names to
+`names.PREFAB_NAMES` and groups to `names.GROUPS`.
+
+```sh
+CATALOG_SHARD=caves scripts/harness/bin/lua-dst scripts/catalog/extract_static.lua > build/catalog/static_caves.json
+python3 scripts/catalog/build_catalog.py --shard caves --collect
+python3 scripts/catalog/build_catalog.py --shard caves
+python3 scripts/catalog/map_textures.py && node scripts/gen/gen_website_catalog.mjs
+```
+
 ## Tiles on the map
 
 Each of `tiles[]` carries what the website's map needs to draw it as the game's map screen does. The game draws one
@@ -74,7 +101,7 @@ marker's single icon only approximates them.
 `map_textures.py` writes the textures the website's map draws with to `website/public/world-map/`, as lossless PNGs of
 the full-size mip, rows in stored order (the first row is v = 0, as the game uploads it):
 
-- `noise/<name>.<hash>.png`: every `minimap_noise` of `catalog.json`, RGB.
+- `noise/<name>.<hash>.png`: every `minimap_noise` of `catalog.json` and `cave_catalog.json`, RGB.
 - `map_edge.<hash>.png`: `levels/tiles/map_edge.tex`, RGBA, with its straight alpha exactly as stored
   (`levels/tiles/map_edge.xml` places its 48 cells).
 - `minimap_paper.<hash>.png`: `images/minimap_paper.tex`, RGB.
@@ -82,7 +109,7 @@ the full-size mip, rows in stored order (the first row is v = 0, as the game upl
   `roadcorner`, `roadendcap` and `square` are the strips' own art, `roadnoise` (paved roads) and `pathnoise` (dirt
   paths) the ground noise multiplied into them. They live in `databundles/images.zip` rather than unpacked, which
   `map_textures.py` reads as a fallback.
-- `minimap_icons.<hash>.png` and `minimap_icon_rects.<hash>.json`: the sprite sheet of the catalog's minimap icons, and
+- `minimap_icons.<hash>.png` and `minimap_icon_rects.<hash>.json`: the sprite sheet of both catalogs' minimap icons, and
   where each sits on it.
 
 Every file's name carries the first 10 hex digits of the SHA-256 of its bytes, so the deployed files are served with

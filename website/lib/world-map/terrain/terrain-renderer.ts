@@ -1,4 +1,4 @@
-import { MAP_TEXTURES, TILES } from "@/lib/catalog/world";
+import { MAP_TEXTURES, type MapTile, TILES } from "@/lib/catalog/world";
 import { buildProgram, fetchTexels, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "@/lib/world-map/canvas/gl-program";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
@@ -156,8 +156,43 @@ function smoothTexture(gl: WebGL2RenderingContext, unit: number): WebGLTexture {
     return texture;
 }
 
+/** Draws the forest's ocean into the bound framebuffer. The caves have none. */
+function drawOcean(
+    gl: WebGL2RenderingContext,
+    world: GeneratedWorld,
+    size: { width: number; height: number },
+    tileOf: (tile: number) => MapTile | undefined,
+    paper: WebGLTexture
+) {
+    const ocean = buildProgram(gl, OCEAN_VERTEX_SHADER, OCEAN_FRAGMENT_SHADER);
+    gl.useProgram(ocean);
+    gl.uniform2f(gl.getUniformLocation(ocean, "terrainSize"), size.width, size.height);
+    const oceanVertices = gl.createVertexArray();
+    gl.bindVertexArray(oceanVertices);
+    const oceanCorners = vertexBuffer(gl, ocean, "corner", new Float32Array(QUAD_CORNERS), 2);
+    const { colour, mask } = oceanTextures(world, (tile) => {
+        const known = tileOf(tile);
+        return known?.oceanMinimapColor ?? (known?.minimapRank === undefined ? "void" : "land");
+    });
+    const samplers = [[colour, OCEAN_COLOUR_UNIT, "oceanColour"], [mask, OCEAN_MASK_UNIT, "oceanMask"]] as const;
+    const uploaded = samplers.map(([texels, unit, sampler]) => {
+        const texture = smoothTexture(gl, unit);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, world.width, world.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, texels);
+        gl.uniform1i(gl.getUniformLocation(ocean, sampler), unit);
+        return texture;
+    });
+    gl.activeTexture(gl.TEXTURE0 + PAPER_UNIT);
+    gl.bindTexture(gl.TEXTURE_2D, paper);
+    gl.uniform1i(gl.getUniformLocation(ocean, "paper"), PAPER_UNIT);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    uploaded.forEach((texture) => gl.deleteTexture(texture));
+    gl.deleteBuffer(oceanCorners);
+    gl.deleteVertexArray(oceanVertices);
+    gl.deleteProgram(ocean);
+}
+
 /**
- * Renders the terrain once, like the game's map screen: the ocean, then every land layer's own tiles, then every
+ * Renders the terrain once, like the game's map screen: the ocean (in the forest only), then every land layer's own tiles, then every
  * layer's edges. Each frame adds it onto the background. It draws nothing until the art has downloaded.
  */
 export function createTerrainRenderer(
@@ -194,31 +229,7 @@ export function createTerrainRenderer(
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, terrain, 0);
         gl.viewport(0, 0, size.width, size.height);
 
-        const ocean = buildProgram(gl, OCEAN_VERTEX_SHADER, OCEAN_FRAGMENT_SHADER);
-        gl.useProgram(ocean);
-        gl.uniform2f(gl.getUniformLocation(ocean, "terrainSize"), size.width, size.height);
-        const oceanVertices = gl.createVertexArray();
-        gl.bindVertexArray(oceanVertices);
-        const oceanCorners = vertexBuffer(gl, ocean, "corner", new Float32Array(QUAD_CORNERS), 2);
-        const { colour, mask } = oceanTextures(world, (tile) => {
-            const known = tileOf(tile);
-            return known?.oceanMinimapColor ?? (known?.minimapRank === undefined ? "void" : "land");
-        });
-        const samplers = [[colour, OCEAN_COLOUR_UNIT, "oceanColour"], [mask, OCEAN_MASK_UNIT, "oceanMask"]] as const;
-        const uploaded = samplers.map(([texels, unit, sampler]) => {
-            const texture = smoothTexture(gl, unit);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, world.width, world.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, texels);
-            gl.uniform1i(gl.getUniformLocation(ocean, sampler), unit);
-            return texture;
-        });
-        gl.activeTexture(gl.TEXTURE0 + PAPER_UNIT);
-        gl.bindTexture(gl.TEXTURE_2D, paper);
-        gl.uniform1i(gl.getUniformLocation(ocean, "paper"), PAPER_UNIT);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        uploaded.forEach((texture) => gl.deleteTexture(texture));
-        gl.deleteBuffer(oceanCorners);
-        gl.deleteVertexArray(oceanVertices);
-        gl.deleteProgram(ocean);
+        if (world.shard === "forest") drawOcean(gl, world, size, tileOf, paper);
 
         const layers = landLayers(world, (tile) =>
             (noiseOf(tile) === undefined ? undefined : tileOf(tile)?.minimapRank));

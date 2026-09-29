@@ -1,5 +1,6 @@
-import { MAX_PREFAB_IDS } from "@/lib/config/seedfinder-config";
+import { MAX_PREFAB_IDS, type Shard } from "@/lib/config/seedfinder-config";
 import { SWAPS } from "./level";
+import { shardCatalog } from "./shard-catalog";
 import { NAMED_ANCHORS, PREFAB_BY_ID, PREFAB_GROUPS, PREFABS, SAMPLE_WORLDS, type WorldPrefab } from "./world";
 
 export interface PrefabFamily {
@@ -31,8 +32,8 @@ const SWAP_OPTION_NAMES: ReadonlyMap<string, string> = new Map(
     SWAPS.flatMap((swap) => swap.options.map((option) => [option.id, option.name] as const))
 );
 
-export function prefabName(id: string): string {
-    return ANCHOR_LABELS.get(id) ?? PREFAB_BY_ID.get(id)?.name ?? id;
+export function prefabName(id: string, shard: Shard = "forest"): string {
+    return (shard === "forest" ? ANCHOR_LABELS.get(id) : undefined) ?? shardCatalog(shard).byId.get(id)?.name ?? id;
 }
 
 function familyLabel(members: WorldPrefab[]): string | undefined {

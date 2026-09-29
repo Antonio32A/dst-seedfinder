@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const catalogPath = process.argv[2] ?? path.join(root, "scripts", "catalog", "catalog.json");
 const outPath = path.join(root, "website", "lib", "catalog", "world.ts");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+const caveCatalog = JSON.parse(readFileSync(path.join(root, "scripts", "catalog", "cave_catalog.json"), "utf8"));
 const textures = JSON.parse(readFileSync(path.join(root, "scripts", "catalog", "map_textures.json"), "utf8"));
 const iconRects = JSON.parse(readFileSync(path.join(root, "website", "public", "world-map", textures.iconSheet.rects), "utf8")).icons;
 const textureUrl = (file) => `/world-map/${file}`;
@@ -31,7 +32,7 @@ const ANCHORS = [
 const prefabIds = new Set(catalog.prefabs.map((prefab) => prefab.id));
 const missingAnchors = ANCHORS.filter(([id]) => !prefabIds.has(id));
 if (missingAnchors.length > 0) throw new Error(`anchors missing from the catalog: ${missingAnchors.join(", ")}`);
-const groups = [...new Set(catalog.prefabs.map((prefab) => prefab.group))];
+const groups = [...new Set([...catalog.prefabs, ...caveCatalog.prefabs].map((prefab) => prefab.group))];
 const orderedGroups = [...GROUP_ORDER.filter((group) => groups.includes(group)), ...groups.filter((group) => !GROUP_ORDER.includes(group))];
 
 const titleCase = (name) => name.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -62,17 +63,22 @@ const landTileRow = ({ name, display_name, in_forest_worlds }) => ({
     ...((in_forest_worlds?.worlds ?? 0) > 0 ? { inDefaultWorlds: true } : {}),
 });
 
-const mapTileEntry = ({ name, display_name, class: kind, color, minimap_noise, minimap_rank, ocean_minimap_color }) => [
-    name,
-    {
-        displayName: display_name ?? titleCase(name),
-        kind,
-        color,
-        ...(minimap_noise ? { minimapNoise: textureUrl(textures.noise[minimap_noise]) } : {}),
-        ...(minimap_rank ? { minimapRank: minimap_rank } : {}),
-        ...(ocean_minimap_color ? { oceanMinimapColor: ocean_minimap_color } : {}),
-    },
-];
+const caveNoise = new Map(caveCatalog.tiles.map((tile) => [tile.name, tile.minimap_noise]));
+
+const mapTileEntry = ({ name, display_name, class: kind, color, minimap_noise: forestNoise, minimap_rank, ocean_minimap_color }) => {
+    const minimap_noise = forestNoise ?? caveNoise.get(name);
+    return [
+        name,
+        {
+            displayName: display_name ?? titleCase(name),
+            kind,
+            color,
+            ...(minimap_noise ? { minimapNoise: textureUrl(textures.noise[minimap_noise]) } : {}),
+            ...(minimap_rank ? { minimapRank: minimap_rank } : {}),
+            ...(ocean_minimap_color ? { oceanMinimapColor: ocean_minimap_color } : {}),
+        },
+    ];
+};
 
 const MAX_LINE_LENGTH = 120;
 const INDENT = "    ";
@@ -178,6 +184,13 @@ ${rows(ANCHORS.map(([id, label]) => ({ id, label })))}
 ];
 
 export const PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(PREFABS.map((prefab) => [prefab.id, prefab]));
+
+/** The caves shard's prefabs: what its sampled worlds and its rooms and layouts can contain. */
+export const CAVE_PREFABS: WorldPrefab[] = [
+${rows(caveCatalog.prefabs.map(prefabRow))}
+];
+
+export const CAVE_PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(CAVE_PREFABS.map((prefab) => [prefab.id, prefab]));
 
 export const PREFAB_GROUPS: PrefabGroup[] = PREFAB_GROUP_IDS.map((id) => ({
     id,

@@ -34,7 +34,7 @@ export default function MapScreen({ route, share }: { route: MapRoute; share?: s
                             <MapCorner/>
                         </>
                 ) : (
-                        <WorldMap platform={route.platform} seed={route.seed} share={share}/>
+                        <WorldMap platform={route.platform} shard={route.shard} seed={route.seed} share={share}/>
                 )}
             </main>
     );

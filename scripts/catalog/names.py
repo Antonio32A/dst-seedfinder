@@ -63,6 +63,77 @@ PREFAB_NAMES = {
     "twiggy_tall": "Twiggy Tree (tall)",
 }
 
+PREFAB_NAMES.update({
+    "ancient_altar_spawner": "Ancient Pseudoscience Station (spawner)",
+    "ancient_altar_broken_spawner": "Broken Ancient Pseudoscience Station (spawner)",
+    "archive_ambient_sfx": "Archives ambience (sound)",
+    "archive_chandelier": "Archives chandelier",
+    "archive_orchestrina_small": "Ancient Orchestrina (small)",
+    "archive_pillar": "Archives Pillar",
+    "archive_security_waypoint": "Ancient Guard waypoint (marker)",
+    "archive_switch_base": "Ornate Pedestal base",
+    "atrium_fence": "Ancient Fence",
+    "atrium_statue_facing": "Ancient Statue (facing)",
+    "bishop_nightmare_spawner": "Damaged Bishop (spawner)",
+    "knight_nightmare_spawner": "Damaged Knight (spawner)",
+    "rook_nightmare_spawner": "Damaged Rook (spawner)",
+    "brokenwall_ruins": "Broken Thulecite Wall",
+    "cave_hole": "Cave Hole",
+    "cave_vent_mite_spawner": "Fumarole Mite (spawner)",
+    "cavelight": "Cave Light",
+    "cavelight_atrium": "Cave Light (Atrium)",
+    "cavelight_small": "Cave Light (small)",
+    "cavelight_tiny": "Cave Light (tiny)",
+    "cavelightmoon": "Lunar Cave Light",
+    "cavelightmoon_small": "Lunar Cave Light (small)",
+    "cavelightmoon_tiny": "Lunar Cave Light (tiny)",
+    "chessjunk_spawner": "Chess Junk (spawner)",
+    "daywalkerspawningground": "Nightmare Werepig (Daywalker) spawning ground",
+    "dropperweb": "Dangling Depth Dweller web",
+    "fissure": "Nightmare Fissure",
+    "fissure_lower": "Nightmare Fissure (lower)",
+    "lightflier_flower": "Lightbug Flower",
+    "minotaur_spawner": "Ancient Guardian (spawner)",
+    "monkeybarrel_spawner": "Splumonkey Pod (spawner)",
+    "moonglass_stalactite1": "Moon Glass Stalactite (1)",
+    "moonglass_stalactite2": "Moon Glass Stalactite (2)",
+    "moonglass_stalactite3": "Moon Glass Stalactite (3)",
+    "mushgnome_spawner": "Mush Gnome (spawner)",
+    "pillar_algae": "Algae Pillar",
+    "pillar_atrium": "Atrium Pillar",
+    "pillar_cave": "Cave Pillar",
+    "pillar_cave_flintless": "Cave Pillar (flintless)",
+    "pillar_cave_rock": "Cave Pillar (rock)",
+    "pillar_ruins": "Ruins Pillar",
+    "pillar_stalactite": "Stalactite Pillar",
+    "rubble1": "Rubble (1)",
+    "rubble2": "Rubble (2)",
+    "ruins_bowl": "Ancient Bowl",
+    "ruins_chair": "Ancient Chair",
+    "ruins_chipbowl": "Ancient Chipped Bowl",
+    "ruins_plate": "Ancient Plate",
+    "ruins_rubble_chair": "Ancient Chair (rubble)",
+    "ruins_rubble_table": "Ancient Table (rubble)",
+    "ruins_rubble_vase": "Ancient Vase (rubble)",
+    "ruins_statue_head_spawner": "Ancient Head Statue (spawner)",
+    "ruins_statue_head_nogem_spawner": "Ancient Head Statue (spawner, no gem)",
+    "ruins_statue_mage_spawner": "Ancient Mage Statue (spawner)",
+    "ruins_statue_mage_nogem_spawner": "Ancient Mage Statue (spawner, no gem)",
+    "ruins_table": "Ancient Table",
+    "ruins_vase": "Ancient Vase",
+    "shadowthrall_centipede_spawner": "Shadow Thrall Centipede (spawner)",
+    "skeleton_notplayer_1": "Skeleton (not a player, 1)",
+    "skeleton_notplayer_2": "Skeleton (not a player, 2)",
+    "slurper_spawner": "Slurper (spawner)",
+    "stalagmite_low": "Stalagmite (low)",
+    "stalagmite_med": "Stalagmite (medium)",
+    "stalagmite_tall_low": "Stalagmite (tall, low)",
+    "stalagmite_tall_med": "Stalagmite (tall, medium)",
+    "tentacle_pillar_atrium": "Big Tentacle (Atrium)",
+    "tree_rock1": "Rock Tree (1)",
+    "tree_rock2": "Rock Tree (2)",
+})
+
 QUALIFIERS = {
     "rock1": "flint",
     "rock2": "gold",
@@ -184,9 +255,55 @@ GROUPS.update(_group("pigtorch wall_hay wall_wood wall_stone cookpot meatrack me
                      "gravestone mound insanityrock sanityrock mermhead pighead houndbone dock_woodposts pirate_flag_pole "
                      "winterometer birdtrap", "structures"))
 
+GROUPS.update(_group("cave_exit cave_hole tentacle_pillar tentacle_pillar_atrium", "spawn & travel"))
+GROUPS.update(_group("minotaur_spawner daywalkerspawningground toadstool_cap", "bosses & spawners"))
+GROUPS.update(_group("bishop_nightmare bishop_nightmare_spawner knight_nightmare_spawner rook_nightmare_spawner "
+                     "chessjunk_spawner", "clockwork"))
+GROUPS.update(_group("archive_cookpot archive_lockbox_dispencer archive_moon_statue archive_orchestrina_main "
+                     "archive_orchestrina_small archive_portal archive_rune_statue archive_switch archive_centipede_husk "
+                     "archive_security_desk atrium_gate atrium_light atrium_rubble atrium_overgrowth pandoraschest "
+                     "sacred_chest nightmarelight grotto_pool_big grotto_pool_small pond_cave hutch_fishbowl", "landmarks"))
+GROUPS.update(_group("atrium_statue atrium_statue_facing ruins_statue_head_spawner ruins_statue_head_nogem_spawner "
+                     "ruins_statue_mage_spawner ruins_statue_mage_nogem_spawner", "statues"))
+GROUPS.update(_group("mushtree_small mushtree_medium mushtree_tall mushtree_moon cave_banana_tree tree_rock1 tree_rock2",
+                     "trees"))
+GROUPS.update(_group("stalagmite stalagmite_low stalagmite_med stalagmite_tall stalagmite_tall_low stalagmite_tall_med "
+                     "moonglass_stalactite1 moonglass_stalactite2 moonglass_stalactite3 pillar_algae pillar_atrium "
+                     "pillar_cave pillar_cave_flintless pillar_cave_rock pillar_ruins pillar_stalactite rubble1 rubble2 "
+                     "cavein_boulder cave_vent_rock rock_flintless_low rock_flintless_med", "rocks"))
+GROUPS.update(_group("cave_fern cave_fern_withered lichen lightflier_flower flower_cave_withered "
+                     "flower_cave_double_withered flower_cave_triple_withered", "plants"))
+GROUPS.update(_group("batcave slurtlehole spiderhole dropperweb dustmothden rocky slurper_spawner mushgnome_spawner "
+                     "cave_vent_mite_spawner shadowthrall_centipede_spawner monkeybarrel_spawner", "mobs & dens"))
+GROUPS.update(_group("ruins_bowl ruins_chair ruins_chipbowl ruins_plate ruins_rubble_chair ruins_rubble_table "
+                     "ruins_rubble_vase ruins_table ruins_vase wall_ruins wall_ruins_2 wall_stone_2 brokenwall_ruins "
+                     "atrium_fence archive_pillar archive_chandelier archive_switch_base skeleton_notplayer_1 "
+                     "skeleton_notplayer_2 rabbithouse", "structures"))
+GROUPS.update(_group("ancient_altar_spawner ancient_altar_broken_spawner archive_ambient_sfx archive_security_waypoint "
+                     "cavelight cavelight_atrium cavelight_small cavelight_tiny cavelightmoon cavelightmoon_small "
+                     "cavelightmoon_tiny fissure fissure_lower", "markers"))
+
 GROUPS.update(_group("twigs flint rocks goldnugget moonglass moonrocknugget marble cutgrass log singingshell_octave3 "
                      "singingshell_octave4 singingshell_octave5 pumpkin_lantern", "items"))
 GROUPS.update(_group("playing_card", "set-piece loot"))
+
+# Prefabs of the caves worlds with neither a minimap nor an inventory icon: the map draws them as dots.
+NO_IMAGE = set(
+    "ancient_altar_broken_spawner ancient_altar_spawner archive_ambient_sfx archive_centipede_husk "
+    "archive_chandelier archive_orchestrina_small archive_security_desk archive_security_waypoint "
+    "archive_switch_base atrium_fence bishop_nightmare bishop_nightmare_spawner blue_mushroom "
+    "brokenwall_ruins carrot_planted cave_fern cave_fern_withered cave_vent_mite_spawner cavelight "
+    "cavelight_atrium cavelight_small cavelight_tiny cavelightmoon cavelightmoon_small cavelightmoon_tiny "
+    "chessjunk_spawner daywalkerspawningground firehound fissure fissure_lower flower_evil green_mushroom "
+    "houndbone icehound knight_nightmare_spawner minotaur_spawner monkeybarrel_spawner "
+    "moonglass_stalactite1 moonglass_stalactite2 moonglass_stalactite3 mound mushgnome_spawner pighead "
+    "pillar_algae pillar_atrium pillar_cave pillar_cave_flintless pillar_cave_rock pillar_ruins "
+    "pillar_stalactite rabbitkinghorn_container red_mushroom rocky rook_nightmare_spawner rubble1 rubble2 "
+    "ruins_statue_head_nogem_spawner ruins_statue_head_spawner ruins_statue_mage_nogem_spawner "
+    "ruins_statue_mage_spawner shadow_container shadowthrall_centipede_spawner skeleton "
+    "skeleton_notplayer_1 skeleton_notplayer_2 slurper_spawner spawnpoint_master spawnpoint_multiplayer "
+    "tentacle wall_ruins wall_ruins_2 wall_stone_2 worm_spawner wormlight_plant"
+    .split())
 
 TASK_NAMES = {
     "Make a pick": "Make a Pick (spawn: grass and forest)",

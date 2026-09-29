@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 import names as handnames
-from build_catalog import hidden_by_default, minimap_icon
+from build_catalog import hidden_by_default, minimap_icon, missing_names_and_images
 
 ATLAS = {name: {"xml": "minimap/minimap_data2.xml", "tex": "minimap/minimap_atlas2.tex"}
          for name in ["antlion.png", "rock.png", "flotsam_heavy.png", "storage_robot_broken.png", "lantern.png", "iceboulder.png"]}
@@ -54,6 +54,33 @@ class HiddenByDefault(IconRules):
 
     def test_hides_a_prefab_without_an_icon(self):
         self.assertEqual(hidden_by_default("beefalo", None), "no minimap icon")
+
+
+def sampled(prefab, name_source="strings", icons=None):
+    return {"id": prefab, "name_source": name_source, "icons": icons or {}, "empirical": {"worlds": 3}}
+
+
+class MissingNamesAndImages(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(mock.patch.object(handnames, "NO_IMAGE", {"tentacle"}))
+
+    def test_accepts_a_named_prefab_with_an_image(self):
+        self.assertEqual(missing_names_and_images([sampled("rock1", icons={"minimap": {}})]), [])
+
+    def test_accepts_a_prefab_declared_imageless(self):
+        self.assertEqual(missing_names_and_images([sampled("tentacle")]), [])
+
+    def test_reports_a_prefab_without_a_name_or_an_image(self):
+        problems = missing_names_and_images([sampled("pillar_cave", name_source="fallback")])
+        self.assertEqual(problems, ["pillar_cave: no display name", "pillar_cave: no image"])
+
+    def test_ignores_prefabs_no_sampled_world_has(self):
+        unsampled = dict(sampled("amulet", name_source="fallback"), empirical={"worlds": 0})
+        self.assertEqual(missing_names_and_images([unsampled]), [])
+
+    def test_reports_a_stale_imageless_declaration(self):
+        self.assertEqual(missing_names_and_images([sampled("tentacle", icons={"inventory": {}})]),
+                         ["tentacle: has an image but is listed in names.NO_IMAGE"])
 
 
 if __name__ == "__main__":

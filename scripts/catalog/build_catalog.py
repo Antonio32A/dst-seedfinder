@@ -25,6 +25,12 @@ WORLDSIM = os.environ.get("WORLDSIM_DIR", "")
 REALGEN = os.environ.get("REALGEN_DIR", "")
 GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together"))
 
+SHARD = "forest"
+SHARD_INPUTS = {
+    "forest": {"worlds": "worlds.jsonl", "static": "static.json", "out": "catalog.json"},
+    "caves": {"worlds": "worlds_caves.jsonl", "static": "static_caves.json", "out": "cave_catalog.json"},
+}
+
 sys.path.insert(0, HERE)
 import map_textures  # noqa: E402
 import names as handnames  # noqa: E402
@@ -44,8 +50,18 @@ def load_json(path):
 # Empirical worlds
 
 
+def cave_world_sources():
+    for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds_caves/[0-9]*.json"))):
+        world = load_json(path)
+        if isinstance(world, dict) and world.get("shard") == "caves":
+            yield "groundtruth_dump", path, summarize(world, "groundtruth_dump")
+
+
 def real_world_sources():
     """Yields (seed, source_label, summary) for every real-game world on disk."""
+    if SHARD == "caves":
+        yield from cave_world_sources()
+        return
     for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds/*.json"))):
         yield "groundtruth_dump", path, summarize(load_json(path), "groundtruth_dump")
     for path in sorted(glob.glob(os.path.join(WORLDSIM, "gt/*/world.json")) if WORLDSIM else []):
@@ -66,11 +82,13 @@ def collect_inputs():
     the static extraction and the level statistics."""
     os.makedirs(INPUTS, exist_ok=True)
     real = list(real_world_sources())
-    emulator = [("emulator", p, load_json(p)) for p in sorted(glob.glob(os.path.join(WORK, "worlds/*.json")))]
-    with open(os.path.join(INPUTS, "worlds.jsonl"), "w") as f:
+    emulator = [] if SHARD == "caves" else [
+        ("emulator", p, load_json(p)) for p in sorted(glob.glob(os.path.join(WORK, "worlds/*.json")))]
+    with open(os.path.join(INPUTS, SHARD_INPUTS[SHARD]["worlds"]), "w") as f:
         for label, path, w in real + emulator:
             f.write(json.dumps({"source": label, "path": os.path.relpath(path, ROOT), "summary": w}, sort_keys=True) + "\n")
-    for name in ["static.json", "level_table_stats.json", "level_world_stats.json"]:
+    snapshots = ["static.json", "level_table_stats.json", "level_world_stats.json"] if SHARD == "forest" else ["static_caves.json"]
+    for name in snapshots:
         path = os.path.join(WORK, "build", name)
         if os.path.exists(path):
             with open(path) as src, open(os.path.join(INPUTS, name), "w") as dst:
@@ -78,7 +96,7 @@ def collect_inputs():
 
 
 def world_records():
-    with open(os.path.join(INPUTS, "worlds.jsonl")) as f:
+    with open(os.path.join(INPUTS, SHARD_INPUTS[SHARD]["worlds"])) as f:
         for line in f:
             r = json.loads(line)
             yield r["source"], r["path"], r["summary"]
@@ -186,7 +204,7 @@ def sandbox_candidates(static, area):
     tasks = forest_tasks(static)
     if area in ("Any", "Rare"):
         return sorted(t for t, d in tasks.items() if not d["level_set_piece_blocker"])
-    return sorted(t for t, d in tasks.items() if d["room_bg"] == area and not d["level_set_piece_blocker"])
+    return sorted(t for t, d in tasks.items() if d.get("room_bg") == area and not d["level_set_piece_blocker"])
 
 
 def room_is_ocean(room):
@@ -629,7 +647,7 @@ def build_tiles(static, worlds):
             "minimap_noise": land_noise(t) if counts else None,
             "minimap_rank": t.get("minimap_rank") if t["land"] else None,
             "ocean_minimap_color": ocean_minimap_color(t),
-            "in_forest_worlds": {"worlds": len(counts), "share": round(len(counts) / n_with_tiles, 4) if n_with_tiles else 0,
+            ("in_%s_worlds" % SHARD): {"worlds": len(counts), "share": round(len(counts) / n_with_tiles, 4) if n_with_tiles else 0,
                                  "min_tiles": min(counts) if counts else 0, "max_tiles": max(counts) if counts else 0,
                                  "median_tiles": statistics.median(counts) if counts else 0},
         })
@@ -785,17 +803,46 @@ def game_build():
         return None
 
 
+def missing_names_and_images(prefabs):
+    """The prefabs the sampled worlds contain that have no display name or no image (a minimap or inventory icon)
+    and are not listed in names.NO_IMAGE as deliberately imageless."""
+    problems = []
+    for prefab in prefabs:
+        if prefab["icons"] and prefab["id"] in handnames.NO_IMAGE:
+            problems.append("%s: has an image but is listed in names.NO_IMAGE" % prefab["id"])
+        if not prefab["empirical"]["worlds"]:
+            continue
+        if prefab["name_source"] == "fallback":
+            problems.append("%s: no display name" % prefab["id"])
+        if not prefab["icons"] and prefab["id"] not in handnames.NO_IMAGE:
+            problems.append("%s: no image" % prefab["id"])
+    return problems
+
+
+def forest_sections(static, layout_reach, ss, emp_setpieces):
+    return {
+        "settings": build_settings(static),
+        "prefab_swaps": build_swaps(static),
+        "tasks": build_tasks(static),
+        "setpieces": build_setpieces(static, layout_reach, emp_setpieces, ss),
+    }
+
+
 def main():
+    global SHARD
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(HERE, "catalog.json"))
-    ap.add_argument("--static", default=os.path.join(INPUTS, "static.json"))
+    ap.add_argument("--shard", choices=sorted(SHARD_INPUTS), default="forest")
+    ap.add_argument("--out")
+    ap.add_argument("--static")
     ap.add_argument("--collect", action="store_true", help="only refresh inputs/ from build/catalog")
     args = ap.parse_args()
+    SHARD = args.shard
+    files = SHARD_INPUTS[SHARD]
     if args.collect:
         collect_inputs()
         return
 
-    static = load_json(args.static)
+    static = load_json(args.static or os.path.join(INPUTS, files["static"]))
     worlds, per_source, disagreements, failed = load_worlds()
     n_worlds = len(worlds)
     emp_prefabs = empirical_counts(worlds, "entity_counts")
@@ -803,7 +850,7 @@ def main():
 
     layout_reach = reachable_layouts(static)
     ss = build_static_set(static, layout_reach)
-    cave_only = cave_only_prefabs(static, layout_reach, ss)
+    cave_only = cave_only_prefabs(static, layout_reach, ss) if SHARD == "forest" else set()
     atlases = load_atlases()
     minimap_icons = load_json(os.path.join(INPUTS, "minimap_icons.json"))
 
@@ -816,14 +863,11 @@ def main():
         "schema_version": 1,
         "game_build": game_build(),
         "generated": datetime.date.today().isoformat(),
-        "shard": "forest",
-        "preset": "SURVIVAL_TOGETHER",
+        "shard": SHARD,
+        "preset": static["level"]["id"],
         "worlds": {"total": n_worlds, "by_source": dict(per_source), "with_tiles": n_tile_worlds,
                    "failed": failed, "seed_disagreements": disagreements},
-        "settings": build_settings(static),
-        "prefab_swaps": build_swaps(static),
-        "tasks": build_tasks(static),
-        "setpieces": build_setpieces(static, layout_reach, emp_setpieces, ss),
+        **(forest_sections(static, layout_reach, ss, emp_setpieces) if SHARD == "forest" else {}),
         "prefabs": prefabs,
         "tiles": tiles,
         "cross_check": {
@@ -832,15 +876,17 @@ def main():
                                      if p["id"] in static_only],
         },
     }
-    with open(args.out, "w") as f:
+    with open(args.out or os.path.join(HERE, files["out"]), "w") as f:
         json.dump(catalog, f, indent=1, sort_keys=False)
         f.write("\n")
-    print("worlds %d (%s), prefabs %d (static %d, empirical %d), empirical-not-static %d, static-only %d, "
-          "setpieces %d, tasks %d, tiles %d" % (
-              n_worlds, dict(per_source), len(prefabs), len(ss.prefabs), len(emp_prefabs), len(empirical_only),
-              len(static_only), len(catalog["setpieces"]), len(catalog["tasks"]), len(tiles)))
+    print("%s: worlds %d (%s), prefabs %d (static %d, empirical %d), empirical-not-static %d, static-only %d, tiles %d" % (
+        SHARD, n_worlds, dict(per_source), len(prefabs), len(ss.prefabs), len(emp_prefabs), len(empirical_only),
+        len(static_only), len(tiles)))
     if disagreements:
         print("seed disagreements:", disagreements)
+    problems = missing_names_and_images(prefabs) if SHARD == "caves" else []
+    if problems:
+        sys.exit("prefabs of the sampled worlds without a name or image (add them to names.py):\n  " + "\n  ".join(problems))
 
 
 if __name__ == "__main__":

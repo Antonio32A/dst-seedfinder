@@ -208,7 +208,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
         },
         witnesses: (shapes) => {
             overlay?.dispose();
-            overlay = createWitnessRenderer(gl, shapes);
+            overlay = createWitnessRenderer(gl, shapes, world.shard);
             redraw();
         },
         dispose: () => {

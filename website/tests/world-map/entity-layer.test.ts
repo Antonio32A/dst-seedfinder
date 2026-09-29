@@ -63,6 +63,31 @@ describe("the entity layer", () => {
         expect(mapWorld({ ...WORLD, setPieces: undefined }).setPieces).toBeUndefined();
     });
 
+    it("renumbers the tentacle pillar links to the prefabs left in the map's world", () => {
+        const world = {
+            prefabs: [prefab("spawnpoint_master", 0, 0), prefab("tentacle_pillar", 0, 0, 800, 0), prefab("tentacle_pillar_atrium", 0, 800, 800, 800)],
+            pillarLinks: new Uint32Array([1, 0, 1, 1, 2, 0, 2, 1])
+        };
+        expect([...mapWorld(world).pillarLinks]).toEqual([0, 0, 0, 1, 1, 0, 1, 1]);
+    });
+
+    it("draws the caves' links between the tentacle pillars a link joins, not the wormholes'", () => {
+        const layer = entityLayer({
+            shard: "caves",
+            prefabs: [prefab("tentacle_pillar", 0, 0, 800, -800), prefab("tentacle_pillar_atrium", 100, 200, 300, 400)],
+            links: new Uint32Array([0, 1]),
+            pillarLinks: new Uint32Array([0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0])
+        });
+        expect([...layer.links].map(rounded)).toEqual([0, 0, 8, -8, 3, 4, 1, 2, 8, -8, 0, 0]);
+        expect(layer.linkGroup).toBe(groupOf("tentacle_pillar", "caves"));
+        expect(MAP_GROUPS[layer.linkGroup].id).toBe("spawn & travel");
+    });
+
+    it("groups the caves' prefabs by the caves catalog", () => {
+        expect(MAP_GROUPS[groupOf("stalagmite", "caves")].id).toBe("rocks");
+        expect(MAP_GROUPS[groupOf("stalagmite", "forest")].id).toBe("other");
+    });
+
     it("places a dot for every entity at its world position, in its group or in other outside the catalog", () => {
         const layer = entityLayer(WORLD);
         expect(dots(layer)).toEqual(expect.arrayContaining([
