@@ -84,6 +84,7 @@ generators=(
     "seedfinder/data/populate.bend:$gen/gen_populate.py"
     "seedfinder/data/ocean_post.bend:$gen/gen_ocean_post.py"
     "seedfinder/data/pow.bend:$gen/gen_pow.py"
+    "seedfinder/data/powf.bend:$gen/gen_powf.py"
     "seedfinder/data/gen_tags.bend:$gen/gen_gen.py"
     "config.schema.json:$gen/gen_schema.py"
     "website/lib/catalog/cave-vocab.ts:$gen/gen_cave_vocab.py"
