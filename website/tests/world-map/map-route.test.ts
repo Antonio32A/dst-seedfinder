@@ -23,7 +23,7 @@ describe("the map route", () => {
     });
 
     it("evaluates a linked config on the map's platform", () => {
-        expect(parseMapConfig(encodeShareParam(CONFIG), "linux")).toEqual({ config: { ...CONFIG, platform: "linux" } });
+        expect(parseMapConfig(encodeShareParam(CONFIG), "linux")).toEqual({ config: { ...CONFIG, shard: "forest", platform: "linux" } });
     });
 
     it.each([

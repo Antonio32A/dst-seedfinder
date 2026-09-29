@@ -1,7 +1,8 @@
 # seedfinder
 
 The real deal. 
-Searches all 2^32 seeds of a DST forest world for worlds matching a filter (see [docs/config.md](../docs/config.md)).
+Searches all 2^32 seeds of a DST forest world for worlds matching a filter (see [docs/config.md](../docs/config.md)),
+and cave worlds by their level table (`--shard caves`).
 
 ## Requirements
 
@@ -47,6 +48,8 @@ build/seedfinder --threads 16 -- world find --start-seed 123456 --limit 1 --json
 build/seedfinder -- world show 123456 --config config.json
 build/seedfinder --threads 16 -- setpiece find 0 4294967295 MiscBoon:7
 build/seedfinder -- setpiece show 123456
+build/seedfinder --threads 16 -- world find --shard caves --limit 5 --config caves.json  # cave seeds by level table
+build/seedfinder -- world show 123456 --shard caves                                     # the caves level table
 build/seedfinder --threads 1 -- gen 123456 --platform windows
 build/seedfinder -- world dump 123456 --platform linux -o 123456.dstw
 build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # worlds/<seed>.dstw, worlds must exist
@@ -55,6 +58,9 @@ build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # 
 `world find` flags on top of the ones in [docs/config.md](../docs/config.md):
 - `--config F`: the search config (without one every seed matches).
 - `--platform windows|linux`: overrides the config's `platform`.
+- `--shard forest|caves`: overrides the config's `shard` (default forest); also on `world show`, `world dump`, `gen` and
+  `setpiece`. The caves shard has the level table only (`world find`, `world show`, `setpiece find|show`): its worldgen
+  is not ported yet, so `gen` and `world dump` refuse it, and so do `--worlds` and the world sections of a config.
 - `FROM [TO]`: scan a seed range instead of the whole space (can't be combined with `--start-seed`).
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them.
 - `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).

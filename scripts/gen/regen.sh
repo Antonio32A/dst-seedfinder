@@ -38,6 +38,7 @@ sidecars=(
     "storygen.json:$lua $gen/extract_storygen.lua"
     "tiles.json:$lua $gen/extract_tiles.lua"
     "ocean_post.json:$lua $gen/extract_ocean_post.lua"
+    "caves.json:$lua $gen/extract_caves.lua"
 )
 
 for entry in "${sidecars[@]}"; do
@@ -63,6 +64,7 @@ done
 generators=(
     "seedfinder/data/catalog.bend:$gen/gen_catalog.py"
     "seedfinder/data/world_catalog.bend:$gen/gen_world_catalog.py"
+    "seedfinder/data/cave_catalog.bend:$gen/gen_cave_catalog.py"
     "seedfinder/data/search_vocab.bend:$gen/gen_search_vocab.py"
     "seedfinder/data/blob.bend:$gen/gen_blob.py"
     "seedfinder/data/strings.bend:$gen/gen_strings.py"
@@ -84,6 +86,7 @@ generators=(
     "seedfinder/data/pow.bend:$gen/gen_pow.py"
     "seedfinder/data/gen_tags.bend:$gen/gen_gen.py"
     "config.schema.json:$gen/gen_schema.py"
+    "website/lib/catalog/cave-vocab.ts:$gen/gen_cave_vocab.py"
 )
 
 for entry in "${generators[@]}"; do

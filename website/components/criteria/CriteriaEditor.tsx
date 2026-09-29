@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import { levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { MAX_CRITERIA } from "@/lib/config/seedfinder-config";
 import { type CriteriaGroup, emptyGroup, type SearchState } from "@/lib/criteria/search-state";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
@@ -14,6 +15,7 @@ interface CriteriaEditorProps {
 export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps) {
     const setGroups = (update: (groups: CriteriaGroup[]) => CriteriaGroup[]) =>
             onChange((current) => ({ ...current, groups: update(current.groups) }));
+    const catalog = levelCatalogOf(state.shard);
     const multiple = state.groups.length > 1;
     const onlyActive = state.groups.filter((group) => !group.passive).length === 1;
 
@@ -36,6 +38,7 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
                             )}
                             <CriteriaGroupCard
                                     group={group}
+                                    catalog={catalog}
                                     index={index}
                                     total={state.groups.length}
                                     onlyActive={onlyActive}

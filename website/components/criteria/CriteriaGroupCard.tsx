@@ -4,12 +4,14 @@ import { useId } from "react";
 import SetPieceSection from "@/components/criteria/set-pieces/SetPieceSection";
 import WorldSection from "@/components/criteria/world/WorldSection";
 import Toggle from "@/components/ui/Toggle";
+import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { CriteriaGroup } from "@/lib/criteria/search-state";
 import BiomeSection from "./BiomeSection";
 import ResourceSection from "./ResourceSection";
 
 interface CriteriaGroupCardProps {
     group: CriteriaGroup;
+    catalog: LevelCatalog;
     index: number;
     total: number;
     onlyActive: boolean;
@@ -19,6 +21,7 @@ interface CriteriaGroupCardProps {
 
 export default function CriteriaGroupCard({
                                               group,
+                                              catalog,
                                               index,
                                               total,
                                               onlyActive,
@@ -56,10 +59,16 @@ export default function CriteriaGroupCard({
                             </p>
                         </div>
                 )}
-                <BiomeSection biomes={group.biomes} onChange={(biomes) => onChange({ ...group, biomes })}/>
-                <ResourceSection swaps={group.swaps} onChange={(swaps) => onChange({ ...group, swaps })}/>
-                <SetPieceSection rules={group.rules} onChange={(rules) => onChange({ ...group, rules })}/>
-                <WorldSection rows={group} onChange={(rows) => onChange({ ...group, ...rows })}/>
+                <BiomeSection catalog={catalog} biomes={group.biomes} onChange={(biomes) => onChange({ ...group, biomes })}/>
+                <ResourceSection catalog={catalog} swaps={group.swaps} onChange={(swaps) => onChange({ ...group, swaps })}/>
+                <SetPieceSection catalog={catalog} rules={group.rules} onChange={(rules) => onChange({ ...group, rules })}/>
+                {catalog.hasWorlds ? (
+                        <WorldSection rows={group} onChange={(rows) => onChange({ ...group, ...rows })}/>
+                ) : (
+                        <p className="muted small">
+                            World details (prefab counts, distances, tiles and routes) aren&apos;t available for the {catalog.shard} yet.
+                        </p>
+                )}
             </section>
     );
 }

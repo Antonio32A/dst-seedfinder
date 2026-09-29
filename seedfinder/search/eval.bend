@@ -101,7 +101,8 @@ def with_config(text: Result<&1, &1, U32 & String, String>, +world_path: String,
     case Fail{(code, message)}:
       IO.die(Unit, 2, message)
     case Done{+t}:
-      with_compiled(Config.config_of(t), t, world_path, fast)
+      Bool.pick(IO(Unit), U32.is_eq(Config.shard_named(t), 2), IO.die(Unit, 2, "config: world eval of the caves shard needs a caves world dump, and there are none yet"),
+        with_compiled(Config.config_of(t), t, world_path, fast))
 
 def eval_paths(config: Maybe<&2, String>, world: Maybe<&2, String>, +fast: Bool) -> IO(Unit):
   match config world:

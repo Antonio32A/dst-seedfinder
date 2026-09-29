@@ -1,10 +1,13 @@
-import { SET_PIECE_BY_ID, SWAPS, TASK_BY_ID } from "@/lib/catalog/level";
+import { CAVE_SWAPS } from "@/lib/catalog/cave-vocab";
+import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
+import { SWAPS } from "@/lib/catalog/level";
 import { LAND_TILES, NON_LAND_TILE_NAMES, PREFAB_BY_ID, PREFAB_GROUP_IDS, PREFAB_VARIANTS } from "@/lib/catalog/world";
 import { hasAtMostTwoDecimals, MAX_MAX_COST, MIN_MAX_COST, roundCredits } from "@/lib/jobs/credits";
 import { isRecord } from "@/lib/records";
 import {
     CONFIG_VERSION,
     DEFAULT_PLATFORM,
+    DEFAULT_SHARD,
     type JobRequest,
     MAX_CRITERIA,
     MAX_DISTANCE,
@@ -22,19 +25,20 @@ import {
     type Platform,
     PLATFORMS,
     ROUTE_ORDERS,
-    type SeedfinderConfig
+    type SeedfinderConfig,
+    type Shard,
+    SHARDS
 } from "./seedfinder-config";
 
-const TASK_IDS: ReadonlySet<string> = new Set(Object.keys(TASK_BY_ID));
-const SET_PIECE_NAMES: ReadonlySet<string> = new Set(Object.keys(SET_PIECE_BY_ID));
 const LAND_TILE_NAMES: ReadonlySet<string> = new Set(LAND_TILES.map((tile) => tile.name));
 const TILE_NAMES: ReadonlySet<string> = new Set([...LAND_TILE_NAMES, ...NON_LAND_TILE_NAMES]);
 const PREFAB_GROUP_NAMES: ReadonlySet<string> = new Set(
     [...PREFAB_GROUP_IDS, ...PREFAB_VARIANTS.keys()].filter((name) => !PREFAB_BY_ID.has(name))
 );
-const SWAP_OPTIONS: ReadonlyMap<string, readonly string[]> = new Map(
-    SWAPS.map((swap) => [swap.id, swap.options.map((option) => option.id)])
-);
+const SWAP_OPTIONS: Record<Shard, ReadonlyMap<string, readonly string[]>> = {
+    forest: new Map(SWAPS.map((swap) => [swap.id, swap.options.map((option) => option.id)])),
+    caves: new Map(CAVE_SWAPS.map((swap) => [swap.category, swap.options]))
+};
 
 class ValidationError extends Error {
 }
@@ -122,11 +126,12 @@ function nameSetOf(check: (name: string, path: string) => void, cap: number, nou
     };
 }
 
-const taskList = namesOf(
-    (task, path) => TASK_IDS.has(task) || fail(`unknown task ${quoted(task)} in ${path}`),
-    MAX_TASKS_PER_LIST,
-    "tasks"
-);
+const taskListOf = (catalog: LevelCatalog) =>
+    namesOf(
+        (task, path) => Object.hasOwn(catalog.taskById, task) || fail(`unknown task ${quoted(task)} in ${path}`),
+        MAX_TASKS_PER_LIST,
+        "tasks"
+    );
 
 const prefabSet = nameSetOf(
     (prefab, path) =>
@@ -147,25 +152,29 @@ const tileSet = nameSetOf(
     "must be a tile name or a list of tile names"
 );
 
-const setPieceBounds: Parse = (value, path) => {
-    const pieces = Object.entries(recordAt(value, path));
-    if (pieces.length > MAX_SET_PIECES_PER_RULE) fail(`${path} has ${pieces.length} set pieces (at most ${MAX_SET_PIECES_PER_RULE})`);
-    const unknown = pieces.find(([name]) => !SET_PIECE_NAMES.has(name));
-    if (unknown) fail(`unknown set piece ${quoted(unknown[0])} in ${path}`);
-    return Object.fromEntries(
-        pieces.map(([name, bound]) => {
-            const valid = Array.isArray(bound) ? bound.length === 2 && bound.every(isUint32) : isUint32(bound);
-            return [name, valid ? bound : fail(`${path}[${quoted(name)}] must be an integer in 0..${MAX_UINT32} or [min, max]`)];
-        })
-    );
-};
+const setPieceBoundsOf =
+    (catalog: LevelCatalog): Parse =>
+        (value, path) => {
+            const pieces = Object.entries(recordAt(value, path));
+            if (pieces.length > MAX_SET_PIECES_PER_RULE) fail(`${path} has ${pieces.length} set pieces (at most ${MAX_SET_PIECES_PER_RULE})`);
+            const unknown = pieces.find(([name]) => !Object.hasOwn(catalog.setPieceById, name));
+            if (unknown) fail(`unknown set piece ${quoted(unknown[0])} in ${path}`);
+            return Object.fromEntries(
+                pieces.map(([name, bound]) => {
+                    const valid = Array.isArray(bound) ? bound.length === 2 && bound.every(isUint32) : isUint32(bound);
+                    return [name, valid ? bound : fail(`${path}[${quoted(name)}] must be an integer in 0..${MAX_UINT32} or [min, max]`)];
+                })
+            );
+        };
 
-const prefabSwaps: Parse = (value, path) => {
-    const swaps = Object.entries(recordAt(value, path));
-    const bad = swaps.find(([category, variant]) => !SWAP_OPTIONS.get(category)?.includes(variant as string));
-    if (bad) fail(`unknown prefab swap ${quoted(bad[0])}: ${quoted(bad[1])} in ${path}`);
-    return Object.fromEntries(swaps);
-};
+const prefabSwapsOf =
+    (shard: Shard): Parse =>
+        (value, path) => {
+            const swaps = Object.entries(recordAt(value, path));
+            const bad = swaps.find(([category, variant]) => !SWAP_OPTIONS[shard].get(category)?.includes(variant as string));
+            if (bad) fail(`unknown prefab swap ${quoted(bad[0])}: ${quoted(bad[1])} in ${path}`);
+            return Object.fromEntries(swaps);
+        };
 
 const metricFields: Fields = { metric: optional(choiceOf(METRICS)), wormholes: optional(flag) };
 
@@ -197,11 +206,7 @@ const route: Parse = (value, path) => {
 
 const rules = (parse: Parse) => optional(listOf(parse, MAX_RULES_PER_SECTION, "rules"));
 
-const criterion = objectOf({
-    passive: optional(flag),
-    tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
-    prefab_swaps: optional(prefabSwaps),
-    setpieces: rules(objectOf({ tasks: optional(taskList), required: optional(setPieceBounds) })),
+const worldSections = {
     counts: rules(
         objectOf({
             prefab: required(prefabSet),
@@ -221,29 +226,66 @@ const criterion = objectOf({
     ),
     tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
     routes: rules(route)
-});
-
-const criteriaList = listOf(criterion, MAX_CRITERIA, "entries");
-
-const criteria: Parse = (value, path) => {
-    const entries = criteriaList(value, path);
-    const allPassive = entries.length > 0 && entries.every((entry) => (entry as {
-        passive?: boolean
-    }).passive === true);
-    return allPassive ? fail("every criteria entry is passive (at least one must not be)") : entries;
 };
 
-const configShape = objectOf({
-    version: optional((value) => (value === CONFIG_VERSION ? value : fail(`unsupported version ${quoted(value)}`))),
-    platform: optional((value) =>
-        PLATFORMS.includes(value as Platform) ? value : fail(`unknown platform ${quoted(value)} (${PLATFORMS.join(" or ")})`)
-    ),
-    settings: optional((value, path) => {
-        const custom = Object.entries(recordAt(value, path)).find(([, level]) => level !== "default");
-        return custom ? fail(`only default settings are supported (${custom[0]})`) : value;
-    }),
-    criteria: optional(criteria)
-});
+const worldSectionsOn = (catalog: LevelCatalog): Fields =>
+    catalog.hasWorlds
+        ? worldSections
+        : Object.fromEntries(
+            Object.keys(worldSections).map((section) => [
+                section,
+                optional((_value, path) => fail(`${path} is not supported for the ${catalog.shard} shard yet (only tasks, prefab_swaps and setpieces are)`))
+            ])
+        );
+
+const criterionOf = (catalog: LevelCatalog) => {
+    const taskList = taskListOf(catalog);
+    return objectOf({
+        passive: optional(flag),
+        tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
+        prefab_swaps: optional(prefabSwapsOf(catalog.shard)),
+        setpieces: rules(objectOf({ tasks: optional(taskList), required: optional(setPieceBoundsOf(catalog)) })),
+        ...worldSectionsOn(catalog)
+    });
+};
+
+const criteriaOf = (catalog: LevelCatalog): Parse => {
+    const criteriaList = listOf(criterionOf(catalog), MAX_CRITERIA, "entries");
+    return (value, path) => {
+        const entries = criteriaList(value, path);
+        const allPassive = entries.length > 0 && entries.every((entry) => (entry as {
+            passive?: boolean
+        }).passive === true);
+        return allPassive ? fail("every criteria entry is passive (at least one must not be)") : entries;
+    };
+};
+
+const shardOf: Parse = (value) =>
+    SHARDS.includes(value as Shard) ? value : fail(`unknown shard ${quoted(value)} (${SHARDS.join(" or ")})`);
+
+const configShapeOf = (shard: Shard) =>
+    objectOf({
+        version: optional((value) => (value === CONFIG_VERSION ? value : fail(`unsupported version ${quoted(value)}`))),
+        shard: optional(shardOf),
+        platform: optional((value) =>
+            PLATFORMS.includes(value as Platform) ? value : fail(`unknown platform ${quoted(value)} (${PLATFORMS.join(" or ")})`)
+        ),
+        settings: optional((value, path) => {
+            const custom = Object.entries(recordAt(value, path)).find(([, level]) => level !== "default");
+            return custom ? fail(`only default settings are supported (${custom[0]})`) : value;
+        }),
+        criteria: optional(criteriaOf(levelCatalogOf(shard)))
+    });
+
+const CONFIG_SHAPES: Record<Shard, Parse<Record<string, unknown>>> = {
+    forest: configShapeOf("forest"),
+    caves: configShapeOf("caves")
+};
+
+/** The shard a raw config names; anything that isn't a shard name reads as the forest, the shard parse reports it. */
+function shardNamed(value: unknown): Shard {
+    return isRecord(value) && SHARDS.includes(value.shard as Shard) ? (value.shard as Shard) : DEFAULT_SHARD;
+}
 
 function validated<T>(check: () => T): Validation<T> {
     try {
@@ -256,9 +298,10 @@ function validated<T>(check: () => T): Validation<T> {
 
 function parseConfig(value: unknown): SeedfinderConfig {
     try {
-        const { platform, criteria } = configShape(value, ROOT);
+        const { shard, platform, criteria } = CONFIG_SHAPES[shardNamed(value)](value, ROOT);
         return {
             version: CONFIG_VERSION,
+            shard: shard ?? DEFAULT_SHARD,
             platform: platform ?? DEFAULT_PLATFORM,
             ...(criteria === undefined ? {} : { criteria })
         } as SeedfinderConfig;
@@ -283,7 +326,7 @@ function creditsIn(value: unknown, context: string, min: number, max: number): n
 }
 
 /**
- * Validates against search format v1. `version` and `platform` are filled in, every `settings` level must be
+ * Validates against search format v1. `version`, `shard` and `platform` are filled in, every `settings` level must be
  * `"default"` and `settings` is dropped; errors read like the finder's.
  */
 export function validateConfig(config: unknown): Validation<SeedfinderConfig> {

@@ -3,7 +3,7 @@
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
-import { SET_PIECE_BY_ID, SET_PIECE_KIND_BY_ID, TASKS } from "@/lib/catalog/level";
+import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { SetPieceInfo, TaskInfo } from "@/lib/catalog/level-types";
 import {
     COUNT_MODES,
@@ -24,12 +24,13 @@ const SINGLE_COUNT_MODES = new Set<CountMode>(["atLeast", "exactly"]);
 
 type Update = (patch: Partial<PieceRule>) => void;
 
-function PieceHeader({ piece, name, onRemove }: {
+function PieceHeader({ piece, name, catalog, onRemove }: {
     piece: SetPieceInfo | undefined;
+    catalog: LevelCatalog;
     name: string;
     onRemove: () => void
 }) {
-    const kindName = piece && SET_PIECE_KIND_BY_ID[piece.kind].name;
+    const kindName = piece && catalog.setPieceKindById[piece.kind]?.name;
     const contents = piece?.contents ?? [];
     return (
             <>
@@ -80,8 +81,9 @@ function CountControls({ rule, name, max, hint, update }: CountControlsProps) {
     );
 }
 
-function ScopeControls({ rule, name, fixedTasks, update }: {
+function ScopeControls({ rule, name, catalog, fixedTasks, update }: {
     rule: PieceRule;
+    catalog: LevelCatalog;
     name: string;
     fixedTasks?: TaskInfo[];
     update: Update
@@ -100,7 +102,8 @@ function ScopeControls({ rule, name, fixedTasks, update }: {
                 {rule.scopeMode === "only" && (
                         <TaskChecklist
                                 label={`Biomes for ${name}`}
-                                tasks={fixedTasks ?? TASKS}
+                                catalog={catalog}
+                                tasks={fixedTasks ?? catalog.tasks}
                                 selected={rule.scopeTasks}
                                 onChange={(scopeTasks) => update({ scopeTasks })}
                         />
@@ -111,17 +114,18 @@ function ScopeControls({ rule, name, fixedTasks, update }: {
 
 interface SetPieceRuleRowProps {
     rule: PieceRule;
+    catalog: LevelCatalog;
     onChange: (rule: PieceRule) => void;
     onRemove: () => void;
 }
 
-export default function SetPieceRuleRow({ rule, onChange, onRemove }: SetPieceRuleRowProps) {
-    const piece = SET_PIECE_BY_ID[rule.pieceId];
+export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: SetPieceRuleRowProps) {
+    const piece = catalog.setPieceById[rule.pieceId];
     const name = piece?.name ?? rule.pieceId;
-    const max = ruleMax(rule);
+    const max = ruleMax(rule, catalog);
     const fixedTasks =
             piece?.kind === "fixed"
-                    ? TASKS.filter((task) => piece.candidateTasks?.includes(task.id) || rule.scopeTasks.includes(task.id))
+                    ? catalog.tasks.filter((task) => piece.candidateTasks?.includes(task.id) || rule.scopeTasks.includes(task.id))
                     : undefined;
     const hint = fixedTasks ? `${piece.fixedCount ?? piece.maxCount} per world, at most 1 per biome` : `up to ${max} per world`;
 
@@ -129,9 +133,9 @@ export default function SetPieceRuleRow({ rule, onChange, onRemove }: SetPieceRu
 
     return (
             <li className="rule">
-                <PieceHeader piece={piece} name={name} onRemove={onRemove}/>
-                <CountControls rule={effectiveRule(rule)} name={name} max={max} hint={hint} update={update}/>
-                <ScopeControls rule={rule} name={name} fixedTasks={fixedTasks} update={update}/>
+                <PieceHeader piece={piece} name={name} catalog={catalog} onRemove={onRemove}/>
+                <CountControls rule={effectiveRule(rule, catalog)} name={name} max={max} hint={hint} update={update}/>
+                <ScopeControls rule={rule} name={name} catalog={catalog} fixedTasks={fixedTasks} update={update}/>
             </li>
     );
 }

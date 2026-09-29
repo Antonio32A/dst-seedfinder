@@ -22,7 +22,7 @@ def word(+args: List<&2, String>, i: Nat) -> String:
   Maybe.default(&2, String, List.get(&2, String, args, i), "")
 
 def value_flags() -> List<&2, String>:
-  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--kk", "-o"]
+  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--shard", "--kk", "-o"]
 
 def flag_value(args: List<&2, String>, +flag: String) -> Maybe<&2, String>:
   match args:
@@ -32,6 +32,15 @@ def flag_value(args: List<&2, String>, +flag: String) -> Maybe<&2, String>:
       Bool.pick(Maybe<&2, String>, String.eq(arg, flag), List.head(&2, String, rest),
         Bool.pick(Maybe<&2, String>, String.starts_with(arg, flag ++ "="), Some{String.drop(arg, Nat.add(String.length(flag), 1n))},
           flag_value(rest, flag)))
+
+# The arguments without `flag VALUE` or `flag=VALUE`.
+def without_value_flag(args: List<&2, String>, +flag: String) -> List<&2, String>:
+  match args:
+    case Nil{}:
+      Nil{}
+    case Con{+arg, +rest}:
+      Bool.pick(List<&2, String>, String.eq(arg, flag), List.drop(&2, String, rest, 1n),
+        Bool.pick(List<&2, String>, String.starts_with(arg, flag ++ "="), without_value_flag(rest, flag), arg <> without_value_flag(rest, flag)))
 
 def is_inline_flag(flags: List<&2, String>, +arg: String) -> Bool:
   match flags:
@@ -139,6 +148,15 @@ def platform_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
     case Some{+text}:
       Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "windows"), Done{1},
         Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "linux"), Done{2}, Fail{(2, "--platform must be windows or linux, got \"" ++ text ++ "\"")}))
+
+# The --shard flag: 0 when absent (the config's shard), 1 forest, 2 caves.
+def shard_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
+  match m:
+    case None{}:
+      Done{0}
+    case Some{+text}:
+      Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "forest"), Done{1},
+        Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "caves"), Done{2}, Fail{(2, "--shard must be forest or caves, got \"" ++ text ++ "\"")}))
 
 # The --kk flag: the KK engine, native (the C KK, the default) or bend (kk.bend, for validation).
 def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:

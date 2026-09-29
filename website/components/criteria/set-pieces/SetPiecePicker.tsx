@@ -2,10 +2,11 @@
 
 import { useId, useMemo, useRef, useState } from "react";
 import { useModal } from "@/components/ui/use-modal";
-import { SET_PIECE_KINDS, SET_PIECES } from "@/lib/catalog/level";
+import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { SetPieceInfo } from "@/lib/catalog/level-types";
 
 interface SetPiecePickerProps {
+    catalog: LevelCatalog;
     open: boolean;
     onPick: (pieceId: string) => void;
     onClose: () => void;
@@ -28,7 +29,7 @@ function PieceButton({ piece, onPick }: { piece: SetPieceInfo; onPick: (pieceId:
     );
 }
 
-export default function SetPiecePicker({ open, onPick, onClose }: SetPiecePickerProps) {
+export default function SetPiecePicker({ catalog, open, onPick, onClose }: SetPiecePickerProps) {
     const search = useRef<HTMLInputElement>(null);
     const dialog = useModal(open, search);
     const titleId = useId();
@@ -36,13 +37,13 @@ export default function SetPiecePicker({ open, onPick, onClose }: SetPiecePicker
 
     const kinds = useMemo(() => {
         const needle = query.trim().toLowerCase();
-        return SET_PIECE_KINDS.map((kind) => ({
+        return catalog.setPieceKinds.map((kind) => ({
             kind,
-            pieces: SET_PIECES.filter(
+            pieces: catalog.setPieces.filter(
                     (piece) => piece.kind === kind.id && [piece.name, piece.id, piece.description, kind.name, ...piece.contents].join(" ").toLowerCase().includes(needle)
             )
         })).filter((group) => group.pieces.length > 0);
-    }, [query]);
+    }, [catalog, query]);
 
     const close = () => {
         setQuery("");

@@ -40,21 +40,32 @@ def entry_json(entries: List<&2, Config.Criteria>, +seed: U32) -> String:
 def hit_fields(+entries: List<&2, Config.Criteria>, +seed: U32) -> String:
   "\"entry\":" ++ entry_json(entries, seed) ++ ",\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
 
-def hits_json(+entries: List<&2, Config.Criteria>, hits: List<&2, U32>) -> List<&2, String>:
+# A hit: its seed and the fields of its JSON object after the seed.
+type Hit is Data:
+  Hit{seed: U32, fields: String}
+
+def hits_of(+entries: List<&2, Config.Criteria>, hits: List<&2, U32>) -> List<&2, Hit>:
   match hits:
     case Nil{}:
       Nil{}
     case Con{+seed, rest}:
-      ("{\"seed\":" ++ U32.show(seed) ++ "," ++ hit_fields(entries, seed) ++ "}") <> hits_json(entries, rest)
+      Hit{seed, hit_fields(entries, seed)} <> hits_of(entries, rest)
 
-def print_hit_lines(+entries: List<&2, Config.Criteria>, hits: List<&2, U32>) -> IO(Unit):
+def hits_json(hits: List<&2, Hit>) -> List<&2, String>:
+  match hits:
+    case Nil{}:
+      Nil{}
+    case Con{Hit{+seed, +fields}, rest}:
+      ("{\"seed\":" ++ U32.show(seed) ++ "," ++ fields ++ "}") <> hits_json(rest)
+
+def print_hit_lines(hits: List<&2, Hit>) -> IO(Unit):
   match hits:
     case Nil{}:
       IO.pure(Unit, Unit{})
-    case Con{+seed, rest}:
+    case Con{Hit{+seed, +fields}, rest}:
       do IO<Unit>:
-        IO.print(U32.show(seed) ++ " {" ++ hit_fields(entries, seed) ++ "}")
-        print_hit_lines(entries, rest)
+        IO.print(U32.show(seed) ++ " {" ++ fields ++ "}")
+        print_hit_lines(rest)
 
 def exit_status(+found: U32) -> IO(Unit):
   Bool.pick(IO(Unit), U32.is_zero(found), IO.die(Unit, 1, "no hits"), IO.pure(Unit, Unit{}))
@@ -66,20 +77,25 @@ def platform_name(windows: Bool) -> String:
     case False{}:
       "linux"
 
-def print_report(
-  json: Bool, windows: Bool, +entries: List<&2, Config.Criteria>, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
+def print_hits_report(
+  json: Bool, windows: Bool, +hits: List<&2, Hit>, +start: U32, +scanned: Nat, +found: U32, +code: U32
 ) -> IO(Unit):
   match json:
     case True{}:
       do IO<Unit>:
-        IO.print("{\"version\":1,\"platform\":\"" ++ platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits_json(entries, hits), ",") ++ "]," ++ position_json(start, scanned, code)
+        IO.print("{\"version\":1,\"platform\":\"" ++ platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits_json(hits), ",") ++ "]," ++ position_json(start, scanned, code)
           ++ ",\"stopped\":\"" ++ stop_name(code) ++ "\"}")
         exit_status(found)
     case False{}:
       do IO<Unit>:
-        print_hit_lines(entries, hits)
+        print_hit_lines(hits)
         IO.print("done {" ++ position_json(start, scanned, code) ++ ",\"hits\":" ++ U32.show(found) ++ ",\"stopped\":\"" ++ stop_name(code) ++ "\"}")
         exit_status(found)
+
+def print_report(
+  json: Bool, windows: Bool, +entries: List<&2, Config.Criteria>, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
+) -> IO(Unit):
+  print_hits_report(json, windows, hits_of(entries, hits), start, scanned, found, code)
 
 def json_escaped(+code: U32) -> String:
   Bool.pick(String, U32.is_eq(code, 34) || U32.is_eq(code, 92), SCon{Chr{92}, SCon{Chr{code}, SNil{}}},

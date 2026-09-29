@@ -17,6 +17,7 @@ import { canRunSeedfinder } from "@/lib/browser-search/seedfinder-wasm";
 import { useLocalSearch } from "@/lib/browser-search/use-local-search";
 import { copyText } from "@/lib/client/clipboard";
 import { useAccount } from "@/lib/client/use-account";
+import { SHARD_LABELS, type Shard } from "@/lib/config/seedfinder-config";
 import {
     decodeShareParam,
     DEFAULT_WANTED,
@@ -28,6 +29,7 @@ import {
     type SearchState,
     SETTINGS_DROPPED_NOTICE,
     STORAGE_KEY,
+    switchShard,
     toSeedfinderConfig,
     validateSearch,
     WANTED_OPTIONS
@@ -36,6 +38,7 @@ import { clamp } from "@/lib/criteria/state-helpers";
 import { DEFAULT_MAX_COST, isValidMaxCost } from "@/lib/jobs/credits";
 import Intro from "./Intro";
 import Presets from "./Presets";
+import ShardSwitch from "./ShardSwitch";
 import SiteHeader from "./SiteHeader";
 import ToolsPanel from "./ToolsPanel";
 
@@ -126,6 +129,14 @@ export default function SeedFinderApp() {
         }
     }, [config, wanted, maxCost, target, threads, restored]);
 
+    const changeShard = (shard: Shard) => {
+        const switched = switchShard(state, shard);
+        setState(switched.state);
+        if (switched.dropped > 0) {
+            notify(`Switched to the ${SHARD_LABELS[shard].toLowerCase()}. Dropped ${switched.dropped} pick${switched.dropped === 1 ? "" : "s"} that only exist in the other shard.`);
+        }
+    };
+
     const pickPreset = (preset: Preset) => {
         if (state.groups.every(isEmptyGroup)) setState({ ...preset.build(), platform: state.platform });
         else setPendingPreset(preset);
@@ -136,7 +147,8 @@ export default function SeedFinderApp() {
                 <SiteHeader account={account}/>
                 <main className="content">
                     <Intro/>
-                    <Presets onPick={pickPreset}/>
+                    <ShardSwitch shard={state.shard} onChange={changeShard}/>
+                    {state.shard === "forest" && <Presets onPick={pickPreset}/>}
                     <CriteriaEditor state={state} onChange={setState}/>
                     <SearchPanel
                             config={config}

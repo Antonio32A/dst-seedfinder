@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 import ids  # noqa: E402
 
+FNV_OFFSET = 0x811C9DC5
+FNV_PRIME = 0x01000193
 CATEGORIES = ["task", "room", "layout_area", "layout_count", "layout_initfn", "maptag", "noise", "bunch"]
 
 
@@ -19,6 +21,14 @@ def category(context):
     if head == "room" and context.endswith(":prefabdata"):
         return "room"
     return head
+
+
+def fingerprint(key):
+    """FNV-1a (32 bit) of the closure variant's body and upvalues: what a hand port pins itself to."""
+    h = FNV_OFFSET
+    for byte in key.encode("utf-8"):
+        h = ((h ^ byte) * FNV_PRIME) & 0xFFFFFFFF
+    return h
 
 
 def main():
@@ -39,6 +49,9 @@ def main():
     m.lines.append("")
     m.table("closure_categories", rows, "Row id: the categories of the contexts it appears in.")
     m.const("closure_count", len(closures))
+    cases = "\n".join(f"    case {c['id']}:\n      {fingerprint(c['key'])}" for c in closures)
+    m.comment("Row id: the fingerprint (FNV-1a of the variant's body and upvalues) that hand ports pin themselves to.")
+    m.code(f"def closure_fingerprint(+id: U32) -> U32:\n  match id:\n{cases}\n    case _:\n      0")
     m.emit()
     if sys.argv[1:] != ["-"]:
         (blob.GEN / "out" / "closures.json").write_text(json.dumps(

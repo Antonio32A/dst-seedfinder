@@ -1,0 +1,188 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { CAVE_OPTIONAL_TASK_IDS, CAVE_PIECES, CAVE_REQUIRED_TASK_IDS } from "@/lib/catalog/cave-vocab";
+import { levelCatalogOf } from "@/lib/catalog/level-catalog";
+import { validateConfig } from "@/lib/config/validate-config";
+import { parseJobResult } from "@/lib/jobs/job-result";
+import { parseOutputLine } from "@/lib/jobs/runner-output";
+import {
+    defaultState,
+    emptyGroup,
+    fromSeedfinderConfig,
+    newRule,
+    switchShard,
+    toSeedfinderConfig,
+    validateSearch
+} from "@/lib/criteria/search-state";
+
+const SCHEMA = JSON.parse(readFileSync(fileURLToPath(new URL("../../config.schema.json", import.meta.url)), "utf8")) as {
+    $defs: { caveTaskId: { enum: string[] }; caveSetPieceName: { enum: string[] } };
+};
+
+const forest = levelCatalogOf("forest");
+const caves = levelCatalogOf("caves");
+
+describe("the caves catalog", () => {
+    it("has the 33 required and 18 optional tasks, 8 of them in a world", () => {
+        expect(CAVE_REQUIRED_TASK_IDS).toHaveLength(33);
+        expect(CAVE_OPTIONAL_TASK_IDS).toHaveLength(18);
+        expect(caves.optionalTasks.map((task) => task.id)).toEqual(CAVE_OPTIONAL_TASK_IDS);
+        expect(caves.optionalPicked).toBe(8);
+        expect(caves.hasWorlds).toBe(false);
+    });
+
+    it("describes every task and set piece the finder knows", () => {
+        for (const task of caves.tasks) expect(task.name.length).toBeGreaterThan(0);
+        for (const piece of caves.setPieces) expect(piece.name.length).toBeGreaterThan(0);
+        expect(caves.setPieces).toHaveLength(CAVE_PIECES.length);
+    });
+
+    it("agrees with the config schema on the names", () => {
+        expect([...caves.tasks.map((task) => task.id)].sort()).toEqual(SCHEMA.$defs.caveTaskId.enum);
+        expect([...caves.setPieces.map((piece) => piece.id)].sort()).toEqual(SCHEMA.$defs.caveSetPieceName.enum);
+    });
+
+    it("has no grass swap, since the grass is always regular", () => {
+        expect(caves.swaps.map((swap) => swap.id)).toEqual(["twigs", "berries"]);
+        expect(forest.swaps.map((swap) => swap.id)).toEqual(["grass", "twigs", "berries"]);
+    });
+
+    it("leaves the forest catalog as it was", () => {
+        expect(forest.tasks).toHaveLength(25);
+        expect(forest.optionalPicked).toBe(5);
+        expect(forest.hasWorlds).toBe(true);
+    });
+});
+
+describe("a search on the caves", () => {
+    const search = (shard: "forest" | "caves") => ({ ...defaultState(), shard, groups: [emptyGroup()] });
+
+    it("carries the shard in its config", () => {
+        expect(toSeedfinderConfig(search("caves")).shard).toBe("caves");
+        expect(toSeedfinderConfig(defaultState()).shard).toBe("forest");
+    });
+
+    it("writes cave tasks and set pieces as the finder reads them", () => {
+        const state = search("caves");
+        state.groups[0].biomes = { MoreAltars: "include", SpiderLand: "exclude" };
+        state.groups[0].swaps = { twigs: "twiggy trees" };
+        state.groups[0].rules = [{ ...newRule("MiscBoon", caves), min: 2 }];
+        const config = toSeedfinderConfig(state);
+        expect(config.criteria).toEqual([
+            {
+                passive: false,
+                tasks: { required: ["MoreAltars"], excluded: ["SpiderLand"] },
+                prefab_swaps: { twigs: "twiggy trees" },
+                setpieces: [{ required: { MiscBoon: 2 } }]
+            }
+        ]);
+        expect(validateConfig(config).ok).toBe(true);
+        expect(validateSearch(state).filter((issue) => issue.severity === "error")).toEqual([]);
+    });
+
+    it("reads a config back into the shard it names", () => {
+        const back = fromSeedfinderConfig({ version: 1, shard: "caves", criteria: [{ tasks: { required: ["MoreAltars", "Great Plains"] } }] });
+        expect(back.shard).toBe("caves");
+        expect(back.groups[0].biomes).toEqual({ MoreAltars: "include" });
+        expect(fromSeedfinderConfig({ version: 1 }).shard).toBe("forest");
+    });
+
+    it("allows at most eight biomes in a world, not five", () => {
+        const state = search("caves");
+        state.groups[0].biomes = Object.fromEntries(CAVE_OPTIONAL_TASK_IDS.slice(0, 6).map((id) => [id, "include" as const]));
+        expect(validateSearch(state).some((issue) => issue.severity === "error")).toBe(false);
+        state.groups[0].biomes = Object.fromEntries(CAVE_OPTIONAL_TASK_IDS.slice(0, 9).map((id) => [id, "include" as const]));
+        expect(validateSearch(state).some((issue) => issue.severity === "error")).toBe(true);
+    });
+});
+
+describe("switching shard", () => {
+    it("keeps the resources both shards have and drops the rest", () => {
+        const state = defaultState();
+        state.groups[0].biomes = { "Killer bees!": "include" };
+        state.groups[0].swaps = { grass: "grass gekko", twigs: "twiggy trees" };
+        state.groups[0].rules = [newRule("MooseNest", forest), newRule("MiscBoon", forest)];
+        const { state: cave, dropped } = switchShard(state, "caves");
+        expect(cave.shard).toBe("caves");
+        expect(cave.groups[0].biomes).toEqual({});
+        expect(cave.groups[0].swaps).toEqual({ twigs: "twiggy trees" });
+        expect(cave.groups[0].rules.map((rule) => rule.pieceId)).toEqual(["MiscBoon"]);
+        expect(dropped).toBe(3);
+    });
+
+    it("does nothing when the shard is the same", () => {
+        const state = defaultState();
+        expect(switchShard(state, "forest")).toEqual({ state, dropped: 0 });
+    });
+
+    it("drops the world details, which the caves don't have yet", () => {
+        const state = defaultState();
+        state.groups[0].counts = [{ key: "a", prefabs: ["beefalo"], mode: "atLeast", min: 1, max: 1, near: null }];
+        const { state: cave, dropped } = switchShard(state, "caves");
+        expect(cave.groups[0].counts).toEqual([]);
+        expect(dropped).toBe(1);
+    });
+});
+
+describe("validating a config", () => {
+    it("checks the tasks and set pieces against the shard the config names", () => {
+        expect(validateConfig({ shard: "caves", criteria: [{ tasks: { required: ["Great Plains"] } }] })).toEqual({
+            ok: false,
+            error: "config: unknown task \"Great Plains\" in criteria[0].tasks.required"
+        });
+        expect(validateConfig({ criteria: [{ tasks: { required: ["MoreAltars"] } }] })).toEqual({
+            ok: false,
+            error: "config: unknown task \"MoreAltars\" in criteria[0].tasks.required"
+        });
+        expect(validateConfig({ shard: "caves", criteria: [{ setpieces: [{ required: { CaveEntrance: 1 } }] }] }).ok).toBe(false);
+    });
+
+    it("rejects an unknown shard and the world sections of the caves like the finder", () => {
+        expect(validateConfig({ shard: "nether" })).toEqual({ ok: false, error: "config: unknown shard \"nether\" (forest or caves)" });
+        expect(validateConfig({ shard: "caves", criteria: [{ counts: [{ prefab: "rook" }] }] })).toEqual({
+            ok: false,
+            error: "config: criteria[0].counts is not supported for the caves shard yet (only tasks, prefab_swaps and setpieces are)"
+        });
+    });
+
+    it("has no gekko in the caves", () => {
+        expect(validateConfig({ shard: "caves", criteria: [{ prefab_swaps: { grass: "grass gekko" } }] }).ok).toBe(false);
+        expect(validateConfig({ shard: "caves", criteria: [{ prefab_swaps: { grass: "regular grass" } }] }).ok).toBe(true);
+        expect(validateConfig({ criteria: [{ prefab_swaps: { grass: "grass gekko" } }] }).ok).toBe(true);
+    });
+
+    it("fills in the forest", () => {
+        const checked = validateConfig({ version: 1 });
+        expect(checked.ok && checked.value.shard).toBe("forest");
+    });
+});
+
+describe("the output of a caves search", () => {
+    const lines = readFileSync(fileURLToPath(new URL("./fixtures/caves-find.txt", import.meta.url)), "utf8").trim().split("\n");
+    const parsed = lines.map(parseOutputLine);
+
+    it("is read by the runner's output parser like a forest search's", () => {
+        expect(parsed.map((line) => line?.kind)).toEqual(["hit", "hit", "done"]);
+        const hit = parsed[0];
+        expect(hit?.kind === "hit" && hit.hit.seed).toBe(3);
+    });
+
+    it("names only tasks and set pieces of the caves catalog", () => {
+        for (const line of parsed) {
+            if (line?.kind !== "hit") continue;
+            expect(line.hit.level.tasks).toHaveLength(41);
+            expect(new Set(Object.keys(line.hit.level.prefab_swaps))).toEqual(new Set(["grass", "twigs", "berries"]));
+            for (const task of line.hit.level.tasks) {
+                expect(caves.taskById[task.task]).toBeDefined();
+                for (const piece of task.set_pieces) expect(caves.setPieceById[piece]).toBeDefined();
+            }
+        }
+    });
+
+    it("is a job result the site can show", () => {
+        const hits = parsed.flatMap((line) => (line?.kind === "hit" ? [line.hit] : []));
+        const result = parseJobResult({ version: 1, platform: "windows", hits, scanned: 9, last_scanned: 9, next_seed: 10, stopped: "limit" });
+        expect(result?.kind === "search" && result.search.hits.map((hit) => hit.seed)).toEqual([3, 9]);
+    });
+});

@@ -20,6 +20,7 @@ import ../f32/ops.bend as F32Ops
 import ../ocean/convert.bend as OceanConvert
 import ../ocean/convert_noise.bend as ConvertNoise
 import ../ocean/convert_blend.bend as ConvertBlend
+import ../populate/pins.bend as PopulatePins
 
 # Lane G (grid) laws. Each law is followed by its proof def of the same name, in this file.
 # Rules: tiny U32 golden values, each probed alone first.
@@ -180,4 +181,18 @@ law tiles_noise_eighths_mid:
   {Perlin.eighths_value(3, 5) == F64Repr.F64{1071283952, 0} : F64Repr.F64}
 
 def tiles_noise_eighths_mid():
+  {==}
+
+# The closures that counts.bend and layout.bend port by hand are found by id, and an unknown id counts 0: each port is
+# pinned to the fingerprint of the game code it ports, so a regeneration that renumbers or edits a closure fails here.
+law ported_closures_line_up:
+  {PopulatePins.line_up(PopulatePins.ported()) == True{} : Bool}
+
+def ported_closures_line_up():
+  {==}
+
+law ported_closures_are_all_pinned:
+  {PopulatePins.every_ported_closure_is_pinned() == True{} : Bool}
+
+def ported_closures_are_all_pinned():
   {==}

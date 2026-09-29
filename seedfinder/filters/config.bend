@@ -273,6 +273,41 @@ def platform_of(m: Maybe<&2, Json.Json>) -> Result<&1, &1, U32 & String, Bool>:
       Bool.pick(Result<&1, &1, U32 & String, Bool>, Parse.is_text(json, "windows") || Parse.is_text(json, "linux"),
         Done{Parse.is_text(json, "windows")}, Fail{Parse.failure("unknown platform " ++ Json.dump_text(json) ++ " (windows or linux)")})
 
+# The config's shard key: 0 when absent, 1 forest, 2 caves.
+def shard_of(m: Maybe<&2, Json.Json>) -> Result<&1, &1, U32 & String, U32>:
+  match m:
+    case None{}:
+      Done{0}
+    case Some{+json}:
+      Bool.pick(Result<&1, &1, U32 & String, U32>, Parse.is_text(json, "forest"), Done{1},
+        Bool.pick(Result<&1, &1, U32 & String, U32>, Parse.is_text(json, "caves"), Done{2},
+          Fail{Parse.failure("unknown shard " ++ Json.dump_text(json) ++ " (forest or caves)")}))
+
+def shard_code(m: Maybe<&2, Json.Json>) -> U32:
+  match m:
+    case Some{Json.JStr{+name}}:
+      Bool.pick(U32, String.eq(name, "caves"), 2, Bool.pick(U32, String.eq(name, "forest"), 1, 0))
+    case _:
+      0
+
+def object_shard(json: Json.Json) -> U32:
+  match json:
+    case Json.JObj{+fields}:
+      shard_code(Parse.field(fields, "shard"))
+    case _:
+      0
+
+def parsed_shard(r: Result<&1, &1, U32 & String, Json.Json>) -> U32:
+  match r:
+    case Done{json}:
+      object_shard(json)
+    case Fail{_}:
+      0
+
+# The shard a config text names (1 forest, 2 caves), 0 when it names none or is not a valid config.
+def shard_named(+text: String) -> U32:
+  parsed_shard(Json.parse(text))
+
 def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
   match entries:
     case Nil{}:
@@ -317,9 +352,10 @@ def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
 def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
   do Result<&1, &1, U32 & String, Config>:
     json : Json.Json <- Json.parse(text)
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "criteria"], "the config")
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "criteria", "shard"], "the config")
     +windows : Bool <- platform_of(Parse.field(fields, "platform"))
     supported : Unit <- supported_version(Parse.field(fields, "version"))
+    shard : U32 <- shard_of(Parse.field(fields, "shard"))
     settings : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "settings"), "settings")
     defaults : Unit <- default_settings(settings)
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "criteria"), "criteria")

@@ -1,8 +1,8 @@
 "use client";
 
 import SegmentedControl from "@/components/ui/SegmentedControl";
-import { OPTIONAL_TASKS } from "@/lib/catalog/level";
-import { type BiomeChoice, MAX_BIOME_CHOICES } from "@/lib/criteria/search-state";
+import type { LevelCatalog } from "@/lib/catalog/level-catalog";
+import type { BiomeChoice } from "@/lib/criteria/search-state";
 import { withEntry } from "@/lib/criteria/state-helpers";
 
 type BiomeValue = BiomeChoice | "any";
@@ -14,11 +14,13 @@ const CHOICES: { value: BiomeValue; label: string }[] = [
 ];
 
 interface BiomeSectionProps {
+    catalog: LevelCatalog;
     biomes: Record<string, BiomeChoice>;
     onChange: (biomes: Record<string, BiomeChoice>) => void;
 }
 
-export default function BiomeSection({ biomes, onChange }: BiomeSectionProps) {
+export default function BiomeSection({ catalog, biomes, onChange }: BiomeSectionProps) {
+    const picked = catalog.optionalPicked;
     const counts: Record<BiomeValue, number> = { any: 0, include: 0, exclude: 0 };
     Object.values(biomes).forEach((choice) => (counts[choice] += 1));
 
@@ -26,21 +28,21 @@ export default function BiomeSection({ biomes, onChange }: BiomeSectionProps) {
             <div className="subsection">
                 <h4 className="subsection__title">Biomes</h4>
                 <p className="muted small">
-                    Every world has 5 of these 10 biomes, picked at random.{" "}
+                    Every world has {picked} of these {catalog.optionalTasks.length} biomes, picked at random.{" "}
                     <span className="counter" aria-live="polite">
-          Must have <strong>{counts.include}</strong>/{MAX_BIOME_CHOICES}, must not have <strong>{counts.exclude}</strong>/
-                        {MAX_BIOME_CHOICES}
+          Must have <strong>{counts.include}</strong>/{picked}, must not have <strong>{counts.exclude}</strong>/
+                        {picked}
         </span>
                 </p>
                 <ul className="row-list">
-                    {OPTIONAL_TASKS.map((task) => {
+                    {catalog.optionalTasks.map((task) => {
                         const current: BiomeValue = biomes[task.id] ?? "any";
                         const options = CHOICES.map((choice) => {
-                            const full = choice.value !== "any" && choice.value !== current && counts[choice.value] >= MAX_BIOME_CHOICES;
+                            const full = choice.value !== "any" && choice.value !== current && counts[choice.value] >= picked;
                             return {
                                 ...choice,
                                 disabled: full,
-                                title: full ? `Only ${MAX_BIOME_CHOICES} of the 10 biomes appear in a world` : undefined
+                                title: full ? `Only ${picked} of the ${catalog.optionalTasks.length} biomes appear in a world` : undefined
                             };
                         });
                         return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { memo, useId, useMemo, useState } from "react";
-import { SET_PIECE_BY_ID, SET_PIECE_KINDS, SWAPS, TASK_BY_ID } from "@/lib/catalog/level";
+import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { DEFAULT_PLATFORM, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import type { JobView } from "@/lib/jobs/job-events";
 import {
@@ -50,23 +50,22 @@ const ACTIVE_TEXT: Partial<Record<JobView["status"], string>> = {
     running: "Seeds show up here as soon as they're found."
 };
 
-const KIND_ORDER = new Map(SET_PIECE_KINDS.map((kind, index) => [kind.id, index]));
-
-function notablePieces(level: LevelTable) {
+function notablePieces(level: LevelTable, catalog: LevelCatalog) {
+    const kindOrder = new Map(catalog.setPieceKinds.map((kind, index) => [kind.id, index]));
     const counts = new Map<string, number>();
     for (const id of level.tasks.flatMap((task) => [...task.set_pieces, ...task.random_set_pieces])) {
         counts.set(id, (counts.get(id) ?? 0) + 1);
     }
     return [...counts]
             .flatMap(([id, count]) => {
-                const piece = Object.hasOwn(SET_PIECE_BY_ID, id) ? SET_PIECE_BY_ID[id] : undefined;
+                const piece = Object.hasOwn(catalog.setPieceById, id) ? catalog.setPieceById[id] : undefined;
                 return piece && !piece.alwaysPlaced ? [{ piece, count }] : [];
             })
-            .sort((a, b) => (KIND_ORDER.get(a.piece.kind) ?? 0) - (KIND_ORDER.get(b.piece.kind) ?? 0) || a.piece.name.localeCompare(b.piece.name));
+            .sort((a, b) => (kindOrder.get(a.piece.kind) ?? 0) - (kindOrder.get(b.piece.kind) ?? 0) || a.piece.name.localeCompare(b.piece.name));
 }
 
-function PieceList({ level }: { level: LevelTable }) {
-    const pieces = notablePieces(level);
+function PieceList({ level, catalog }: { level: LevelTable; catalog: LevelCatalog }) {
+    const pieces = notablePieces(level, catalog);
     if (pieces.length === 0) return <span className="muted">only the ones every world has</span>;
     return (
             <ul className="world__list">
@@ -94,11 +93,11 @@ function WitnessList({ results }: { results: Witness[] }) {
     );
 }
 
-function WorldSummary({ hit: { level, results }, id }: { hit: SearchHit; id: string }) {
+function WorldSummary({ hit: { level, results }, id, catalog }: { hit: SearchHit; id: string; catalog: LevelCatalog }) {
     const biomes = level.tasks.flatMap((task) =>
-            Object.hasOwn(TASK_BY_ID, task.task) && TASK_BY_ID[task.task].kind === "optional" ? [TASK_BY_ID[task.task].name] : []
+            Object.hasOwn(catalog.taskById, task.task) && catalog.taskById[task.task].kind === "optional" ? [catalog.taskById[task.task].name] : []
     );
-    const swaps = SWAPS.flatMap((swap) => {
+    const swaps = catalog.swaps.flatMap((swap) => {
         const chosen = level.prefab_swaps[swap.id];
         const option = swap.options.find((candidate) => candidate.id === chosen)?.name ?? chosen;
         return option === undefined ? [] : [`${swap.name}: ${option}`];
@@ -113,7 +112,7 @@ function WorldSummary({ hit: { level, results }, id }: { hit: SearchHit; id: str
                 <dd>{swaps.length > 0 ? swaps.join(", ") : <span className="muted">unknown</span>}</dd>
                 <dt>Set pieces</dt>
                 <dd>
-                    <PieceList level={level}/>
+                    <PieceList level={level} catalog={catalog}/>
                 </dd>
                 {results.length > 0 && (
                         <>
@@ -143,6 +142,7 @@ const HitRow = memo(function HitRow({
     const [open, setOpen] = useState(false);
     const worldId = useId();
     const seed = String(hit.seed);
+    const catalog = levelCatalogOf(config.shard);
 
     return (
             <li className="hit">
@@ -152,10 +152,12 @@ const HitRow = memo(function HitRow({
                             onClick={() => onCopy(seed, `Seed ${seed}`)}>
                         copy
                     </button>
-                    <Link href={mapPath(platform, hit.seed, config)} className="link-button"
-                          aria-label={`Map of seed ${seed} on ${platform}`}>
-                        map
-                    </Link>
+                    {catalog.hasWorlds && (
+                            <Link href={mapPath(platform, hit.seed, config)} className="link-button"
+                                  aria-label={`Map of seed ${seed} on ${platform}`}>
+                                map
+                            </Link>
+                    )}
                     {showOption && hit.entry !== null &&
                             <span className="tag tag--accent">Option {hit.entry + 1}</span>}
                     <button
@@ -169,7 +171,7 @@ const HitRow = memo(function HitRow({
                         {open ? "hide world" : "show world"}
                     </button>
                 </div>
-                {open && <WorldSummary hit={hit} id={worldId}/>}
+                {open && <WorldSummary hit={hit} id={worldId} catalog={catalog}/>}
             </li>
     );
 });

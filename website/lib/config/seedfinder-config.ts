@@ -28,6 +28,11 @@ export const ROUTE_ORDERS = ["any", "fixed"] as const;
 export type RouteOrder = (typeof ROUTE_ORDERS)[number];
 export const DEFAULT_ROUTE_ORDER: RouteOrder = "any";
 
+export const SHARDS = ["forest", "caves"] as const;
+export type Shard = (typeof SHARDS)[number];
+export const DEFAULT_SHARD: Shard = "forest";
+export const SHARD_LABELS: Record<Shard, string> = { forest: "Forest", caves: "Caves" };
+
 export const PLATFORMS = ["windows", "linux"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export const DEFAULT_PLATFORM: Platform = "windows";
@@ -102,6 +107,7 @@ export interface Criterion {
 
 export interface SeedfinderConfig {
     version: typeof CONFIG_VERSION;
+    shard?: Shard;
     platform?: Platform;
     criteria?: Criterion[];
 }

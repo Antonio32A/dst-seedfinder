@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import blob  # noqa: E402
 import model  # noqa: E402
 from gen_catalog import BOONS, POI, PROTECTED, TRAPS  # noqa: E402
 
@@ -46,7 +48,21 @@ def keys():
     return out
 
 
+def check_forest_tables():
+    """The hand-written forest tables of model.py against the extracted default task set and level."""
+    story = blob.sidecar("story.json")
+    taskset, level = story["taskset"], story["level"]
+    assert sorted(model.REQUIRED_TASKS + model.MOON_TASKS) == sorted(taskset["tasks"])
+    assert model.OPTIONAL_TASKS == taskset["optionaltasks"] and len(model.OPTIONAL_TASKS) == 10
+    assert taskset["numoptionaltasks"] == 5
+    assert {name: (count, tasks) for name, count, tasks in model.TASKSET_SET_PIECES} == {
+        p["name"]: (p["count"], p["tasks"]) for p in taskset["set_pieces"]}
+    assert model.REQUIRED_SET_PIECES == level["required_setpieces"]
+    assert model.RANDOM_SET_PIECES == level["random_set_pieces"]
+
+
 def check_order():
+    check_forest_tables()
     for _, _, tasks in model.TASKSET_SET_PIECES:
         ids = [TASK_ID[t] for t in tasks if t in TASK_ID]
         assert ids == sorted(ids), tasks

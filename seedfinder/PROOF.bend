@@ -6,3 +6,4 @@ import ./laws/s.bend as LawsS
 import ./laws/g.bend as LawsG
 import ./laws/f.bend as LawsF
 import ./laws/i.bend as LawsI
+import ./laws/c.bend as LawsC
