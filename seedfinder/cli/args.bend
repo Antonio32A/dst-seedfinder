@@ -22,7 +22,7 @@ def word(+args: List<&2, String>, i: Nat) -> String:
   Maybe.default(&2, String, List.get(&2, String, args, i), "")
 
 def value_flags() -> List<&2, String>:
-  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--shard", "--kk", "-o"]
+  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--shard", "--kk", "--dump", "--draws", "-o"]
 
 def flag_value(args: List<&2, String>, +flag: String) -> Maybe<&2, String>:
   match args:

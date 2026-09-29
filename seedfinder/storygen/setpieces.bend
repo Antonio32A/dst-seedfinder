@@ -3,6 +3,7 @@ import ../lua/table.bend as LuaTable
 import ../lua/util.bend as LuaUtil
 import ../level/prefix.bend as LevelPrefix
 import ../level/summary.bend as LevelSummary
+import ./plan.bend as StoryPlan
 import ../data/story.bend as StoryData
 import ../data/enums.bend as Enums
 import ./graph.bend as StoryGraph
@@ -34,17 +35,41 @@ def special_pieces(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> Lis
       +code = LevelPrefix.field5(codes, k)
       Bool.pick(List<&2, U32>, U32.is_eq(LevelPrefix.field5(tasks, k), task), packed(StoryData.piece_special(code), StoryData.piece_special_layout(code)) <> tail, tail)
 
-# task.set_pieces of a task.
-def set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
+def forest_set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
   match level:
     case LevelSummary.Summary{_, _, +entries, _, _, _, _}:
       keyed_pieces(entries, task)
 
-# task.random_set_pieces of a task.
-def random_set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
+def forest_random_set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
   match level:
     case LevelSummary.Summary{_, _, _, +codes, +tasks, +count, _}:
       special_pieces(U32.to_nat(count), codes, tasks, task, 0)
+
+def cave_layout_unresolved() -> U32:
+  65535
+
+def cave_packed(keys: List<&2, U32>) -> List<&2, U32>:
+  match keys:
+    case Nil{}:
+      Nil{}
+    case Con{+key, rest}:
+      packed(key, cave_layout_unresolved()) <> cave_packed(rest)
+
+# task.set_pieces of a task; a caves piece is its data/cave_catalog.bend key with no layout yet.
+def set_pieces(+plan: StoryPlan.Plan, +task: U32) -> List<&2, U32>:
+  match plan:
+    case StoryPlan.ForestPlan{+level}:
+      forest_set_pieces(level, task)
+    case StoryPlan.CavePlan{_, +placed, _}:
+      cave_packed(StoryPlan.cave_piece_names(placed, task))
+
+# task.random_set_pieces of a task (the caves have none).
+def random_set_pieces(+plan: StoryPlan.Plan, +task: U32) -> List<&2, U32>:
+  match plan:
+    case StoryPlan.ForestPlan{+level}:
+      forest_random_set_pieces(level, task)
+    case StoryPlan.CavePlan{_, _, _}:
+      Nil{}
 
 def written(arr: Array<U32>, +i: U32, +v: U32) -> Array<U32>:
   arr[i] <- v
@@ -131,23 +156,23 @@ def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random
             case False{}:
               place_all(rest, placing_of(place_one(shuffled(s, order), piece, random)), order, random)
 
-def pieces_of_graph(task_graph: Bool, +s: StoryGraph.St, +g: U32, +level: LevelSummary.Summary) -> StoryGraph.St:
+def pieces_of_graph(task_graph: Bool, +s: StoryGraph.St, +g: U32, +plan: StoryPlan.Plan) -> StoryGraph.St:
   match task_graph:
     case True{}:
       +task = StoryGraph.gf(s, g, StoryGraph.g_part())
       +order = StoryGraph.node_order(s, g)
-      place_all(random_set_pieces(level, task), Placing{place_all(set_pieces(level, task), Placing{s, False{}}, order, False{}), False{}}, order, True{})
+      place_all(random_set_pieces(plan, task), Placing{place_all(set_pieces(plan, task), Placing{s, False{}}, order, False{}), False{}}, order, True{})
     case False{}:
       s
 
-def pieces_loop(graphs: List<&2, U32>, +s: StoryGraph.St, +level: LevelSummary.Summary) -> StoryGraph.St:
+def pieces_loop(graphs: List<&2, U32>, +s: StoryGraph.St, +plan: StoryPlan.Plan) -> StoryGraph.St:
   match graphs:
     case Nil{}:
       s
     case Con{+g, rest}:
-      pieces_loop(rest, pieces_of_graph(U32.is_eq(StoryGraph.gf(s, g, StoryGraph.g_kind()), StoryGraph.k_task()), s, g, level), level)
+      pieces_loop(rest, pieces_of_graph(U32.is_eq(StoryGraph.gf(s, g, StoryGraph.g_kind()), StoryGraph.k_task()), s, g, plan), plan)
 
 # Story:InsertAdditionalSetPieces over the given graphs (pairs order).
-def insert_set_pieces(+s: StoryGraph.St, +graphs: List<&2, U32>, +level: LevelSummary.Summary) -> StoryGraph.St:
+def insert_set_pieces(+s: StoryGraph.St, +graphs: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
   +before = StoryGraph.rng_of(s)
-  StoryGraph.returned(pieces_loop(graphs, s, level), StoryGraph.f_insert_additional_set_pieces(), before)
+  StoryGraph.returned(pieces_loop(graphs, s, plan), StoryGraph.f_insert_additional_set_pieces(), before)

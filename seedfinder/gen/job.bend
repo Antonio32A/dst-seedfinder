@@ -19,6 +19,7 @@ import ../ocean/ocean.bend as Ocean
 import ./graph.bend as GenGraph
 import ./generate.bend as Generate
 import ./layout.bend as GenLayout
+import ./cave_custom.bend as CaveCustom
 
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
 # rounds: `step` does one bounded stage transition; at a KK pass the job waits for a layout engine (gen/layout.bend):
@@ -50,6 +51,8 @@ type Outcome is Data:
 # (its size and centred sites with the Commit centroids); ConvertToTileMap and the GetSiteArea check next. 5 JLand: the
 # check passed (the tile world of ConvertToTileMap, its site tile lists and point sites); the tile stages and the land
 # population next. 6 JOcean: land_done, the ocean stage next. 7 JWorld: the attempt is the world. 8 JDone: no world.
+# 10 JTiled: a caves attempt after the custom tile pass (the tile map right before the mazes run); the caves job ends here
+# until the rest of their worldgen is ported.
 type Job is Type:
   JStart{c: Generate.Seed, a: U32, rng: Pcg.Rng}
   JFirst{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei}
@@ -58,6 +61,7 @@ type Job is Type:
   JTiles{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, size: U32, sites: List<&2, VoronoiPolygon.SiteIn>}
   JLand{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, world: TileWorld.World, lists: List<&2, List<&2, U32>>, sites: Points.Sites}
   JOcean{c: Generate.Seed, a: U32, landed: Landed}
+  JTiled{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, grid: Grid.Grid, rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, sites: Points.Sites}
   JWorld{c: Generate.Seed, a: U32, world: Final}
   JDone{c: Generate.Seed, a: U32, outcome: Outcome}
 
@@ -65,6 +69,18 @@ type Job is Type:
 def start(+seed: U32, +windows: Bool, +pieces: Bool) -> Job:
   +c = Generate.seed_inputs(seed, windows, pieces)
   JStart{c, 1, Generate.first_rng(c)}
+
+def cave_start(first: Bool, +c: Generate.Seed, +seed: U32, +draws: U32) -> Job:
+  match first:
+    case True{}:
+      JStart{c, 1, Generate.first_rng(c)}
+    case False{}:
+      JStart{Generate.entrance_resolved(c), 1, Pcg.at_counter(seed, draws)}
+
+# A new caves job for seed on the platform. With draws > 0 the attempt starts that many draws into the seed's stream
+# (the counter of a real later attempt), with the entrance list pick as the earlier attempts made it.
+def start_caves(+seed: U32, +windows: Bool, +draws: U32) -> Job:
+  cave_start(U32.is_zero(draws), Generate.cave_inputs(seed, windows), seed, draws)
 
 def retry_if(more: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
   match more:
@@ -96,10 +112,18 @@ def layout(job: Job) -> Job & Maybe<&2, GenLayout.Layout>:
     case other:
       (other, None{})
 
+def second_by(caves: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +first: Generate.Pass) -> Job:
+  match caves:
+    case True{}:
+      JCommit{c, a, s, GenGraph.klei(s), first}
+    case False{}:
+      JSecond{c, a, s, GenGraph.klei(s), first}
+
+# The story after pass 1 (Story:AddRegionsToMainland): the forest adds the moon island and waits for its KK pass 2; the
+# caves have no regions, so their Commit follows pass 1.
 def second_of(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, LayoutSpace.Vec>) -> Job:
   +first = Generate.pass_of(c, s, k, ps, Nil{})
-  +s2 = Generate.second_story(c, s, k, Generate.pass_site_list(first))
-  JSecond{c, a, s2, GenGraph.klei(s2), first}
+  second_by(Generate.is_caves(c), c, a, Generate.second_story(c, s, k, Generate.pass_site_list(first)), first)
 
 # The waiting job resumed with its pass's positions (VoronoiPass's BuildVoronoi, and after pass 1 the story up to
 # pass 2); any other job as it is.
@@ -117,7 +141,7 @@ def commit_checked(ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: 
     case True{}:
       JTiles{c, a, s, k, size, sites}
     case False{}:
-      retry(c, a, StoryGraph.rng_of(s))
+      retry(Generate.carried(c, s), a, StoryGraph.rng_of(s))
 
 def committed_polys(+size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei) -> Job:
   commit_checked(Generate.valid_cells(s, k, polys), c, a, s, k, size, Generate.with_centroids(sites, polys))
@@ -136,7 +160,7 @@ def areas_checked(ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: G
     case True{}:
       JLand{c, a, s, k, w, world, lists, sites}
     case False{}:
-      retry(c, a, Generate.rng_after_tiles(s, w))
+      retry(Generate.carried(c, s), a, Generate.rng_after_land(c, s, k, w, world, lists, sites))
 
 def tiled(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World) -> Job:
   +lists = TileConvert.site_tiles(world)
@@ -157,10 +181,28 @@ def grounded(got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>, +ctx: Populat
   (g, +roads) = got
   landed_of(Generate.land(ctx, g, w), roads, s, w)
 
-# The tile stages and the land population, up to land_done.
-def land(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+def land_forest(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   +ctx = Generate.land_context(c, s, k, sites, w, False{})
   JOcean{c, a, grounded(Generate.tile_grid(Generate.windows_of(c), world, lists), ctx, s, w)}
+
+def tiled_by(done: CaveCustom.Tiles, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
+  match done:
+    case CaveCustom.Tiles{g, rng, placed}:
+      JTiled{c, a, s, k, w, g, rng, placed, sites}
+
+def land_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+  tiled_by(Generate.cave_land(c, s, k, w, world, lists, sites), c, a, s, k, w, sites)
+
+def land_by(caves: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+  match caves:
+    case True{}:
+      land_caves(c, a, s, k, w, world, lists, sites)
+    case False{}:
+      land_forest(c, a, s, k, w, world, lists, sites)
+
+# The tile stages and the land population, up to land_done (the caves stop after ForceConnectivity).
+def land(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+  land_by(Generate.is_caves(c), c, a, s, k, w, world, lists, sites)
 
 # #save.map.topology.ids: every story node (graph nodes and exit nodes of every graph).
 def topology_count(+s: StoryGraph.St) -> U32:
@@ -279,6 +321,8 @@ def stage(job: Job) -> Job & Where:
       (JWorld{c, a, world}, Where{7, a})
     case JDone{+c, +a, +o}:
       (JDone{c, a, o}, Where{8, a})
+    case JTiled{+c, +a, +s, +k, +w, grid, +rng, placed, +sites}:
+      (JTiled{c, a, s, k, w, grid, rng, placed, sites}, Where{10, a})
 
 # Whether the job is decided (a world, or no world).
 def settled(+stage: U32) -> Bool:

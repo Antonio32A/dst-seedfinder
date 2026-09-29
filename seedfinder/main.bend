@@ -26,8 +26,10 @@ import ./gen/dump.bend as GenDump
 #   seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH
 #     parallel worldgen of seeds SEED..TO into world dumps (docs/world-dump.md): PATH is the dump of SEED, or with TO
 #     an existing folder for PATH/<seed>.dstw; one line per seed
-#   seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend]
-#     forest worldgen of seeds SEED..TO, one line per seed (`--times`: one line per stage of every attempt)
+#   seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend] [--dump BITS] [--draws N]
+#     worldgen of seeds SEED..TO, one line per seed (`--times`: one line per stage of every attempt); the caves shard only
+#     runs up to ForceConnectivity: `--dump` adds the attempt's tile map (1) and story graph (2), `--draws` starts an attempt
+#     N draws into the seed's stream
 #   the worldgen trace stages are in the debug binary built from trace.bend (seedfinder_trace trace ...)
 
 def query_or_fail(json: Bool, +shard: U32, parsed: Result<&1, &1, U32 & String, Args.Query>) -> IO(Unit):
@@ -68,27 +70,27 @@ def show_on(+args: List<&2, String>, flag: Result<&1, &1, U32 & String, U32>) ->
 def world_show(+args: List<&2, String>) -> IO(Unit):
   show_on(args, Args.shard_flag(Args.flag_value(args, "--shard")))
 
-def gen_forest(+args: List<&2, String>, +shard: U32) -> IO(Unit):
+def gen_on(+args: List<&2, String>, +shard: U32) -> IO(Unit):
   +from = Args.arg_u32(args, 0n, 0)
   +to = Args.arg_u32(args, 1n, from)
   +windows = Bool.not(String.eq(Maybe.default(&2, String, Args.flag_value(args, "--platform"), "windows"), "linux"))
-  Bool.pick(IO(Unit), U32.is_eq(shard, 2), IO.die(Unit, 2, "gen: the caves shard has no worldgen yet"),
-    do IO<Unit>:
-      +native : Bool <- IO.pass(Bool, Args.kk_flag(Args.flag_value(args, "--kk")))
-      GenRun.seeds(Nat.add(U32.to_nat((to - from : U32)), 1n), from, windows, Config.is_member(args, "--times"), native))
+  do IO<Unit>:
+    +native : Bool <- IO.pass(Bool, Args.kk_flag(Args.flag_value(args, "--kk")))
+    GenRun.seeds(Nat.add(U32.to_nat((to - from : U32)), 1n), from, GenRun.Options{windows, Config.is_member(args, "--times"), native,
+      U32.is_eq(shard, 2), Args.read_or(Args.flag_value(args, "--dump"), 0), Args.read_or(Args.flag_value(args, "--draws"), 0)})
 
 def gen(+args: List<&2, String>) -> IO(Unit):
   do IO<Unit>:
     +shard : U32 <- IO.pass(U32, Args.shard_flag(Args.flag_value(args, "--shard")))
-    gen_forest(args, shard)
+    gen_on(args, shard)
 
 def dump(+args: List<&2, String>) -> IO(Unit):
   do IO<Unit>:
     +shard : U32 <- IO.pass(U32, Args.shard_flag(Args.flag_value(args, "--shard")))
-    Bool.pick(IO(Unit), U32.is_eq(shard, 2), IO.die(Unit, 2, "dump: the caves shard has no worldgen yet"), GenDump.run(args))
+    Bool.pick(IO(Unit), U32.is_eq(shard, 2), IO.die(Unit, 2, "dump: the caves worldgen stops before the mazes (gen --shard caves)"), GenDump.run(args))
 
 def usage() -> IO(Unit):
-  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] [--shard forest|caves] | seedfinder setpiece show FROM [TO] [--shard forest|caves] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--shard forest|caves] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] [--shard forest|caves] | seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH | seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend]")
+  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] [--shard forest|caves] | seedfinder setpiece show FROM [TO] [--shard forest|caves] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--shard forest|caves] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] [--shard forest|caves] | seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH | seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend] [--dump BITS] [--draws N]")
 
 def trace_moved() -> IO(Unit):
   IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] (scripts/build.sh trace)")

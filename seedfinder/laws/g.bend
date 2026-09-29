@@ -4,6 +4,7 @@ import ../worldsim/grid.bend as Grid
 import ../worldsim/tiles/groups.bend as TileGroups
 import ../worldsim/tiles/topology.bend as TileTopology
 import ../worldsim/tiles/convert.bend as TileConvert
+import ../worldsim/tiles/disconnect.bend as TileDisconnect
 import ../worldsim/noise/perlin.bend as Perlin
 import ../rng/pcg.bend as Pcg
 import ../populate/layout.bend as PopulateLayout
@@ -195,4 +196,27 @@ law ported_closures_are_all_pinned:
   {PopulatePins.every_ported_closure_is_pinned() == True{} : Bool}
 
 def ported_closures_are_all_pinned():
+  {==}
+
+# DetectDisconnect goldens: the count of the real caves shard's attempts matches for seeds 1..120 (the game's engine call
+# under the groundtruth harness); here a 4x4 map of grass with a column of impassable at x = 2 cuts x = 3 off from (0, 0).
+def walled_column() -> Grid.Grid:
+  Grid.put(Grid.put(Grid.put(Grid.put(Grid.new(4, 4, 6), 2, 1), 6, 1), 10, 1), 14, 1)
+
+law disconnect_counts_the_cut_off_column:
+  {Pair.snd(Grid.Grid, U32, TileDisconnect.detect(walled_column(), 0, 0)) == 4 : U32}
+
+def disconnect_counts_the_cut_off_column():
+  {==}
+
+law disconnect_fails_past_five_percent:
+  {TileDisconnect.exceeds(9032, 425, 425) == True{} : Bool}
+
+def disconnect_fails_past_five_percent():
+  {==}
+
+law disconnect_passes_at_five_percent:
+  {TileDisconnect.exceeds(9031, 425, 425) == False{} : Bool}
+
+def disconnect_passes_at_five_percent():
   {==}

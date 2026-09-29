@@ -330,6 +330,8 @@ def entered(job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
       (GenJob.JWorld{c, a, world}, outcome_line(a, "world"))
     case GenJob.JDone{+c, +a, +o}:
       (GenJob.JDone{c, a, o}, outcome_line(a, outcome_name(o)))
+    case GenJob.JTiled{+c, +a, +s, +k, +w, grid, +rng, placed, +sites}:
+      (GenJob.JTiled{c, a, s, k, w, grid, rng, placed, sites}, outcome_line(a, "tiled"))
 
 def start_counter(+stage: U32, +seed: U32, +ctr: U32, +rng: Pcg.Rng) -> U32:
   Bool.pick(U32, U32.is_zero(stage), Pcg.counter(seed, rng), ctr)

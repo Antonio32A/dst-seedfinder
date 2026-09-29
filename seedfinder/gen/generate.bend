@@ -1,10 +1,13 @@
 import Base
 import ../rng/pcg.bend as Pcg
 import ../f64/repr.bend as F64Repr
+import ../f32/ops.bend as F32Ops
 import ../level/summary.bend as LevelSummary
 import ../level/choose.bend as LevelChoose
+import ../level/cave_choose.bend as CaveChoose
 import ../storygen/graph.bend as StoryGraph
 import ../storygen/story.bend as Story
+import ../storygen/plan.bend as StoryPlan
 import ../worldsim/layout/space.bend as LayoutSpace
 import ../worldsim/voronoi/diagram.bend as VoronoiDiagram
 import ../worldsim/voronoi/builder.bend as VoronoiBuilder
@@ -18,11 +21,13 @@ import ../worldsim/tiles/convert.bend as TileConvert
 import ../worldsim/tiles/separate.bend as TileSeparate
 import ../worldsim/tiles/connect.bend as TileConnect
 import ../worldsim/tiles/roads.bend as TileRoads
+import ../worldsim/tiles/disconnect.bend as TileDisconnect
 import ../populate/entities.bend as Entities
 import ../populate/state.bend as PopulateState
 import ../populate/land.bend as Land
 import ./graph.bend as GenGraph
 import ./tags.bend as GenTags
+import ./cave_custom.bend as CaveCustom
 import ./world.bend as GenWorld
 
 # forest_map.Generate from a seed to land_done (the end of Graph:PopulateVoronoi), one attempt at a time, as stage
@@ -44,52 +49,109 @@ def first_runs() -> U32:
 def second_runs() -> U32:
   50
 
-# A seed's fixed inputs: the seed, the platform, its level table (part A) and whether to record the layouts the world
-# generation places (populate/setpiece.bend).
+# A seed's fixed inputs: the seed, the platform and its level table (part A). The forest also records whether to record
+# the layouts the world generation places (populate/setpiece.bend). The caves seed holds the story plan, the swaps, the
+# Lua error verdict and the RNG at Generate's first attempt.
 type Seed is Data:
   Seed{seed: U32, windows: Bool, level: LevelSummary.Summary, pieces: Bool}
+  CaveSeed{seed: U32, windows: Bool, plan: StoryPlan.Plan, swaps: U32, crashed: Bool, start: Pcg.Rng}
 
 def seed_inputs(+seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
   Seed{seed, windows, LevelSummary.summary(seed), pieces}
 
+def cave_swaps(+w: CaveChoose.World) -> U32:
+  match w:
+    case CaveChoose.World{+swaps, _, _, _}:
+      swaps
+
+def cave_crashed(+w: CaveChoose.World) -> Bool:
+  match w:
+    case CaveChoose.World{_, _, _, +crashed}:
+      crashed
+
+def cave_seed(+seed: U32, +windows: Bool, +w: CaveChoose.World) -> Seed:
+  CaveSeed{seed, windows, StoryPlan.caves(w, 0), cave_swaps(w), cave_crashed(w), CaveChoose.generate_rng(seed)}
+
+def cave_inputs(+seed: U32, +windows: Bool) -> Seed:
+  cave_seed(seed, windows, CaveChoose.world(seed))
+
+def is_caves(+c: Seed) -> Bool:
+  match c:
+    case Seed{_, _, _, _}:
+      False{}
+    case CaveSeed{_, _, _, _, _, _}:
+      True{}
+
 def seed_of(+c: Seed) -> U32:
   match c:
     case Seed{+seed, _, _, _}:
+      seed
+    case CaveSeed{+seed, _, _, _, _, _}:
       seed
 
 def windows_of(+c: Seed) -> Bool:
   match c:
     case Seed{_, +windows, _, _}:
       windows
+    case CaveSeed{_, +windows, _, _, _, _}:
+      windows
 
-def level_of(+c: Seed) -> LevelSummary.Summary:
+def plan_of(+c: Seed) -> StoryPlan.Plan:
   match c:
     case Seed{_, _, +level, _}:
-      level
+      StoryPlan.ForestPlan{level}
+    case CaveSeed{_, _, +plan, _, _, _}:
+      plan
 
 def swaps_of(+c: Seed) -> U32:
   match c:
     case Seed{_, _, LevelSummary.Summary{+swaps, _, _, _, _, _, _}, _}:
+      swaps
+    case CaveSeed{_, _, _, +swaps, _, _}:
       swaps
 
 def pieces_of(+c: Seed) -> Bool:
   match c:
     case Seed{_, _, _, +pieces}:
       pieces
+    case CaveSeed{_, _, _, _, _, _}:
+      False{}
 
 # The level table raises a Lua error before Generate.
 def crashed(+c: Seed) -> Bool:
   match c:
     case Seed{_, _, LevelSummary.Summary{_, _, _, _, _, _, +crashed}, _}:
       crashed
+    case CaveSeed{_, _, _, _, +crashed, _}:
+      crashed
 
 # The RNG at the first attempt's first WorldSim call.
 def first_rng(+c: Seed) -> Pcg.Rng:
-  LevelChoose.generate_rng(seed_of(c))
+  match c:
+    case Seed{+seed, _, _, _}:
+      LevelChoose.generate_rng(seed)
+    case CaveSeed{_, _, _, _, _, +start}:
+      start
+
+# The seed for the next attempt: the caves' entrance_room list pick made in an attempt's story lasts (Plan).
+def carried(+c: Seed, +s: StoryGraph.St) -> Seed:
+  match c:
+    case Seed{+seed, +windows, +level, +pieces}:
+      Seed{seed, windows, level, pieces}
+    case CaveSeed{+seed, +windows, +plan, +swaps, +crashed, +start}:
+      CaveSeed{seed, windows, StoryPlan.with_entrance(plan, StoryGraph.get(s, StoryGraph.s_entrance())), swaps, crashed, start}
+
+# The seed as a later attempt sees it: the entrance list pick (always the list's first room) already made.
+def entrance_resolved(+c: Seed) -> Seed:
+  match c:
+    case Seed{+seed, +windows, +level, +pieces}:
+      Seed{seed, windows, level, pieces}
+    case CaveSeed{+seed, +windows, +plan, +swaps, +crashed, +start}:
+      CaveSeed{seed, windows, StoryPlan.with_entrance(plan, 1), swaps, crashed, start}
 
 # Generate from its first WorldSim call to WorldGen_VoronoiPass(100).
 def first_story(+c: Seed, +rng: Pcg.Rng) -> StoryGraph.St:
-  Story.build(level_of(c), rng)
+  Story.build_plan(plan_of(c), rng)
 
 def centroid_of(+p: VoronoiPolygon.Poly) -> VoronoiPolygon.P32:
   match p:
@@ -149,7 +211,7 @@ def with_sites(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: List<&2, VoronoiPol
 
 # Story:AddRegionsToMainland to WorldGen_Commit, once VoronoiPass(100)'s sites are known.
 def second_story(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: List<&2, VoronoiPolygon.SiteIn>) -> StoryGraph.St:
-  Story.finish(with_sites(s, k, sites), level_of(c))
+  Story.finish_plan(with_sites(s, k, sites), plan_of(c))
 
 def point_count(l: List<&2, VoronoiPolygon.P32>, +acc: U32) -> U32:
   match l:
@@ -283,6 +345,60 @@ def site_areas_ok(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) ->
 # The RNG after ConvertToTileMap (the variant draws of every cell are a jump); nothing else draws before ConvertGround.
 def rng_after_tiles(+s: StoryGraph.St, +w: U32) -> Pcg.Rng:
   Pcg.advance(StoryGraph.rng_of(s), (w * w : U32))
+
+# ConvertToTileMap's paint, SeparateIslands and ForceConnectivity(join_islands) of the caves: the caves draw no roads.
+def cave_tile_grid(+w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid:
+  TileConnect.force(w, TileConnect.islands(w, True{}), TileSeparate.separate(w, TileConvert.paint(w, lists)))
+
+# The caves' tile stages: the tile map after ForceConnectivity and the custom tile pass (SetTilesViaFunction), with the
+# PCG32 stream after it.
+def cave_land(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> CaveCustom.Tiles:
+  CaveCustom.run(s, k, windows_of(c), sites, cave_tile_grid(world, lists), rng_after_tiles(s, w))
+
+def start_scan(n: Nat, +s: StoryGraph.St, +i: U32) -> U32:
+  match n:
+    case 0n:
+      StoryGraph.none()
+    case 1n+p:
+      Bool.pick(U32, U32.is_eq(StoryGraph.nf(s, i, StoryGraph.f_kind()), StoryGraph.id_start()), i, start_scan(p, s, (i + 1 : U32)))
+
+def start_node(+s: StoryGraph.St) -> U32:
+  start_scan(U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, 0)
+
+def site_start(site: TileWorld.Site) -> U32 & U32:
+  match site:
+    case TileWorld.Site{_, +x, +y, _, _, _}:
+      (F32Ops.to_i32(x), F32Ops.to_i32(y))
+
+def detected(got: Grid.Grid & U32, +w: U32) -> Grid.Grid & U32 & Bool:
+  (g, +count) = got
+  (g, count, TileDisconnect.exceeds(count, w, w))
+
+def detect_from(g: Grid.Grid, start: U32 & U32) -> Grid.Grid & U32:
+  (+x, +y) = start
+  TileDisconnect.detect(g, x, y)
+
+# The caves' DetectDisconnect (forest_map.Generate, after ConvertGround and ReplaceSingleNonLandTiles) from the START
+# node's site: the grid with the unreachable tiles walled off, how many there were, and whether that fails the attempt.
+def cave_disconnect(+s: StoryGraph.St, +k: GenGraph.Klei, +world: TileWorld.World, g: Grid.Grid, +w: U32) -> Grid.Grid & U32 & Bool:
+  detected(detect_from(g, site_start(TileWorld.site(world, GenGraph.vertex_of(k, start_node(s))))), w)
+
+def done_rng(done: CaveCustom.Tiles) -> Pcg.Rng:
+  match done:
+    case CaveCustom.Tiles{_, +rng, _}:
+      rng
+
+def rng_after_land_by(caves: Bool, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Pcg.Rng:
+  match caves:
+    case True{}:
+      done_rng(cave_land(c, s, k, w, world, lists, sites))
+    case False{}:
+      rng_after_tiles(s, w)
+
+# The stream a failed GetSiteArea check hands to the next attempt: the forest's checks the areas right after
+# ConvertToTileMap; the caves' run after their custom tile pass.
+def rng_after_land(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Pcg.Rng:
+  rng_after_land_by(is_caves(c), c, s, k, w, world, lists, sites)
 
 # ConvertToTileMap's paint, SeparateIslands, ForceConnectivity and DrawRoads: the drawn grid and GetRoads' polylines.
 def tile_grid(+windows: Bool, +w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid & List<&2, List<&2, TileWorld.Point>>:

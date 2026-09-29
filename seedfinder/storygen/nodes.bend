@@ -1,9 +1,7 @@
 import Base
 import ../data/blob.bend as Blob
-import ../data/rooms.bend as Rooms
-import ../data/tasks.bend as Tasks
-import ../data/story.bend as StoryData
 import ../data/enums.bend as Enums
+import ./catalog.bend as StoryCatalog
 import ./graph.bend as StoryGraph
 import ./order.bend as StoryOrder
 import ./maptags.bend as MapTags
@@ -16,18 +14,18 @@ def optional(+u: U32) -> U32:
 
 # Story:GetRoom's `type or NODE_TYPE.Default`.
 def room_type(+room: U32) -> U32:
-  +t = Rooms.node_type(room)
+  +t = StoryCatalog.room_node_type(room)
   Bool.pick(U32, Blob.is_none(t), Enums.node_type_default(), t)
 
 # AddChild's `internal_type or NODE_INTERNAL_CONNECTION_TYPE.EdgeSite`.
 def room_itype(+room: U32) -> U32:
-  +t = Rooms.internal_type(room)
+  +t = StoryCatalog.room_internal_type(room)
   Bool.pick(U32, Blob.is_none(t), Enums.connection_edge_site(), t)
 
 def task_room(+g: U32, +task: U32, +id: U32, +room: U32, +entrance: U32) -> StoryGraph.Info:
   +ntype = Bool.pick(U32, U32.is_eq(entrance, 1), Enums.node_type_blocker(), room_type(room))
-  StoryGraph.NodeData{StoryGraph.id_room(), task, id, room, ntype, Rooms.value(room), room_itype(room), entrance,
-    optional(Rooms.random_node_exit_weight(room)), optional(Rooms.random_node_entrance_weight(room)), g, room, 1, 0}
+  StoryGraph.NodeData{StoryGraph.id_room(), task, id, room, ntype, StoryCatalog.room_value(room), room_itype(room), entrance,
+    optional(StoryCatalog.room_exit_weight(room)), optional(StoryCatalog.room_entrance_weight(room)), g, room, 1, 0}
 
 def exit_candidate(+s: StoryGraph.St, +n: U32, +field: U32) -> Bool:
   Bool.not(StoryGraph.is_entrance(s, n)) && Bool.not(U32.is_zero(StoryGraph.nf(s, n, field)))
@@ -181,12 +179,12 @@ def closure_count(shape: U32, +s: StoryGraph.St, +row: List<&2, U32>) -> StoryGr
     case _:
       hit_count(row, StoryGraph.below(s, Blob.word(row, 1)))
 
-def room_count(kind: U32, +s: StoryGraph.St, +value: U32) -> StoryGraph.Got:
+def room_count(kind: U32, +s: StoryGraph.St, +room: U32, +value: U32) -> StoryGraph.Got:
   match kind:
     case 0:
       StoryGraph.Got{value, s}
     case _:
-      +row = StoryData.count_closures(value)
+      +row = StoryCatalog.count_closure(room, value)
       closure_count(Blob.at(row, 0), s, row)
 
 type Pushed is Data:
@@ -200,7 +198,7 @@ def pushed_count(+room: U32, +stack: List<&2, U32>, +c: StoryGraph.Got) -> Pushe
 def pushed_room(kind: U32, +room: U32, +value: U32, +p: Pushed) -> Pushed:
   match p:
     case Pushed{+stack, +s}:
-      pushed_count(room, stack, room_count(kind, s, value))
+      pushed_count(room, stack, room_count(kind, s, room, value))
 
 # room_choices in pairs() order: each count (a number or a count closure), then that many rooms on the stack.
 def push_choices(triples: List<&2, U32>, +p: Pushed) -> Pushed:
@@ -238,12 +236,42 @@ def pop_rooms(stack: List<&2, U32>, +walk: StoryGraph.Got, +g: U32, +task: U32, 
       match walk:
         case StoryGraph.Got{+prev, +s}:
           +room = (entry .&. 65535 : U32)
-          pop_rooms(rest, chained_added(prev, StoryGraph.add_node(MapTags.extras(s, room), g, task_room(g, task, id, room, (entry >> 16n : U32)))), g, task, (id + 1 : U32))
+          pop_rooms(rest, chained_added(prev, StoryGraph.add_node(MapTags.extras(s, room, g), g, task_room(g, task, id, room, (entry >> 16n : U32)))), g, task, (id + 1 : U32))
+
+def entrance_entry(+room: U32) -> U32:
+  (room .|. entrance_bit() : U32)
+
+def entrance_chosen(+picked: StoryGraph.Got, +choices: List<&2, U32>) -> Pushed:
+  match picked:
+    case StoryGraph.Got{+k, +s}:
+      Pushed{[entrance_entry(StoryOrder.nth_or_last(choices, (k - 1 : U32), StoryGraph.none()))], StoryGraph.put(s, StoryGraph.s_entrance(), k)}
+
+def entrance_resolved(unresolved: Bool, +s: StoryGraph.St, +choices: List<&2, U32>, +pick: U32) -> Pushed:
+  match unresolved:
+    case True{}:
+      entrance_chosen(StoryGraph.upto(s, StoryOrder.count(choices, 0)), choices)
+    case False{}:
+      Pushed{[entrance_entry(StoryOrder.nth_or_last(choices, (pick - 1 : U32), StoryGraph.none()))], s}
+
+# An entrance_room list: GetRandomItem draws math.random(#list) the first time and overwrites the task's field, so the
+# later attempts of the seed reuse that pick (StoryGraph.s_entrance()).
+def entrance_listed(+s: StoryGraph.St, +task: U32) -> Pushed:
+  entrance_resolved(U32.is_zero(StoryGraph.get(s, StoryGraph.s_entrance())), s, StoryCatalog.task_entrance_choices(task), StoryGraph.get(s, StoryGraph.s_entrance()))
+
+def entrance_kind(list: Bool, +s: StoryGraph.St, +task: U32) -> Pushed:
+  match list:
+    case True{}:
+      entrance_listed(s, task)
+    case False{}:
+      Pushed{[entrance_entry(StoryCatalog.task_entrance_room(task))], s}
+
+def entrance_rolled(+s: StoryGraph.St, +task: U32) -> Pushed:
+  entrance_kind(StoryCatalog.task_entrance_is_list(task), s, task)
 
 def entrance_drawn(has: Bool, +s: StoryGraph.St, +task: U32) -> Pushed:
   match has:
     case True{}:
-      Pushed{[(Tasks.entrance_room(task) .|. entrance_bit() : U32)], StoryGraph.st(StoryGraph.draw(s))}
+      entrance_rolled(StoryGraph.st(StoryGraph.draw(s)), task)
     case False{}:
       Pushed{Nil{}, s}
 
@@ -255,10 +283,10 @@ def looped_if(loop: Bool, +s: StoryGraph.St, +g: U32) -> StoryGraph.St:
       s
 
 def looped(+s: StoryGraph.St, +g: U32, +task: U32) -> StoryGraph.St:
-  looped_if(U32.is_eq(Tasks.make_loop(task), 1), s, g)
+  looped_if(U32.is_eq(StoryCatalog.task_make_loop(task), 1), s, g)
 
 def cross_factor(+task: U32) -> U32:
-  +f = Tasks.crosslink_factor(task)
+  +f = StoryCatalog.task_crosslink_factor(task)
   Bool.pick(U32, Blob.is_none(f), 1, f)
 
 def built(+task: U32, +stack: List<&2, U32>, +made: StoryGraph.Got) -> StoryGraph.Got:
@@ -270,8 +298,8 @@ def built(+task: U32, +stack: List<&2, U32>, +made: StoryGraph.Got) -> StoryGrap
 def built_from(+task: U32, +p: Pushed) -> StoryGraph.Got:
   match p:
     case Pushed{+stack, +s}:
-      built(task, stack, StoryGraph.new_graph(s, StoryGraph.k_task(), task, Tasks.room_bg(task), Tasks.background_room(task)))
+      built(task, stack, StoryGraph.new_graph(s, StoryGraph.k_task(), task, StoryCatalog.task_room_bg(task), StoryCatalog.task_background_room(task)))
 
 # Story:GenerateNodesFromTask(task): the task's graph (the entrance room's math.random() is always drawn).
 def generate_task(+s: StoryGraph.St, +task: U32) -> StoryGraph.Got:
-  built_from(task, push_choices(Tasks.task_room_choices(task), entrance_drawn(Bool.not(Blob.is_none(Tasks.entrance_room(task))), s, task)))
+  built_from(task, push_choices(StoryCatalog.task_room_choices(task), entrance_drawn(StoryCatalog.task_has_entrance(task), s, task)))

@@ -401,3 +401,25 @@ def choose(+c: CavePrefix.Chosen) -> World:
 
 def world(+seed: U32) -> World:
   choose(CavePrefix.chosen(seed))
+
+def choosing_rng(done: Choosing) -> Pcg.Rng:
+  match done:
+    case Choosing{_, +rng, _}:
+      rng
+
+def added_rng(a: Added, +picks: List<&2, U32>, +lo: U32, +hi: U32) -> Pcg.Rng:
+  match a:
+    case Added{entries, rng}:
+      choosing_rng(entry_loop(entries, Choosing{Nil{}, rng, False{}}, lo, hi, CavePrefix.chosen_ids(picks)))
+
+def rng_from(c: CavePrefix.Chosen, a: Added) -> Pcg.Rng:
+  match c:
+    case CavePrefix.Chosen{_, +picks, CavePrefix.Masks{+lo, +hi, _, _}, _}:
+      added_rng(a, picks, lo, hi)
+
+def chosen_rng(+c: CavePrefix.Chosen) -> Pcg.Rng:
+  rng_from(c, added_of(c))
+
+# The RNG right after Level:ChooseSetPieces, i.e. at forest_map.Generate's first attempt of a caves world.
+def generate_rng(+seed: U32) -> Pcg.Rng:
+  chosen_rng(CavePrefix.chosen(seed))

@@ -7,6 +7,10 @@ import ../filters/cave_setpiece.bend as CaveFilter
 import ../level/cave_prefix.bend as CavePrefix
 import ../level/cave_summary.bend as CaveSummary
 import ../data/cave_catalog.bend as CaveCatalog
+import ../data/rooms.bend as Rooms
+import ../data/tasks.bend as Tasks
+import ../storygen/catalog.bend as StoryCatalog
+import ../gen/cave_custom.bend as CaveCustom
 
 # Caves laws. The golden values are the real caves worlds of build 747465 (scripts/groundtruth, seed 1 of
 # build/groundtruth/data/worlds_caves): the level table decodes byte for byte into the dumped tasks and set pieces,
@@ -117,4 +121,23 @@ law cave_setpiece_filter_rejects_forest_pieces:
   {CaveFilter.parse(["MooseNest"], Done{Nil{}}) == Fail{(2, "unknown set piece: MooseNest")} : Result<&1, &1, U32 & String, List<&2, CaveFilter.Bound>>}
 
 def cave_setpiece_filter_rejects_forest_pieces():
+  {==}
+
+# Caves room and task ids sit above the forest's rows, so one id says which table it belongs to.
+law cave_ids_sit_above_the_forest_rows:
+  {((Rooms.rooms_count() <= StoryCatalog.cave_room_base() : U32), (Tasks.task_count() <= StoryCatalog.cave_task_base() : U32)) == (True{}, True{}) : (Bool & Bool)}
+
+def cave_ids_sit_above_the_forest_rows():
+  {==}
+
+law story_catalog_names_both_shards:
+  {(StoryCatalog.task_name(0), (StoryCatalog.task_name(StoryCatalog.caves_task_id(0)), StoryCatalog.task_name(StoryCatalog.caves_task_id(8)))) == ("Make a pick", ("MudWorld", "BlueForest")) : (String & (String & String))}
+
+def story_catalog_names_both_shards():
+  {==}
+
+law cave_custom_layer_counts_run_down:
+  {CaveCustom.decremented([5, 10, 3], 1) == [5, 9, 3] : List<&2, U32>}
+
+def cave_custom_layer_counts_run_down():
   {==}

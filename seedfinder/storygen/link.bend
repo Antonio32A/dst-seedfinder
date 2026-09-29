@@ -1,9 +1,8 @@
 import Base
 import ../data/blob.bend as Blob
-import ../data/rooms.bend as Rooms
-import ../data/tasks.bend as Tasks
 import ../data/story.bend as StoryData
 import ../data/enums.bend as Enums
+import ./catalog.bend as StoryCatalog
 import ./graph.bend as StoryGraph
 import ./order.bend as StoryOrder
 import ./nodes.bend as StoryNodes
@@ -15,13 +14,13 @@ import ./background.bend as Background
 # and deletion history (lua/table.bend) whenever they are traversed.
 
 def locks(+task: U32) -> List<&2, U32>:
-  Blob.drop(Tasks.task_locks(task), 1)
+  Blob.drop(StoryCatalog.task_locks(task), 1)
 
 def keys_given(+task: U32) -> List<&2, U32>:
-  Blob.drop(Tasks.task_keys_given(task), 1)
+  Blob.drop(StoryCatalog.task_keys_given(task), 1)
 
 def lock_keys(+lock: U32) -> List<&2, U32>:
-  Blob.drop(Tasks.locks_keys(lock), 1)
+  Blob.drop(StoryCatalog.locks_keys(lock), 1)
 
 def task_of(+s: StoryGraph.St, +g: U32) -> U32:
   StoryGraph.gf(s, g, StoryGraph.g_part())
@@ -324,7 +323,7 @@ def restrict_by_key(+s: StoryGraph.St, +start: U32, +inserted: List<&2, U32>) ->
     Restricting{StoryGraph.set_gf(s, start, StoryGraph.g_depth(), 0), [start], inserted, [start], 1, 1, start}))
 
 def is_start_task(+s: StoryGraph.St, +g: U32) -> Bool:
-  +row = Tasks.task_locks(task_of(s, g))
+  +row = StoryCatalog.task_locks(task_of(s, g))
   U32.is_zero(Blob.at(row, 0)) || U32.is_eq(Blob.at(row, 1), Enums.lock_none())
 
 def start_tasks(order: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
@@ -446,10 +445,9 @@ def generate_region(+s: StoryGraph.St, +tasks: List<&2, U32>, +restricted: Bool)
   +made = generated(tasks, s)
   started(find_starting_task(made, StoryGraph.graph_table_order(made, graphs)), graphs, restricted)
 
-def start_room() -> StoryGraph.Info:
-  +room = Rooms.start_room()
-  StoryGraph.NodeData{StoryGraph.id_start(), 0, 0, room, StoryNodes.room_type(room), Rooms.value(room), StoryNodes.room_itype(room), 0,
-    StoryNodes.optional(Rooms.random_node_exit_weight(room)), StoryNodes.optional(Rooms.random_node_entrance_weight(room)), StoryGraph.none(), room, 1, 0}
+def start_room(+room: U32) -> StoryGraph.Info:
+  StoryGraph.NodeData{StoryGraph.id_start(), 0, 0, room, StoryNodes.room_type(room), StoryCatalog.room_value(room), StoryNodes.room_itype(room), 0,
+    StoryNodes.optional(StoryCatalog.room_exit_weight(room)), StoryNodes.optional(StoryCatalog.room_entrance_weight(room)), StoryGraph.none(), room, 1, 0}
 
 def graph_of_task(order: List<&2, U32>, +s: StoryGraph.St, +task: U32) -> U32:
   match order:
@@ -464,33 +462,32 @@ def start_joined(+entrance: U32, +added: StoryGraph.Got) -> StoryGraph.St:
     case StoryGraph.Got{+n, +s}:
       StoryGraph.link(s, n, entrance)
 
-def start_linked(+s: StoryGraph.St, +g: U32, +entry: StoryGraph.Got) -> StoryGraph.St:
+def start_linked(+s: StoryGraph.St, +g: U32, +room: U32, +entry: StoryGraph.Got) -> StoryGraph.St:
   match entry:
     case StoryGraph.Got{+e, +es}:
-      start_joined(e, StoryGraph.add_node(StoryGraph.say(es), g, start_room()))
+      start_joined(e, StoryGraph.add_node(StoryGraph.say(es), g, start_room(room)))
 
-def start_in(found: Bool, +s: StoryGraph.St, +g: U32, +fallback: U32) -> StoryGraph.St:
+def start_in(found: Bool, +s: StoryGraph.St, +g: U32, +fallback: U32, +room: U32) -> StoryGraph.St:
   match found:
     case True{}:
-      start_linked(s, g, StoryNodes.entrance_node(StoryGraph.say(s), g))
+      start_linked(s, g, room, StoryNodes.entrance_node(StoryGraph.say(s), g))
     case False{}:
-      start_linked(s, fallback, StoryNodes.entrance_node(StoryGraph.say(s), fallback))
+      start_linked(s, fallback, room, StoryNodes.entrance_node(StoryGraph.say(s), fallback))
 
-def start_named(named: Bool, +s: StoryGraph.St, +task: U32, +fallback: U32) -> StoryGraph.St:
+def start_named(named: Bool, +s: StoryGraph.St, +task: U32, +fallback: U32, +room: U32) -> StoryGraph.St:
   match named:
     case True{}:
       +g = graph_of_task(StoryGraph.children_order(s), s, task)
-      start_in(U32.is_ne(g, StoryGraph.none()), StoryGraph.say(s), g, fallback)
+      start_in(U32.is_ne(g, StoryGraph.none()), StoryGraph.say(s), g, fallback, room)
     case False{}:
-      start_in(False{}, s, fallback, fallback)
+      start_in(False{}, s, fallback, fallback, room)
 
 # Story:_AddPlayerStartNode: valid_start_tasks[math.random(#valid_start_tasks)], the START node (the start_node room
 # with AddStartingSetPiece's countstaticlayouts) linked to that task's entrance pick.
-def start_drawn(+valid: List<&2, U32>, +fallback: U32, +d: StoryGraph.Got) -> StoryGraph.St:
+def start_drawn(+valid: List<&2, U32>, +fallback: U32, +room: U32, +d: StoryGraph.Got) -> StoryGraph.St:
   match d:
     case StoryGraph.Got{+k, +s}:
-      start_named((k <= StoryOrder.count(valid, 0) : U32), s, StoryOrder.nth_or_last(valid, (k - 1 : U32), 0), fallback)
+      start_named((k <= StoryOrder.count(valid, 0) : U32), s, StoryOrder.nth_or_last(valid, (k - 1 : U32), 0), fallback, room)
 
-def add_start_node(+s: StoryGraph.St, +fallback: U32) -> StoryGraph.St:
-  +valid = Tasks.lists(2)
-  start_drawn(valid, fallback, StoryGraph.upto(s, StoryOrder.count(valid, 0)))
+def add_start_node(+s: StoryGraph.St, +fallback: U32, +room: U32, +valid: List<&2, U32>) -> StoryGraph.St:
+  start_drawn(valid, fallback, room, StoryGraph.upto(s, StoryOrder.count(valid, 0)))

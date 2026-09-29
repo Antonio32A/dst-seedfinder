@@ -65,6 +65,7 @@ generators=(
     "seedfinder/data/catalog.bend:$gen/gen_catalog.py"
     "seedfinder/data/world_catalog.bend:$gen/gen_world_catalog.py"
     "seedfinder/data/cave_catalog.bend:$gen/gen_cave_catalog.py"
+    "seedfinder/data/cave_story.bend:$gen/gen_cave_story.py"
     "seedfinder/data/search_vocab.bend:$gen/gen_search_vocab.py"
     "seedfinder/data/blob.bend:$gen/gen_blob.py"
     "seedfinder/data/strings.bend:$gen/gen_strings.py"

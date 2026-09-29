@@ -2,8 +2,7 @@ import Base
 import ../rng/pcg.bend as Pcg
 import ../lua/math_random.bend as MathRandom
 import ../lua/strhash.bend as StrHash
-import ../data/strings.bend as Strings
-import ../data/rooms.bend as Rooms
+import ./catalog.bend as StoryCatalog
 import ./mem.bend as StoryMem
 import ./order.bend as StoryOrder
 
@@ -127,6 +126,12 @@ def s_extras() -> U32:
 def s_pieces() -> U32:
   7
 
+def s_entrance() -> U32:
+  8
+
+def s_globals() -> U32:
+  9
+
 def graph_base() -> U32:
   64
 
@@ -144,6 +149,9 @@ def piece_base() -> U32:
 
 def site_base() -> U32:
   40960
+
+def global_base() -> U32:
+  44032
 
 def k_root() -> U32:
   0
@@ -365,15 +373,12 @@ def set_gf(+s: St, +g: U32, +f: U32, +v: U32) -> St:
 def is_entrance(+s: St, +n: U32) -> Bool:
   U32.is_eq(nf(s, n, f_entrance()), 1)
 
-def room_name(+room: U32) -> String:
-  Strings.name(Rooms.name(room))
-
 def graph_name_of(+kind: U32, +part: U32) -> String:
   match kind:
     case 0:
       "GAME_root"
     case 1:
-      Strings.name(part)
+      StoryCatalog.task_name(part)
     case 2:
       "LOOP_BLANK" ++ U32.show(part)
     case _:
@@ -385,11 +390,11 @@ def graph_name(+s: St, +g: U32) -> String:
 def base_name(+kind: U32, +graph: String, +b: U32, +c: U32) -> String:
   match kind:
     case 0:
-      graph ++ ":" ++ U32.show(b) ++ ":" ++ room_name(c)
+      graph ++ ":" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(c)
     case 1:
-      graph ++ ":BG_" ++ U32.show(b) ++ ":" ++ room_name(c)
+      graph ++ ":BG_" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(c)
     case 2:
-      graph ++ ":COVE_" ++ U32.show(b) ++ ":" ++ room_name(c)
+      graph ++ ":COVE_" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(c)
     case 3:
       "START"
     case 5:
@@ -588,6 +593,12 @@ def add_extra(+s: St, +n: U32, +kind: U32, +value: U32) -> St:
   +k = get(s, s_extras())
   +slot = (extra_base() + (k * 3 : U32) : U32)
   put(put(put(put(s, s_extras(), (k + 1 : U32)), slot, n), (slot + 1 : U32), kind), (slot + 2 : U32), value)
+
+# Records a GLOBALTAG result (Story.GlobalTags[tag][task]): the caves tag id, the task's graph and the node's id.
+def add_global(+s: St, +tag: U32, +g: U32, +node: U32) -> St:
+  +k = get(s, s_globals())
+  +slot = (global_base() + (k * 3 : U32) : U32)
+  put(put(put(put(s, s_globals(), (k + 1 : U32)), slot, tag), (slot + 1 : U32), g), (slot + 2 : U32), node)
 
 def fresh(+rng: Pcg.Rng) -> St:
   St{StoryMem.empty(), Nil{}, rng}

@@ -204,8 +204,11 @@ local function start_world(seed)
     runs = runs + 1
 end
 
+local seed_args = nil
+
 math.randomseed = function(seed, ...)
     draws = 0
+    seed_args = { seed, ... }
     start_world(seed)
     return raw_randomseed(seed, ...)
 end
@@ -215,9 +218,42 @@ math.random = function(...)
     return raw_random(...)
 end
 
+local STREAM_SCAN_LIMIT = 4000000
+
+-- The number of generator steps since the last math.randomseed, engine draws included (`draws` counts only the Lua
+-- calls). The next three outputs are read, the stream is restarted to find where they occur, and it is put back
+-- there, so the world generation goes on undisturbed.
+local function stream_position()
+    if seed_args == nil then
+        return nil
+    end
+    local first, second, third = raw_random(), raw_random(), raw_random()
+    raw_randomseed(seed_args[1], seed_args[2], seed_args[3])
+    local a, b, c = raw_random(), raw_random(), raw_random()
+    local position = 0
+    while a ~= first or b ~= second or c ~= third do
+        a, b, c = b, c, raw_random()
+        position = position + 1
+        if position > STREAM_SCAN_LIMIT then
+            return nil
+        end
+    end
+    raw_randomseed(seed_args[1], seed_args[2], seed_args[3])
+    for _ = 1, position do
+        raw_random()
+    end
+    return position
+end
+
 local function checkpoint(label)
     if world then
         table.insert(world.checkpoints, { label, draws })
+    end
+end
+
+local function stream_checkpoint(label)
+    if world then
+        table.insert(world.checkpoints, { label, draws, stream_position() })
     end
 end
 
@@ -835,12 +871,12 @@ forest_map.Generate = function(...)
     if world then
         world.attempts = world.attempts + 1
     end
-    checkpoint("generate_begin")
+    stream_checkpoint("generate_begin")
     if reset_probe_state then
         reset_probe_state()
     end
     local savedata = original_generate(...)
-    checkpoint(savedata and "generate_end" or "generate_failed")
+    stream_checkpoint(savedata and "generate_end" or "generate_failed")
     if savedata == nil and world and world.attempts >= MAX_TRIES then
         finish_world(nil, "gave_up")
     end
