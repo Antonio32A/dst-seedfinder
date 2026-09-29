@@ -3,6 +3,8 @@ import ../f64/repr.bend as F64Repr
 import ./centi.bend as Centi
 import ../worldsim/grid.bend as Grid
 import ../f64/arith.bend as F64Arith
+import ../f32/ops.bend as F32Ops
+import ../worldsim/tiles/world.bend as TileWorld
 import ../ocean/ents.bend as OceanEnts
 import ../populate/entities.bend as Entities
 import ../populate/setpiece.bend as PopulateSetpiece
@@ -169,7 +171,7 @@ def grouped(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) ->
 # The filters' world of a generated world (the seed's world attempt on the platform).
 def world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
   match final:
-    case GenJob.Final{g, _, +ents, +w, _}:
+    case GenJob.Final{g, _, +ents, +w, _, _, _}:
       +tiles = packed(g, (w * w : U32))
       world_of_groups(grouped(buckets(ents, (lookup(), Array.new(List<&2, OceanEnts.Ent>, bucket_depth(), Nil{}))), windows), seed, w, tiles)
 
@@ -332,13 +334,46 @@ def tile_names_of(tiles: List<&2, SearchVocab.Tile>, ids: List<&2, U32>) -> List
     case _ _:
       Nil{}
 
-def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>) -> FilterDump.Dump:
+# A road coordinate in the ENTS unit: 10 * floor((p - w / 2) * 4 * 10) with the game's double arithmetic (so the savedata value
+# times 100).
+def road_units(+t: F64Repr.F64, +half: F64Repr.F64) -> U32:
+  (F64Repr.to_i32(F64Repr.floor(F64Arith.mul(F64Arith.mul(F64Arith.sub(t, half), F64Repr.from_u32(4)), F64Repr.from_u32(10)))) * 10 : U32)
+
+def road_of(+w: U32, +p: TileWorld.Point) -> FilterDump.Position:
+  match p:
+    case TileWorld.Point{+x, +y}:
+      +half = F64Arith.mul(F64Repr.from_u32(w), F64Repr.half())
+      +xk = road_units(F32Ops.to_f64(x), half)
+      +zk = road_units(F32Ops.to_f64(y), half)
+      FilterDump.Position{xk, zk}
+
+def road_positions(points: List<&2, TileWorld.Point>, +w: U32) -> List<&2, FilterDump.Position>:
+  match points:
+    case Nil{}:
+      Nil{}
+    case Con{+p, rest}:
+      road_of(w, p) <> road_positions(rest, w)
+
+def roads_kept(roads: List<&2, List<&2, TileWorld.Point>>, +min_road: U32, +w: U32, +weight: U32) -> List<&2, FilterDump.Road>:
+  match roads:
+    case Nil{}:
+      Nil{}
+    case Con{+points, rest}:
+      +tail = roads_kept(rest, min_road, w, 1)
+      Bool.pick(List<&2, FilterDump.Road>, (min_road <= U32.from_nat(List.length(&2, TileWorld.Point, points)) : U32), FilterDump.Road{weight, road_positions(points, w)} <> tail, tail)
+
+# The roads forest_map saves: the polylines with at least min_road points, in order; a kept first road weighs 3 whatever
+# GetRoad says, the others 1.
+def roads_of(roads: List<&2, List<&2, TileWorld.Point>>, +min_road: U32, +w: U32) -> List<&2, FilterDump.Road>:
+  roads_kept(roads, min_road, w, 3)
+
+def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>, +roads: List<&2, FilterDump.Road>) -> FilterDump.Dump:
   (a, +wormholes) = got
   +found = named_loop(U32.to_nat(sid_slots()), Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, Nil{})
   +named = List.sort(~Named, ~named_le, with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container()))
   FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
-    prefabs_of(named, windows), links(wormholes), Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}}
+    prefabs_of(named, windows), links(wormholes), Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}, Some{roads}}
 
 def wormhole_sid() -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, GenTagsData.vocab_prefab_sids(), U32.to_nat(GenTagsData.vocab_wormhole())), 0)
@@ -348,7 +383,7 @@ def wormhole_sid() -> U32:
 # placed layouts with their members.
 def dump(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match final:
-    case GenJob.Final{g, _, +ents, +w, +pieces}:
+    case GenJob.Final{g, _, +ents, +w, +pieces, +roads, +min_road}:
       +tiles = packed(g, (w * w : U32))
       dump_of(Array.get(List<&2, OceanEnts.Ent>, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.sid_depth(), Nil{})), wormhole_sid()),
-        seed, windows, w, tiles, pieces)
+        seed, windows, w, tiles, pieces, roads_of(roads, min_road, w))

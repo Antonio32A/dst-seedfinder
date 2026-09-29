@@ -284,10 +284,11 @@ def site_areas_ok(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) ->
 def rng_after_tiles(+s: StoryGraph.St, +w: U32) -> Pcg.Rng:
   Pcg.advance(StoryGraph.rng_of(s), (w * w : U32))
 
-# ConvertToTileMap's paint, SeparateIslands, ForceConnectivity and DrawRoads.
-def tile_grid(+windows: Bool, +w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid:
+# ConvertToTileMap's paint, SeparateIslands, ForceConnectivity and DrawRoads: the drawn grid and GetRoads' polylines.
+def tile_grid(+windows: Bool, +w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid & List<&2, List<&2, TileWorld.Point>>:
   +isl = TileConnect.islands(w, False{})
-  TileRoads.draw_roads(windows, TileRoads.roads(windows, w, isl), TileConnect.force(w, isl, TileSeparate.separate(w, TileConvert.paint(w, lists))))
+  +roads = TileRoads.roads(windows, w, isl)
+  (TileRoads.draw_roads(windows, roads, TileConnect.force(w, isl, TileSeparate.separate(w, TileConvert.paint(w, lists)))), roads)
 
 # The land context: the RNG at ConvertToTileMap is the story's RNG at Commit (the flag digests replay its variant draws).
 def land_context(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites, +w: U32, +tracing: Bool) -> PopulateState.Ctx:

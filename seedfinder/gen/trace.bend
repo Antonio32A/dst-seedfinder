@@ -271,25 +271,29 @@ def land_events(l: PopulateState.Land) -> PopulateState.Land:
     case PopulateState.Land{g, +rng, +ents, +events}:
       PopulateState.Land{g, rng, ents, unshuffled(events)}
 
+def grid_only(got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>) -> Grid.Grid:
+  (g, _) = got
+  g
+
 def land_lines(+st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> List<&2, String>:
-  PopulateTrace.land_lines(land_events(Generate.land(Generate.land_context(c, s, k, sites, w, True{}), Generate.tile_grid(Generate.windows_of(c), world, lists), w)),
+  PopulateTrace.land_lines(land_events(Generate.land(Generate.land_context(c, s, k, sites, w, True{}), grid_only(Generate.tile_grid(Generate.windows_of(c), world, lists)), w)),
     PopulateTrace.Out{seed_of(st), U32.show(a), w, w, s, 0, 0, 0, 0, 0, 0})
 
-def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +tiles: Grid.Hash) -> GenJob.Landed & List<&2, String>:
+def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +tiles: Grid.Hash) -> GenJob.Landed & List<&2, String>:
   (g, +flags) = got
   +line = Canon.record("landed", [Canon.number("a", a), Canon.number("ctr", Pcg.counter(seed_of(st), rng)),
     Canon.number("n", U32.from_nat(List.length(&2, Entities.Ent, ents))), Canon.field("tiles", hash_text(tiles)), Canon.field("flags", hash_text(flags)),
     Canon.number("topo", GenJob.topology_count(s))])
-  (GenJob.Landed{g, rng, ents, s, w, Nil{}}, [line])
+  (GenJob.Landed{g, rng, ents, s, w, Nil{}, roads}, [line])
 
-def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32) -> GenJob.Landed & List<&2, String>:
+def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>) -> GenJob.Landed & List<&2, String>:
   (g, +tiles) = got
-  landed_flags(Grid.flags_digest(g, StoryGraph.rng_of(s)), st, a, rng, ents, s, w, tiles)
+  landed_flags(Grid.flags_digest(g, StoryGraph.rng_of(s)), st, a, rng, ents, s, w, roads, tiles)
 
 def landed_lines(landed: GenJob.Landed, +st: Tr, +a: U32) -> GenJob.Landed & List<&2, String>:
   match landed:
-    case GenJob.Landed{g, +rng, +ents, +s, +w, _}:
-      landed_tiles(Grid.tiles_digest(g), st, a, rng, ents, s, w)
+    case GenJob.Landed{g, +rng, +ents, +s, +w, _, +roads}:
+      landed_tiles(Grid.tiles_digest(g), st, a, rng, ents, s, w, roads)
 
 def ocean_entered(got: GenJob.Landed & List<&2, String>, +c: Generate.Seed, +a: U32) -> GenJob.Job & List<&2, String>:
   (landed, +lines) = got
