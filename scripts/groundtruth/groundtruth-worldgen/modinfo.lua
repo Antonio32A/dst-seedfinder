@@ -1,5 +1,5 @@
 name = "Ground Truth Worldgen"
-description = "Worldgen-only research mod. The server's own forest is generated from the first configured seed, and the remaining seeds are generated right after it in the same worldgen run. Every finished world (tasks, set pieces, topology, tiles, entities, RNG checkpoints) is printed to the server log as GTWORLD lines."
+description = "Worldgen-only research mod. The server's own world (forest or caves shard) is generated from the first configured seed, and the remaining seeds are generated right after it in the same worldgen run. Every finished world (tasks, set pieces, topology, tiles, entities, RNG checkpoints) is printed to the server log as GTWORLD lines."
 author = "dst-seedfinder"
 version = "1.0"
 

@@ -11,6 +11,7 @@ TILE_SCALE = 4
 TILE_HEADER_BYTES = 9
 LAND_RANGES = ((2, 127), (256, 10497))
 WORMHOLE_PREFAB = "wormhole"
+PILLAR_PREFABS = ("tentacle_pillar", "tentacle_pillar_atrium")
 
 
 def is_land_tile(tile):
@@ -133,6 +134,18 @@ def wormhole_links_of(teleporters, entities):
         target = by_id.get(record["target"])
         if target is not None:
             links.append((entities[WORMHOLE_PREFAB][record["index"]], entities[WORMHOLE_PREFAB][target["index"]]))
+    return links
+
+
+def pillar_links_of(teleporters, entities):
+    """Directed links (entry instance, exit instance) from `teleporter.target` of the caves' tentacle pillars, which
+    link across the pillar prefabs (the atrium pillars have their own prefab)."""
+    by_id = {record["id"]: record for record in teleporters if record["prefab"] in PILLAR_PREFABS}
+    links = []
+    for record in by_id.values():
+        target = by_id.get(record["target"])
+        if target is not None:
+            links.append((entities[record["prefab"]][record["index"]], entities[target["prefab"]][target["index"]]))
     return links
 
 

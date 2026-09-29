@@ -1,22 +1,29 @@
 #!/usr/bin/env bash
-# usage: run_worldgen.sh [loop|fresh] [seeds]
+# usage: run_worldgen.sh [loop|fresh] [seeds] [forest|caves]
 #   loop           : one offline dedicated server launch that generates every seed (first seed fresh, rest looped)
 #   fresh (default): one launch per seed, so every world is a genuine fresh generation
 #   seeds          : comma separated seeds or ranges, default 1-10
+#   shard          : forest (default, the Master shard) or caves (the Caves shard, preset DST_CAVE)
 # Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder.
-# Logs go to build/groundtruth/logs/worldgen/, worlds to build/groundtruth/data/worlds/ (GT_WORLDS_DIR overrides).
+# Logs go to build/groundtruth/logs/worldgen/ (worldgen_caves/ for the caves), worlds to build/groundtruth/data/worlds/
+# (worlds_caves/ for the caves); GT_WORLDS_DIR overrides the worlds folder.
 set -euo pipefail
 
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
 work="$(cd "$here/../.." && pwd)/build/groundtruth"
 mode="${1:-fresh}"
 seeds="${2:-1-10}"
+shard="${3:-forest}"
 default_dst="$HOME/.local/share/Steam/steamapps/common/Don't Starve Together"
 dst="${DST_GAME:-$default_dst}"
 storage="$work/storage"
 cluster_dir="$storage/DoNotStarveTogether/Cluster_GTW"
-server_log="$cluster_dir/Master/server_log.txt"
-logs="$work/logs/worldgen"
+case "$shard" in
+forest) shard_dir=Master; worlds_dir="$work/data/worlds"; logs="$work/logs/worldgen" ;;
+caves) shard_dir=Caves; worlds_dir="$work/data/worlds_caves"; logs="$work/logs/worldgen_caves" ;;
+*) echo "usage: $0 [loop|fresh] [seeds] [forest|caves]" >&2; exit 2 ;;
+esac
+server_log="$cluster_dir/$shard_dir/server_log.txt"
 steam_runtime="${STEAM_RUNTIME_DIR:-$HOME/.local/share/Steam/ubuntu12_32/steam-runtime}"
 runtime_libs="$steam_runtime/pinned_libs_64:$steam_runtime/usr/lib/x86_64-linux-gnu:$steam_runtime/lib/x86_64-linux-gnu"
 
@@ -43,8 +50,8 @@ run_server() {
 
     mkdir -p "$cluster_dir"
     cp -r "$here/cluster_template/." "$cluster_dir/"
-    rm -rf "$cluster_dir/Master/save" "$server_log"
-    cat > "$cluster_dir/Master/modoverrides.lua" <<EOF
+    rm -rf "$cluster_dir/$shard_dir/save" "$server_log"
+    cat > "$cluster_dir/$shard_dir/modoverrides.lua" <<EOF
 return {
     ["groundtruth-worldgen"] = {
         enabled = true,
@@ -57,7 +64,7 @@ EOF
         cd "$dst/bin64" && LD_LIBRARY_PATH="$dst/bin64/lib64:$runtime_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
             exec ./dontstarve_dedicated_server_nullrenderer_x64 \
             -persistent_storage_root "$storage" -conf_dir DoNotStarveTogether \
-            -cluster Cluster_GTW -shard Master -offline -skip_update_server_mods \
+            -cluster Cluster_GTW -shard $shard_dir -offline -skip_update_server_mods \
             -monitor_parent_process $$
     ) > "$run_log.stdout.txt" 2>&1 &
     local server=$!
@@ -98,5 +105,5 @@ esac
 if [[ -n "${GT_WORLDS_DIR:-}" ]]; then
     python3 "$here/parse_worldgen.py" -o "$GT_WORLDS_DIR" "${run_logs[@]}"
 else
-    python3 "$here/parse_worldgen.py" "$logs"/*server_log.txt
+    python3 "$here/parse_worldgen.py" -o "$worlds_dir" "$logs"/*server_log.txt
 fi

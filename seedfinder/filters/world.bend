@@ -24,7 +24,7 @@ type World is Data:
   World{seed: U32, width: U32, height: U32, tile_ids: List<&2, U32>, entities: List<&2, List<&2, Inst>>, links: List<&2, Link>, tiles: List<&2, U32>}
 
 # A dump: a generated world with its platform (0 unknown, 1 windows, 2 linux), or the seed of a world whose
-# generation gave up.
+# generation gave up. Only forest dumps load; a caves dump is refused.
 type Loaded is Data:
   Generated{world: World, platform: U32}
   GaveUp{seed: U32}
@@ -96,10 +96,14 @@ def links_of(links: List<&2, FilterDump.Link>, +groups: List<&2, List<&2, Inst>>
 
 def loaded_of(dump: Result<&1, &1, U32 & String, FilterDump.Dump>) -> Result<&1, &1, U32 & String, Loaded>:
   match dump:
-    case Done{FilterDump.Generated{+seed, +platform, _, +width, +height, +tile_names, +tiles, +prefabs, +links, _, _}}:
+    case Done{FilterDump.Generated{_, _, 1, _, _, _, _, _, _, _, _, _, _}}:
+      Fail{(2, "world dump of the caves shard, this finder searches the forest shard")}
+    case Done{FilterDump.GaveUp{_, _, 1}}:
+      Fail{(2, "world dump of the caves shard, this finder searches the forest shard")}
+    case Done{FilterDump.Generated{+seed, +platform, _, _, +width, +height, +tile_names, +tiles, +prefabs, +links, _, _, _}}:
       +groups = groups_of(SearchVocab.prefabs(), prefabs, 0)
       Done{Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole()), tiles}, platform}}
-    case Done{FilterDump.GaveUp{+seed, _}}:
+    case Done{FilterDump.GaveUp{+seed, _, _}}:
       Done{GaveUp{seed}}
     case Fail{error}:
       Fail{error}

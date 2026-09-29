@@ -1,7 +1,8 @@
-# World dump format (`.dstw`, format 2)
+# World dump format (`.dstw`, format 3)
 
-A `.dstw` file holds one generated forest world: its tile map, every entity the world generation saved, the
-wormhole links and, when the seedfinder generated it, the set pieces the world generation placed. `seedfinder world
+A `.dstw` file holds one generated world of one shard (the forest or the caves): its tile map, every entity the world
+generation saved, the wormhole links (forest) or tentacle pillar links (caves) and, when the seedfinder generated it,
+the set pieces the world generation placed. `seedfinder world
 eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world dump` writes it for the worlds the
 seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on the real dedicated server. The file
 describes itself: it carries every name it uses, so reading it needs no catalog or game data.
@@ -24,21 +25,24 @@ describes itself: it carries every name it uses, so reading it needs no catalog 
 | 8 | u32 | seed | the world seed |
 | 12 | u32 | status | `1` generated, `0` the world generation gave up |
 | 16 | u32 | platform | the OS of the host that generated the world: `0` unknown, `1` Windows, `2` Linux |
-| 20 | u32 | game build | the game's build number (e.g. `747465`), `0` when unknown |
-| 24 | u32 | width | tiles along x |
-| 28 | u32 | height | tiles along z |
-| 32 | | sections | until the end of the file (§ 3) |
+| 20 | u32 | shard | the shard the world belongs to: `0` forest (`SURVIVAL_TOGETHER`), `1` caves (`DST_CAVE`) |
+| 24 | u32 | game build | the game's build number (e.g. `747465`), `0` when unknown |
+| 28 | u32 | width | tiles along x |
+| 32 | u32 | height | tiles along z |
+| 36 | | sections | until the end of the file (§ 3) |
 
-A file whose world generation gave up ends after `platform`: it is exactly 20 bytes.
+A file whose world generation gave up ends after `shard`: it is exactly 24 bytes.
 
-A reader rejects a file with another magic, and one with another version (format 1 files have no sections and are
-laid out differently; regenerate them).
+A reader rejects a file with another magic, and one with another version with an error that names the version
+(format 1 files have no sections, format 2 files have no shard field and are 4 bytes shorter in the header; regenerate
+them). A reader that handles one shard only rejects a dump of the other shard.
 
 ## 3. Sections
 
 A section is a 4-byte ASCII tag, a `u32` payload length `L` in bytes (a multiple of 4), then the payload. The next
 section starts right after it, `8 + L` bytes after the tag. A generated world has `TNAM`, `TILE`, `ENTS` and `WORM`
-exactly once, in this order, and may then have `SETP` and `ROAD` once each, in this order. A reader finds them by tag
+exactly once, in this order; a world of the caves shard then has `PILL` once; and it may then have `SETP` and `ROAD`
+once each, in this order. A reader finds them by tag
 and skips any tag it does not know.
 
 ### `TNAM`: tile names
@@ -77,6 +81,15 @@ Windows. The same holds for `z` and `zk`.
 `u32` count, then per link a `u32` entry index and a `u32` exit index, both indices of `wormhole` instances in
 `ENTS`. Jumping into the entry wormhole comes out at the exit one. A link is directed, and a wormhole pair is two
 links. Links are in the order of their entry wormholes in the savedata.
+
+### `PILL`: tentacle pillar links
+
+Only in a dump of the caves shard (`WORM` is then empty, as the caves have no wormholes). `u32` count, then per link
+four `u32`: the entry pillar's prefab (its position in `ENTS`, from 0), its instance index in that prefab, and the same
+two for the exit pillar. The pillars are the `tentacle_pillar` prefab (paired at random) and the two
+`tentacle_pillar_atrium` ones (paired with each other); a link never leaves its group. Jumping into the entry pillar
+comes out at the exit one. A link is directed, and a pillar pair is two links. Links are in the order of their entry
+pillars in the savedata (prefabs in name order, then instance order).
 
 ### `SETP`: set pieces
 
@@ -154,13 +167,13 @@ Roads the world generation dropped for having fewer points than its `math.random
 
 ## 4. What is in it
 
-Only what the world generation saved for the forest shard: the savedata's map tiles, every `savedata.ents` entry
-(whatever its prefab), the wormholes' teleporter targets and the roads, and for worlds the seedfinder generated, where
-the world generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
+Only what the world generation saved for the dump's shard: the savedata's map tiles, every `savedata.ents` entry
+(whatever its prefab), the teleporter targets of the wormholes (forest) or the tentacle pillars (caves) and the roads
+(the caves have none), and for worlds the seedfinder generated, where the world generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
 has none.
 
 It does not hold anything the running game makes later: entities that prefabs spawn once the world loads (e.g. a
-spawner's children), what a server adds on its first start, or the caves. The node graph and the entities'
+spawner's children), or what a server adds on its first start. The node graph and the entities'
 own save data (other than position) are not included either.
 
 ## 5. Extending it

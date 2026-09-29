@@ -4,7 +4,8 @@
 usage: parse_worldgen.py [-o OUTDIR] LOG [LOG ...]
 
 Every record is printed as chunks "GTWORLD <kind>:<launch>:<n> <i>/<total> <payload>|".
-Chunks are joined per key and decoded as JSON. Writes into OUTDIR (default: data/worlds next to this script):
+Chunks are joined per key and decoded as JSON, and every world keeps the "shard" the mod recorded (forest or caves).
+Writes into OUTDIR (default: build/groundtruth/data/worlds):
   <seed>.json                     the reference world for that seed (a fresh launch if there is one)
   <seed>.<mode>.<launch>-<n>.json every other world generated for the same seed
   index.json                      one summary entry per world
@@ -79,7 +80,7 @@ def write_worlds(worlds_by_seed, outdir):
             name = f"{seed}.json" if position == 0 else f"{seed}.{world['mode']}.{world['launch']}-{world['run']}.json"
             (outdir / name).write_text(json.dumps(world, separators=(",", ":")))
             index.append({
-                "file": name, "seed": seed, "mode": world["mode"], "launch": world["launch"], "run": world["run"],
+                "file": name, "seed": seed, "shard": world.get("shard"), "mode": world["mode"], "launch": world["launch"], "run": world["run"],
                 "status": world.get("status"), "attempts": world.get("attempts"),
                 "width": world.get("width"), "height": world.get("height"),
                 "entities": sum((world.get("entity_counts") or {}).values()),
@@ -107,7 +108,7 @@ def main():
 
     records, broken = assemble(*read_chunks(args.logs))
     if not records:
-        sys.exit("no complete GTWORLD records found; was the mod enabled on the forest (Master) shard?")
+        sys.exit("no complete GTWORLD records found; was the mod enabled on the shard that ran?")
 
     worlds_by_seed = defaultdict(list)
     infos = []
@@ -125,7 +126,7 @@ def main():
     (args.outdir / "info.json").write_text(json.dumps(infos, indent=1))
     index = write_worlds(worlds_by_seed, args.outdir)
     for entry in index:
-        print(f"{entry['file']}: status={entry['status']} attempts={entry['attempts']} "
+        print(f"{entry['file']}: shard={entry['shard']} status={entry['status']} attempts={entry['attempts']} "
               f"size={entry['width']}x{entry['height']} entities={entry['entities']}")
     report_repeats(worlds_by_seed)
     for problem in broken:

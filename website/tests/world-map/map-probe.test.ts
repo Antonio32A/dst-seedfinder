@@ -14,6 +14,7 @@ const WORLD: GeneratedWorld = {
     status: "generated",
     seed: 1,
     platform: "linux",
+    shard: "forest",
     gameBuild: 747465,
     width: 3,
     height: 2,

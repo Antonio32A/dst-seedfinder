@@ -371,9 +371,9 @@ def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed
   (a, +wormholes) = got
   +found = named_loop(U32.to_nat(sid_slots()), Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, Nil{})
   +named = List.sort(~Named, ~named_le, with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container()))
-  FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), Constants.game_build(), w, w,
+  FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), 0, Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
-    prefabs_of(named, windows), links(wormholes), Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}, Some{roads}}
+    prefabs_of(named, windows), links(wormholes), [], Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}, Some{roads}}
 
 def wormhole_sid() -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, GenTagsData.vocab_prefab_sids(), U32.to_nat(GenTagsData.vocab_wormhole())), 0)

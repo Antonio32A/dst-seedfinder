@@ -16,6 +16,7 @@ local MAX_TRIES = 5
 local TAG = "GTWORLD"
 local UNTRACED_METHODS = { LuaPrint = true }
 local TOPOLOGY_OMIT = { colours = true, overrides = true, c = true }
+local SHARDS = { forest = "forest", cave = "caves" }
 
 local pcall, xpcall, tonumber, next, select = G.pcall, G.xpcall, G.tonumber, G.next, G.select
 local debug, os, json = G.debug, rawget(G, "os"), G.json
@@ -59,9 +60,11 @@ local REPLAY_FIRST = config_value("replay_first", DEFAULT_REPLAY_FIRST) == true
 local CHUNK_SIZE = math.max(MIN_CHUNK_SIZE, math.floor(tonumber(config_value("chunk_size", DEFAULT_CHUNK_SIZE)) or DEFAULT_CHUNK_SIZE))
 local PARAMS = generation_parameters()
 
-if #SEEDS == 0 or PARAMS == nil or PARAMS.level_data.location ~= "forest" then
+if #SEEDS == 0 or PARAMS == nil or SHARDS[PARAMS.level_data.location] == nil then
     return
 end
+
+local SHARD = SHARDS[PARAMS.level_data.location]
 
 local JSON_ESCAPES = { ['"'] = '\\"', ["\\"] = "\\\\", ["\n"] = "\\n", ["\r"] = "\\r", ["\t"] = "\\t" }
 
@@ -247,12 +250,24 @@ end
 local raw_methods = {}
 local reset_probe_state
 local PROBES = {}
+local PRE_PROBES = {}
 local probe_enabled = (os and os.getenv and os.getenv("GTWORLD_PROBES") or "1") ~= "0"
 
 local function run_probe(name, args, results)
     local probe = PROBES[name]
     if probe and probe_enabled and world then
         local ok, err = pcall(probe, args, results)
+        if not ok then
+            world.probe_errors = (world.probe_errors or 0) + 1
+            world.probe_error = tostring(err)
+        end
+    end
+end
+
+local function run_pre_probe(name, args)
+    local probe = PRE_PROBES[name]
+    if probe and probe_enabled and world then
+        local ok, err = pcall(probe, args)
         if not ok then
             world.probe_errors = (world.probe_errors or 0) + 1
             world.probe_error = tostring(err)
@@ -275,6 +290,9 @@ local function traced(name, method)
         method_ids[name], method_calls[id], method_draws[id] = id, 0, 0
     end
     return function(...)
+        if PRE_PROBES[name] then
+            run_pre_probe(name, { n = select("#", ...), ... })
+        end
         if PROBES[name] then
             local before = draws
             return finish_probed(id, before, name, { n = select("#", ...), ... }, method(...))
@@ -583,9 +601,11 @@ PROBES.ForceConnectivity = function() probe_tiles("force_connectivity") end
 PROBES.DrawRoads = function() probe_tiles("draw_roads") end
 
 local replace_single_calls = 0
+local maze_tiles_recorded = false
 
 reset_probe_state = function()
     vertex_names, vertex_seen, voronoi_passes, replace_single_calls = {}, {}, 0, 0
+    maze_tiles_recorded = false
 end
 PROBES.ReplaceSingleNonLandTiles = function()
     replace_single_calls = replace_single_calls + 1
@@ -601,6 +621,59 @@ local function encode_point_lists(results)
         pts[i] = xs[i] .. "," .. ys[i] .. "," .. tostring(types[i])
     end
     return encode_string(table.concat(pts, ";")), #xs
+end
+
+local function probe_tiles_before_mazes()
+    if not maze_tiles_recorded then
+        maze_tiles_recorded = true
+        probe_tiles("before_mazes")
+    end
+end
+
+PRE_PROBES.RunMaze = probe_tiles_before_mazes
+PRE_PROBES.GetPointsForMetaMaze = probe_tiles_before_mazes
+
+PROBES.RunCA = function(args)
+    local xs, ys, types = raw_call("GetPointsForSite", args[2])
+    local encoded, count = encode_point_lists({ xs, ys, types })
+    probe_record("runca", {
+        { "id", encode_string(args[2]) },
+        { "iterations", encode_value(args[3]) },
+        { "seed_mode", encode_value(args[4]) },
+        { "num_random_points", encode_value(args[5]) },
+        { "draws_after", encode_number(draws) },
+        { "count", encode_number(count) },
+        { "pts", encoded },
+    })
+end
+
+PROBES.RunMaze = function(args, results)
+    local encoded, count = encode_point_lists(results)
+    probe_record("runmaze", {
+        { "maze_type", encode_value(args[2]) },
+        { "val", encode_value(args[3]) },
+        { "tile_a", encode_value(args[4]) },
+        { "tile_b", encode_value(args[5]) },
+        { "nodes", encode_value(args[6]) },
+        { "draws_after", encode_number(draws) },
+        { "count", encode_number(count) },
+        { "pts", encoded },
+    })
+end
+
+PROBES.GetPointsForMetaMaze = function(args, results)
+    local encoded, count = encode_point_lists(results)
+    probe_record("metamaze", {
+        { "cell_size", encode_value(args[2]) },
+        { "nodes", encode_value(args[3]) },
+        { "draws_after", encode_number(draws) },
+        { "count", encode_number(count) },
+        { "pts", encoded },
+    })
+end
+
+PROBES.DetectDisconnect = function(_, results)
+    probe_record("disconnect", { { "count", encode_value(results[1]) } })
 end
 
 PROBES.GetPointsForSite = function(args, results)
@@ -656,6 +729,7 @@ local function world_fields(finished, status)
         { "launch", encode_number(launch) },
         { "run", encode_number(finished.run) },
         { "mode", encode_string(finished.mode) },
+        { "shard", encode_string(SHARD) },
         { "status", encode_string(status) },
         { "attempts", encode_number(finished.attempts) },
         { "rng_checkpoints", "[" .. table.concat(checkpoints, ",") .. "]" },
@@ -670,6 +744,14 @@ local function world_fields(finished, status)
     return fields
 end
 
+local function encode_roads(roads)
+    local parts = {}
+    for i = 1, G.table.maxn(roads or {}) do
+        parts[i] = encode_value(roads[i])
+    end
+    return "[" .. table.concat(parts, ",") .. "]"
+end
+
 local function map_fields(savedata)
     local map = savedata.map
     local positions, counts, teleporters = encode_entities(savedata.ents or {})
@@ -679,7 +761,7 @@ local function map_fields(savedata)
         { "meta", encode_value(savedata.meta) },
         { "world_tile_map", encode_value(map.world_tile_map) },
         { "topology", encode_value(map.topology, TOPOLOGY_OMIT) },
-        { "roads", encode_value(map.roads) },
+        { "roads", encode_roads(map.roads) },
         { "entity_counts", counts },
         { "teleporters", teleporters },
         { "entities", positions },
@@ -790,6 +872,7 @@ emit_record("info", ordered_object({
     { "chunk_size", encode_number(CHUNK_SIZE) },
     { "position_format", encode_string(POSITION_FORMAT) },
     { "has_io", tostring(io_lib ~= nil) },
+    { "shard", encode_string(SHARD) },
     { "level_type", encode_value(PARAMS.level_type) },
     { "level_data", encode_value(PARAMS.level_data) },
 }))

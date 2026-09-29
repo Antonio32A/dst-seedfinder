@@ -16,6 +16,11 @@ type Prefab is Data:
 type Link is Data:
   Link{entry: U32, exit: U32}
 
+# A directed tentacle pillar link (the PILL section): the entry and exit instance, each as the position of its
+# prefab in ENTS (from 0) and its index in that prefab.
+type Pillar is Data:
+  Pillar{entry_prefab: U32, entry: U32, exit_prefab: U32, exit: U32}
+
 # A set piece member: instance `index` of the `prefab`-th ENTS prefab (both from 0).
 type Member is Data:
   Member{prefab: U32, index: U32}
@@ -30,11 +35,11 @@ type Road is Data:
   Road{weight: U32, points: List<&2, Position>}
 
 # A world dump (docs/world-dump.md) as the file lays it out: a generated world (tiles packed two u16 per word, the
-# first in the low half; its set pieces when it has a SETP section and its roads when it has a ROAD section), or the seed and platform of one whose generation
-# gave up.
+# first in the low half; its shard, 0 forest or 1 caves; its set pieces when it has a SETP section and its roads when it
+# has a ROAD section), or the seed, platform and shard of one whose generation gave up.
 type Dump is Data:
-  Generated{seed: U32, platform: U32, build: U32, width: U32, height: U32, tile_names: List<&2, TileName>, tiles: List<&2, U32>, prefabs: List<&2, Prefab>, links: List<&2, Link>, pieces: Maybe<&2, List<&2, Piece>>, roads: Maybe<&2, List<&2, Road>>}
-  GaveUp{seed: U32, platform: U32}
+  Generated{seed: U32, platform: U32, shard: U32, build: U32, width: U32, height: U32, tile_names: List<&2, TileName>, tiles: List<&2, U32>, prefabs: List<&2, Prefab>, links: List<&2, Link>, pillars: List<&2, Pillar>, pieces: Maybe<&2, List<&2, Piece>>, roads: Maybe<&2, List<&2, Road>>}
+  GaveUp{seed: U32, platform: U32, shard: U32}
 
 def magic() -> U32:
   1465144132
@@ -104,6 +109,13 @@ def link_of(words: List<&2, U32>) -> Link & List<&2, U32>:
     case _:
       (Link{0, 0}, Nil{})
 
+def pillar_of(words: List<&2, U32>) -> Pillar & List<&2, U32>:
+  match words:
+    case Con{+entry_prefab, Con{+entry, Con{+exit_prefab, Con{+exit, rest}}}}:
+      (Pillar{entry_prefab, entry, exit_prefab, exit}, rest)
+    case _:
+      (Pillar{0, 0, 0, 0}, Nil{})
+
 def members_of(n: Nat, words: List<&2, U32>) -> List<&2, Member>:
   match n words:
     case 1n+p Con{+prefab, Con{+index, rest}}:
@@ -148,18 +160,20 @@ def counted(~A: Data, ~entry: List<&2, U32> -> A & List<&2, U32>, words: List<&2
 
 def with_section(tag: U32, payload: List<&2, U32>, d: Dump) -> Dump:
   match tag d:
-    case 1296125524 Generated{+seed, +platform, +build, +width, +height, _, +tiles, +prefabs, +links, +pieces, +roads}:
-      Generated{seed, platform, build, width, height, counted(~TileName, ~tile_name_of, payload), tiles, prefabs, links, pieces, roads}
-    case 1162627412 Generated{+seed, +platform, +build, +width, +height, +tile_names, _, +prefabs, +links, +pieces, +roads}:
-      Generated{seed, platform, build, width, height, tile_names, payload, prefabs, links, pieces, roads}
-    case 1398033989 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, _, +links, +pieces, +roads}:
-      Generated{seed, platform, build, width, height, tile_names, tiles, counted(~Prefab, ~prefab_of, payload), links, pieces, roads}
-    case 1297239895 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, _, +pieces, +roads}:
-      Generated{seed, platform, build, width, height, tile_names, tiles, prefabs, counted(~Link, ~link_of, payload), pieces, roads}
-    case 1347700051 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, _, +roads}:
-      Generated{seed, platform, build, width, height, tile_names, tiles, prefabs, links, Some{counted(~Piece, ~piece_of, payload)}, roads}
-    case 1145130834 Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pieces, _}:
-      Generated{seed, platform, build, width, height, tile_names, tiles, prefabs, links, pieces, Some{counted(~Road, ~road_of, payload)}}
+    case 1296125524 Generated{+seed, +platform, +shard, +build, +width, +height, _, +tiles, +prefabs, +links, +pillars, +pieces, +roads}:
+      Generated{seed, platform, shard, build, width, height, counted(~TileName, ~tile_name_of, payload), tiles, prefabs, links, pillars, pieces, roads}
+    case 1162627412 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, _, +prefabs, +links, +pillars, +pieces, +roads}:
+      Generated{seed, platform, shard, build, width, height, tile_names, payload, prefabs, links, pillars, pieces, roads}
+    case 1398033989 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, _, +links, +pillars, +pieces, +roads}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, counted(~Prefab, ~prefab_of, payload), links, pillars, pieces, roads}
+    case 1297239895 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, _, +pillars, +pieces, +roads}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, counted(~Link, ~link_of, payload), pillars, pieces, roads}
+    case 1280067920 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, _, +pieces, +roads}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, counted(~Pillar, ~pillar_of, payload), pieces, roads}
+    case 1347700051 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, _, +roads}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, Some{counted(~Piece, ~piece_of, payload)}, roads}
+    case 1145130834 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, _}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, pieces, Some{counted(~Road, ~road_of, payload)}}
     case _ other:
       other
 
@@ -173,12 +187,12 @@ def sections(fuel: Nat, words: List<&2, U32>, d: Dump) -> Dump:
 
 def versioned(words: List<&2, U32>) -> Result<&1, &1, U32 & String, Dump>:
   match words:
-    case Con{_, Con{2, Con{+seed, Con{1, Con{+platform, Con{+build, Con{+width, Con{+height, +rest}}}}}}}}:
-      Done{sections(List.length(&2, U32, rest), rest, Generated{seed, platform, build, width, height, Nil{}, Nil{}, Nil{}, Nil{}, None{}, None{}})}
-    case Con{_, Con{2, Con{+seed, Con{0, Con{+platform, _}}}}}:
-      Done{GaveUp{seed, platform}}
+    case Con{_, Con{3, Con{+seed, Con{1, Con{+platform, Con{+shard, Con{+build, Con{+width, Con{+height, +rest}}}}}}}}}:
+      Done{sections(List.length(&2, U32, rest), rest, Generated{seed, platform, shard, build, width, height, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, None{}, None{}})}
+    case Con{_, Con{3, Con{+seed, Con{0, Con{+platform, Con{+shard, _}}}}}}:
+      Done{GaveUp{seed, platform, shard}}
     case Con{_, Con{+version, _}}:
-      Fail{(2, "world dump format " ++ U32.show(version) ++ ", regenerate it (this finder reads format 2)")}
+      Fail{(2, "world dump format " ++ U32.show(version) ++ ", regenerate it (this finder reads format 3)")}
     case _:
       Fail{(2, "not a world dump")}
 
@@ -259,6 +273,24 @@ def link_words(links: List<&2, Link>) -> List<&2, U32>:
 def links_section(+links: List<&2, Link>) -> List<&2, U32>:
   section(1297239895, bytes_of(U32.from_nat(List.length(&2, Link, links)) <> link_words(links)))
 
+def pillar_words(pillars: List<&2, Pillar>) -> List<&2, U32>:
+  match pillars:
+    case Nil{}:
+      Nil{}
+    case Con{Pillar{+entry_prefab, +entry, +exit_prefab, +exit}, rest}:
+      entry_prefab <> entry <> exit_prefab <> exit <> pillar_words(rest)
+
+# The PILL section of these tentacle pillar links, in the given order.
+def pillars_section(+pillars: List<&2, Pillar>) -> List<&2, U32>:
+  section(1280067920, bytes_of(U32.from_nat(List.length(&2, Pillar, pillars)) <> pillar_words(pillars)))
+
+def optional_pillars(+shard: U32, +pillars: List<&2, Pillar>) -> List<&2, U32>:
+  match shard:
+    case 1:
+      pillars_section(pillars)
+    case _:
+      Nil{}
+
 def member_words(members: List<&2, Member>) -> List<&2, U32>:
   match members:
     case Nil{}:
@@ -299,36 +331,36 @@ def optional_set_pieces(+pieces: Maybe<&2, List<&2, Piece>>) -> List<&2, U32>:
     case Some{+found}:
       set_pieces_section(found)
 
-# A world dump's file bytes: the header, then a generated world's TNAM, TILE, ENTS and WORM sections and, when it has
-# set pieces, its SETP section and, when it has roads, its ROAD section.
+# A world dump's file bytes: the header, then a generated world's TNAM, TILE, ENTS and WORM sections and, in the caves
+# shard, its PILL section, and, when it has set pieces, its SETP section and, when it has roads, its ROAD section.
 def bytes(d: Dump) -> List<&2, U32>:
   match d:
-    case GaveUp{+seed, +platform}:
-      bytes_of([magic(), 2, seed, 0, platform])
-    case Generated{+seed, +platform, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pieces, +roads}:
-      List.concat(&2, U32, [bytes_of([magic(), 2, seed, 1, platform, build, width, height]), tile_names_section(tile_names), tiles_section(tiles),
-        entities_section(prefabs), links_section(links), optional_set_pieces(pieces), optional_roads(roads)])
+    case GaveUp{+seed, +platform, +shard}:
+      bytes_of([magic(), 3, seed, 0, platform, shard])
+    case Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, +roads}:
+      List.concat(&2, U32, [bytes_of([magic(), 3, seed, 1, platform, shard, build, width, height]), tile_names_section(tile_names), tiles_section(tiles),
+        entities_section(prefabs), links_section(links), optional_pillars(shard, pillars), optional_set_pieces(pieces), optional_roads(roads)])
 
 # The prefabs of a dump (none when its world generation gave up).
 def prefabs(+d: Dump) -> List<&2, Prefab>:
   match d:
-    case Generated{_, _, _, _, _, _, _, +found, _, _, _}:
+    case Generated{_, _, _, _, _, _, _, _, +found, _, _, _, _}:
       found
-    case GaveUp{_, _}:
+    case GaveUp{_, _, _}:
       Nil{}
 
 # The set pieces of a dump (none when it has no SETP section).
 def set_pieces(+d: Dump) -> Maybe<&2, List<&2, Piece>>:
   match d:
-    case Generated{_, _, _, _, _, _, _, _, _, +found, _}:
+    case Generated{_, _, _, _, _, _, _, _, _, _, _, +found, _}:
       found
-    case GaveUp{_, _}:
+    case GaveUp{_, _, _}:
       None{}
 
 # The roads of a dump (none when it has no ROAD section).
 def roads(+d: Dump) -> Maybe<&2, List<&2, Road>>:
   match d:
-    case Generated{_, _, _, _, _, _, _, _, _, _, +found}:
+    case Generated{_, _, _, _, _, _, _, _, _, _, _, _, +found}:
       found
-    case GaveUp{_, _}:
+    case GaveUp{_, _, _}:
       None{}

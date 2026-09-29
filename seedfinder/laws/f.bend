@@ -65,41 +65,73 @@ def straight_distance_portal_pigking():
 
 # World dumps (docs/world-dump.md): tiny hand-built files.
 law dump_gave_up:
-  {FilterDump.of_bytes([68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]) == Done{FilterDump.GaveUp{7, 2}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes([68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0]) == Done{FilterDump.GaveUp{7, 2, 0}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_gave_up():
   {==}
 
 law dump_format_1_rejected:
-  {FilterDump.of_bytes([68, 83, 84, 87, 1, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]) == Fail{(2, "world dump format 1, regenerate it (this finder reads format 2)")} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes([68, 83, 84, 87, 1, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]) == Fail{(2, "world dump format 1, regenerate it (this finder reads format 3)")} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_format_1_rejected():
   {==}
 
+law dump_format_2_rejected:
+  {FilterDump.of_bytes([68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]) == Fail{(2, "world dump format 2, regenerate it (this finder reads format 3)")} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+
+def dump_format_2_rejected():
+  {==}
+
+law dump_caves_gave_up:
+  {FilterDump.of_bytes(FilterDump.bytes(FilterDump.GaveUp{7, 2, 1})) == Done{FilterDump.GaveUp{7, 2, 1}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+
+def dump_caves_gave_up():
+  {==}
+
+# A caves world reads back with its shard and its tentacle pillar links (the PILL section).
+law dump_round_trip_caves:
+  {FilterDump.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 1, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}, FilterDump.Prefab{"tentacle_pillar_atrium", [FilterDump.Position{5, 6}]}], [], [FilterDump.Pillar{0, 0, 0, 1}, FilterDump.Pillar{0, 1, 1, 0}], None{}, None{}})) == Done{FilterDump.Generated{7, 2, 1, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}, FilterDump.Prefab{"tentacle_pillar_atrium", [FilterDump.Position{5, 6}]}], [], [FilterDump.Pillar{0, 0, 0, 1}, FilterDump.Pillar{0, 1, 1, 0}], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+
+def dump_round_trip_caves():
+  {==}
+
+# The forest finder refuses a caves dump, generated or not.
+law world_refuses_caves:
+  {FilterWorld.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 1, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}, FilterDump.Prefab{"tentacle_pillar_atrium", [FilterDump.Position{5, 6}]}], [], [FilterDump.Pillar{0, 0, 0, 1}, FilterDump.Pillar{0, 1, 1, 0}], None{}, None{}})) == Fail{(2, "world dump of the caves shard, this finder searches the forest shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+
+def world_refuses_caves():
+  {==}
+
+law world_refuses_caves_gave_up:
+  {FilterWorld.of_bytes(FilterDump.bytes(FilterDump.GaveUp{7, 2, 1})) == Fail{(2, "world dump of the caves shard, this finder searches the forest shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+
+def world_refuses_caves_gave_up():
+  {==}
+
 # Seed 7 on Linux, build 747465, 3 x 1 tiles GRASS GRASS IMPASSABLE.
 law dump_tiles:
-  {FilterDump.of_bytes([68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes([68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [], [], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_tiles():
   {==}
 
 # The same world with a moonbase at (602, 106) and a wormhole pair at (284, -116) and (-484, -140.5).
 law dump_entities_and_links:
-  {FilterDump.of_bytes([68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes([68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_entities_and_links():
   {==}
 
 # The same world with the set piece of dump_writes_set_pieces.
 law dump_set_pieces:
-  {FilterDump.of_bytes([68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], Some{[FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}]}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes([68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], [], Some{[FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}]}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_set_pieces():
   {==}
 
 # The same world with an unknown XXXX section before and after the others.
 law dump_skips_unknown_sections:
-  {FilterDump.of_bytes([68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 88, 88, 88, 88, 8, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 88, 88, 88, 88, 8, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes([68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 88, 88, 88, 88, 8, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 88, 88, 88, 88, 8, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_skips_unknown_sections():
   {==}
@@ -121,13 +153,13 @@ def dump_writes_roads():
 
 # A dump with roads reads back with them; one without a ROAD section has none.
 law dump_round_trip_roads:
-  {FilterDump.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], None{}, Some{[FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}, FilterDump.Position{4294967295, 6}]}, FilterDump.Road{1, [FilterDump.Position{10, 20}]}]}})) == Done{FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], None{}, Some{[FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}, FilterDump.Position{4294967295, 6}]}, FilterDump.Road{1, [FilterDump.Position{10, 20}]}]}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], [], None{}, Some{[FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}, FilterDump.Position{4294967295, 6}]}, FilterDump.Road{1, [FilterDump.Position{10, 20}]}]}})) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], [], None{}, Some{[FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}, FilterDump.Position{4294967295, 6}]}, FilterDump.Road{1, [FilterDump.Position{10, 20}]}]}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_round_trip_roads():
   {==}
 
 law dump_without_roads_has_none:
-  {FilterDump.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], None{}, None{}})) == Done{FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+  {FilterDump.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], [], None{}, None{}})) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [], [], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}
 
 def dump_without_roads_has_none():
   {==}
@@ -217,19 +249,19 @@ def dump_writes_set_pieces():
   {==}
 
 law dump_writes_gave_up:
-  {FilterDump.bytes(FilterDump.GaveUp{7, 2}) == [68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.bytes(FilterDump.GaveUp{7, 2, 0}) == [68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_gave_up():
   {==}
 
 law dump_writes_generated:
-  {FilterDump.bytes(FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], None{}, None{}}) == [68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.bytes(FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], [], None{}, None{}}) == [68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_generated():
   {==}
 
 law dump_writes_generated_set_pieces:
-  {FilterDump.bytes(FilterDump.Generated{7, 2, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], Some{[FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}]}, None{}}) == [68, 83, 84, 87, 2, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.bytes(FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], [], Some{[FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}]}, None{}}) == [68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_generated_set_pieces():
   {==}

@@ -79,7 +79,7 @@ def finished(job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
     case GenJob.JDone{_, _, GenJob.Crashed{}}:
       Finished{seed, 2, 0, Nil{}, since}
     case _:
-      Finished{seed, 1, 0, FilterDump.bytes(FilterDump.GaveUp{seed, Bool.pick(U32, windows_of(ctx), 1, 2)}), since}
+      Finished{seed, 1, 0, FilterDump.bytes(FilterDump.GaveUp{seed, Bool.pick(U32, windows_of(ctx), 1, 2), 0}), since}
 
 def at_pass(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +since: Nat) -> Slot:
   (job, pass) = got

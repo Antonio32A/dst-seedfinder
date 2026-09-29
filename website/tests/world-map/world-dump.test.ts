@@ -21,8 +21,8 @@ const section = (tag: string, parts: Uint8Array[]) => {
     return concat([new TextEncoder().encode(tag), u32(payload.length), payload]);
 };
 
-const header = (seed: number, status: number, platform: number) =>
-    [new TextEncoder().encode("DSTW"), u32(2), u32(seed), u32(status), u32(platform)];
+const header = (seed: number, status: number, platform: number, shard = 0) =>
+    [new TextEncoder().encode("DSTW"), u32(3), u32(seed), u32(status), u32(platform), u32(shard)];
 
 const tiles = (ids: number[]) => {
     const padded = ids.length % 2 === 1 ? [...ids, 0] : ids;
@@ -57,7 +57,7 @@ const generated = (bytes: Uint8Array) => {
 describe("reading a world dump", () => {
     it("reads a generated world's header and tiles", () => {
         const dump = generated(world());
-        expect(dump).toMatchObject({ seed: 1234, platform: "linux", gameBuild: 747465 });
+        expect(dump).toMatchObject({ seed: 1234, platform: "linux", shard: "forest", gameBuild: 747465 });
         expect([dump.width, dump.height]).toEqual([WIDTH, HEIGHT]);
         expect([...dump.tiles]).toEqual([6, 201, 6]);
         expect(dump.tileNames).toEqual(new Map([[6, "GRASS"], [201, "OCEAN_COASTAL"]]));
@@ -131,13 +131,24 @@ describe("reading a world dump", () => {
         expect(() => generated(concat([world(), roads]))).toThrow(/truncated/);
     });
 
-    it("reads a world whose generation gave up from its 20-byte header", () => {
-        expect(parseWorldDump(concat(header(99, 0, 1)))).toEqual({ status: "gave-up", seed: 99, platform: "windows" });
+    it("reads the caves shard from the header", () => {
+        const caves = concat([...header(1234, 1, 2, 1), u32(747465), u32(WIDTH), u32(HEIGHT)]);
+        expect(generated(caves).shard).toBe("caves");
     });
 
-    it("refuses a format 1 dump and a file that isn't a dump", () => {
+    it("reads a world whose generation gave up from its 24-byte header", () => {
+        expect(parseWorldDump(concat(header(99, 0, 1)))).toEqual({ status: "gave-up", seed: 99, platform: "windows", shard: "forest" });
+    });
+
+    it("refuses an unknown shard", () => {
+        expect(() => parseWorldDump(concat(header(99, 0, 1, 7)))).toThrow(/unknown shard/);
+    });
+
+    it("refuses a format 1 or 2 dump and a file that isn't a dump", () => {
         const v1 = concat([new TextEncoder().encode("DSTW"), u32(1), u32(1234), u32(1)]);
+        const v2 = concat([new TextEncoder().encode("DSTW"), u32(2), u32(1234), u32(0), u32(2)]);
         expect(() => parseWorldDump(v1)).toThrow(/format 1/);
+        expect(() => parseWorldDump(v2)).toThrow(/format 2/);
         expect(() => parseWorldDump(new TextEncoder().encode("{\"seed\": 1}"))).toThrow(/isn't a world dump/);
     });
 

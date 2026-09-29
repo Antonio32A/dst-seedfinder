@@ -1,12 +1,16 @@
 const MAGIC = "DSTW";
-const VERSION = 2;
+const VERSION = 3;
 
 export const DUMP_PLATFORMS = ["unknown", "windows", "linux"] as const;
 export type DumpPlatform = (typeof DUMP_PLATFORMS)[number];
 
+export const DUMP_SHARDS = ["forest", "caves"] as const;
+export type DumpShard = (typeof DUMP_SHARDS)[number];
+
 interface DumpHeader {
     seed: number;
     platform: DumpPlatform;
+    shard: DumpShard;
 }
 
 export interface DumpPrefab {
@@ -153,7 +157,9 @@ export function parseWorldDump(bytes: Uint8Array): WorldDump {
     const seed = reader.u32();
     const generated = reader.u32() === 1;
     const platform = DUMP_PLATFORMS[reader.u32()] ?? "unknown";
-    if (!generated) return { status: "gave-up", seed, platform };
+    const shard = DUMP_SHARDS[reader.u32()];
+    if (shard === undefined) throw new Error("This world dump is of an unknown shard.");
+    if (!generated) return { status: "gave-up", seed, platform, shard };
     const gameBuild = reader.u32();
     const width = reader.u32();
     const height = reader.u32();
@@ -161,6 +167,7 @@ export function parseWorldDump(bytes: Uint8Array): WorldDump {
         status: "generated",
         seed,
         platform,
+        shard,
         gameBuild,
         width,
         height,
