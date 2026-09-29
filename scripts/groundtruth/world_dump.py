@@ -6,7 +6,8 @@ usage: world_dump.py [--platform windows|linux] WORLD.json OUT.dstw
        world_dump.py [--platform windows|linux] --tree SRC_DIR OUT_DIR   every SRC_DIR/<seed>/world.json -> OUT_DIR/<seed>.dstw
 
 Every entity is written, whatever its prefab. Coordinates must have at most 2 decimals (the dump mod's printf): the
-tool checks that each one is printed as k / 100.
+tool checks that each one is printed as k / 100. Road points are multiples of 0.1 and are rounded to hundredths; roads the
+game dropped (null entries) are skipped.
 """
 import json
 import struct
@@ -57,6 +58,15 @@ def entities_payload(entities):
     return payload
 
 
+def roads_payload(roads):
+    kept = [road for road in roads if road is not None]
+    payload = u32s(len(kept))
+    for weight, *points in kept:
+        centis = [round(value * 100) for point in points for value in point]
+        payload += u32s(weight, len(points)) + struct.pack(f"<{len(centis)}i", *centis)
+    return payload
+
+
 def dump_of(data, platform):
     ok = data.get("status") in (None, "ok") and "entities" in data
     header = b"DSTW" + u32s(VERSION, data.get("seed") or 0, int(ok), PLATFORMS[platform])
@@ -75,7 +85,8 @@ def dump_of(data, platform):
             + section(b"TNAM", tile_names)
             + section(b"TILE", padded(struct.pack(f"<{len(tiles)}H", *tiles)))
             + section(b"ENTS", entities_payload(entities))
-            + section(b"WORM", u32s(len(links), *(index for entry, leave in links for index in (entry.index, leave.index)))))
+            + section(b"WORM", u32s(len(links), *(index for entry, leave in links for index in (entry.index, leave.index))))
+            + section(b"ROAD", roads_payload(data.get("roads") or [])))
 
 
 def convert(source, target, platform):

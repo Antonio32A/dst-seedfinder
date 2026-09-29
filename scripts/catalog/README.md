@@ -78,6 +78,10 @@ the full-size mip, rows in stored order (the first row is v = 0, as the game upl
 - `map_edge.<hash>.png`: `levels/tiles/map_edge.tex`, RGBA, with its straight alpha exactly as stored
   (`levels/tiles/map_edge.xml` places its 48 cells).
 - `minimap_paper.<hash>.png`: `images/minimap_paper.tex`, RGB.
+- `road/<name>.<hash>.png`: the textures of the game's road strips, RGBA as stored (straight alpha): `roadedge`,
+  `roadcorner`, `roadendcap` and `square` are the strips' own art, `roadnoise` (paved roads) and `pathnoise` (dirt
+  paths) the ground noise multiplied into them. They live in `databundles/images.zip` rather than unpacked, which
+  `map_textures.py` reads as a fallback.
 - `minimap_icons.<hash>.png` and `minimap_icon_rects.<hash>.json`: the sprite sheet of the catalog's minimap icons, and
   where each sits on it.
 

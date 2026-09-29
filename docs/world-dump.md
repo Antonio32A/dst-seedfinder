@@ -38,8 +38,8 @@ laid out differently; regenerate them).
 
 A section is a 4-byte ASCII tag, a `u32` payload length `L` in bytes (a multiple of 4), then the payload. The next
 section starts right after it, `8 + L` bytes after the tag. A generated world has `TNAM`, `TILE`, `ENTS` and `WORM`
-exactly once, in this order, and may then have `SETP` once. A reader finds them by tag and skips any tag it does not
-know.
+exactly once, in this order, and may then have `SETP` and `ROAD` once each, in this order. A reader finds them by tag
+and skips any tag it does not know.
 
 ### `TNAM`: tile names
 
@@ -134,15 +134,33 @@ The **members** are the `ENTS` instances the layout's objects became, after the 
 
 A layout the world generation found no place for is not listed.
 
+### `ROAD`: roads
+
+The roads the world generation saved (`save.map.roads` of `map/forest_map.lua`), as polylines. Both writers write this
+section: `seedfinder world dump` and `scripts/groundtruth/world_dump.py`. A file without it (from an earlier version)
+says nothing about roads and is read as having none.
+
+`u32` count, then per road, in the order of the savedata's road list:
+- `u32` weight: `3` for the road the road generator produced first, when it was kept (`forest_map.lua` saves it with
+  weight 3 whatever the generator says), and `1` for every other road. The game draws a weight 3 road wide and edged,
+  and any other weight as a narrow path.
+- `u32` point count `n` (at least 3, the smallest minimum),
+- `n` points, each `i32 xk`, `i32 zk`: the position in hundredths of world units, like an `ENTS` position. It is the
+  savedata's `x`, `z` of the point times 100, and the savedata rounds every coordinate down to a tenth (in `x` and `z`
+  the point is `floor((p - size / 2) × 4 × 10) / 10`, with `p` the float tile coordinate), so `xk` and `zk` are
+  multiples of 10.
+
+Roads the world generation dropped for having fewer points than its `math.random(3, 5)` minimum are not listed.
+
 ## 4. What is in it
 
 Only what the world generation saved for the forest shard: the savedata's map tiles, every `savedata.ents` entry
-(whatever its prefab) and the wormholes' teleporter targets, and for worlds the seedfinder generated, where the world
-generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
+(whatever its prefab), the wormholes' teleporter targets and the roads, and for worlds the seedfinder generated, where
+the world generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
 has none.
 
 It does not hold anything the running game makes later: entities that prefabs spawn once the world loads (e.g. a
-spawner's children), what a server adds on its first start, or the caves. Roads, the node graph and the entities'
+spawner's children), what a server adds on its first start, or the caves. The node graph and the entities'
 own save data (other than position) are not included either.
 
 ## 5. Extending it

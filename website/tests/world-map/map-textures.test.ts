@@ -7,7 +7,8 @@ import { MAP_TEXTURES, PREFABS, TILES } from "@/lib/catalog/world";
 const TEXTURES = fileURLToPath(new URL("../../public/world-map", import.meta.url));
 const HASHED = /\.[0-9a-f]{10}\.png$/;
 const noiseUrls = Object.values(TILES).flatMap((tile) => tile.minimapNoise ?? []);
-const referenced = [MAP_TEXTURES.mapEdge, MAP_TEXTURES.minimapPaper, MAP_TEXTURES.iconSheet.url, ...noiseUrls];
+const roadUrls = Object.values(MAP_TEXTURES.road);
+const referenced = [MAP_TEXTURES.mapEdge, MAP_TEXTURES.minimapPaper, MAP_TEXTURES.iconSheet.url, ...noiseUrls, ...roadUrls];
 
 describe("the map textures", () => {
     it("are all referenced by content-hashed names", () => {

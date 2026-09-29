@@ -64,5 +64,13 @@
   "mini_rocky_noise": "noise/mini_rocky_noise.c13cf96727.png",
   "mini_shellbeach_noise": "noise/mini_shellbeach_noise.243f27e7bc.png",
   "mini_woodfloor_noise": "noise/mini_woodfloor_noise.ae3c8c56b4.png"
+ },
+ "road": {
+  "pathnoise": "road/pathnoise.cf0c627885.png",
+  "roadcorner": "road/roadcorner.f3964d6bd3.png",
+  "roadedge": "road/roadedge.ad4d529847.png",
+  "roadendcap": "road/roadendcap.33bf55de51.png",
+  "roadnoise": "road/roadnoise.38a4cfbeb9.png",
+  "square": "road/square.37836b879e.png"
  }
 }

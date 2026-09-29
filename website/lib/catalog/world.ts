@@ -59,6 +59,7 @@ export interface NamedAnchor {
 export const MAP_TEXTURES = {
     mapEdge: "/world-map/map_edge.859bee0330.png",
     minimapPaper: "/world-map/minimap_paper.cfd82ee005.png",
+    road: {"pathnoise":"/world-map/road/pathnoise.cf0c627885.png","roadcorner":"/world-map/road/roadcorner.f3964d6bd3.png","roadedge":"/world-map/road/roadedge.ad4d529847.png","roadendcap":"/world-map/road/roadendcap.33bf55de51.png","roadnoise":"/world-map/road/roadnoise.38a4cfbeb9.png","square":"/world-map/road/square.37836b879e.png"},
     iconSheet: { url: "/world-map/minimap_icons.f14098f317.png", width: 2048, height: 1120, levels: [{"height":1120,"width":2048,"x":0,"y":0},{"height":560,"width":1024,"x":2048,"y":0},{"height":280,"width":512,"x":2048,"y":560},{"height":140,"width":256,"x":2048,"y":840},{"height":70,"width":128,"x":2048,"y":980},{"height":35,"width":64,"x":2048,"y":1050}] }
 } as const;
 

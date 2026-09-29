@@ -33,6 +33,13 @@ export interface DumpSetPiece {
     members: Uint32Array;
 }
 
+export interface DumpRoad {
+    /** The engine's road weight: 3 is the paved road, anything else a dirt path. */
+    weight: number;
+    /** Interleaved `xk, zk` control points, in world units times 100. */
+    points: Int32Array;
+}
+
 export interface GeneratedWorld extends DumpHeader {
     status: "generated";
     gameBuild: number;
@@ -46,6 +53,8 @@ export interface GeneratedWorld extends DumpHeader {
     links: Uint32Array;
     /** Absent without a SETP section. */
     setPieces?: DumpSetPiece[];
+    /** Absent without a ROAD section. */
+    roads?: DumpRoad[];
 }
 
 export interface GaveUpWorld extends DumpHeader {
@@ -93,6 +102,7 @@ class Reader {
         const size = count * Typed.BYTES_PER_ELEMENT;
         const start = this.bytes.byteOffset + this.offset;
         this.offset += size;
+        if (this.offset > this.bytes.length) throw new Error("This world dump is truncated.");
         return new Typed(this.bytes.buffer.slice(start, start + size) as ArrayBuffer);
     }
 }
@@ -124,6 +134,12 @@ const SECTIONS: Record<string, (reader: Reader, world: GeneratedWorld) => void> 
             zk: reader.i32(),
             bounds: reader.copy(Int32Array, 4),
             members: reader.copy(Uint32Array, 2 * reader.u32())
+        }));
+    },
+    ROAD: (reader, world) => {
+        world.roads = repeat(reader, () => ({
+            weight: reader.u32(),
+            points: reader.copy(Int32Array, 2 * reader.u32())
         }));
     }
 };

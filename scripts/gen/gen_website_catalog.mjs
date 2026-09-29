@@ -155,6 +155,7 @@ export interface NamedAnchor {
 export const MAP_TEXTURES = {
     mapEdge: ${JSON.stringify(textureUrl(textures.mapEdge))},
     minimapPaper: ${JSON.stringify(textureUrl(textures.minimapPaper))},
+    road: ${JSON.stringify(Object.fromEntries(Object.entries(textures.road).map(([name, file]) => [name, textureUrl(file)])))},
     iconSheet: { url: ${JSON.stringify(textureUrl(textures.iconSheet.file))}, width: ${textures.iconSheet.width}, height: ${textures.iconSheet.height}, levels: ${JSON.stringify(textures.iconSheet.levels)} }
 } as const;
 

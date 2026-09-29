@@ -4,6 +4,8 @@ import { useState } from "react";
 import { groupState, type LegendGroup, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
 import { formatCount } from "./format";
 
+const ROAD_SWATCH = [75, 71, 60];
+
 interface GroupRowProps {
     entry: LegendGroup;
     shown: ReadonlySet<string>;
@@ -24,6 +26,8 @@ interface GroupsPanelProps {
     onSetPiecesChange: (shown: ReadonlySet<string>) => void;
     /** The wormhole connection lines toggle, `null` for a world without any. */
     links: { shown: boolean; colour: readonly number[]; onChange: (shown: boolean) => void } | null;
+    /** The road toggle, `null` for a world without roads. */
+    roads: { shown: boolean; onChange: (shown: boolean) => void } | null;
     onSelect: (selection: "all" | "none" | "reset") => void;
 }
 
@@ -77,7 +81,7 @@ function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: Gro
 }
 
 export default function GroupsPanel(props: GroupsPanelProps) {
-    const { legend, shown, onChange, onHighlight, setPieces, shownSetPieces, onSetPiecesChange, links, onSelect } = props;
+    const { legend, shown, onChange, onHighlight, setPieces, shownSetPieces, onSetPiecesChange, links, roads, onSelect } = props;
     return (
             <details className="map-bar map-groups">
                 <summary>Filters</summary>
@@ -103,6 +107,18 @@ export default function GroupsPanel(props: GroupsPanelProps) {
                                                onChange={(event) => links.onChange(event.target.checked)}/>
                                         <span className="map__swatch" style={{ background: `rgb(${links.colour.join()})` }}/>
                                         <span>Wormhole Connections</span>
+                                    </label>
+                                </div>
+                            </li>
+                    )}
+                    {roads && (
+                            <li>
+                                <div className="map-group">
+                                    <label className="map-group__toggle">
+                                        <input type="checkbox" checked={roads.shown}
+                                               onChange={(event) => roads.onChange(event.target.checked)}/>
+                                        <span className="map__swatch" style={{ background: `rgb(${ROAD_SWATCH.join()})` }}/>
+                                        <span>Roads</span>
                                     </label>
                                 </div>
                             </li>

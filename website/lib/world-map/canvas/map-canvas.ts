@@ -17,6 +17,7 @@ import { readAccent } from "./accent-colour";
 import { createEntityRenderer, NO_HOVER } from "./entity-renderer";
 import { createIconRenderer } from "./icon-renderer";
 import { createLinkRenderer } from "./link-renderer";
+import { createRoadRenderer } from "./road-renderer";
 import { createSetPieceRenderer } from "./set-piece-renderer";
 import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
 
@@ -39,6 +40,8 @@ export interface MapCanvas {
     showSetPieces: (layouts: ReadonlySet<string>) => void;
     /** Shows or hides the wormhole connection lines, drawn over the icons. They start shown. */
     showLinks: (on: boolean) => void;
+    /** Shows or hides the roads, drawn over the terrain. They start shown. */
+    showRoads: (on: boolean) => void;
     highlightSetPieces: (indices: readonly number[]) => void;
     /** Outlines every instance of `prefabs` in the site's highlight orange, showing them even when they're not in {@link show}. */
     highlight: (prefabs: ReadonlySet<string>) => void;
@@ -58,6 +61,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const accent = readAccent(canvas);
     const terrain = createTerrainRenderer(gl, world, () => redraw());
+    const roads = createRoadRenderer(gl, world.roads ?? [], () => redraw());
     const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
     const icons = iconLayer(layer);
     const entities = createEntityRenderer(gl, layer, icons.iconed, accent);
@@ -90,6 +94,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             gl.clearColor(red / 255, green / 255, blue / 255, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
             terrain.draw(view, viewport);
+            roads.draw(view, viewport);
             setPieces.draw(view, viewport);
             entities.draw(view, viewport);
             iconRenderer.draw(view, viewport);
@@ -149,10 +154,11 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     addEventListener("keydown", pressed);
 
     return {
-        terrain: Promise.all([terrain.built, iconRenderer.built]).then(() => undefined),
+        terrain: Promise.all([terrain.built, roads.built, iconRenderer.built]).then(() => undefined),
         turn,
         darken: (on) => {
             terrain.darken(on);
+            roads.darken(on);
             iconRenderer.darken(on);
             redraw();
         },
@@ -166,6 +172,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
         },
         showLinks: (on) => {
             links.show(on);
+            redraw();
+        },
+        showRoads: (on) => {
+            roads.show(on);
             redraw();
         },
         highlightSetPieces: (indices) => {
@@ -207,6 +217,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
             removeEventListener("keydown", pressed);
             terrain.dispose();
+            roads.dispose();
             setPieces.dispose();
             entities.dispose();
             iconRenderer.dispose();

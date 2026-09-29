@@ -49,11 +49,14 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
         colour: MAP_GROUPS[layer.linkGroup].colour,
         onChange: setShownLinks
     }, [layer, shownLinks]);
+    const [shownRoads, setShownRoads] = useState(true);
+    const roads = useMemo(() => (world.roads?.length ? { shown: shownRoads, onChange: setShownRoads } : null), [world, shownRoads]);
     const select = useCallback((selection: "all" | "none" | "reset") => {
         setShownPrefabs(selection === "all" ? allPrefabs(legend) : selection === "none" ? new Set() : defaultShown(search));
         setShownSetPieces(selection === "all" ? (setPieces ? allPrefabs([setPieces]) : new Set<string>())
                 : selection === "none" ? new Set() : defaultShownSetPieces(search));
         setShownLinks(selection === "all");
+        setShownRoads(selection !== "none");
     }, [legend, setPieces, search]);
     const [searched, setSearched] = useState<MapTarget | null>(null);
     const [previewed, setPreviewed] = useState<readonly string[]>([]);
@@ -106,6 +109,10 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
     }, [map, shownLinks]);
 
     useEffect(() => {
+        map?.showRoads(shownRoads);
+    }, [map, shownRoads]);
+
+    useEffect(() => {
         map?.highlightSetPieces(highlighted);
     }, [map, highlighted]);
 
@@ -117,7 +124,7 @@ function WorldCanvas({ world: generated, bytes, platform, seed, share }: {
                             onPick={setPicked}/>
                 <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} onHighlight={setPreviewed}
                              setPieces={setPieces}
-                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links}
+                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links} roads={roads}
                              onSelect={select}/>
                 <MapCorner seed={seed} map={map}/>
                 <div className="map-side">

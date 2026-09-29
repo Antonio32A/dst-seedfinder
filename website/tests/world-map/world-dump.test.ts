@@ -101,8 +101,34 @@ describe("reading a world dump", () => {
     });
 
     it("skips a section it doesn't know", () => {
-        const road = section("ROAD", [u32(3), i32(-7), u32(0xffffffff), ...text("TILE")]);
-        expect(generated(world(road))).toEqual(generated(world()));
+        const unknown = section("FUTR", [u32(3), i32(-7), u32(0xffffffff), ...text("TILE")]);
+        expect(generated(world(unknown))).toEqual(generated(world()));
+    });
+
+    it("reads the roads with their weight and control points, in savedata order", () => {
+        const roads = section("ROAD", [
+            u32(2),
+            u32(3), u32(3), i32(-100), i32(200), i32(0), i32(0), i32(-2147483648), i32(2147483647),
+            u32(1), u32(0)
+        ]);
+        const dump = generated(concat([world(), roads]));
+        expect(dump.roads?.map(({ weight, points }) => [weight, [...points]])).toEqual([
+            [3, [-100, 200, 0, 0, -2147483648, 2147483647]],
+            [1, []]
+        ]);
+    });
+
+    it("reads an empty ROAD section as no roads", () => {
+        expect(generated(concat([world(), section("ROAD", [u32(0)])])).roads).toEqual([]);
+    });
+
+    it("has no roads when the dump has no ROAD section", () => {
+        expect(generated(world())).not.toHaveProperty("roads");
+    });
+
+    it("refuses a ROAD section cut short inside its points", () => {
+        const roads = section("ROAD", [u32(1), u32(3), u32(4), i32(1), i32(2)]);
+        expect(() => generated(concat([world(), roads]))).toThrow(/truncated/);
     });
 
     it("reads a world whose generation gave up from its 20-byte header", () => {

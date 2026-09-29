@@ -13,6 +13,7 @@ import os
 import struct
 import sys
 import xml.etree.ElementTree as ET
+import zipfile
 import zlib
 
 import numpy as np
@@ -25,6 +26,8 @@ MAP_EDGE_ATLAS = "levels/tiles/map_edge.xml"
 MINIMAP_PAPER = "images/minimap_paper.tex"
 MINIMAP_ATLASES = ["minimap/minimap_data1.xml", "minimap/minimap_data2.xml"]
 NOISE_TEXTURE = "levels/textures/%s.tex"
+ROAD_TEXTURES = ["roadedge", "square", "roadcorner", "roadendcap", "roadnoise", "pathnoise"]
+ROAD_TEXTURE = "images/%s.tex"
 PNG_COLOUR_TYPES = {3: 2, 4: 6}
 SHEET_WIDTH = 2048
 ICON_GUTTER = 32
@@ -50,8 +53,14 @@ def encode_png(pixels):
 
 
 def read_texture(game_dir, name, mip=0):
-    with open(os.path.join(game_dir, "data", name), "rb") as f:
-        return ktex.decode(f.read(), mip)
+    """Reads `name` from the game's data, or from the databundle zip named after its folder when it isn't unpacked."""
+    path = os.path.join(game_dir, "data", name)
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return ktex.decode(f.read(), mip)
+    bundle = os.path.join(game_dir, "data", "databundles", name.split("/")[0] + ".zip")
+    with zipfile.ZipFile(bundle) as archive:
+        return ktex.decode(archive.read(name), mip)
 
 
 @functools.cache
@@ -162,6 +171,7 @@ def write_map_textures(game_dir, noises, icon_names, out_dir):
     levels, rects = pack_icons(read_icons(game_dir, icon_names))
     sheet, regions = stack_levels(levels)
     images = {"noise/" + name: read_texture(game_dir, NOISE_TEXTURE % name)[:, :, :3] for name in noises}
+    images.update({"road/" + name: read_texture(game_dir, ROAD_TEXTURE % name) for name in ROAD_TEXTURES})
     images.update(map_edge=read_texture(game_dir, MAP_EDGE), minimap_paper=read_texture(game_dir, MINIMAP_PAPER)[:, :, :3],
                   minimap_icons=sheet)
     payloads = {stem: (encode_png(pixels), "png") for stem, pixels in images.items()}
@@ -169,7 +179,8 @@ def write_map_textures(game_dir, noises, icon_names, out_dir):
                                                  sort_keys=True).encode(), "json")
     files = {stem: "%s.%s.%s" % (stem, hashlib.sha256(data).hexdigest()[:HASH_LENGTH], extension)
              for stem, (data, extension) in payloads.items()}
-    os.makedirs(os.path.join(out_dir, "noise"), exist_ok=True)
+    for directory in ["noise", "road"]:
+        os.makedirs(os.path.join(out_dir, directory), exist_ok=True)
     for stem, (data, _) in payloads.items():
         with open(os.path.join(out_dir, files[stem]), "wb") as f:
             f.write(data)
@@ -179,6 +190,7 @@ def write_map_textures(game_dir, noises, icon_names, out_dir):
                 os.remove(os.path.join(directory, name))
     return {
         "noise": {name: files["noise/" + name] for name in noises},
+        "road": {name: files["road/" + name] for name in ROAD_TEXTURES},
         "mapEdge": files["map_edge"],
         "minimapPaper": files["minimap_paper"],
         "iconSheet": {"file": files["minimap_icons"], "rects": files["minimap_icon_rects"],
@@ -202,8 +214,8 @@ def main():
     with open(args.manifest, "w") as f:
         json.dump(manifest, f, indent=1, sort_keys=True)
         f.write("\n")
-    print("%s: %d noise textures, map_edge, minimap_paper, %d icons on a %dx%d sheet" % (
-        args.out, len(noises), len(icon_names), manifest["iconSheet"]["width"], manifest["iconSheet"]["height"]))
+    print("%s: %d noise textures, %d road textures, map_edge, minimap_paper, %d icons on a %dx%d sheet" % (
+        args.out, len(noises), len(ROAD_TEXTURES), len(icon_names), manifest["iconSheet"]["width"], manifest["iconSheet"]["height"]))
 
 
 if __name__ == "__main__":

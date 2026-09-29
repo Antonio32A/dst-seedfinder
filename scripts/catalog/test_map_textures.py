@@ -4,11 +4,12 @@ import os
 import struct
 import tempfile
 import unittest
+import zipfile
 import zlib
 
 import numpy as np
 
-from map_textures import (CELL_ALIGN, HASH_LENGTH, MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, SHEET_MIPS, SHEET_WIDTH,
+from map_textures import (CELL_ALIGN, HASH_LENGTH, MAP_EDGE, MAP_EDGE_ATLAS, MINIMAP_PAPER, NOISE_TEXTURE, ROAD_TEXTURE, ROAD_TEXTURES, SHEET_MIPS, SHEET_WIDTH,
                           Icon, encode_png, land_colour, pack_icons, read_icons, stack_levels, write_map_textures)
 from test_ktex import RGB, RGBA, ktex
 
@@ -92,6 +93,13 @@ class WriteMapTextures(unittest.TestCase):
         write_texture(self.game_dir, NOISE_TEXTURE % "grass", RGB, [(2, 4, self.grass), (1, 2, noisy_pixels(2, 1, 3))])
         write_texture(self.game_dir, MAP_EDGE, RGBA, [(4, 2, self.edge)])
         write_texture(self.game_dir, MINIMAP_PAPER, RGB, [(2, 2, self.paper)])
+        self.road = {name: noisy_pixels(2, 4, 4) ^ index for index, name in enumerate(ROAD_TEXTURES)}
+        for name in ROAD_TEXTURES[:-1]:
+            write_texture(self.game_dir, ROAD_TEXTURE % name, RGBA, [(4, 2, self.road[name])])
+        bundle = os.path.join(self.game_dir, "data", "databundles")
+        os.makedirs(bundle)
+        with zipfile.ZipFile(os.path.join(bundle, "images.zip"), "w") as archive:
+            archive.writestr(ROAD_TEXTURE % ROAD_TEXTURES[-1], ktex(RGBA, [(4, 2, self.road[ROAD_TEXTURES[-1]].tobytes())]))
         write_atlas(self.game_dir, "minimap/minimap_data1.xml", "atlas1.tex", 64, {"a.png": (4.5, 11.5, 20.5, 27.5)}, self.atlas1)
         write_atlas(self.game_dir, "minimap/minimap_data2.xml", "atlas2.tex", 64,
                     {"b.png": (0, 16, 40, 48), "a.png": (0, 4, 0, 4)}, self.atlas2)
@@ -107,6 +115,11 @@ class WriteMapTextures(unittest.TestCase):
         manifest = self.write([])
         np.testing.assert_array_equal(read_output(self.out_dir, manifest["mapEdge"]), self.edge)
         np.testing.assert_array_equal(read_output(self.out_dir, manifest["minimapPaper"]), self.paper)
+
+    def test_writes_the_road_textures_rgba_as_stored_from_the_data_folder_or_the_images_bundle(self):
+        manifest = self.write([])
+        for name in ROAD_TEXTURES:
+            np.testing.assert_array_equal(read_output(self.out_dir, manifest["road"][name]), self.road[name])
 
     def test_names_every_file_after_the_hash_of_its_contents(self):
         manifest = self.write()
