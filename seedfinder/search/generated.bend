@@ -190,7 +190,7 @@ def laid_of(+ctx: Ctx) -> Chan(Note):
 def generated_in(caves: Bool, +windows: Bool, +seed: U32, final: GenJob.Final) -> Result<&1, &1, U32 & String, FilterWorld.Loaded>:
   match caves:
     case True{}:
-      FilterWorld.loaded_of(Done{SaveData.dump_caves(seed, windows, final)}, True{})
+      Done{FilterWorld.Generated{SaveData.cave_world(seed, windows, final), 0}}
     case False{}:
       Done{FilterWorld.Generated{SaveData.world(seed, windows, final), 0}}
 
@@ -204,38 +204,44 @@ def world_verdict(job: GenJob.Job, +config: ShardSearch.Search, +seed: U32) -> S
     case _:
       SearchWorlds.Miss{}
 
-# The estimated ms of a job's next CPU stage (see GenJob.Job: 0 start, 3 commit, 4 tiles, 5 land, 6 ocean; `gen --times`).
-def stage_cost(+stage: U32) -> U32:
+# The estimated ms of a job's next CPU stage (see GenJob.Job; `gen --times` names a stage line after the stage left).
+def stage_cost(+caves: Bool, +stage: U32) -> U32:
   match stage:
     case 4:
-      24
+      Bool.pick(U32, caves, 31, 24)
     case 5:
-      50
+      Bool.pick(U32, caves, 17, 50)
     case 6:
       100
+    case 10:
+      65
+    case 11:
+      55
+    case 12:
+      30
     case _:
       8
 
-# The estimated ms of resuming after a KK pass: Voronoi and the story up to pass 2 after pass 1, Voronoi after pass 2.
-def pass_cost(+l: GenLayout.Layout) -> U32:
+# The estimated ms of resuming after a KK pass: Voronoi, and the story up to pass 2 after the forest's pass 1.
+def pass_cost(+caves: Bool, +l: GenLayout.Layout) -> U32:
   match l:
     case GenLayout.Layout{+first, _, _, _, _}:
-      Bool.pick(U32, U32.is_zero(first), 8, 5)
+      Bool.pick(U32, caves, 10, Bool.pick(U32, U32.is_zero(first), 8, 5))
 
-def asked(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +stage: U32) -> Slot:
+def asked(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +stage: U32, +caves: Bool) -> Slot:
   (job, pass) = got
   match pass:
     case Some{+l}:
       Asked{seed, job, l}
     case None{}:
-      Cpu{seed, job, stage_cost(stage)}
+      Cpu{seed, job, stage_cost(caves, stage)}
 
 def settled_at(settled: Bool, job: GenJob.Job, +stage: U32, +config: ShardSearch.Search, +seed: U32) -> Slot:
   match settled:
     case True{}:
       Decided{seed, world_verdict(job, config, seed)}
     case False{}:
-      asked(GenJob.layout(job), seed, stage)
+      asked(GenJob.layout(job), seed, stage, ShardSearch.caves(config))
 
 # Where a job stands after its CPU work: decided, asking for a KK pass, or its next stage for the next round.
 def parked(got: GenJob.Job & GenJob.Where, +config: ShardSearch.Search, +seed: U32) -> Slot:
@@ -288,9 +294,9 @@ def rush_steps() -> Nat:
 def rushed_seeds(+ctx: Ctx) -> Nat:
   U32.to_nat((slots_of(ctx) >> 3n : U32))
 
-# The estimated ms a rushed seed adds to its stage (the stages up to its next pass).
-def rush_cost() -> U32:
-  180
+# The estimated ms a rushed seed adds to its stage (the stages up to its next pass or verdict).
+def rush_cost(+caves: Bool) -> U32:
+  Bool.pick(U32, caves, 200, 180)
 
 # One stage transition per slot and round (or the resume after a pass), so the work of a round splits evenly; a
 # rushed seed runs on to its next pass or verdict.
@@ -332,7 +338,7 @@ def as_todo(rush: Bool, slot: Slot) -> Slot:
       slot
 
 # Takes the slots with CPU work out; those at scan positions up to `rush` (the oldest seeds) are rushed.
-def gather(xs: List<&1, Slot>, acc: List<&1, Slot>, todo: List<&1, Slot>, +costs: List<&2, U32>, +start: U32, +rush: Nat) -> Gathered:
+def gather(xs: List<&1, Slot>, acc: List<&1, Slot>, todo: List<&1, Slot>, +costs: List<&2, U32>, +start: U32, +rush: Nat, +caves: Bool) -> Gathered:
   match xs:
     case Nil{}:
       Gathered{List.reverse(&1, Slot, acc), List.reverse(&1, Slot, todo), List.reverse(&2, U32, costs)}
@@ -340,18 +346,18 @@ def gather(xs: List<&1, Slot>, acc: List<&1, Slot>, todo: List<&1, Slot>, +costs
       match x:
         case Cpu{+seed, job, +cost}:
           +r = Nat.is_le(SearchOrder.position(seed, start), rush)
-          gather(rest, Held{} <> acc, as_todo(r, Cpu{seed, job, cost}) <> todo, Bool.pick(U32, r, (cost + rush_cost() : U32), cost) <> costs, start, rush)
+          gather(rest, Held{} <> acc, as_todo(r, Cpu{seed, job, cost}) <> todo, Bool.pick(U32, r, (cost + rush_cost(caves) : U32), cost) <> costs, start, rush, caves)
         case Back{+seed, job, +ps, +cost}:
           +r = Nat.is_le(SearchOrder.position(seed, start), rush)
-          gather(rest, Held{} <> acc, as_todo(r, Back{seed, job, ps, cost}) <> todo, Bool.pick(U32, r, (cost + rush_cost() : U32), cost) <> costs, start, rush)
+          gather(rest, Held{} <> acc, as_todo(r, Back{seed, job, ps, cost}) <> todo, Bool.pick(U32, r, (cost + rush_cost(caves) : U32), cost) <> costs, start, rush, caves)
         case other:
-          gather(rest, other <> acc, todo, costs, start, rush)
+          gather(rest, other <> acc, todo, costs, start, rush, caves)
 
 # The slots after their CPU work, and the passes they asked for (tagged with the slot index), in slot order.
 type Merged is Type:
   Merged{slots: List<&1, Slot>, asked: List<&2, Request>}
 
-def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slot>, +asked: List<&2, Request>) -> Merged:
+def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slot>, +asked: List<&2, Request>, +caves: Bool) -> Merged:
   match xs:
     case Nil{}:
       Merged{List.reverse(&1, Slot, acc), List.reverse(&2, Request, asked)}
@@ -360,20 +366,20 @@ def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slo
         case Held{}:
           match done:
             case Nil{}:
-              merge(rest, Nil{}, (tag + 1 : U32), Free{} <> acc, asked)
+              merge(rest, Nil{}, (tag + 1 : U32), Free{} <> acc, asked, caves)
             case Con{w, more}:
               match w:
                 case Asked{+seed, job, +l}:
-                  merge(rest, more, (tag + 1 : U32), Wait{seed, job, pass_cost(l)} <> acc, Request{tag, l} <> asked)
+                  merge(rest, more, (tag + 1 : U32), Wait{seed, job, pass_cost(caves, l)} <> acc, Request{tag, l} <> asked, caves)
                 case other:
-                  merge(rest, more, (tag + 1 : U32), other <> acc, asked)
+                  merge(rest, more, (tag + 1 : U32), other <> acc, asked, caves)
         case other:
-          merge(rest, done, (tag + 1 : U32), other <> acc, asked)
+          merge(rest, done, (tag + 1 : U32), other <> acc, asked, caves)
 
 def worked_slots(g: Gathered, +config: ShardSearch.Search) -> Merged:
   match g:
     case Gathered{slots, todo, +costs}:
-      merge(slots, flat(worked_all(tree_of(todo, costs), config)), 0, Nil{}, Nil{})
+      merge(slots, flat(worked_all(tree_of(todo, costs), config)), 0, Nil{}, Nil{}, ShardSearch.caves(config))
 
 
 def tag_of(+n: Note) -> U32:
@@ -465,7 +471,7 @@ def fill(xs: List<&1, Slot>, +pending: List<&2, U32>, +windows: Bool, +caves: Bo
           match pending:
             case Con{+seed, +more}:
               +p = SearchOrder.position(seed, start)
-              fill(rest, more, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, started_job(caves, seed, windows), stage_cost(0)} <> acc)
+              fill(rest, more, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, started_job(caves, seed, windows), stage_cost(caves, 0)} <> acc)
             case Nil{}:
               fill(rest, Nil{}, windows, caves, start, first, busy, ready, at, Free{} <> acc)
         case Cpu{+seed, job, +cost}:
@@ -925,7 +931,7 @@ def rounds(n: Nat, st: State, +ctx: Ctx) -> IO(Unit):
             launched(book_queue(b), ctx)
             IO.sleep(0)
             +t0 : Nat <- IO.now()
-            m : Merged = worked_slots(gather(slots, Nil{}, Nil{}, Nil{}, ctx_start(ctx), rush), config_of(ctx))
+            m : Merged = worked_slots(gather(slots, Nil{}, Nil{}, Nil{}, ctx_start(ctx), rush, ShardSearch.caves(config_of(ctx))), config_of(ctx))
             +t1 : Nat <- IO.now()
             +laid : List<&2, Note> <- taken(idle, book_flying(b), ctx)
             +t2 : Nat <- IO.now()

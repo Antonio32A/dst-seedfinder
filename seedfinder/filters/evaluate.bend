@@ -68,6 +68,43 @@ def run_each(jobs: List<&2, Job>, +world: FilterWorld.World) -> List<&2, Outcome
 def parallel_jobs(+world: FilterWorld.World, +jobs: List<&2, Job>) -> List<&2, Outcome>:
   List.append(&2, Outcome, Par.map(~Job, ~Outcome, ~FilterWorld.World, ~job_outcome, world, only(jobs, False{}, Nil{})), run_each(only(jobs, True{}, Nil{}), world))
 
+def check_ok(+c: Checks.Check) -> Bool:
+  match c:
+    case Checks.Check{+ok, _}:
+      ok
+
+def job_holds(+world: FilterWorld.World, job: Job) -> Bool:
+  match job:
+    case JCount{_, rule}:
+      Checks.count_holds(world, rule)
+    case JTiles{_, rule}:
+      check_ok(Checks.tiles(world, rule))
+    case JDistance{_, rule}:
+      Checks.distance_holds(world, rule)
+    case JRoute{_, rule}:
+      Checks.route_holds(world, rule)
+
+def job_verdict(world: FilterWorld.World, job: Job) -> Bool:
+  job_holds(world, job)
+
+def all_true(verdicts: List<&2, Bool>) -> Bool:
+  match verdicts:
+    case Nil{}:
+      True{}
+    case Con{+ok, rest}:
+      ok && all_true(rest)
+
+def routes_hold(jobs: List<&2, Job>, go: Bool, +world: FilterWorld.World) -> Bool:
+  match jobs go:
+    case Con{job, rest} True{}:
+      routes_hold(rest, job_holds(world, job), world)
+    case _ _:
+      go
+
+# holds(parallel_jobs(world, jobs)), from the verdicts alone.
+def parallel_holds(+world: FilterWorld.World, +jobs: List<&2, Job>) -> Bool:
+  routes_hold(only(jobs, True{}, Nil{}), all_true(Par.map(~Job, ~Bool, ~FilterWorld.World, ~job_verdict, world, only(jobs, False{}, Nil{}))), world)
+
 def count_jobs(rules: List<&2, Rules.Count>, +i: U32) -> List<&2, Job>:
   match rules:
     case Nil{}:

@@ -490,14 +490,19 @@ def offer(g: Grid, +c: Cand, +needed: U32, +prev: U32, +hop: U32) -> Grid:
     case Grid{cells, heap}:
       offer_settled(cells[at(cand_tile(c), 1)], heap, c, needed, prev, hop)
 
-# The fixed data of one search: map width, labels needed per tile, the jumps.
+# The fixed data of one search: map width, labels needed per tile, the jumps, the bound.
 type Ctx is Data:
-  Ctx{width: U32, needed: U32, jumps: List<&2, Jump>}
+  Ctx{width: U32, needed: U32, jumps: List<&2, Jump>, bound: Maybe<&2, Walk.Length>}
 
 def ctx_needed(+ctx: Ctx) -> U32:
   match ctx:
-    case Ctx{_, +needed, _}:
+    case Ctx{_, +needed, _, _}:
       needed
+
+def ctx_bound(+ctx: Ctx) -> Maybe<&2, Walk.Length>:
+  match ctx:
+    case Ctx{_, _, _, +bound}:
+      bound
 
 def move_delta(+k: U32, +w: U32) -> U32:
   match k:
@@ -520,7 +525,7 @@ def move_delta(+k: U32, +w: U32) -> U32:
 
 def moved(valid: Bool, g: Grid, +ctx: Ctx, +c: Cand, +k: U32) -> Grid:
   match valid ctx c:
-    case True{} Ctx{+w, +needed, _} Cand{+l, +tile, +seed}:
+    case True{} Ctx{+w, +needed, _, _} Cand{+l, +tile, +seed}:
       offer(g, Cand{Walk.stepped(l, Bool.to_u32((k < 4 : U32)), Bool.to_u32((k >= 4 : U32))), (tile + move_delta(k, w) : U32), seed}, needed, tile, 0)
     case _ _ _:
       g
@@ -548,7 +553,7 @@ def jumps_from(jumps: List<&2, Jump>, g: Grid, +c: Cand, +needed: U32, +j: U32) 
 
 def jumps_gate(has_jumps: Bool, g: Grid, +c: Cand, +ctx: Ctx) -> Grid:
   match has_jumps ctx:
-    case True{} Ctx{_, +needed, +jumps}:
+    case True{} Ctx{_, +needed, +jumps, _}:
       jumps_from(jumps, g, c, needed, 0)
     case False{} _:
       g
@@ -594,10 +599,24 @@ def settle_flags(got: Array<U32> & U32, heap: Heap, +c: Cand, +waiting: U32, +ct
   (cells, +flags) = got
   settle_count(cells[at(cand_tile(c), 1)], heap, c, flags, waiting, ctx)
 
+def beyond(+l: Walk.Length, bound: Maybe<&2, Walk.Length>) -> Bool:
+  match bound:
+    case None{}:
+      False{}
+    case Some{+b}:
+      U32.is_eq(Walk.compare(l, b), 2)
+
+def settle_within(past: Bool, cells: Array<U32>, heap: Heap, +c: Cand, +waiting: U32, +ctx: Ctx) -> Search:
+  match past:
+    case True{}:
+      Search{cells, heap, waiting, False{}}
+    case False{}:
+      settle_flags(cells[at(cand_tile(c), 0)], heap, c, waiting, ctx)
+
 def settle_popped(p: Popped, cells: Array<U32>, +waiting: U32, +ctx: Ctx) -> Search:
   match p:
     case Popped{heap, +c, True{}}:
-      settle_flags(cells[at(cand_tile(c), 0)], heap, c, waiting, ctx)
+      settle_within(beyond(cand_length(c), ctx_bound(ctx)), cells, heap, c, waiting, ctx)
     case Popped{heap, _, False{}}:
       Search{cells, heap, waiting, False{}}
 
@@ -743,12 +762,13 @@ def started(got: Array<U32> & U32, starts: List<&2, Start>, +ctx: Ctx) -> Array<
   (cells, +waiting) = got
   cells_of(settle_loop(1073741824n, search_of(offer_starts(starts, Grid{cells, empty_heap()}, ctx_needed(ctx)), waiting), ctx))
 
-# The cells after a search from the starts until every target tile has `needed` labels (or nothing is left).
-def run(+world: FilterWorld.World, +depth: Nat, +jumps: List<&2, Jump>, starts: List<&2, Start>, targets: List<&2, U32>, +needed: U32) -> Array<U32>:
+# The cells after a search from the starts until every target tile has `needed` labels (or nothing is left); with a
+# bound, the labels past it may stay unsettled.
+def run(+world: FilterWorld.World, +depth: Nat, +jumps: List<&2, Jump>, starts: List<&2, Start>, targets: List<&2, U32>, +needed: U32, +bound: Maybe<&2, Walk.Length>) -> Array<U32>:
   match world:
     case FilterWorld.World{_, +w, +h, _, _, _, +tiles}:
       masked_cells = all_masks(U32.to_nat((w * h : U32)), land_cells(tiles, [0 : U32^(Nat.add(depth, 4n))], 0), 0, w, h)
-      started(flag_targets(targets, (flag_jumps(jumps, masked_cells), 0)), starts, Ctx{w, needed, jumps})
+      started(flag_targets(targets, (flag_jumps(jumps, masked_cells), 0)), starts, Ctx{w, needed, jumps, bound})
 
 def second_label_of(got: Array<U32> & Cand, +first: Cand) -> Array<U32> & List<&2, Cand>:
   (cells, +second) = got

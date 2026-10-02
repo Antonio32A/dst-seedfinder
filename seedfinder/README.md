@@ -100,15 +100,21 @@ about 6), so read them as ratios. Seeds 1 to 200, `--platform linux`:
 
 | | forest | caves |
 |---|---|---|
-| `world dump 1 200`, wall time | 45.8 s (4.4 worlds/s) | 30.2 s (6.6 worlds/s) |
-| ms per seed in the dump lines (median / mean) | 2973 / 3276 | 2373 / 2306 |
+| `world dump 1 200`, wall time | 48.4 s (4.1 worlds/s) | 31.0 s (6.5 worlds/s) |
+| ms per seed in the dump lines (median / mean) | 3389 / 3650 | 2425 / 2333 |
 | outcomes | 199 worlds, 1 gave up | 196 worlds, 4 gave up |
 | `world find` with a filter that never matches | 83 M seeds/s (level search) | 21 M seeds/s (level table search) |
 
 The caves' ms include the retried attempts (331 attempts for the 240 seeds of the real dumps, 1.4 per world).
-`gen 1 --shard caves --times` on one thread (261 ms) spends 112 ms in the two KK layouts (`kk1`), 39 ms in the mazes, 37 ms
-in the custom tile pass, 23 ms in the tile conversion and 23 ms in the post steps; the rest of the caves' stages are small,
-and no stage has a linear scan worth fixing.
+A `gen --times` stage line names the stage it leaves. `gen 1 30 --shard caves --times` on one thread (230 ms per seed,
+1.27 attempts) spends per attempt 53 ms in `kk1` (the caves' one KK pass and the Voronoi build after it), 37 ms in
+`mazed` (the land population), 27 ms in `post` (the post steps up to the required prefab check), 20 ms in `tiles`
+(ConvertToTileMap and the site tiles), 16 ms in `land` (the custom tile pass), 12 ms in `tiled` (the mazes) and 8 ms
+each in `start` (the story) and `commit`.
+
+`world find` on the caves presets of the website (the Ancient Guardian within 75 walked tiles, the Atrium Gateway at
+spawn) decides about 11 seeds/s at `--threads 8` and 3.4 to 3.9 seeds/s at `--threads 1`; the website's wasm build, one
+thread per worker, about 2.3 to 2.7 seeds/s.
 
 ## Regenerating the data
 

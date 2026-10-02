@@ -18,3 +18,5 @@ import ./laws/z.bend as LawsZ
 import ./laws/b.bend as LawsB
 import ./laws/d.bend as LawsD
 import ./laws/e.bend as LawsE
+import ./laws/k.bend as LawsK
+import ./laws/j.bend as LawsJ

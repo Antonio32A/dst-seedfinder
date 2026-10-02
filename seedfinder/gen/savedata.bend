@@ -462,3 +462,58 @@ def dump_caves(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Du
   match final:
     case GenJob.Final{g, _, +ents, +w, +pieces, _, _}:
       cave_dump_of(sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), seed, windows, w, packed(g, (w * w : U32)), pieces)
+
+def cave_slot(+sid: U32) -> Bool:
+  (sid < U32.pow(2, GenTagsData.cave_sid_depth()) : U32)
+
+def taken(fits: Bool, a: Array<List<&2, OceanEnts.Ent>>, +sid: U32) -> Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>:
+  match fits:
+    case True{}:
+      Array.swap(List<&2, OceanEnts.Ent>, a, sid, Nil{})
+    case False{}:
+      (a, Nil{})
+
+def cave_groups(sids: List<&2, U32>, got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +v: U32, +windows: Bool, +acc: List<&2, List<&2, FilterWorld.Inst>>) -> List<&2, List<&2, FilterWorld.Inst>>:
+  match sids:
+    case Nil{}:
+      (_, +ents) = got
+      List.reverse(&2, List<&2, FilterWorld.Inst>, group_of(ents, v, windows) <> acc)
+    case Con{+sid, rest}:
+      (a, +ents) = got
+      cave_groups(rest, taken(cave_slot(sid), a, sid), (v + 1 : U32), windows, group_of(ents, v, windows) <> acc)
+
+def groups_by_sid(sids: List<&2, U32>, a: Array<List<&2, OceanEnts.Ent>>, +windows: Bool) -> List<&2, List<&2, FilterWorld.Inst>>:
+  match sids:
+    case Nil{}:
+      Nil{}
+    case Con{+sid, rest}:
+      cave_groups(rest, taken(cave_slot(sid), a, sid), 0, windows, Nil{})
+
+def sid_ents(ents: List<&2, OceanEnts.Ent>, +sid: U32, +acc: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
+  match ents:
+    case Nil{}:
+      acc
+    case Con{+e, rest}:
+      sid_ents(rest, sid, Bool.pick(List<&2, OceanEnts.Ent>, U32.is_eq(OceanEnts.prefab_of(e), sid), e <> acc, acc))
+
+def vocab_sid(+sids: List<&2, U32>, +v: U32) -> U32:
+  Maybe.default(&2, U32, List.get(&2, U32, sids, U32.to_nat(v)), 4294967295)
+
+def pillar_pils(+ents: List<&2, OceanEnts.Ent>, +sids: List<&2, U32>, +v: U32) -> List<&2, Pil>:
+  pillars_of_prefab(sid_ents(ents, vocab_sid(sids, v), Nil{}), v, 0)
+
+def cave_links(pillars: List<&2, FilterDump.Pillar>, +groups: List<&2, List<&2, FilterWorld.Inst>>) -> List<&2, FilterWorld.Link>:
+  match pillars:
+    case Nil{}:
+      Nil{}
+    case Con{FilterDump.Pillar{+entry_prefab, +entry, +exit_prefab, +exit}, rest}:
+      FilterWorld.Link{FilterWorld.instance_at(groups, entry_prefab, entry), FilterWorld.instance_at(groups, exit_prefab, exit)} <> cave_links(rest, groups)
+
+# The filters' world of a generated caves world, equal to what FilterWorld.of_bytes_in reads from its dump_caves.
+def cave_world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
+  match final:
+    case GenJob.Final{g, _, +ents, +w, _, _, _}:
+      +sids = List.append(&2, U32, GenTagsData.vocab_prefab_sids(), GenTagsData.cave_vocab_prefab_sids())
+      +groups = groups_by_sid(sids, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), windows)
+      +pils = List.append(&2, Pil, pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar()), pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar_atrium()))
+      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, cave_links(pillar_links(pils, pils), groups), packed(g, (w * w : U32))}

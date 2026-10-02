@@ -150,13 +150,62 @@ def pick_all(targets: List<&2, Anchor.Point>, owners: List<&2, U32>, got: Array<
       (cells, acc) = got
       List.reverse(&2, Metric.Relaxed, acc)
 
-# For every target, the least seed cost plus walk (metric.py WalkMetric.relax, one multi-source search).
-def relax(+w: Walker, +seeds: List<&2, WSeed>, +targets: List<&2, Anchor.Point>, +exclude_self: Bool) -> List<&2, Metric.Relaxed>:
-  match w:
-    case Walker{+world, +depth, +jumps, _}:
-      +owners = owns(exclude_self, seeds, targets)
+def all_unreached(targets: List<&2, Anchor.Point>) -> List<&2, Metric.Relaxed>:
+  match targets:
+    case Nil{}:
+      Nil{}
+    case Con{_, rest}:
+      Metric.unreached() <> all_unreached(rest)
+
+def axis_gap(+a: U32, +b: U32) -> U32:
+  Bool.pick(U32, (a < b : U32), (b - a : U32), (a - b : U32))
+
+def centres_apart(+a: U32, +b: U32, +w: U32, +limit: U32) -> Bool:
+  +dx = axis_gap((a % w : U32), (b % w : U32))
+  +dy = axis_gap((a / w : U32), (b / w : U32))
+  ((dx * dx + dy * dy) * 16 > limit * limit : U32)
+
+def target_near(+tile: U32, +seed: U32, targets: List<&2, Anchor.Point>, owners: List<&2, U32>, +w: U32, +limit: U32) -> Bool:
+  match targets owners:
+    case Con{Anchor.Point{_, Some{Anchor.Anchor{+goal, _, _}}}, ts} Con{+own, os}:
+      (U32.is_ne(own, seed) && Bool.not(centres_apart(tile, goal, w, limit))) || target_near(tile, seed, ts, os, w, limit)
+    case Con{_, ts} Con{_, os}:
+      target_near(tile, seed, ts, os, w, limit)
+    case _ _:
+      False{}
+
+def any_near(seeds: List<&2, WSeed>, +i: U32, +targets: List<&2, Anchor.Point>, +owners: List<&2, U32>, +w: U32, +limit: U32) -> Bool:
+  match seeds:
+    case Nil{}:
+      False{}
+    case Con{WSeed{Anchor.Point{_, Some{Anchor.Anchor{+tile, _, _}}}, _}, rest}:
+      target_near(tile, i, targets, owners, w, limit) || any_near(rest, (i + 1 : U32), targets, owners, w, limit)
+    case Con{_, rest}:
+      any_near(rest, (i + 1 : U32), targets, owners, w, limit)
+
+# Sound since a walk without jumps is at least the straight line between its end tiles' centres.
+def may_reach(+bound: Maybe<&2, Walk.Length>, +jumps: List<&2, Dijkstra.Jump>, +world: FilterWorld.World, +seeds: List<&2, WSeed>, +targets: List<&2, Anchor.Point>, +owners: List<&2, U32>) -> Bool:
+  match bound world:
+    case Some{Walk.Length{+q2, _, _, _}} FilterWorld.World{_, +w, _, _, _, _, _}:
+      Bool.not(List.is_empty(&2, Dijkstra.Jump, jumps)) || (q2 >= 65535 : U32) || any_near(seeds, 0, targets, owners, w, (q2 + 1 : U32))
+    case None{} _:
+      True{}
+
+def relaxed_if(reach: Bool, +w: Walker, +seeds: List<&2, WSeed>, +targets: List<&2, Anchor.Point>, +owners: List<&2, U32>, +bound: Maybe<&2, Walk.Length>) -> List<&2, Metric.Relaxed>:
+  match reach w:
+    case True{} Walker{+world, +depth, +jumps, _}:
       +needed = Bool.pick(U32, any_own(owners), 2, 1)
-      pick_all(targets, owners, (Dijkstra.run(world, depth, jumps, starts(seeds, 0), target_tiles(targets), needed), Nil{}))
+      pick_all(targets, owners, (Dijkstra.run(world, depth, jumps, starts(seeds, 0), target_tiles(targets), needed, bound), Nil{}))
+    case False{} _:
+      all_unreached(targets)
+
+# For every target, the least seed cost plus walk (metric.py WalkMetric.relax, one multi-source search); with a bound,
+# targets past it may come out unreached.
+def relax(+w: Walker, +seeds: List<&2, WSeed>, +targets: List<&2, Anchor.Point>, +exclude_self: Bool, +bound: Maybe<&2, Walk.Length>) -> List<&2, Metric.Relaxed>:
+  match w:
+    case Walker{+world, _, +jumps, _}:
+      +owners = owns(exclude_self, seeds, targets)
+      relaxed_if(may_reach(bound, jumps, world, seeds, targets, owners), w, seeds, targets, owners, bound)
 
 def hop_list(indices: List<&2, U32>, +hops: List<&2, Metric.Hop>) -> List<&2, Metric.Hop>:
   match indices:
@@ -182,6 +231,6 @@ def leg_labels(got: Array<U32> & List<&2, Dijkstra.Cand>, +goal: U32, +start: U3
 def leg(+w: Walker, +a: Anchor.Point, +b: Anchor.Point) -> Metric.Leg:
   match w a b:
     case Walker{+world, +depth, +jumps, +hops} Anchor.Point{_, Some{Anchor.Anchor{+from, _, +la}}} Anchor.Point{_, Some{Anchor.Anchor{+to, _, +lb}}}:
-      leg_labels(Dijkstra.labels(Dijkstra.run(world, depth, jumps, [Dijkstra.Start{from, la, 0}], [to], 1), to), to, from, lb, hops)
+      leg_labels(Dijkstra.labels(Dijkstra.run(world, depth, jumps, [Dijkstra.Start{from, la, 0}], [to], 1, None{}), to), to, from, lb, hops)
     case _ _ _:
       Metric.Leg{Metric.Unreached{}, Nil{}}

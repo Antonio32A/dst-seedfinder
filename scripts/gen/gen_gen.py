@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes data/gen_tags.bend for the end-to-end generator (gen/): the string ids of the node tags Graph:ApplyPoisonTag
 reads (network.lua), and the catalog vocabulary of the search filters (data/search_vocab.bend order) as the generator's
-string ids and tile ids, to build the filters' world from a generated one. `-` prints the module instead."""
+string ids and tile ids (the caves' own prefabs too), to build the filters' world from a generated one. `-` prints the module instead."""
 import json
 import sys
 from pathlib import Path
@@ -11,8 +11,10 @@ import blob  # noqa: E402
 import ids  # noqa: E402
 
 CATALOG = json.loads((Path(__file__).resolve().parents[1] / "catalog" / "catalog.json").read_text(encoding="utf-8"))
+CAVE_CATALOG = json.loads((Path(__file__).resolve().parents[1] / "catalog" / "cave_catalog.json").read_text(encoding="utf-8"))
 NEVER_PLACED = 4294967295
 POCKET_CONTAINERS = ("shadow_container", "rabbitkinghorn_container")
+PILLARS = ("tentacle_pillar", "tentacle_pillar_atrium")
 
 TAGS = (("force_connected", "ForceConnected"), ("road_poison", "RoadPoison"), ("force_disconnected", "ForceDisconnected"))
 
@@ -27,6 +29,9 @@ def main():
     table = ids.table()["index"]
     m.comment("The global string id of each catalog prefab (4294967295: a prefab the generator never places).")
     m.code("def vocab_prefab_sids() -> List<&2, U32>:\n  [" + ", ".join(str(table.get(p, NEVER_PLACED)) for p in prefabs) + "]")
+    cave_only = [p["id"] for p in CAVE_CATALOG["prefabs"] if p["id"] not in set(prefabs)]
+    m.comment("The global string id of each of the caves' own prefabs (search_vocab.bend cave_only, after the catalog's).")
+    m.code("def cave_vocab_prefab_sids() -> List<&2, U32>:\n  [" + ", ".join(str(table.get(p, NEVER_PLACED)) for p in cave_only) + "]")
     m.comment("Slots of a string id lookup table (a power of two above every string id the forest places).")
     m.const("sid_depth", f"{max(ids.table()['forest_string_count'] - 1, 1).bit_length()}n", "Nat")
     m.comment("Slots of a string id lookup table for the caves (a power of two above every string id).")
@@ -37,6 +42,9 @@ def main():
     m.const("vocab_wormhole", prefabs.index("wormhole"))
     for name in POCKET_CONTAINERS:
         m.const(f"vocab_{name}", prefabs.index(name))
+    m.comment("Vocabulary ids of the tentacle pillars, whose teleporters are the caves' links.")
+    for name in PILLARS:
+        m.const(f"vocab_{name}", (prefabs + cave_only).index(name))
     m.emit()
 
 

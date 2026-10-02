@@ -3,6 +3,7 @@ import ./anchor.bend as Anchor
 import ./metric.bend as Metric
 import ./relax.bend as Relax
 import ./par.bend as Par
+import ./walk.bend as Walk
 
 # The exact shortest instance-consistent route (criteria.py shortest_route): Held-Karp over the set of visited stops,
 # where every transition is one multi-source relaxation from all route ends of a set to the instances of the next
@@ -117,7 +118,7 @@ def growths(ks: List<&2, U32>, +relaxed: List<&2, Metric.Relaxed>, +stops: List<
         <> growths(rest, List.drop(&2, Metric.Relaxed, relaxed, n), stops, seeds, mask)
 
 type Plan is Data:
-  Plan{count: U32, fixed: Bool, stops: List<&2, List<&2, Anchor.Point>>}
+  Plan{count: U32, fixed: Bool, stops: List<&2, List<&2, Anchor.Point>>, bound: Maybe<&2, Walk.Length>}
 
 # What one set of visited stops is relaxed against: the metric, the plan, and the frontier before its size.
 type Stage is Data:
@@ -127,9 +128,9 @@ def grow_from(seeds: List<&2, Path>, +s: Relax.Space, +plan: Plan, +mask: U32) -
   match seeds plan:
     case Nil{} _:
       Nil{}
-    case Con{+first, +rest} Plan{+count, +fixed, +stops}:
+    case Con{+first, +rest} Plan{+count, +fixed, +stops, +bound}:
       +ks = next_stops(mask, count, fixed)
-      growths(ks, Relax.relax(s, sources_of(first <> rest), target_points(targets_of(ks, stops)), False{}), stops, first <> rest, mask)
+      growths(ks, Relax.relax(s, sources_of(first <> rest), target_points(targets_of(ks, stops)), False{}, bound), stops, first <> rest, mask)
 
 # One Held-Karp transition: the relaxation from the frontier of `mask` to the instances of its next stops.
 def grow_at(+stage: Stage, +mask: U32) -> List<&2, Growth>:
@@ -216,14 +217,14 @@ def closed_at(+b: Best, +finals: List<&2, Path>, +ends: List<&2, Anchor.Point>) 
         Some{PStop{Maybe.default(&2, Anchor.Point, List.get(&2, Anchor.Point, ends, U32.to_nat(target)), Anchor.Point{Metric.none_inst(), None{}}), cost,
           Maybe.default(&2, Path, List.get(&2, Path, finals, U32.to_nat(seed)), PStart{})}}, None{})
 
-def close_with(to: Maybe<&2, List<&2, Anchor.Point>>, +s: Relax.Space, finals: List<&2, Path>) -> Maybe<&2, Path>:
+def close_with(to: Maybe<&2, List<&2, Anchor.Point>>, +s: Relax.Space, finals: List<&2, Path>, +bound: Maybe<&2, Walk.Length>) -> Maybe<&2, Path>:
   match to finals:
     case None{} paths:
       first_path(paths)
     case Some{_} Nil{}:
       None{}
     case Some{+ends} Con{+first, +rest}:
-      closed_at(argmin(Relax.relax(s, sources_of(first <> rest), ends, False{})), first <> rest, ends)
+      closed_at(argmin(Relax.relax(s, sources_of(first <> rest), ends, False{}, bound)), first <> rest, ends)
 
 def start_paths(points: List<&2, Anchor.Point>, +zero: Metric.Cost) -> List<&2, Path>:
   match points:
@@ -239,12 +240,13 @@ def empty_frontier(n: Nat) -> List<&2, List<&2, Path>>:
     case 1n+k:
       Nil{} <> empty_frontier(k)
 
-# The last stop of the shortest route from `from` through every stop (to `to` when given), or None.
-def shortest(+s: Relax.Space, +from: List<&2, Anchor.Point>, +stops: List<&2, List<&2, Anchor.Point>>, to: Maybe<&2, List<&2, Anchor.Point>>, +fixed: Bool) -> Maybe<&2, Path>:
+# The last stop of the shortest route from `from` through every stop (to `to` when given), or None; with a bound, a
+# route longer than it may come out None.
+def shortest(+s: Relax.Space, +from: List<&2, Anchor.Point>, +stops: List<&2, List<&2, Anchor.Point>>, to: Maybe<&2, List<&2, Anchor.Point>>, +fixed: Bool, +bound: Maybe<&2, Walk.Length>) -> Maybe<&2, Path>:
   +count = U32.from_nat(List.length(&2, List<&2, Anchor.Point>, stops))
   +frontier = List.set(&2, List<&2, Path>, empty_frontier(128n), 0n, start_paths(from, Relax.zero(s)))
-  +done = run_groups(size_groups(U32.to_nat(count), 0, count, fixed), s, Plan{count, fixed, stops}, frontier)
-  close_with(to, s, frontier_at(done, ((1 << U32.to_nat(count)) - 1 : U32)))
+  +done = run_groups(size_groups(U32.to_nat(count), 0, count, fixed), s, Plan{count, fixed, stops, bound}, frontier)
+  close_with(to, s, frontier_at(done, ((1 << U32.to_nat(count)) - 1 : U32)), bound)
 
 def unwound(p: Path, +acc: List<&2, Anchor.Point>) -> List<&2, Anchor.Point>:
   match p:

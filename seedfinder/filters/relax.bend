@@ -107,18 +107,19 @@ def insts_of(points: List<&2, Anchor.Point>) -> List<&2, FilterWorld.Inst>:
     case Con{Anchor.Point{+inst, _}, rest}:
       inst <> insts_of(rest)
 
-def relax_with(walk: Bool, +s: Space, +sources: List<&2, Src>, +targets: List<&2, Anchor.Point>, +exclude_self: Bool) -> List<&2, Metric.Relaxed>:
+def relax_with(walk: Bool, +s: Space, +sources: List<&2, Src>, +targets: List<&2, Anchor.Point>, +exclude_self: Bool, +bound: Maybe<&2, Walk.Length>) -> List<&2, Metric.Relaxed>:
   match walk s:
     case True{} Space{_, _, +walker}:
-      Walking.relax(walker, walk_seeds(sources), targets, exclude_self)
+      Walking.relax(walker, walk_seeds(sources), targets, exclude_self, bound)
     case False{} Space{_, +ends, _}:
       Straight.relax(ends, straight_seeds(sources), insts_of(targets), exclude_self)
 
-# metric.py relax(seeds, targets, exclude_self): per target the least seed cost plus distance, and that seed.
-def relax(+s: Space, +sources: List<&2, Src>, +targets: List<&2, Anchor.Point>, +exclude_self: Bool) -> List<&2, Metric.Relaxed>:
+# metric.py relax(seeds, targets, exclude_self): per target the least seed cost plus distance, and that seed; with a
+# bound, walk targets past it may come out unreached.
+def relax(+s: Space, +sources: List<&2, Src>, +targets: List<&2, Anchor.Point>, +exclude_self: Bool, +bound: Maybe<&2, Walk.Length>) -> List<&2, Metric.Relaxed>:
   match s:
     case Space{+walk, _, _}:
-      relax_with(walk, s, sources, targets, exclude_self)
+      relax_with(walk, s, sources, targets, exclude_self, bound)
 
 def leg_with(walk: Bool, +s: Space, +a: Anchor.Point, +b: Anchor.Point) -> Metric.Leg:
   match walk s a b:

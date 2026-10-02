@@ -10,6 +10,7 @@ import ./rules.bend as Rules
 import ./routes.bend as Routes
 import ./tiles.bend as FilterTiles
 import ./witness.bend as Witness
+import ./walk.bend as Walk
 
 # The checks of parts B-E (criteria.py check_count, check_distance, check_tiles, check_route): whether a rule holds
 # and its witness fields, as evaluate.py --json prints them after "ok".
@@ -82,7 +83,7 @@ def count_near(+world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, ne
       +s = Relax.space(world, metric)
       +anchors = Relax.points(s, FilterWorld.instances(world, prefabs))
       +targets = Relax.points(s, insts)
-      +items = counted_items(targets, Relax.relax(s, Relax.zero_sources(s, anchors), targets, True{}), anchors, within, Nil{})
+      +items = counted_items(targets, Relax.relax(s, Relax.zero_sources(s, anchors), targets, True{}, None{}), anchors, within, Nil{})
       +n = length_u32(items)
       Check{at_least(n, min) && at_most(n, max), ",\"count\":" ++ U32.show(n) ++ ",\"total\":" ++ U32.show(U32.from_nat(List.length(&2, FilterWorld.Inst, insts)))
         ++ ",\"instances\":" ++ json_list(items)}
@@ -129,7 +130,7 @@ def distance(+world: FilterWorld.World, rule: Rules.Distance) -> Check:
       +s = Relax.space(world, metric)
       +sources = Relax.points(s, FilterWorld.instances(world, from))
       +targets = Relax.points(s, FilterWorld.instances(world, to))
-      distance_best(metric, s, Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{})), sources, targets, min, max)
+      distance_best(metric, s, Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{}, None{})), sources, targets, min, max)
 
 def world_size(+world: FilterWorld.World) -> U32:
   match world:
@@ -203,4 +204,68 @@ def route(+world: FilterWorld.World, rule: Rules.Route) -> Check:
   match rule:
     case Rules.Route{+from, +visit, +to, +max, +fixed, +metric}:
       +s = Relax.space(world, metric)
-      route_found(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed), metric, s, max)
+      route_found(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed, None{}), metric, s, max)
+
+def bound_length(+b: Walk.Bound) -> Maybe<&2, Walk.Length>:
+  match b:
+    case Walk.Bound{+length, _}:
+      Some{length}
+
+def bound_of(+d: F64Repr.F64) -> Maybe<&2, Walk.Length>:
+  bound_length(Walk.bound_of(d))
+
+def max_bound(m: Maybe<&2, F64Repr.F64>) -> Maybe<&2, Walk.Length>:
+  match m:
+    case None{}:
+      None{}
+    case Some{+d}:
+      bound_of(d)
+
+def near_count(relaxed: List<&2, Metric.Relaxed>, +within: F64Repr.F64, +n: U32) -> U32:
+  match relaxed:
+    case Nil{}:
+      n
+    case Con{Metric.Relaxed{+cost, _}, rest}:
+      near_count(rest, within, (n + Bool.to_u32(Metric.is_reached(cost) && Metric.within_max(cost, Some{within})) : U32))
+
+def count_near_holds(+world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, near: Rules.Near, +min: Maybe<&2, U32>, +max: Maybe<&2, U32>) -> Bool:
+  match near:
+    case Rules.Near{+prefabs, +within, +metric}:
+      +s = Relax.space(world, metric)
+      +anchors = Relax.points(s, FilterWorld.instances(world, prefabs))
+      +n = near_count(Relax.relax(s, Relax.zero_sources(s, anchors), Relax.points(s, insts), True{}, bound_of(within)), within, 0)
+      at_least(n, min) && at_most(n, max)
+
+def count_holds_with(near: Maybe<&2, Rules.Near>, +world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, +min: Maybe<&2, U32>, +max: Maybe<&2, U32>) -> Bool:
+  match near:
+    case None{}:
+      +n = U32.from_nat(List.length(&2, FilterWorld.Inst, insts))
+      at_least(n, min) && at_most(n, max)
+    case Some{rule}:
+      count_near_holds(world, insts, rule, min, max)
+
+def count_holds(+world: FilterWorld.World, rule: Rules.Count) -> Bool:
+  match rule:
+    case Rules.Count{+prefabs, +min, +max, near}:
+      count_holds_with(near, world, FilterWorld.instances(world, prefabs), min, max)
+
+def distance_holds(+world: FilterWorld.World, rule: Rules.Distance) -> Bool:
+  match rule:
+    case Rules.Distance{+from, +to, +min, +max, +metric}:
+      +s = Relax.space(world, metric)
+      +sources = Relax.points(s, FilterWorld.instances(world, from))
+      +targets = Relax.points(s, FilterWorld.instances(world, to))
+      Metric.within(best_cost(Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{}, max_bound(max)))), min, max)
+
+def route_within(last: Maybe<&2, Routes.Path>, +max: F64Repr.F64) -> Bool:
+  match last:
+    case None{}:
+      False{}
+    case Some{+p}:
+      Metric.within_max(Routes.path_cost(p), Some{max})
+
+def route_holds(+world: FilterWorld.World, rule: Rules.Route) -> Bool:
+  match rule:
+    case Rules.Route{+from, +visit, +to, +max, +fixed, +metric}:
+      +s = Relax.space(world, metric)
+      route_within(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed, bound_of(max)), max)

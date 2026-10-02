@@ -38,6 +38,13 @@ def outcomes_of(skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -> L
     case False{}:
       Evaluate.parallel_jobs(world, Evaluate.jobs_of(later))
 
+def later_holds(level: Bool, +world: FilterWorld.World, +later: Rules.Later) -> Bool:
+  match level:
+    case True{}:
+      Evaluate.parallel_holds(world, Evaluate.jobs_of(later))
+    case False{}:
+      False{}
+
 def entry_verdict(+seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
   Hit{"\"entry\":" ++ U32.show(index) ++ ",\"level\":" ++ ShardSearch.summary_json(caves, seed) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
 
@@ -46,8 +53,8 @@ def first_entry(flags: List<&2, Bool>, laters: List<&2, Rules.Later>, found: Boo
     case _ _ True{}:
       entry_verdict(seed, caves, (index - 1 : U32), outcomes)
     case Con{+level, cs} Con{+later, ls} False{}:
-      +next = outcomes_of(Bool.not(level), world, later)
-      first_entry(cs, ls, level && Evaluate.holds(next), world, seed, caves, (index + 1 : U32), next)
+      +found = later_holds(level, world, later)
+      first_entry(cs, ls, found, world, seed, caves, (index + 1 : U32), outcomes_of(Bool.not(found), world, later))
     case _ _ _:
       Miss{}
 
