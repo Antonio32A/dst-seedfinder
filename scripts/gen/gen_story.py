@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import blob  # noqa: E402
 import ids  # noqa: E402
 import gen_world_catalog as wc  # noqa: E402
+import union  # noqa: E402
 import model  # noqa: E402
 
 LEGACY_IMPASSABLE = (128, 200)
@@ -48,16 +49,17 @@ def count_closure_rows(story):
 
 
 def maptag_index():
-    tags = sorted(blob.sidecar("layouts.json")["maptags"], key=lambda t: ids.sid(t["tag"]))
-    return {t["tag"]: i for i, t in enumerate(tags)}
+    return {t["tag"]: i for i, t in enumerate(ids.maptags())}
 
 
 def main():
-    story = blob.sidecar("story.json")
+    story = union.story()
     extra = blob.sidecar("storygen.json")
     impassable = extra["impassable_below_1024"]
     assert impassable == [extra["impassable_value"]] + list(range(LEGACY_IMPASSABLE[0], LEGACY_IMPASSABLE[1] + 1))
-    assert all(r["value"] < 1024 for r in story["rooms"])
+    assert all(r["value"] < 1024 for r in blob.sidecar("story.json")["rooms"])
+    assert all(r["value"] < 1024 or not extra["impassable_range_first"] <= r["value"] <= extra["impassable_range_last"]
+               for r in story["rooms"]), "a room tile in the impassable range above 1024"
 
     table = wc.keys()
     keys = [[]] + [piece(name) for name, _, _, _ in table]

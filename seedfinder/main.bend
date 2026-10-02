@@ -84,11 +84,6 @@ def gen(+args: List<&2, String>) -> IO(Unit):
     +shard : U32 <- IO.pass(U32, Args.shard_flag(Args.flag_value(args, "--shard")))
     gen_on(args, shard)
 
-def dump(+args: List<&2, String>) -> IO(Unit):
-  do IO<Unit>:
-    +shard : U32 <- IO.pass(U32, Args.shard_flag(Args.flag_value(args, "--shard")))
-    Bool.pick(IO(Unit), U32.is_eq(shard, 2), IO.die(Unit, 2, "dump: the caves worldgen stops before the mazes (gen --shard caves)"), GenDump.run(args))
-
 def usage() -> IO(Unit):
   IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] [--shard forest|caves] | seedfinder setpiece show FROM [TO] [--shard forest|caves] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--shard forest|caves] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] [--shard forest|caves] | seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH | seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend] [--dump BITS] [--draws N]")
 
@@ -113,7 +108,7 @@ def world(+args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(mode, "show"), world_show(args),
     Bool.pick(IO(Unit), String.eq(mode, "find"), world_find(args),
       Bool.pick(IO(Unit), String.eq(mode, "eval"), SearchEval.run(args),
-        Bool.pick(IO(Unit), String.eq(mode, "dump"), dump(args), usage()))))
+        Bool.pick(IO(Unit), String.eq(mode, "dump"), GenDump.run(args), usage()))))
 
 def run(+command: String, +args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(command, "setpiece"), setpiece(args),

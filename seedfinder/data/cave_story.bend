@@ -299,6 +299,310 @@ def start_rooms_chunk(+c: U32) -> String:
 def start_rooms(+i: U32) -> List<&2, U32>:
   Blob.row(start_rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def maze_type_dfs_4way_meta() -> U32:
+  0
+
+def maze_type_dfs_4way() -> U32:
+  1
+
+def maze_type_dfs_8way() -> U32:
+  2
+
+def maze_type_growingtree_4way() -> U32:
+  3
+
+def maze_type_growingtree_8way() -> U32:
+  4
+
+def maze_type_growingtree_4way_inv() -> U32:
+  5
+
+def maze_cell_no_exits() -> U32:
+  0
+
+def maze_cell_single_north() -> U32:
+  1
+
+def maze_cell_single_east() -> U32:
+  2
+
+def maze_cell_l_north() -> U32:
+  3
+
+def maze_cell_single_south() -> U32:
+  4
+
+def maze_cell_tunnel_ns() -> U32:
+  5
+
+def maze_cell_l_east() -> U32:
+  6
+
+def maze_cell_three_way_n() -> U32:
+  7
+
+def maze_cell_single_west() -> U32:
+  8
+
+def maze_cell_l_west() -> U32:
+  9
+
+def maze_cell_tunnel_ew() -> U32:
+  10
+
+def maze_cell_three_way_w() -> U32:
+  11
+
+def maze_cell_l_south() -> U32:
+  12
+
+def maze_cell_three_way_s() -> U32:
+  13
+
+def maze_cell_three_way_e() -> U32:
+  14
+
+def maze_cell_four_way() -> U32:
+  15
+
+def maze_cell_type_count() -> U32:
+  16
+
+def maze_kind_plain() -> U32:
+  0
+
+def maze_kind_special() -> U32:
+  1
+
+def maze_kind_archive() -> U32:
+  2
+
+def maze_default_tile_size() -> U32:
+  8
+
+# Row cell type (MAZE_CELL_EXITS): the shape name MAZE_CELL_EXITS_INV gives (NO_EXITS for 0).
+def maze_cell_names_count() -> U32:
+  16
+
+def maze_cell_names_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀅𐀈𔹏𕽅𕡉𕑓𐀇𐀌𕍉𔹇𔱅𕽎𔽒𕑈𐀇𐀋𕍉𔹇𔱅𕽅𔅓𕐀𐀅𐀇𔱟𔹏𕉔𔠀𐀇𐀌𕍉𔹇𔱅𕽓𔽕𕑈𐀆𐀉𕑕𔹎𔕌𕽎𕌀𐀄𐀆𔱟𔕁𕍔𐀇𐀋𕑈𕉅𔕟𕝁𕥟𔸀𐀇𐀋𕍉𔹇𔱅𕽗𔕓𕐀𐀄𐀆𔱟𕝅𕍔𐀆𐀉𕑕𔹎𔕌𕽅𕜀𐀇𐀋𕑈𕉅𔕟𕝁𕥟𕜀𐀅𐀇𔱟𕍏𕕔𔠀𐀇𐀋𕑈𕉅𔕟𕝁𕥟𕌀𐀇𐀋𕑈𕉅𔕟𕝁𕥟𔔀𐀅𐀈𔙏𕕒𕽗𔅙"
+    case _:
+      ""
+
+def maze_cell_names(+i: U32) -> List<&2, U32>:
+  Blob.row(maze_cell_names_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row maze choice: the key of maze_layouts.AllLayouts (sorted by name bytes).
+def maze_choice_names_count() -> U32:
+  23
+
+def maze_choice_names_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀇𐀋𖅲𖍨𖥶𖕟𖕮𖐀𐀉𐀏𖅲𖍨𖥶𖕟𖡡𖱬𗝡𗤀𐀋𐀓𖅲𖍨𖥶𖕟𖡡𖱬𗝡𗥟𗑷𖼀𐀉𐀏𖅲𖍨𖥶𖕟𖭥𗥲𖽯𖴀𐀈𐀍𖅲𖍨𖥶𖕟𗍴𖅲𗐀𐀆𐀊𖅴𗉩𗕭𕽥𖹤𐀈𐀎𖅴𗉩𗕭𕽨𖅬𖱷𖅹𐀋𐀔𖅴𗉩𗕭𕽨𖅬𖱷𖅹𕽴𖡲𖕥𐀊𐀒𖅴𗉩𗕭𕽨𖅬𖱷𖅹𕽴𗝯𐀇𐀌𖅴𗉩𗕭𕽳𗑡𗉴𐀅𐀇𖑥𖙡𗕬𗐀𐀅𐀇𖡡𖱬𗝡𗤀𐀉𐀏𖡡𖱬𗝡𗥟𖅲𖵯𗕲𗤀𐀋𐀓𖡡𖱬𗝡𗥟𗉥𗍩𖑥𖹴𖥡𖰀𐀍𐀗𖡡𖱬𗝡𗥟𗉥𗍩𖑥𖹴𖥡𖱟𗑷𖼀𐀋𐀓𗁩𗑟𖡡𖱬𗝡𗥟𖅲𖵯𗕲𗤀𐀉𐀐𗁩𗑟𗉯𖽭𕽡𗉭𖽵𗉹𐀋𐀔𗁩𗑟𗉯𖽭𕽡𗉭𖽵𗉹𕽴𗝯𐀇𐀌𗉯𖽭𕽡𗉭𖽵𗉹𐀉𐀐𗉯𖽭𕽡𗉭𖽵𗉹𕽴𗝯𐀆𐀉𗉯𖽭𕽯𗁥𖸀𐀉𐀐𗉯𖽭𕽲𖕳𖥤𖕮𗑩𖅬𐀋𐀔𗉯𖽭𕽲𖕳𖥤𖕮𗑩𖅬𕽴𗝯"
+    case _:
+      ""
+
+def maze_choice_names(+i: U32) -> List<&2, U32>:
+  Blob.row(maze_choice_names_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row maze choice: per cell type (0 = NO_EXITS, then MAZE_CELL_EXITS order), the row in data/layouts.bend of maze_layouts.AllLayouts[choice][shape] (NONE when the choice has no layout for the shape; the special ones have the four SINGLE_ shapes).
+def maze_layouts_count() -> U32:
+  23
+
+def maze_layouts_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀐􏿿𐂘𐂗􏿿𐂙􏿿􏿿􏿿𐂚􏿿􏿿􏿿􏿿􏿿􏿿􏿿𐀐􏿿𐂡𐂠𐂝𐂢𐂩𐂜𐂥𐂣𐂟𐂨𐂧𐂞𐂦𐂤𐂛𐀐􏿿𐂰𐂯𐂬𐂱𐂸𐂫𐂴𐂲𐂮𐂷𐂶𐂭𐂵𐂳𐂪𐀐􏿿𐂺𐂹􏿿𐂻􏿿􏿿􏿿𐂼􏿿􏿿􏿿􏿿􏿿􏿿􏿿𐀐􏿿𐂾𐂽􏿿𐂿􏿿􏿿􏿿𐃀􏿿􏿿􏿿􏿿􏿿􏿿􏿿𐀐􏿿𐃂𐃁􏿿𐃃􏿿􏿿􏿿𐃄􏿿􏿿􏿿􏿿􏿿􏿿􏿿𐀐􏿿𐃋𐃊𐃇𐃌𐃓𐃆𐃏𐃍𐃉𐃒𐃑𐃈𐃐𐃎𐃅𐀐􏿿𐃚𐃙𐃖𐃛𐃢𐃕𐃞𐃜𐃘𐃡𐃠𐃗𐃟𐃝𐃔𐀐􏿿𐃩𐃨𐃥𐃪𐃱𐃤𐃭𐃫𐃧𐃰𐃯𐃦𐃮𐃬𐃣𐀐􏿿𐃳𐃲􏿿𐃴􏿿􏿿􏿿𐃵􏿿􏿿􏿿􏿿􏿿􏿿􏿿𐀐􏿿𐃼𐃻𐃸𐃽𐄄𐃷𐄀𐃾𐃺𐄃𐄂𐃹𐄁𐃿𐃶𐀐􏿿𐄋𐄊𐄇𐄌𐄓𐄆𐄏𐄍𐄉𐄒𐄑𐄈𐄐𐄎𐄅𐀐􏿿𐄚𐄙𐄖𐄛𐄢𐄕𐄞𐄜𐄘𐄡𐄠𐄗𐄟𐄝𐄔𐀐􏿿𐄩𐄨𐄥𐄪𐄱𐄤𐄭𐄫𐄧𐄰𐄯𐄦𐄮𐄬𐄣𐀐􏿿𐄸𐄷𐄴𐄹𐅀𐄳𐄼𐄺𐄶𐄿𐄾𐄵𐄽𐄻𐄲𐀐􏿿𐅈𐅇𐅄𐅉𐅐𐅃𐅌𐅊𐅆𐅏𐅎𐅅𐅍𐅋𐅂𐀐􏿿𐅗𐅖𐅓𐅘𐅟𐅒𐅛𐅙𐅕𐅞𐅝𐅔𐅜𐅚𐅑𐀐􏿿𐅦𐅥𐅢𐅧𐅮𐅡𐅪𐅨𐅤𐅭𐅬𐅣𐅫𐅩𐅠𐀐􏿿𐅵𐅴𐅱𐅶𐅽𐅰𐅹𐅷𐅳𐅼𐅻𐅲𐅺𐅸𐅯𐀐􏿿𐆄𐆃𐆀𐆅𐆌𐅿𐆈𐆆𐆂𐆋𐆊𐆁𐆉𐆇𐅾𐀐􏿿𐆓𐆒𐆏𐆔𐆛𐆎𐆗𐆕𐆑𐆚𐆙𐆐𐆘𐆖𐆍𐀐􏿿𐆢𐆡𐆞𐆣𐆪𐆝𐆦𐆤𐆠𐆩𐆨𐆟𐆧𐆥𐆜𐀐􏿿𐆱𐆰𐆭𐆲𐆹𐆬𐆵𐆳𐆯𐆸𐆷𐆮𐆶𐆴𐆫"
+    case _:
+      ""
+
+def maze_layouts(+i: U32) -> List<&2, U32>:
+  Blob.row(maze_layouts_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row task: maze_tile_size (default 8), the shape of maze_tiles (0 plain: rooms and bosses; 1 special: also special.start and special.finish; 2 archive: also archive.keyroom), bridge_ground (a tile, NONE when unset). Meaningful for tasks with the maze flag.
+def task_maze_info_count() -> U32:
+  51
+
+def task_maze_info_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀂𐃈𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿"
+    case 1:
+      "𐀃𐀈𐀁𐃈𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿𐀃𐀈𐀀􏿿"
+    case _:
+      ""
+
+def task_maze_info(+i: U32) -> List<&2, U32>:
+  Blob.row(task_maze_info_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+def task_maze_size(+task: U32) -> U32:
+  Blob.at(task_maze_info(task), 0)
+
+def task_maze_kind(+task: U32) -> U32:
+  Blob.at(task_maze_info(task), 1)
+
+def task_maze_bridge_ground(+task: U32) -> U32:
+  Blob.at(task_maze_info(task), 2)
+
+def maze_layout(+choice: U32, +cell: U32) -> U32:
+  Blob.at(maze_layouts(choice), cell)
+
+def maze_choice_name(+choice: U32) -> String:
+  Blob.text(maze_choice_names(choice))
+
+def maze_cell_name(+cell: U32) -> String:
+  Blob.text(maze_cell_names(cell))
+
+# Row task: maze_tiles.rooms as maze choice ids, in list order.
+def task_maze_rooms_count() -> U32:
+  51
+
+def task_maze_rooms_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀂𐀁𐀂𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀄𐀕𐀖𐀍𐀎𐀃𐀒𐀌𐀓𐀀𐀀𐀀"
+    case 1:
+      "𐀃𐀆𐀈𐀇𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀃𐀐𐀏𐀑𐀀𐀄𐀕𐀖𐀍𐀎𐀀"
+    case _:
+      ""
+
+def task_maze_rooms(+i: U32) -> List<&2, U32>:
+  Blob.row(task_maze_rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row task: maze_tiles.bosses as maze choice ids, in list order.
+def task_maze_bosses_count() -> U32:
+  51
+
+def task_maze_bosses_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐀁𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐀕𐀁𐀓𐀀𐀀𐀀"
+    case 1:
+      "𐀁𐀇𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐀑𐀀𐀁𐀕𐀀"
+    case _:
+      ""
+
+def task_maze_bosses(+i: U32) -> List<&2, U32>:
+  Blob.row(task_maze_bosses_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row task: maze_tiles.special.start as maze choice ids, in list order.
+def task_maze_start_count() -> U32:
+  51
+
+def task_maze_start_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐀄𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 1:
+      "𐀁𐀉𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case _:
+      ""
+
+def task_maze_start(+i: U32) -> List<&2, U32>:
+  Blob.row(task_maze_start_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row task: maze_tiles.special.finish as maze choice ids, in list order.
+def task_maze_finish_count() -> U32:
+  51
+
+def task_maze_finish_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 1:
+      "𐀁𐀅𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case _:
+      ""
+
+def task_maze_finish(+i: U32) -> List<&2, U32>:
+  Blob.row(task_maze_finish_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row task: maze_tiles.archive.keyroom as maze choice ids, in list order.
+def task_maze_keyroom_count() -> U32:
+  51
+
+def task_maze_keyroom_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐀃𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 1:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case _:
+      ""
+
+def task_maze_keyroom(+i: U32) -> List<&2, U32>:
+  Blob.row(task_maze_keyroom_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row task: task.required_prefabs (string ids).
+def task_required_prefabs_count() -> U32:
+  51
+
+def task_required_prefabs_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀄𐍁𐌾𐌾𐌾𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 1:
+      "𐀁𐍕𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case _:
+      ""
+
+def task_required_prefabs(+i: U32) -> List<&2, U32>:
+  Blob.row(task_required_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row room: room.required_prefabs (string ids).
+def room_required_prefabs_count() -> U32:
+  102
+
+def room_required_prefabs_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀁𐒰𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 1:
+      "𐀀𐀀𐀁𐒱𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 2:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀁𐐈𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 3:
+      "𐀀𐀀𐀀𐀀𐀀𐀀"
+    case _:
+      ""
+
+def room_required_prefabs(+i: U32) -> List<&2, U32>:
+  Blob.row(room_required_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row 0: the task set's required_prefabs (string ids, repeats kept).
+def taskset_required_prefabs_count() -> U32:
+  1
+
+def taskset_required_prefabs_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀂𐓂𐓂"
+    case _:
+      ""
+
+def taskset_required_prefabs(+i: U32) -> List<&2, U32>:
+  Blob.row(taskset_required_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+# Row 0: the level's required_prefabs (string ids).
+def level_required_prefabs_count() -> U32:
+  1
+
+def level_required_prefabs_chunk(+c: U32) -> String:
+  match c:
+    case 0:
+      "𐀁𐅽"
+    case _:
+      ""
+
+def level_required_prefabs(+i: U32) -> List<&2, U32>:
+  Blob.row(level_required_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+def wormhole_prefab() -> U32:
+  1217
+
 def room_count() -> U32:
   102
 

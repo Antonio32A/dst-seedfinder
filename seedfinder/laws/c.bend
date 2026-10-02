@@ -11,6 +11,16 @@ import ../data/rooms.bend as Rooms
 import ../data/tasks.bend as Tasks
 import ../storygen/catalog.bend as StoryCatalog
 import ../gen/cave_custom.bend as CaveCustom
+import ../gen/savedata.bend as SaveData
+import ../f64/repr.bend as F64Repr
+import ../worldsim/grid.bend as Grid
+import ../ocean/ents.bend as OceanEnts
+import ../ocean/state.bend as OceanState
+import ../ocean/post.bend as OceanPost
+import ../data/ocean_post.bend as OceanPostData
+import ../filters/dump.bend as FilterDump
+import ../post/archive.bend as Archive
+import ../data/cave_story.bend as CaveStory
 
 # Caves laws. The golden values are the real caves worlds of build 747465 (scripts/groundtruth, seed 1 of
 # build/groundtruth/data/worlds_caves): the level table decodes byte for byte into the dumped tasks and set pieces,
@@ -125,7 +135,7 @@ def cave_setpiece_filter_rejects_forest_pieces():
 
 # Caves room and task ids sit above the forest's rows, so one id says which table it belongs to.
 law cave_ids_sit_above_the_forest_rows:
-  {((Rooms.rooms_count() <= StoryCatalog.cave_room_base() : U32), (Tasks.task_count() <= StoryCatalog.cave_task_base() : U32)) == (True{}, True{}) : (Bool & Bool)}
+  {((Rooms.forest_room_count() <= StoryCatalog.cave_room_base() : U32), (Tasks.task_count() <= StoryCatalog.cave_task_base() : U32)) == (True{}, True{}) : (Bool & Bool)}
 
 def cave_ids_sit_above_the_forest_rows():
   {==}
@@ -140,4 +150,79 @@ law cave_custom_layer_counts_run_down:
   {CaveCustom.decremented([5, 10, 3], 1) == [5, 9, 3] : List<&2, U32>}
 
 def cave_custom_layer_counts_run_down():
+  {==}
+
+def marker(+x: U32) -> OceanEnts.Ent:
+  OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.from_u32(x), F64Repr.zero(), 0, 0, 0}
+
+def paired(+prefab: U32, +x: U32, +id: U32, +target: U32) -> OceanEnts.Ent:
+  OceanEnts.Ent{prefab, F64Repr.from_u32(x), F64Repr.zero(), id, target, 0}
+
+# The tentacle pillars the real seed 1 saved: ids from MIN_WORMHOLE_ID in marker order, each targeting the other of its
+# pair; an odd last marker is dropped (entities are newest first).
+law cave_pillars_pair_in_marker_order:
+  {OceanPost.swap_wormholes(900, [marker(4), marker(3), marker(2), marker(1), marker(0)]) == [paired(900, 3, 2300003, 2300002), paired(900, 2, 2300002, 2300003), paired(900, 1, 2300001, 2300000), paired(900, 0, 2300000, 2300001)] : List<&2, OceanEnts.Ent>}
+
+def cave_pillars_pair_in_marker_order():
+  {==}
+
+def synthetic_sea(+ents: List<&2, OceanEnts.Ent>, +rng: Pcg.Rng) -> OceanState.Sea:
+  OceanState.Sea{Grid.new(1, 1, 0), Grid.new(0, 0, 0), rng, ents, 0, Nil{}}
+
+def spawned(+prefab: U32, +n: U32) -> List<&2, OceanEnts.Ent>:
+  List.replicate(OceanEnts.Ent, U32.to_nat(n), OceanEnts.Ent{prefab, F64Repr.zero(), F64Repr.zero(), 0, 0, 0})
+
+def archived_counts(sea: OceanState.Sea, +seed: U32, +before: Pcg.Rng) -> U32:
+  match sea:
+    case OceanState.Sea{_, _, +rng, +ents, _, _}:
+      ((OceanEnts.count(ents, 900) << 16n) .|. (OceanEnts.count(ents, 901) << 8n) .|. (Pcg.counter(seed, rng) - Pcg.counter(seed, before)) : U32)
+
+def archive_pass(+dispensers: U32, +temporaries: U32) -> U32:
+  archived_counts(Archive.run(900, 901, synthetic_sea(List.append(&2, OceanEnts.Ent, spawned(900, dispensers), spawned(901, temporaries)), Pcg.at_counter(5, 7))), 5, Pcg.at_counter(5, 7))
+
+# Fewer than 3 dispensers: three temporary ones become dispensers (a draw each), and the temporary ones are gone.
+law cave_archive_completes_the_dispensers:
+  {(archive_pass(2, 5), (archive_pass(1, 2), archive_pass(0, 4))) == (327683, (196610, 0)) : (U32 & (U32 & U32))}
+
+def cave_archive_completes_the_dispensers():
+  {==}
+
+# Three or more dispensers, or none: no draw, and the temporary ones are gone.
+law cave_archive_leaves_a_full_archive:
+  {(archive_pass(3, 4), archive_pass(0, 0)) == (196608, 0) : (U32 & U32)}
+
+def cave_archive_leaves_a_full_archive():
+  {==}
+
+def verdict_of(got: OceanState.Sea & Bool) -> Bool:
+  (sea, +ok) = got
+  match sea:
+    case OceanState.Sea{_, _, _, _, _, _}:
+      ok
+
+def required_verdict(+reqs: List<&2, OceanPost.Req>, +ents: List<&2, OceanEnts.Ent>) -> Bool:
+  verdict_of(OceanPost.required(reqs, OceanState.Ctx{False{}, 0, 1, 1, False{}, False{}}, synthetic_sea(ents, Pcg.at_counter(5, 0))))
+
+# The required prefab check passes with at least the count of each prefab.
+law cave_required_prefabs_need_their_count:
+  {(required_verdict([OceanPost.Req{900, 2}], spawned(900, 2)), (required_verdict([OceanPost.Req{900, 2}], spawned(900, 1)), required_verdict([OceanPost.Req{900, 2}, OceanPost.Req{901, 1}], spawned(900, 3)))) == (True{}, (False{}, False{})) : (Bool & (Bool & Bool))}
+
+def cave_required_prefabs_need_their_count():
+  {==}
+
+def pil(+prefab: U32, +index: U32, +id: U32, +target: U32) -> SaveData.Pil:
+  SaveData.Pil{prefab, index, id, target}
+
+# The real seed 1's PILL section: the pillars pair (0, 1), (2, 3) .. and the atrium pillars (prefab after it) pair.
+law cave_pillar_links_follow_the_targets:
+  {SaveData.pillar_links([pil(155, 0, 2300000, 2300001), pil(155, 1, 2300001, 2300000), pil(155, 2, 2300002, 2300003), pil(155, 3, 2300003, 2300002), pil(156, 0, 2400000, 2400001), pil(156, 1, 2400001, 2400000)], [pil(155, 0, 2300000, 2300001), pil(155, 1, 2300001, 2300000), pil(155, 2, 2300002, 2300003), pil(155, 3, 2300003, 2300002), pil(156, 0, 2400000, 2400001), pil(156, 1, 2400001, 2400000)]) == [FilterDump.Pillar{155, 0, 155, 1}, FilterDump.Pillar{155, 1, 155, 0}, FilterDump.Pillar{155, 2, 155, 3}, FilterDump.Pillar{155, 3, 155, 2}, FilterDump.Pillar{156, 0, 156, 1}, FilterDump.Pillar{156, 1, 156, 0}] : List<&2, FilterDump.Pillar>}
+
+def cave_pillar_links_follow_the_targets():
+  {==}
+
+# A pillar whose target is not a pillar makes no link.
+law cave_pillar_link_needs_its_exit:
+  {SaveData.pillar_links([pil(155, 0, 2300000, 2300009)], [pil(155, 0, 2300000, 2300009)]) == [] : List<&2, FilterDump.Pillar>}
+
+def cave_pillar_link_needs_its_exit():
   {==}

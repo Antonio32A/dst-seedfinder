@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 import ids  # noqa: E402
+import union  # noqa: E402
 
 KIND_INTEGER, KIND_CLOSURE, KIND_WEIGHT, KIND_SWAPPABLE = range(4)
 FLAG_CONTENTS, FLAG_DISTRIBUTE_PERCENT, FLAG_USES_FILTERS, FLAG_CUSTOM_TILES, FLAG_CUSTOM_OBJECTS, FLAG_SAFE = (
@@ -56,7 +57,7 @@ def snapshot_row(snapshot):
 
 def check_swappable_orders(story):
     recorded = {}
-    for room in blob.sidecar("distribute.json")["rooms"]:
+    for room in union.distribute()["rooms"]:
         for depth, d in enumerate(room["depths"], 1):
             for sw in d["swappable"]:
                 recorded[(room["name"], depth, sw["key"])] = sw["prefabs"]
@@ -74,7 +75,7 @@ TAG_KINDS = {None: 0, "TAG": 1, "GLOBALTAG": 2, "ITEM": 3, "STATIC": 4}
 
 def maptag_rows():
     rows = []
-    for tag in sorted(blob.sidecar("layouts.json")["maptags"], key=lambda t: ids.sid(t["tag"])):
+    for tag in ids.maptags():
         results = tag["results"]
         kinds = {r["first"].get("kind") for r in results}
         assert len(kinds) <= 1
@@ -93,7 +94,7 @@ def maptag_rows():
 
 
 def main():
-    story = blob.sidecar("story.json")
+    story = union.story()
     check_swappable_orders(story)
     rooms = sorted(story["rooms"], key=lambda r: ids.room_index(r["name"]))
     assert [ids.room_index(r["name"]) for r in rooms] == list(range(len(rooms)))
@@ -174,6 +175,11 @@ def main():
                                       "ids, or for Terrarium_Spawner the layouts, value k = math.random(n) = k + 1; a "
                                       "numeric TAG value is stored as NONE followed by the number. Values are layouts "
                                       "for STATIC, string ids otherwise.")
+    cave_room_names = sorted((r["name"] for r in blob.sidecar("caves.json")["story"]["rooms"]), key=lambda n: n.encode())
+    assert set(cave_room_names) == {r["name"] for r in blob.sidecar("story_caves.json")["rooms"]}
+    m.table("cave_rooms", [[ids.room_index(n)] for n in cave_room_names],
+            "Row cave story room (data/cave_story.bend's room ids, sorted by name bytes): its row in this module.")
+    m.const("forest_room_count", ids.table()["forest_room_count"])
     m.const("start_room", ids.room_index(start["name"]))
     m.table("start_countprefabs", [[ids.sid(k) for k in start["start"]["countprefabs"]],
                                    [ids.sid(k) for k in start["start"]["generate_order"]]],
@@ -214,6 +220,10 @@ def random_node_exit_weight(+room: U32) -> U32:
 
 def random_node_entrance_weight(+room: U32) -> U32:
   Blob.at(rooms(room), 12)
+
+# The row of a room of data/cave_story.bend in this module.
+def from_cave_room(+cave_room: U32) -> U32:
+  Blob.at(cave_rooms(cave_room), 0)
 
 # A distribute weight as f64 (hi, lo).
 def weight(+id: U32) -> U32 & U32:

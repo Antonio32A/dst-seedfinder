@@ -3,7 +3,7 @@ import ../cli/args.bend as Args
 import ../cli/files.bend as Files
 import ./dispatch.bend as TraceDispatch
 
-# seedfinder trace SEED --stage NAME [--platform windows|linux] [--input FILE]
+# seedfinder trace SEED --stage NAME [--platform windows|linux] [--input FILE] [--draws N]
 
 def fail(+message: String) -> Result<&1, &1, U32 & String, Unit>:
   Fail{(2, "trace: " ++ message)}
@@ -37,6 +37,13 @@ def input_text(m: Maybe<&2, String>) -> IO(Result<&1, &1, U32 & String, String>)
       IO.pure(Result<&1, &1, U32 & String, String>, Done{""})
     case Some{+path}:
       Files.read_text("trace: ", path)
+
+def input_source(draws: Maybe<&2, String>, input: Maybe<&2, String>) -> IO(Result<&1, &1, U32 & String, String>):
+  match draws:
+    case Some{+position}:
+      IO.pure(Result<&1, &1, U32 & String, String>, Done{position})
+    case None{}:
+      input_text(input)
 
 def print_lines(lines: List<&2, String>) -> IO(Unit):
   match lines:
@@ -92,7 +99,7 @@ def run_request(parsed: Result<&1, &1, U32 & String, Request>, +args: List<&2, S
       IO.die(Unit, 2, message)
     case Done{Request{+seed, +stage, +windows}}:
       do IO<Unit>:
-        text : Result<&1, &1, U32 & String, String> <- input_text(Args.flag_value(args, "--input"))
+        text : Result<&1, &1, U32 & String, String> <- input_source(Args.flag_value(args, "--draws"), Args.flag_value(args, "--input"))
         traced_text(text, stage, seed, windows)
 
 # Prints the canonical records of one stage.

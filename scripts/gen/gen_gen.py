@@ -27,8 +27,10 @@ def main():
     table = ids.table()["index"]
     m.comment("The global string id of each catalog prefab (4294967295: a prefab the generator never places).")
     m.code("def vocab_prefab_sids() -> List<&2, U32>:\n  [" + ", ".join(str(table.get(p, NEVER_PLACED)) for p in prefabs) + "]")
-    m.comment("Slots of a string id lookup table (a power of two above every string id).")
-    m.const("sid_depth", f"{max(len(table) - 1, 1).bit_length()}n", "Nat")
+    m.comment("Slots of a string id lookup table (a power of two above every string id the forest places).")
+    m.const("sid_depth", f"{max(ids.table()['forest_string_count'] - 1, 1).bit_length()}n", "Nat")
+    m.comment("Slots of a string id lookup table for the caves (a power of two above every string id).")
+    m.const("cave_sid_depth", f"{max(len(table) - 1, 1).bit_length()}n", "Nat")
     m.comment("GetWorldTileMap()'s id of each catalog tile.")
     m.code("def vocab_tile_ids() -> List<&2, U32>:\n  [" + ", ".join(str(t["id"]) for t in CATALOG["tiles"]) + "]")
     m.comment("Catalog indices of the wormhole and of AddWorldEntities' pocket dimension containers.")

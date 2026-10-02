@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 import ids  # noqa: E402
+import union  # noqa: E402
 
 KIND_INTEGER, KIND_CLOSURE, KIND_LIST = 0, 1, 4
 FLAG_DISABLE_TRANSFORM, FLAG_SAFE, FLAG_AREAS, FLAG_DEFS, FLAG_COUNT, FLAG_STATIC_LIST, FLAG_TOPOLOGY = (
@@ -128,8 +129,24 @@ def variant_rows(state, name, builder):
             snapshot_row(state.get("count_snapshot")))
 
 
+def check_cave_layouts_exist():
+    story = blob.sidecar("story_caves.json")
+    named = {p["name"] for p in story["taskset"]["set_pieces"]}
+    named.update(story["level"]["required_setpieces"] + story["level"]["random_set_pieces"])
+    named.add(story["level"]["start_setpeice"])
+    for room in story["rooms"]:
+        view = room["contents"].get("depth1") or {}
+        named.update(e["key"] for e in (view.get("countstaticlayouts") or {}).get("entries", []))
+    for tag in blob.sidecar("layouts_caves.json")["maptags"]:
+        named.update(step["value"] for r in tag["results"] for step in (r["first"], r["second"])
+                     if step.get("kind") == "STATIC")
+    layout_names = set(ids.table()["layouts"])
+    assert named <= layout_names, sorted(named - layout_names)
+
+
 def main():
-    d = blob.sidecar("layouts.json")
+    check_cave_layouts_exist()
+    d = union.layouts()
     layouts = sorted(d["layouts"], key=lambda layout: ids.layout_index(layout["name"]))
     assert [ids.layout_index(layout["name"]) for layout in layouts] == list(range(len(layouts)))
     builder = Builder()

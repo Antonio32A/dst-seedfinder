@@ -3,10 +3,10 @@ import ./cli/args.bend as Args
 import ./trace/command.bend as TraceCommand
 
 # Debug binary with every lane's trace stages; the production binary is main.bend. Usage:
-#   seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]
+#   seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] [--draws N]
 
 def usage() -> IO(Unit):
-  IO.die(Unit, 2, "usage: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE]")
+  IO.die(Unit, 2, "usage: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] [--draws N]")
 
 def run(+command: String, +args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(command, "trace"), TraceCommand.trace(args), usage())

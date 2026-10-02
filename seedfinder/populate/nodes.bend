@@ -4,8 +4,14 @@ import ../data/blob.bend as Blob
 import ../data/strings.bend as Strings
 import ../data/rooms.bend as Rooms
 import ../data/populate.bend as PopulateData
+import ../data/layouts.bend as Layouts
+import ../data/cave_story.bend as CaveStory
+import ./names.bend as PopulateNames
+import ../data/cave_catalog.bend as CaveCatalog
 import ../storygen/graph.bend as StoryGraph
 import ../storygen/order.bend as StoryOrder
+import ../storygen/catalog.bend as StoryCatalog
+import ../storygen/setpieces.bend as StorySetpieces
 
 # The story nodes as the land population reads them: terrain_contents (room and deepcopy depth; the START node's
 # AddStartingSetPiece changes), terrain_contents_extra (map tag items and static layouts), the set pieces inserted
@@ -14,8 +20,23 @@ import ../storygen/order.bend as StoryOrder
 def none() -> U32:
   4294967295
 
+def is_cave_room(+stored: U32) -> Bool:
+  U32.is_ne(stored, none()) && StoryCatalog.is_cave_room(stored)
+
+def global_room(caves: Bool, +stored: U32) -> U32:
+  match caves:
+    case True{}:
+      Rooms.from_cave_room(StoryCatalog.cave_room(stored))
+    case False{}:
+      stored
+
+# The room row of data/rooms.bend of a node (a caves story stores cave-local room ids).
 def room(+s: StoryGraph.St, +n: U32) -> U32:
-  StoryGraph.nf(s, n, StoryGraph.f_room())
+  +stored = StoryGraph.nf(s, n, StoryGraph.f_room())
+  global_room(is_cave_room(stored), stored)
+
+def is_caves(+s: StoryGraph.St, +n: U32) -> Bool:
+  is_cave_room(StoryGraph.nf(s, n, StoryGraph.f_room()))
 
 def has_contents(+s: StoryGraph.St, +n: U32) -> Bool:
   Bool.not(U32.is_eq(room(s, n), none()))
@@ -25,6 +46,9 @@ def row(+s: StoryGraph.St, +n: U32) -> U32:
 
 def is_start(+s: StoryGraph.St, +n: U32) -> Bool:
   U32.is_eq(StoryGraph.nf(s, n, StoryGraph.f_kind()), StoryGraph.id_start())
+
+def is_forest_start(+s: StoryGraph.St, +n: U32) -> Bool:
+  is_start(s, n) && Bool.not(is_caves(s, n))
 
 def tile(+s: StoryGraph.St, +n: U32) -> U32:
   StoryGraph.nf(s, n, StoryGraph.f_value())
@@ -54,9 +78,24 @@ def extras_loop(n: Nat, +s: StoryGraph.St, +node: U32, +kind: U32, +k: U32) -> L
 def extras(+s: StoryGraph.St, +node: U32, +kind: U32) -> List<&2, U32>:
   extras_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_extras())), s, node, kind, 0)
 
-# terrain_contents_extra.prefabs (ipairs order): prefab string ids.
+def cave_tag_prefabs(tags: List<&2, U32>) -> List<&2, U32>:
+  match tags:
+    case Nil{}:
+      Nil{}
+    case Con{+tag, rest}:
+      PopulateNames.string_id(CaveStory.tag_value(tag)) <> cave_tag_prefabs(rest)
+
+def tag_items(caves: Bool, items: List<&2, U32>) -> List<&2, U32>:
+  match caves:
+    case True{}:
+      cave_tag_prefabs(items)
+    case False{}:
+      items
+
+# terrain_contents_extra.prefabs (ipairs order): prefab string ids (a caves story records the map tag, whose item is the
+# tag's value).
 def extra_prefabs(+s: StoryGraph.St, +node: U32) -> List<&2, U32>:
-  extras(s, node, 3)
+  tag_items(is_caves(s, node), extras(s, node, 3))
 
 # terrain_contents_extra.static_layouts (insertion order): layout indices.
 def extra_layouts(+s: StoryGraph.St, +node: U32) -> List<&2, U32>:
@@ -77,10 +116,27 @@ def base_statics(+row: U32) -> List<&2, Static>:
   +r = Rooms.room_countstaticlayouts(row)
   statics_of(Nat.div(List.length(&2, U32, r), 4n), r)
 
+def cave_layout_scan(n: Nat, +l: U32, +hash: U32) -> U32:
+  match n:
+    case 0n:
+      none()
+    case 1n+p:
+      Bool.pick(U32, U32.is_eq(Strings.hash(Layouts.name(Layouts.variant(l, 0))), hash), l, cave_layout_scan(p, (l + 1 : U32), hash))
+
+def named_layout(+layout: U32) -> Static:
+  Static{Layouts.name(Layouts.variant(layout, 0)), 0, 1, layout}
+
+def piece_static(resolved: Bool, +name: U32, +layout: U32) -> Static:
+  match resolved:
+    case True{}:
+      Static{name, 0, 1, layout}
+    case False{}:
+      named_layout(cave_layout_scan(U32.to_nat(Layouts.layout_count()), 0, CaveCatalog.key_hash(name)))
+
 def piece_owned(owned: Bool, +s: StoryGraph.St, +slot: U32, +tail: List<&2, Static>) -> List<&2, Static>:
   match owned:
     case True{}:
-      Static{StoryGraph.get(s, (slot + 1 : U32)), 0, 1, StoryGraph.get(s, (slot + 2 : U32))} <> tail
+      piece_static(U32.is_ne(StoryGraph.get(s, (slot + 2 : U32)), StorySetpieces.cave_layout_unresolved()), StoryGraph.get(s, (slot + 1 : U32)), StoryGraph.get(s, (slot + 2 : U32))) <> tail
     case False{}:
       tail
 
@@ -167,17 +223,27 @@ def plain_or_pieces(plain: Bool, +base: List<&2, Static>, +ps: List<&2, Static>,
     case False{}:
       with_pieces(base, ps, row)
 
-def start_statics() -> List<&2, Static>:
-  [Static{PopulateData.start_key(), 0, 1, PopulateData.start_layout()}]
+def start_key_of(caves: Bool) -> U32:
+  Bool.pick(U32, caves, PopulateData.cave_start_key(), PopulateData.start_key())
 
-def start_with(+ps: List<&2, Static>) -> List<&2, Static>:
-  t = inserted(ps, inserted(start_statics(), LuaTable.new(0, 0), 0), 1)
-  entries_of(StoryOrder.values_only(StoryOrder.values(t)), List.append(&2, Static, start_statics(), ps))
+def start_layout_of(caves: Bool) -> U32:
+  Bool.pick(U32, caves, PopulateData.cave_start_layout(), PopulateData.start_layout())
+
+# The string id of the START node's starting set piece.
+def start_key(+s: StoryGraph.St, +n: U32) -> U32:
+  start_key_of(is_caves(s, n))
+
+def start_statics(+caves: Bool) -> List<&2, Static>:
+  [Static{start_key_of(caves), 0, 1, start_layout_of(caves)}]
+
+def start_with(+caves: Bool, +ps: List<&2, Static>) -> List<&2, Static>:
+  t = inserted(ps, inserted(start_statics(caves), LuaTable.new(0, 0), 0), 1)
+  entries_of(StoryOrder.values_only(StoryOrder.values(t)), List.append(&2, Static, start_statics(caves), ps))
 
 def statics_of_node(start: Bool, +s: StoryGraph.St, +node: U32, +ps: List<&2, Static>) -> List<&2, Static>:
   match start:
     case True{}:
-      start_with(ps)
+      start_with(is_caves(s, node), ps)
     case False{}:
       plain_or_pieces(List.is_empty(&2, Static, ps), base_statics(row(s, node)), ps, row(s, node))
 
@@ -226,7 +292,7 @@ def counts_for(start: Bool, +all: List<&2, Count>) -> List<&2, Count>:
 
 # pairs(terrain_contents.countprefabs) (the START node without spawnpoint).
 def countprefabs(+s: StoryGraph.St, +node: U32) -> List<&2, Count>:
-  counts_for(is_start(s, node), triples(Rooms.room_countprefabs(row(s, node))))
+  counts_for(is_forest_start(s, node), triples(Rooms.room_countprefabs(row(s, node))))
 
 def order_for(start: Bool, +s: StoryGraph.St, +node: U32) -> List<&2, U32>:
   match start:
@@ -237,7 +303,11 @@ def order_for(start: Bool, +s: StoryGraph.St, +node: U32) -> List<&2, U32>:
 
 # pairs(generate_these): the countprefabs keys in PopulateVoronoi's placement order.
 def generate_order(+s: StoryGraph.St, +node: U32) -> List<&2, U32>:
-  order_for(is_start(s, node), s, node)
+  order_for(is_forest_start(s, node), s, node)
+
+# Whether the room's custom tile function ran (Node.populated): PopulateVoronoi skips the node.
+def has_custom_tiles(+s: StoryGraph.St, +node: U32) -> Bool:
+  Rooms.has(room(s, node), Rooms.flag_custom_tiles())
 
 def has_countprefabs(+s: StoryGraph.St, +node: U32) -> Bool:
   Rooms.has(room(s, node), Rooms.flag_countprefabs())

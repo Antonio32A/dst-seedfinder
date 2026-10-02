@@ -5,6 +5,7 @@ import ./lane_s.bend as LaneS
 import ./lane_g.bend as LaneG
 import ./lane_f.bend as LaneF
 import ../gen/trace.bend as GenTrace
+import ../gen/cave_trace.bend as CaveTrace
 
 # `seedfinder trace` stage dispatch: the first module whose `handles` accepts the stage runs it.
 
@@ -53,6 +54,13 @@ def via_gen(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: Str
     case False{}:
       via_m0(M0.handles(stage), stage, seed, windows, input)
 
+def via_cave(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
+  match owned:
+    case True{}:
+      Done{CaveTrace.run(stage, seed, windows, input)}
+    case False{}:
+      via_gen(GenTrace.handles(stage), stage, seed, windows, input)
+
 # The canonical records of `stage` for `seed` on the given platform, from the text of the --input file.
 def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
-  via_gen(GenTrace.handles(stage), stage, seed, windows, input)
+  via_cave(CaveTrace.handles(stage), stage, seed, windows, input)

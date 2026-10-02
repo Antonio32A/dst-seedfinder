@@ -200,12 +200,13 @@ def query_json(+q: Query) -> Bool:
       json
 
 # A world dump query: seeds from..from + total - 1, the platform, the KK engine (kk_flag) and the output path, a
-# folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed.
+# folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed, and the caves shard when
+# `caves`.
 type Dump is Data:
-  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool}
+  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool, caves: Bool}
 
 def dump_usage() -> String:
-  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH"
+  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH"
 
 def dump_out(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, String>:
   match m:
@@ -233,7 +234,7 @@ def dump_total(rest: List<&2, String>, +from: U32) -> Result<&1, &1, U32 & Strin
     case _:
       Fail{(2, dump_usage())}
 
-# The world dump query of `world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH` (args start
+# The world dump query of `world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH` (args start
 # with "dump"; the platform defaults to windows).
 def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
   do Result<&1, &1, U32 & String, Dump>:
@@ -243,4 +244,5 @@ def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
     +platform : U32 <- platform_flag(flag_value(args, "--platform"))
     +native : Bool <- kk_flag(flag_value(args, "--kk"))
     +out : String <- dump_out(flag_value(args, "-o"))
-    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n)}
+    +shard : U32 <- shard_flag(flag_value(args, "--shard"))
+    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n), U32.is_eq(shard, 2)}

@@ -1,7 +1,6 @@
 import Base
 import ../rng/pcg.bend as Pcg
 import ../data/layouts.bend as Layouts
-import ../data/populate.bend as PopulateData
 import ../worldsim/points.bend as Points
 import ../storygen/graph.bend as StoryGraph
 import ./counts.bend as PopulateCounts
@@ -57,7 +56,7 @@ def is_piece(pieces: List<&2, PopulateNodes.Static>, +key: U32) -> Bool:
       U32.is_eq(k, key) || is_piece(rest, key)
 
 def source_of(+s: StoryGraph.St, +node: U32, +key: U32) -> U32:
-  +start = PopulateNodes.is_start(s, node) && U32.is_eq(key, PopulateData.start_key())
+  +start = PopulateNodes.is_start(s, node) && U32.is_eq(key, PopulateNodes.start_key(s, node))
   Bool.pick(U32, start, PopulateSetpiece.start(), Bool.pick(U32, is_piece(PopulateNodes.pieces(s, node), key), PopulateSetpiece.task(), PopulateSetpiece.room()))
 
 # Where a countstaticlayouts entry comes from, when the context records the placed layouts.

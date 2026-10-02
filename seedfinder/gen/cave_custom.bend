@@ -3,6 +3,8 @@ import ../rng/pcg.bend as Pcg
 import ../f32/ops.bend as F32Ops
 import ../data/blob.bend as Blob
 import ../data/cave_story.bend as CaveStory
+import ../populate/names.bend as PopulateNames
+import ../populate/entities.bend as Entities
 import ../storygen/graph.bend as StoryGraph
 import ../storygen/order.bend as StoryOrder
 import ../storygen/catalog.bend as StoryCatalog
@@ -18,45 +20,49 @@ import ./graph.bend as GenGraph
 # automaton on its site, then rewrites the site's points through the room's translate layers and puts the layers' items
 # down with Node:AddEntity.
 
-# An item the pass asked AddEntity for: its data/cave_story.bend ca_items index, its tile and the two math.random() outputs
-# of its position offset (the entity is not built yet; the ReserveTile and the draws are).
+# An item the pass asked AddEntity for: its data/cave_story.bend ca_items index, its tile, the float32 bits of the position
+# AddEntity was given (the tile, or the site centroid) and the two math.random() outputs of its position offset (the entity
+# is not built yet; the ReserveTile and the draws are).
 type Placed is Data:
-  Placed{item: U32, x: U32, y: U32, rx: U32, ry: U32}
+  Placed{item: U32, x: U32, y: U32, fx: U32, fy: U32, rx: U32, ry: U32}
 
 # The pass in progress: the tile map, the PCG32 stream, each layer's item_count still left and the items placed
 # (newest first).
 type Ca is Type:
   Ca{grid: Grid.Grid, rng: Pcg.Rng, left: List<&2, U32>, placed: List<&2, Placed>}
 
-def entity_finished(g: Grid.Grid, second: U32 & Pcg.Rng, +rx: U32, +item: U32, +x: U32, +y: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
+def entity_finished(g: Grid.Grid, second: U32 & Pcg.Rng, +rx: U32, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
   (+ry, rng) = second
-  Ca{g, rng, left, Placed{item, x, y, rx, ry} <> placed}
+  Ca{g, rng, left, Placed{item, x, y, fx, fy, rx, ry} <> placed}
 
-def entity_offset(g: Grid.Grid, first: U32 & Pcg.Rng, +item: U32, +x: U32, +y: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
+def entity_offset(g: Grid.Grid, first: U32 & Pcg.Rng, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
   (+rx, rng) = first
-  entity_finished(g, Pcg.draw(rng), rx, item, x, y, left, placed)
+  entity_finished(g, Pcg.draw(rng), rx, item, x, y, fx, fy, left, placed)
 
-def entity_reserved(reserved: Grid.Grid & Bool, rng: Pcg.Rng, +item: U32, +x: U32, +y: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
+def entity_reserved(reserved: Grid.Grid & Bool, rng: Pcg.Rng, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
   (g, _) = reserved
-  entity_offset(g, Pcg.draw(rng), item, x, y, left, placed)
+  entity_offset(g, Pcg.draw(rng), item, x, y, fx, fy, left, placed)
 
-def entity_on(land: Bool, g: Grid.Grid, rng: Pcg.Rng, +item: U32, +x: U32, +y: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
+def entity_on(land: Bool, g: Grid.Grid, rng: Pcg.Rng, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
   match land:
     case True{}:
-      entity_reserved(Points.reserve_tile(g, x, y), rng, item, x, y, left, placed)
+      entity_reserved(Points.reserve_tile(g, x, y), rng, item, x, y, fx, fy, left, placed)
     case False{}:
       Ca{g, rng, left, placed}
 
-def entity_tile(got: Grid.Grid & U32, rng: Pcg.Rng, +item: U32, +x: U32, +y: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
+def entity_tile(got: Grid.Grid & U32, rng: Pcg.Rng, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32, left: List<&2, U32>, placed: List<&2, Placed>) -> Ca:
   (g, +tile) = got
-  entity_on(TileGroups.is_land(tile), g, rng, item, x, y, left, placed)
+  entity_on(TileGroups.is_land(tile), g, rng, item, x, y, fx, fy, left, placed)
 
-# Node:AddEntity(item, ..., rand_offset = true): nothing on a tile that is not land, else ReserveTile and the two
-# math.random() draws of the offset.
-def add_entity(st: Ca, +item: U32, +x: U32, +y: U32) -> Ca:
+# Node:AddEntity(item, {fx}, {fy}, 1, ..., rand_offset = true) for the tile (x, y) = the floats truncated: nothing on a tile
+# that is not land, else ReserveTile and the two math.random() draws of the offset.
+def add_entity_at(st: Ca, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32) -> Ca:
   match st:
     case Ca{g, rng, left, placed}:
-      entity_tile(Points.get_tile(g, x, y), rng, item, x, y, left, placed)
+      entity_tile(Points.get_tile(g, x, y), rng, item, x, y, fx, fy, left, placed)
+
+def add_entity(st: Ca, +item: U32, +x: U32, +y: U32) -> Ca:
+  add_entity_at(st, item, x, y, F32.bits(F32Ops.from_u32(x)), F32.bits(F32Ops.from_u32(y)))
 
 def decremented(counts: List<&2, U32>, +k: U32) -> List<&2, U32>:
   match counts:
@@ -110,10 +116,10 @@ def points_loop(points: List<&2, Points.Pt>, st: Ca, +layers: List<&2, U32>, +co
     case Con{Points.Pt{+x, +y, +t}, rest}:
       points_loop(rest, point_step((t >= 2 : U32) && (t <= count : U32), st, layers, t, x, y), layers, count)
 
-def centroid_step(has: Bool, st: Ca, +tile: U32, +item: U32, +x: U32, +y: U32) -> Ca:
+def centroid_step(has: Bool, st: Ca, +tile: U32, +item: U32, +x: U32, +y: U32, +fx: U32, +fy: U32) -> Ca:
   match has:
     case True{}:
-      add_entity(with_tile(st, x, y, tile), item, x, y)
+      add_entity_at(with_tile(st, x, y, tile), item, x, y, fx, fy)
     case False{}:
       st
 
@@ -121,7 +127,7 @@ def centroid_at(st: Ca, +room: U32, +site: TileWorld.Site) -> Ca:
   match site:
     case TileWorld.Site{_, _, _, +cx, +cy, _}:
       centroid_step(Bool.not(Blob.is_none(CaveStory.room_ca_centroid_tile(room))), st, CaveStory.room_ca_centroid_tile(room),
-        CaveStory.room_ca_centroid_item(room), F32Ops.to_i32(cx), F32Ops.to_i32(cy))
+        CaveStory.room_ca_centroid_item(room), F32Ops.to_i32(cx), F32Ops.to_i32(cy), F32.bits(cx), F32.bits(cy))
 
 def site_translated(empty: Bool, st: Ca, kept: List<&2, Points.Pt>, +layers: List<&2, U32>, +count: U32, +room: U32, +site: TileWorld.Site) -> Ca:
   match empty:
@@ -205,3 +211,23 @@ def finished(st: Ca) -> Tiles:
 # The custom tile pass over the tile map after ForceConnectivity, from the PCG32 stream after ConvertToTileMap.
 def run(+s: StoryGraph.St, +k: GenGraph.Klei, +windows: Bool, +sites: Points.Sites, g: Grid.Grid, rng: Pcg.Rng) -> Tiles:
   finished(nodes_loop(custom_nodes(nodes_order(s), s), Ca{g, rng, Nil{}, Nil{}}, windows, sites, world_of(sites), s, k))
+
+def item_prefabs(n: Nat, +item: U32) -> List<&2, U32>:
+  match n:
+    case 0n:
+      Nil{}
+    case 1n+p:
+      PopulateNames.string_id(CaveStory.ca_item_name(item)) <> item_prefabs(p, (item + 1 : U32))
+
+def entities_loop(placed: List<&2, Placed>, +prefabs: List<&2, U32>, +width: U32, +height: U32, +rng: Pcg.Rng, +acc: List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
+  match placed:
+    case Nil{}:
+      acc
+    case Con{Placed{+item, _, _, +fx, +fy, +rx, +ry}, rest}:
+      entities_loop(rest, prefabs, width, height, rng, Entities.drawn_entity(StoryOrder.nth_or_last(prefabs, item, 0), F32Ops.to_f64(F32Ops.from_bits(fx)), F32Ops.to_f64(F32Ops.from_bits(fy)), width, height, rx, ry, rng) <> acc)
+
+# The savedata entities of the items the custom tile pass placed (Node:AddEntity with rand_offset = true, offsets from
+# the pass's own draws), newest first: the start of the land's entity list, before any Labyrinth, Maze or ConvertGround
+# entity. `rng` is the stream after the pass.
+def entities(placed: List<&2, Placed>, +width: U32, +height: U32, +rng: Pcg.Rng) -> List<&2, Entities.Ent>:
+  entities_loop(placed, item_prefabs(U32.to_nat(CaveStory.ca_items_count()), 0), width, height, rng, Nil{})

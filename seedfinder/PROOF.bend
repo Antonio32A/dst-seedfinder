@@ -11,3 +11,9 @@ import ./laws/p.bend as LawsP
 import ./laws/w.bend as LawsW
 import ./laws/m.bend as LawsM
 import ./laws/a.bend as LawsA
+import ./laws/q.bend as LawsQ
+import ./laws/r.bend as LawsR
+import ./laws/z.bend as LawsZ
+import ./laws/b.bend as LawsB
+import ./laws/d.bend as LawsD
+import ./laws/e.bend as LawsE

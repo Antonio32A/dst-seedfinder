@@ -122,10 +122,43 @@ import ./blob.bend as Blob
 # 114: noisetilefunctions.lua:75-83 function GetTileForMeteorCoastNoise(noise) if noise < 0.55 then return WORLD_TILES.PEBBLEBEACH elseif noise < 0.75 then return WORLD_TILES.METEOR end return ...  [WORLD_TILES.METEOR=43, WORLD_TILES.PEBBLEBEACH=42]
 # 115: noisetilefunctions.lua:85-95 function GetTileForMeteorMineNoise(noise) if noise < 0.4 then return WORLD_TILES.ROCKY elseif noise < 0.6 then return WORLD_TILES.METEOR elseif noise < 0.8 t...  [WORLD_TILES.METEOR=43, WORLD_TILES.ROCKY=3]
 # 116: noisetilefunctions.lua:97-113 function GetTileForGroundNoise(noise) if noise < 0.25 then return WORLD_TILES.IMPASSABLE elseif noise < 0.26 then return WORLD_TILES.ROAD elseif noise < 0.35...  [WORLD_TILES.DIRT=4, WORLD_TILES.FOREST=7, WORLD_TILES.GRASS=6, WORLD_TILES.IMPASSABLE=1, WORLD_TILES.MARSH=8, WORLD_TILES.ROAD=2, WORLD_TILES.ROCKY=3]
+# 117: map/layouts.lua:736-736 function(area) return PickSomeWithDups(area*.5, {"evergreen"}) end
+# 118: map/layouts.lua:737-737 function(area) return PickSomeWithDups(area*.2, {"evergreen", "sapling"}) end
+# 119: map/layouts.lua:743-743 function(area) return PickSomeWithDups(area*.4, {"grass"}) end
+# 120: map/layouts.lua:794-794 function(area) return PickSomeWithDups(0.3 * area, {"cave_fern", "lichen", "flower_cave", "flower_cave_double", "flower_cave_triple"}) end
+# 121: map/layouts.lua:803-803 function(area) return {"cave_hole"} end
+# 122: map/layouts.lua:832-832 function() return PickSomeWithDups(15, {"ruins_plate", "ruins_bowl", "ruins_chair", "ruins_chipbowl", "ruins_vase", "ruins_table", "ruins_rubble_table", "rui...
+# 123: map/maptags.lua:25-27 function(tagdata) return "GLOBALTAG", "Maze" end
+# 124: map/maptags.lua:28-30 function(tagdata) return "GLOBALTAG", "MazeEntrance" end
+# 125: map/maptags.lua:31-33 function(tagdata) return "GLOBALTAG", "Labyrinth" end
+# 126: map/maptags.lua:34-36 function(tagdata) return "GLOBALTAG", "LabyrinthEntrance" end
+# 127: map/maptags.lua:155-161 function(tagdata) if tagdata["Hutch_Fishbowl"] == false then return end tagdata["Hutch_Fishbowl"] = false return "ITEM", "hutch_fishbowl" end
+# 128: map/maptags.lua:177-177 function(tagdata) return "TAG", "Nightmare" end
+# 129: map/maptags.lua:178-178 function(tagdata) return "TAG", "Atrium" end
+# 130: map/maptags.lua:186-186 function(tagdata) return "TAG", "GrottoWarEntrance" end
+# 131: map/maptags.lua:187-187 function(tagdata) return "TAG", "fumarolearea" end
+# 132: map/maze_layouts.lua:7-7 function(area) return nil end
+# 133: map/maze_layouts.lua:8-9 function(area) return PickSomeWithDups( 0.25 * area , {"rocks"}) end
+# 134: map/maze_layouts.lua:14-18 function() if math.random() < 0.2 then return {"archive_centipede_husk"} end end
+# 135: map/maze_layouts.lua:20-24 function() if math.random() < 0.5 then return {"archive_ambient_sfx"} end end
+# 136: map/maze_layouts.lua:26-35 function(area, data) if math.random() < 0.2 then return {{ prefab = "archive_cookpot", x = data.x, y = data.y, properties = {data = {additems = {"refined_dus...
+# 137: map/maze_layouts.lua:37-41 function() if math.random() < 0.08 then return { "dustmothden" } end end
+# 138: map/maze_layouts.lua:43-47 function() if math.random() < 0.25 then return { "dustmothden" } end end
+# 139: map/pointsofinterest.lua:49-49 function() return { "mushtree_tall_stump", "mushtree_tall_stump", "mushtree_tall_stump", } end
+# 140: map/protected_resources.lua:54-54 function() return JoinArrays(PickSomeWithDups(10, {"wormlight_plant"}), PickSomeWithDups(3, {"worm_spawner"})) end
+# 141: map/rooms/cave/ruins.lua:132-132 function() return math.random(2) - 1 end
+# 142: map/rooms/cave/ruins.lua:188-188 function() return math.random() < 0.25 and 1 or 0 end
+# 143: map/rooms/cave/ruins.lua:215-215 function() return math.random(2,3) end
+# 144: map/rooms/cave/vents.lua:19-30 function RandomRockTreeState() if math.random() < TUNING.TREE_ROCK.BOULDER_GEN_CHANCE then local roll = math.random() if roll > 2/3 then return { boulder = t...  [TUNING.TREE_ROCK.BOULDER_GEN_CHANCE=0.3333333333333333, TUNING.TREE_ROCK.MINE_LOW=2, TUNING.TREE_ROCK.MINE_MED=4]
+# 145: map/rooms/cave/vents.lua:32-41 function RandomVentRockState() local roll = math.random() if roll > 2/3 then return { workable = { workleft = TUNING.CAVE_VENTS.MINE_MED }, set_loot_table = ...  [TUNING.CAVE_VENTS.MINE_LOW=2, TUNING.CAVE_VENTS.MINE_MED=4]
+# 146: map/tasks/caves.lua:203-203 function() return 2 + math.random(2) end
+# 147: map/tasks/caves.lua:204-204 function() return 1 + math.random(2) end
+# 148: map/tasks/ruins.lua:114-114 function() return 4+math.random(2) end
+# 149: map/tasks/ruins.lua:211-211 function() return math.random(3,4) end
 
 # Row id: the categories of the contexts it appears in.
 def closure_categories_count() -> U32:
-  117
+  150
 
 def closure_categories_chunk(+c: U32) -> String:
   match c:
@@ -136,7 +169,9 @@ def closure_categories_chunk(+c: U32) -> String:
     case 2:
       "𐀁𐀅𐀁𐀅𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁"
     case 3:
-      "𐀁𐀁𐀁𐀁𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆"
+      "𐀁𐀁𐀁𐀁𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀆𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀅𐀁𐀅𐀁𐀅𐀁𐀅𐀁𐀅"
+    case 4:
+      "𐀁𐀅𐀁𐀅𐀁𐀅𐀁𐀅𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀂𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀁𐀀𐀁𐀀𐀁𐀀𐀁𐀀"
     case _:
       ""
 
@@ -144,6 +179,9 @@ def closure_categories(+i: U32) -> List<&2, U32>:
   Blob.row(closure_categories_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
 def closure_count() -> U32:
+  150
+
+def forest_closure_count() -> U32:
   117
 
 # Row id: the fingerprint (FNV-1a of the variant's body and upvalues) that hand ports pin themselves to.
@@ -383,5 +421,71 @@ def closure_fingerprint(+id: U32) -> U32:
       1830970928
     case 116:
       347619393
+    case 117:
+      61795433
+    case 118:
+      725791138
+    case 119:
+      2094535461
+    case 120:
+      2281266208
+    case 121:
+      2717497842
+    case 122:
+      2140115965
+    case 123:
+      3907835673
+    case 124:
+      2431695819
+    case 125:
+      3019253707
+    case 126:
+      4243177509
+    case 127:
+      2705590005
+    case 128:
+      1422956464
+    case 129:
+      170235245
+    case 130:
+      229666548
+    case 131:
+      2834526597
+    case 132:
+      1695747383
+    case 133:
+      4226768656
+    case 134:
+      3448157450
+    case 135:
+      2681572488
+    case 136:
+      4015825677
+    case 137:
+      2137454257
+    case 138:
+      3760957056
+    case 139:
+      2520797282
+    case 140:
+      2415982983
+    case 141:
+      2481868297
+    case 142:
+      4256983687
+    case 143:
+      2025470634
+    case 144:
+      836593942
+    case 145:
+      1380369169
+    case 146:
+      2820874360
+    case 147:
+      1025722455
+    case 148:
+      2488372164
+    case 149:
+      2192518684
     case _:
       0

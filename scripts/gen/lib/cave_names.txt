@@ -1,0 +1,13 @@
+archive_lockbox_dispencer
+archive_lockbox_dispencer_temp
+archive_resonator_item
+cavein_boulder
+pandoraschest
+refined_dust
+rock1
+rubble1
+rubble2
+tentacle_pillar
+tentacle_pillar_atrium
+turfcraftingstation
+wormhole_MARKER

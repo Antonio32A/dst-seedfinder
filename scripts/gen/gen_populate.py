@@ -18,6 +18,10 @@ def main():
     m.comment(f"gen_params.start_setpeice ({start}): its string id and layout index.")
     m.const("start_key", ids.sid(start))
     m.const("start_layout", ids.layout_index(start))
+    cave_start = blob.sidecar("story_caves.json")["level"]["start_setpeice"]
+    m.comment(f"The caves' gen_params.start_setpeice ({cave_start}): its string id and layout index.")
+    m.const("cave_start_key", ids.sid(cave_start))
+    m.const("cave_start_layout", ids.layout_index(cave_start))
     m.emit()
 
 

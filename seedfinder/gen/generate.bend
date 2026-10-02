@@ -21,7 +21,6 @@ import ../worldsim/tiles/convert.bend as TileConvert
 import ../worldsim/tiles/separate.bend as TileSeparate
 import ../worldsim/tiles/connect.bend as TileConnect
 import ../worldsim/tiles/roads.bend as TileRoads
-import ../worldsim/tiles/disconnect.bend as TileDisconnect
 import ../populate/entities.bend as Entities
 import ../populate/state.bend as PopulateState
 import ../populate/land.bend as Land
@@ -370,18 +369,9 @@ def site_start(site: TileWorld.Site) -> U32 & U32:
     case TileWorld.Site{_, +x, +y, _, _, _}:
       (F32Ops.to_i32(x), F32Ops.to_i32(y))
 
-def detected(got: Grid.Grid & U32, +w: U32) -> Grid.Grid & U32 & Bool:
-  (g, +count) = got
-  (g, count, TileDisconnect.exceeds(count, w, w))
-
-def detect_from(g: Grid.Grid, start: U32 & U32) -> Grid.Grid & U32:
-  (+x, +y) = start
-  TileDisconnect.detect(g, x, y)
-
-# The caves' DetectDisconnect (forest_map.Generate, after ConvertGround and ReplaceSingleNonLandTiles) from the START
-# node's site: the grid with the unreachable tiles walled off, how many there were, and whether that fails the attempt.
-def cave_disconnect(+s: StoryGraph.St, +k: GenGraph.Klei, +world: TileWorld.World, g: Grid.Grid, +w: U32) -> Grid.Grid & U32 & Bool:
-  detected(detect_from(g, site_start(TileWorld.site(world, GenGraph.vertex_of(k, start_node(s))))), w)
+# The tile DetectDisconnect floods from: the START node's site (x, y).
+def cave_start(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> U32 & U32:
+  site_start(TileWorld.site(CaveCustom.world_of(sites), GenGraph.vertex_of(k, start_node(s))))
 
 def done_rng(done: CaveCustom.Tiles) -> Pcg.Rng:
   match done:

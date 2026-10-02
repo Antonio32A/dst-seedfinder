@@ -8,3 +8,10 @@ def start_key() -> U32:
 
 def start_layout() -> U32:
   25
+
+# The caves' gen_params.start_setpeice (CaveStart): its string id and layout index.
+def cave_start_key() -> U32:
+  663
+
+def cave_start_layout() -> U32:
+  129

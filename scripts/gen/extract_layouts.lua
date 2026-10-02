@@ -182,9 +182,9 @@ local function ordered(t, fn)
     return out
 end
 
-local function describe(name)
+local function describe(name, definition, choices)
     local obj_layout = require("map/object_layout")
-    local layout = obj_layout.LayoutForDefinition(name)
+    local layout = obj_layout.LayoutForDefinition(definition or name, choices)
     if layout == nil then return { missing = true } end
     for k in pairs(layout) do assert(LAYOUT_FIELDS[k], "unknown layout field " .. tostring(k) .. " in " .. name) end
     local ground = nil
@@ -251,16 +251,26 @@ for state = 0, 7 do
         by_name[name] = describe(name)
         i = i + 1
     end
+    for _, maze in ipairs(Reach.mazes) do
+        for _, cell in ipairs(maze.shapes) do
+            by_name[cell.name] = describe(cell.name, cell.shape, { maze.choice })
+        end
+    end
     states[state] = by_name
 end
-for _, name in ipairs(layout_names) do
+local function add_layout(name)
     local per_state = array()
     for state = 0, 7 do per_state[#per_state + 1] = states[state][name] end
     layouts_out[#layouts_out + 1] = { name = name, states = per_state }
 end
+for _, name in ipairs(layout_names) do add_layout(name) end
+for _, maze in ipairs(Reach.mazes) do
+    for _, cell in ipairs(maze.shapes) do add_layout(cell.name) end
+end
 
 BOOT.write_json({
     layouts = layouts_out,
+    mazes = #Reach.mazes > 0 and Reach.mazes or nil,
     sandboxes = sandboxes,
     maptags = tags_out,
     area_literals = area_literals,

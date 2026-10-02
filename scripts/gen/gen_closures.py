@@ -49,13 +49,16 @@ def main():
     m.lines.append("")
     m.table("closure_categories", rows, "Row id: the categories of the contexts it appears in.")
     m.const("closure_count", len(closures))
+    m.const("forest_closure_count", sum(1 for c in closures if c["forest"]))
+    assert all(c["forest"] for c in closures[:sum(1 for c in closures if c["forest"])])
     cases = "\n".join(f"    case {c['id']}:\n      {fingerprint(c['key'])}" for c in closures)
     m.comment("Row id: the fingerprint (FNV-1a of the variant's body and upvalues) that hand ports pin themselves to.")
     m.code(f"def closure_fingerprint(+id: U32) -> U32:\n  match id:\n{cases}\n    case _:\n      0")
     m.emit()
     if sys.argv[1:] != ["-"]:
         (blob.GEN / "out" / "closures.json").write_text(json.dumps(
-            [{k: c[k] for k in ("id", "body", "sites", "contexts", "upvalues", "globals")} for c in closures],
+            [{k: c[k] for k in ("id", "forest", "body", "sites", "contexts", "cave_sites", "cave_contexts", "upvalues",
+                                "globals")} for c in closures],
             indent=1) + "\n")
 
 

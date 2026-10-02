@@ -37,7 +37,7 @@ def all_pinned(n: Nat, +pins: List<&2, Pin>, +id: U32) -> Bool:
     case 1n+p:
       (Bool.not(is_ported_category(Closures.closure_categories(id))) || is_pinned(pins, id)) && all_pinned(p, pins, (id + 1 : U32))
 
-# counts.bend: the room count closures of countprefabs and countstaticlayouts (66-97; the Halloween ones count 0).
+# counts.bend: the room count closures of countprefabs and countstaticlayouts (66-97; the Halloween ones count 0) and the caves' 100 and 141-143, and the prefabdata closures 85, 144 and 145.
 def room_counts() -> List<&2, Pin>:
   [
     Pin{66, 174856483},
@@ -71,10 +71,16 @@ def room_counts() -> List<&2, Pin>:
     Pin{94, 217607774},
     Pin{95, 1596172272},
     Pin{96, 1745828564},
-    Pin{97, 3909775485}
+    Pin{97, 3909775485},
+    Pin{100, 1535741508},
+    Pin{141, 2481868297},
+    Pin{142, 4256983687},
+    Pin{143, 2025470634},
+    Pin{144, 836593942},
+    Pin{145, 1380369169}
   ]
 
-# layout.bend: the layout area closures of boons.lua (0-23) and layouts.lua (25-44).
+# layout.bend: the layout area closures of boons.lua (0-23), layouts.lua (25-44), and the caves' 117-122, 132-140.
 def layout_areas() -> List<&2, Pin>:
   [
     Pin{0, 17657100},
@@ -120,7 +126,22 @@ def layout_areas() -> List<&2, Pin>:
     Pin{41, 2969397272},
     Pin{42, 1006294179},
     Pin{43, 2045327520},
-    Pin{44, 610691548}
+    Pin{44, 610691548},
+    Pin{117, 61795433},
+    Pin{118, 725791138},
+    Pin{119, 2094535461},
+    Pin{120, 2281266208},
+    Pin{121, 2717497842},
+    Pin{122, 2140115965},
+    Pin{139, 2520797282},
+    Pin{140, 2415982983},
+    Pin{132, 1695747383},
+    Pin{133, 4226768656},
+    Pin{134, 3448157450},
+    Pin{135, 2681572488},
+    Pin{136, 4015825677},
+    Pin{137, 2137454257},
+    Pin{138, 3760957056}
   ]
 
 def ported() -> List<&2, Pin>:

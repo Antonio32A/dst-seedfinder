@@ -1,4 +1,5 @@
--- The tasks and rooms reachable on the default forest path (task set "default", start location "default").
+-- The tasks and rooms reachable on the shard's path: the default forest (task set "default", start location "default")
+-- or, with GEN_SHARD=caves, the caves (the DST_CAVE level's task set and start location).
 
 local BOOT = ...
 local tasks_mod = require("map/tasks")
@@ -7,8 +8,9 @@ local startlocations = require("map/startlocations")
 
 local Reach = {}
 
-Reach.taskset = tasksets.GetGenTasks("default")
-Reach.start_location = startlocations.GetStartLocation("default")
+local caves = BOOT.shard == "caves"
+Reach.taskset = tasksets.GetGenTasks(caves and BOOT.level.overrides.task_set or "default")
+Reach.start_location = startlocations.GetStartLocation(caves and BOOT.level.overrides.start_location or "default")
 
 Reach.task_names = {}
 for _, t in ipairs(Reach.taskset.tasks) do Reach.task_names[#Reach.task_names + 1] = t end
@@ -34,11 +36,13 @@ for _, name in ipairs(Reach.task_names) do
     use_room(task.background_room)
     use_room(task.cove_room_name or "Blank")
 end
-use_room(Reach.start_location.start_node)
+local start_nodes = Reach.start_location.start_node
+if type(start_nodes) ~= "table" then start_nodes = { start_nodes } end
+for _, r in ipairs(start_nodes) do use_room(r) end
 use_room(BOOT.level.blocker_blank_room_name)
 use_room("Blank")
 for _, r in ipairs(BOOT.level.ocean_population or {}) do use_room(r) end
-use_room("MoonIsland_Meadows")
+if not caves then use_room("MoonIsland_Meadows") end
 use_room("BGImpassable")
 table.sort(room_names)
 Reach.room_names = room_names
@@ -72,7 +76,7 @@ local sandbox_modules = {
 local forest_areas = { Any = true, Rare = true }
 for _, name in ipairs(Reach.task_names) do
     local t = require("map/tasks").GetTaskByName(name)
-    if not t.level_set_piece_blocker then forest_areas[t.room_bg] = true end
+    if not t.level_set_piece_blocker and t.room_bg ~= nil then forest_areas[t.room_bg] = true end
 end
 Reach.sandboxes = {}
 for kind, mod in pairs(sandbox_modules) do
@@ -103,6 +107,18 @@ for _, room in ipairs(Reach.room_names) do
     end
 end
 table.sort(layout_names)
+
+local maze_layouts = require("map/maze_layouts")
+Reach.mazes = array()
+if caves then
+    for _, choice in ipairs(BOOT.sorted_keys(maze_layouts.AllLayouts)) do
+        local shapes = array()
+        for _, shape in ipairs(BOOT.sorted_keys(maze_layouts.AllLayouts[choice])) do
+            shapes[#shapes + 1] = { shape = shape, name = choice .. "/" .. shape }
+        end
+        Reach.mazes[#Reach.mazes + 1] = { choice = choice, shapes = shapes }
+    end
+end
 
 function Reach.layout_names()
     return layout_names

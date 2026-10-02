@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
+import ids  # noqa: E402
 
 KIND_INTEGER, KIND_CLOSURE = 0, 1
 DEFAULT_COVE_CHANCE = 0.35
@@ -41,6 +42,114 @@ def count_closure_row(closure):
     assert not prefix, closure["body"]
     low, high = first, int(last)
     return [0, low - 1, high - low + 1, 0, 0] if low >= 1 else [0, 0, high + 1, 1, 0]
+
+
+MAZE_DEFAULT_TILE_SIZE = 8
+MAZE_KIND_PLAIN, MAZE_KIND_SPECIAL, MAZE_KIND_ARCHIVE = range(3)
+
+
+def lua_list(table):
+    """A Lua array the sidecar stores as {"1": ..., "2": ...}."""
+    return [table[str(i)] for i in range(1, len(table) + 1)] if table else []
+
+
+def maze_choices(layouts):
+    return sorted(layouts["mazes"], key=lambda maze: maze["choice"].encode())
+
+
+def maze_data(m, story_tasks, maze_constants):
+    """The maze tables: the constants MAZE_TYPE and MAZE_CELL_EXITS, the maze layout choices (AllLayouts keys, sorted by
+    name bytes) with the layout row of each cell type, and per task the fields of task.maze_tiles."""
+    layouts = blob.sidecar("layouts_caves.json")
+    choices = maze_choices(layouts)
+    choice_id = {c["choice"]: i for i, c in enumerate(choices)}
+    cells = maze_constants["cell_exits"]
+    inverse = maze_constants["cell_exits_inv"]
+    assert inverse == [name for name, _ in sorted(((n, v) for n, v in cells.items() if v), key=lambda kv: kv[1])]
+    assert sorted(cells.values()) == list(range(len(cells))) and cells["NO_EXITS"] == 0
+    for name, value in sorted(maze_constants["types"].items(), key=lambda kv: kv[1]):
+        m.const(f"maze_type_{name.removeprefix('MAZE_').lower()}", value)
+    for name, value in sorted(cells.items(), key=lambda kv: kv[1]):
+        m.const(f"maze_cell_{name.lower()}", value)
+    m.const("maze_cell_type_count", len(cells))
+    m.const("maze_kind_plain", MAZE_KIND_PLAIN)
+    m.const("maze_kind_special", MAZE_KIND_SPECIAL)
+    m.const("maze_kind_archive", MAZE_KIND_ARCHIVE)
+    m.const("maze_default_tile_size", MAZE_DEFAULT_TILE_SIZE)
+    m.table("maze_cell_names", [blob.text(n) for n in ["NO_EXITS"] + inverse],
+            "Row cell type (MAZE_CELL_EXITS): the shape name MAZE_CELL_EXITS_INV gives (NO_EXITS for 0).")
+    m.table("maze_choice_names", [blob.text(c["choice"]) for c in choices],
+            "Row maze choice: the key of maze_layouts.AllLayouts (sorted by name bytes).")
+    rows = []
+    for c in choices:
+        by_cell = {cell["shape"]: ids.layout_index(cell["name"]) for cell in c["shapes"]}
+        rows.append([by_cell.get(name, blob.NONE) for name in ["NO_EXITS"] + inverse])
+    m.table("maze_layouts", rows, "Row maze choice: per cell type (0 = NO_EXITS, then MAZE_CELL_EXITS order), the row "
+                                  "in data/layouts.bend of maze_layouts.AllLayouts[choice][shape] (NONE when the "
+                                  "choice has no layout for the shape; the special ones have the four SINGLE_ shapes).")
+    fields = {"rooms": [], "bosses": [], "start": [], "finish": [], "keyroom": []}
+    info = []
+    for t in story_tasks:
+        tiles = t.get("maze_tiles")
+        kind = MAZE_KIND_PLAIN
+        bridge = blob.NONE
+        row = {name: [] for name in fields}
+        if tiles:
+            special = tiles.get("special") or {}
+            archive = tiles.get("archive")
+            kind = MAZE_KIND_ARCHIVE if archive is not None else MAZE_KIND_SPECIAL if special else MAZE_KIND_PLAIN
+            bridge = tiles.get("bridge_ground", blob.NONE)
+            row["rooms"] = lua_list(tiles.get("rooms"))
+            row["bosses"] = lua_list(tiles.get("bosses"))
+            row["start"] = lua_list(special.get("start"))
+            row["finish"] = lua_list(special.get("finish"))
+            row["keyroom"] = lua_list((archive or {}).get("keyroom"))
+        info.append([t.get("maze_tile_size") or MAZE_DEFAULT_TILE_SIZE, kind, bridge])
+        for name in fields:
+            fields[name].append([choice_id[c] for c in row[name]])
+    m.table("task_maze_info", info, "Row task: maze_tile_size (default 8), the shape of maze_tiles (0 plain: rooms and "
+                               "bosses; 1 special: also special.start and special.finish; 2 archive: also "
+                               "archive.keyroom), bridge_ground (a tile, NONE when unset). Meaningful for tasks with "
+                               "the maze flag.")
+    m.code('''
+def task_maze_size(+task: U32) -> U32:
+  Blob.at(task_maze_info(task), 0)
+
+def task_maze_kind(+task: U32) -> U32:
+  Blob.at(task_maze_info(task), 1)
+
+def task_maze_bridge_ground(+task: U32) -> U32:
+  Blob.at(task_maze_info(task), 2)
+
+def maze_layout(+choice: U32, +cell: U32) -> U32:
+  Blob.at(maze_layouts(choice), cell)
+
+def maze_choice_name(+choice: U32) -> String:
+  Blob.text(maze_choice_names(choice))
+
+def maze_cell_name(+cell: U32) -> String:
+  Blob.text(maze_cell_names(cell))
+''')
+    docs = {"rooms": "maze_tiles.rooms", "bosses": "maze_tiles.bosses", "start": "maze_tiles.special.start",
+            "finish": "maze_tiles.special.finish", "keyroom": "maze_tiles.archive.keyroom"}
+    for name, rows_of in fields.items():
+        m.table(f"task_maze_{name}", rows_of, f"Row task: {docs[name]} as maze choice ids, in list order.")
+
+
+def post_data(m, caves, story_tasks, rooms):
+    """The strings (global ids of data/strings.bend) the required prefab check needs."""
+    def sids(names):
+        return [ids.sid(n) for n in names or []]
+
+    m.table("task_required_prefabs", [sids(t.get("required_prefabs")) for t in story_tasks],
+            "Row task: task.required_prefabs (string ids).")
+    m.table("room_required_prefabs", [sids(r.get("required_prefabs")) for r in rooms],
+            "Row room: room.required_prefabs (string ids).")
+    m.table("taskset_required_prefabs", [sids(caves["taskset"]["required_prefabs"])],
+            "Row 0: the task set's required_prefabs (string ids, repeats kept).")
+    m.table("level_required_prefabs", [sids(caves["level"]["required_prefabs"])],
+            "Row 0: the level's required_prefabs (string ids).")
+    m.const("wormhole_prefab", ids.sid(caves["level"]["overrides"]["wormhole_prefab"]))
 
 
 def main():
@@ -165,6 +274,12 @@ def main():
     m.table("count_closures", [count_closure_row(c) for c in story["closures"]],
             "Row closure: [0, a, b, c, 0] meaning a + math.random(b) - c, with U32 wrap-around when c exceeds a.")
     m.table("start_rooms", [starts], "Row 0: the start_node rooms of the caves start location in order.")
+    story_caves = blob.sidecar("story_caves.json")
+    assert [t["id"] for t in story_caves["tasks"]] == task_names
+    assert {r["name"] for r in story_caves["rooms"]} == set(room_id)
+    story_rooms = {r["name"]: r for r in story_caves["rooms"]}
+    maze_data(m, story_caves["tasks"], caves["maze"])
+    post_data(m, caves, story_caves["tasks"], [story_rooms[r["name"]] for r in rooms])
     m.const("room_count", len(rooms))
     m.const("tag_count", len(tags))
     m.const("start_room_count", len(starts))

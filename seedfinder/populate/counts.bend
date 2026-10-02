@@ -33,11 +33,21 @@ def uniform_drawn(got: F64Repr.F64 & Pcg.Rng, +limit: F64Repr.F64, +yes: U32) ->
 def uniform_above(rng: Pcg.Rng, +limit: F64Repr.F64, +yes: U32) -> U32 & Pcg.Rng:
   uniform_drawn(F64Random.random(rng), limit, yes)
 
+def below_drawn(got: F64Repr.F64 & Pcg.Rng, +limit: F64Repr.F64, +yes: U32) -> U32 & Pcg.Rng:
+  (+r, rng) = got
+  (Bool.pick(U32, F64Cmp.lt(r, limit), yes, 0), rng)
+
 def ninety_seven_hundredths() -> F64Repr.F64:
   F64Repr.F64{1072630333, 1889785610}
 
 def livingtree_chance() -> F64Repr.F64:
   F64Repr.F64{1071749529, 2576980378}
+
+def quarter() -> F64Repr.F64:
+  F64Repr.F64{1070596096, 0}
+
+def boulder_gen_chance() -> F64Repr.F64:
+  F64Repr.F64{1070945621, 1431655765}
 
 def rare_pick(hit: Bool, rng: Pcg.Rng) -> U32 & Pcg.Rng:
   match hit:
@@ -113,6 +123,14 @@ def count_of(+closure: U32, +area: U32, +width: U32, rng: Pcg.Rng) -> U32 & Pcg.
       range(rng, 1, 2, 4294967295)
     case 97:
       range(rng, 3, 5, 0)
+    case 100:
+      upto(rng, 3, 0)
+    case 141:
+      upto(rng, 2, 4294967295)
+    case 142:
+      below_drawn(F64Random.random(rng), quarter(), 1)
+    case 143:
+      range(rng, 2, 3, 0)
     case _:
       (0, rng)
 
@@ -128,10 +146,27 @@ def prefab_data_drawn(got: U32 & Pcg.Rng) -> Pcg.Rng:
   (_, rng) = got
   rng
 
-# Calling a prefabdata closure (kind 1): SpiderVillage's spiderden growth stage draws math.random() once.
-def prefab_data_call(+kind: U32, rng: Pcg.Rng) -> Pcg.Rng:
-  match kind:
-    case 1:
+def rock_tree_rolled(hit: Bool, rng: Pcg.Rng) -> Pcg.Rng:
+  match hit:
+    case True{}:
+      prefab_data_drawn(Pcg.draw(rng))
+    case False{}:
+      rng
+
+def rock_tree_drawn(got: F64Repr.F64 & Pcg.Rng) -> Pcg.Rng:
+  (+r, rng) = got
+  rock_tree_rolled(F64Cmp.lt(r, boulder_gen_chance()), rng)
+
+# Calling a prefabdata closure (data/closures.bend id; 0 when the prefab has no prefabdata): the spiderden growth stage
+# (85) and the vent rock state (145) draw math.random() once, RandomRockTreeState (144) draws a second one when the
+# first is below BOULDER_GEN_CHANCE.
+def prefab_data_call(+closure: U32, rng: Pcg.Rng) -> Pcg.Rng:
+  match closure:
+    case 85:
+      prefab_data_drawn(Pcg.draw(rng))
+    case 144:
+      rock_tree_drawn(F64Random.random(rng))
+    case 145:
       prefab_data_drawn(Pcg.draw(rng))
     case _:
       rng

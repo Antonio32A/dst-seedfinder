@@ -249,4 +249,9 @@ BOOT.write_json({
         closures = story_closures,
     },
     world_tiles = world_tiles,
+    maze = {
+        types = overrides_of(MAZE_TYPE),
+        cell_exits = overrides_of(MAZE_CELL_EXITS),
+        cell_exits_inv = sequence(MAZE_CELL_EXITS_INV),
+    },
 })

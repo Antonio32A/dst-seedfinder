@@ -39,6 +39,9 @@ sidecars=(
     "tiles.json:$lua $gen/extract_tiles.lua"
     "ocean_post.json:$lua $gen/extract_ocean_post.lua"
     "caves.json:$lua $gen/extract_caves.lua"
+    "story_caves.json:env GEN_SHARD=caves $lua $gen/extract_story.lua"
+    "distribute_caves.json:env GEN_SHARD=caves $lua $gen/extract_distribute.lua"
+    "layouts_caves.json:env GEN_SHARD=caves $lua $gen/extract_layouts.lua"
 )
 
 for entry in "${sidecars[@]}"; do

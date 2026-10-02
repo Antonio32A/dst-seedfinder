@@ -1,5 +1,6 @@
 -- Shared setup for the lua generators in scripts/gen: runs the unmodified worldgen_main.lua (default forest,
 -- SURVIVAL_TOGETHER, seed 1) under the harness stubs up to forest_map.Generate and exposes the loaded game state.
+-- GEN_SHARD=caves makes BOOT.level the DST_CAVE level data and lib/reach.lua reach the caves' tasks and rooms.
 -- usage: local BOOT = dofile(<gen>/lib/boot.lua)
 
 local GEN = debug.getinfo(1, "S").source:match("^@(.*)/lib/[^/]*$")
@@ -43,6 +44,11 @@ end)
 assert(err == SENTINEL, "worldgen did not reach forest_map.Generate: " .. tostring(err))
 BOOT.level = captured.level
 BOOT.tasks = captured.tasks
+BOOT.shard = os.getenv("GEN_SHARD") or "forest"
+assert(BOOT.shard == "forest" or BOOT.shard == "caves", "unknown GEN_SHARD " .. BOOT.shard)
+if BOOT.shard == "caves" then
+    BOOT.level = require("map/levels").GetDataForLevelID("DST_CAVE")
+end
 
 BOOT.tl = assert(package.loadlib(ROOT .. "/build/gen/tablelayout.so", "luaopen_tablelayout"))()
 

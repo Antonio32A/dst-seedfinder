@@ -17,20 +17,20 @@ import ./state.bend as OceanState
 # customization and randomization proxies), the impassable filter, and the required prefab check that decides the
 # attempt (the bunch spawner runs in between: ocean/bunches.bend).
 
-def pair_loop(markers: List<&2, OceanEnts.Ent>, +id: U32, acc: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
+def pair_loop(+wormhole: U32, markers: List<&2, OceanEnts.Ent>, +id: U32, acc: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
   match markers:
     case Con{OceanEnts.Ent{_, +x1, +z1, _, _, +p1}, Con{OceanEnts.Ent{_, +x2, +z2, _, _, +p2}, rest}}:
-      +first = {OceanEnts.Ent{OceanPostData.wormhole_prefab(), x1, z1, id, (id + 1 : U32), p1} : OceanEnts.Ent}
-      +second = {OceanEnts.Ent{OceanPostData.wormhole_prefab(), x2, z2, (id + 1 : U32), id, p2} : OceanEnts.Ent}
-      pair_loop(rest, (id + 2 : U32), second <> first <> acc)
+      +first = {OceanEnts.Ent{wormhole, x1, z1, id, (id + 1 : U32), p1} : OceanEnts.Ent}
+      +second = {OceanEnts.Ent{wormhole, x2, z2, (id + 1 : U32), id, p2} : OceanEnts.Ent}
+      pair_loop(wormhole, rest, (id + 2 : U32), second <> first <> acc)
     case _:
       List.reverse(&2, OceanEnts.Ent, acc)
 
 # SwapOutWormholeMarkers: consecutive markers become wormhole pairs (ids from MIN_WORMHOLE_ID, each targeting the
 # other) at the end of savedata.ents.wormhole; an odd last marker is dropped, and so are the markers.
-def swap_wormholes(+ents: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
-  +pairs = pair_loop(OceanEnts.of_prefab(ents, OceanPostData.wormhole_marker()), OceanPostData.min_wormhole_id(), Nil{})
-  OceanEnts.appended(OceanEnts.without(ents, OceanPostData.wormhole_marker()), pairs, OceanPostData.wormhole_prefab())
+def swap_wormholes(+wormhole: U32, +ents: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
+  +pairs = pair_loop(wormhole, OceanEnts.of_prefab(ents, OceanPostData.wormhole_marker()), OceanPostData.min_wormhole_id(), Nil{})
+  OceanEnts.appended(OceanEnts.without(ents, OceanPostData.wormhole_marker()), pairs, wormhole)
 
 def customization_loop(n: Nat, +ents: List<&2, OceanEnts.Ent>, +i: U32) -> List<&2, OceanEnts.Ent>:
   match n:
@@ -62,17 +62,17 @@ def randomization_loop(n: Nat, got: List<&2, OceanEnts.Ent> & Pcg.Rng, +i: U32) 
       +proxy = Blob.at(row, 0)
       randomization_loop(p, random_loop(OceanEnts.of_prefab(ents, proxy), row, (OceanEnts.without(ents, proxy), rng)), (i + 1 : U32))
 
-def post_done(got: List<&2, OceanEnts.Ent> & Pcg.Rng, +c: OceanState.Ctx, g: Grid.Grid, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
+def post_done(got: List<&2, OceanEnts.Ent> & Pcg.Rng, +c: OceanState.Ctx, +wormhole: U32, g: Grid.Grid, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (+ents, rng) = got
   s = {OceanState.Sea{g, ids, rng, ents, topo, events} : OceanState.Sea}
-  OceanState.noted(c, OceanState.digest(c, s, 8), OceanState.EWormholes{OceanEnts.of_prefab(ents, OceanPostData.wormhole_prefab())})
+  OceanState.noted(c, OceanState.digest(c, s, 8), OceanState.EWormholes{OceanEnts.of_prefab(ents, wormhole)})
 
-# Graph:GlobalPostPopulate(entities, width, height).
-def post_populate(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+# Graph:GlobalPostPopulate(entities, width, height) for a level whose wormhole_prefab is `wormhole`.
+def post_populate(+c: OceanState.Ctx, +wormhole: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      +swapped = customization_loop(U32.to_nat(OceanPostData.customization_proxies_count()), swap_wormholes(ents), 0)
-      post_done(randomization_loop(U32.to_nat(OceanPostData.randomization_proxies_count()), (swapped, rng), 0), c, g, ids, topo, events)
+      +swapped = customization_loop(U32.to_nat(OceanPostData.customization_proxies_count()), swap_wormholes(wormhole, ents), 0)
+      post_done(randomization_loop(U32.to_nat(OceanPostData.randomization_proxies_count()), (swapped, rng), 0), c, wormhole, g, ids, topo, events)
 
 
 def keep_step(got: Grid.Grid & U32, +e: OceanEnts.Ent, +acc: List<&2, OceanEnts.Ent>) -> Grid.Grid & List<&2, OceanEnts.Ent>:

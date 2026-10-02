@@ -4,7 +4,8 @@ import ../grid.bend as Grid
 import ./groups.bend as TileGroups
 
 # WorldSim:DetectDisconnect: every walkable tile the 8-neighbour flood from the start tile does not reach becomes
-# impassable and gets the disconnected flag. The flood only needs the reached set, so it drains a work list in any order.
+# impassable and gets the disconnected flag (no reachable cave room or layout calls MakeSafeFromDisconnect). The flood only
+# needs the reached set, so it drains a work list in any order.
 
 type Flood is Type:
   Flood{cells: Array<U32>, seen: Array<U32>, queue: Array<U32>, head: U32, tail: U32, go: Bool}

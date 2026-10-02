@@ -7,6 +7,10 @@ import ../ocean/ents.bend as OceanEnts
 import ./generate.bend as Generate
 import ./job.bend as GenJob
 import ./cave_dump.bend as CaveDump
+import ./cave_maze.bend as CaveMaze
+import ../worldsim/points.bend as Points
+import ./cave_custom.bend as CaveCustom
+import ./graph.bend as GenGraph
 
 # `seedfinder gen`: runs the job state machine of each seed to its world, one line per seed, and with `times` one
 # line per stage of every attempt:
@@ -14,11 +18,13 @@ import ./cave_dump.bend as CaveDump
 #   gen seed=S platform=P a=A outcome=world|gaveup|crashed ctr=C ents=N tiles=H ms=T
 # (ctr, ents and tiles: the RNG counter at the end of Generate, the savedata.ents count and the encoded tile map's
 # digest of the world attempt).
-# The caves shard is ported up to the custom tile pass (the tile map right before the mazes): its attempts end at stage
-# `tiled` with
+# The caves shard runs the whole worldgen and ends like the forest, with `shard=caves` after the platform. With `dump`
+# bits 1 or 2 it stops at the first attempt's custom tile pass (the tile map right before the mazes) instead:
 #   gen seed=S platform=P shard=caves a=A outcome=tiled ctr=C nodes=N w=W tiles=H ms=T
 # (ctr: the RNG counter after the custom tile pass; tiles: the digest of the tile map after it), and `dump`
-# adds records for the attempt: bit 1 the `tiles` record of that tile map, bit 2 its story graph as JSON. `draws` starts
+# adds records for the attempt: bit 1 the `tiles` record of that tile map, bit 2 its story graph as JSON, bit 4 the entities
+# of the Labyrinth and Maze passes with the stream counters around each maze engine call (JSON), bit 8 the `tiles` record after
+# them. `draws` starts
 # the attempt that many draws into the seed's stream (the counter of a real attempt's generate_begin), for checking the
 # attempts after the first; that also takes the entrance list pick as made.
 
@@ -42,6 +48,10 @@ def stage_name(+stage: U32) -> String:
       "world"
     case 10:
       "tiled"
+    case 11:
+      "mazed"
+    case 12:
+      "post"
     case _:
       "done"
 
@@ -86,21 +96,67 @@ def tiled_fields(+seed: U32, +a: U32, +s: StoryGraph.St, +w: U32, +rng: Pcg.Rng,
   [Canon.number("a", a), Canon.field("outcome", "tiled"), Canon.number("ctr", Pcg.counter(seed, rng)),
     Canon.number("nodes", StoryGraph.get(s, StoryGraph.s_nodes())), Canon.number("w", w), Canon.field("tiles", hash_text(h))]
 
-def dump_tiles(bits: U32, +seed: U32, +a: U32, g: Grid.Grid) -> List<&2, String>:
-  Bool.pick(List<&2, String>, U32.is_zero((bits .&. 1 : U32)), Nil{}, [CaveDump.tiles_line(seed, a, g, "before_mazes")])
+def kept_lines(got: Grid.Grid & String) -> Grid.Grid & List<&2, String>:
+  (g, +line) = got
+  (g, [line])
+
+def tiles_dumped(off: Bool, +seed: U32, +a: U32, g: Grid.Grid) -> Grid.Grid & List<&2, String>:
+  match off:
+    case True{}:
+      (g, Nil{})
+    case False{}:
+      kept_lines(CaveDump.tiles_kept(seed, a, g, "before_mazes"))
+
+def dump_tiles(bits: U32, +seed: U32, +a: U32, g: Grid.Grid) -> Grid.Grid & List<&2, String>:
+  tiles_dumped(U32.is_zero((bits .&. 1 : U32)), seed, a, g)
 
 def dump_story(bits: U32, +seed: U32, +a: U32, +s: StoryGraph.St) -> List<&2, String>:
   Bool.pick(List<&2, String>, U32.is_zero((bits .&. 2 : U32)), Nil{}, [CaveDump.story_json(seed, a, s)])
+
+def marked_lines(m: CaveMaze.Mazed, +marks: List<&2, Pcg.Rng>, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
+  match m:
+    case CaveMaze.Mazed{g, +rng, +ents}:
+      List.append(&2, String, Bool.pick(List<&2, String>, U32.is_zero((bits .&. 4 : U32)), Nil{}, [CaveDump.mazes_json(seed, a, marks, rng, ents)]),
+        Bool.pick(List<&2, String>, U32.is_zero((bits .&. 8 : U32)), Nil{}, [CaveDump.tiles_line(seed, a, g, "after_mazes")]))
+
+def mazed_lines(m: CaveMaze.Marked, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
+  match m:
+    case CaveMaze.Marked{mazed, +marks}:
+      marked_lines(mazed, marks, bits, seed, a)
+
+def mazes_run(off: Bool, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> List<&2, String>:
+  match off:
+    case True{}:
+      Nil{}
+    case False{}:
+      mazed_lines(CaveMaze.run_marked(c, s, k, w, g, rng, placed, sites), bits, seed, a)
+
+def mazes_of(+bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> List<&2, String>:
+  mazes_run(U32.is_zero((bits .&. 12 : U32)), bits, seed, a, c, s, k, w, g, rng, placed, sites)
 
 def tiled_record(+seed: U32, +a: U32, +s: StoryGraph.St, +w: U32, +rng: Pcg.Rng, +h: Grid.Hash, +windows: Bool, +ms: Nat) -> String:
   Canon.record("gen", List.append(&2, String, [Canon.number("seed", seed), Canon.field("platform", platform_name(windows)), Canon.field("shard", "caves")],
     List.append(&2, String, tiled_fields(seed, a, s, w, rng, h), [Canon.field("ms", Nat.show(ms))])))
 
-def tiled_summary(got: Grid.Grid & Grid.Hash, +seed: U32, +a: U32, +s: StoryGraph.St, +w: U32, +rng: Pcg.Rng, +o: Options, +ms: Nat) -> String:
+def tiled_lines(got: Grid.Grid & List<&2, String>, +head: String, +story: List<&2, String>, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> String:
+  (g, +tiles) = got
+  String.join(head <> List.append(&2, String, story, List.append(&2, String, tiles, mazes_of(bits, seed, a, c, s, k, w, g, rng, placed, sites))), "\n")
+
+def tiled_summary(got: Grid.Grid & Grid.Hash, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites, +o: Options, +ms: Nat) -> String:
   (g, +h) = got
   match o:
     case Options{+windows, _, _, _, +dump, _}:
-      String.join(tiled_record(seed, a, s, w, rng, h, windows, ms) <> List.append(&2, String, dump_story(dump, seed, a, s), dump_tiles(dump, seed, a, g)), "\n")
+      tiled_lines(dump_tiles(dump, seed, a, g), tiled_record(seed, a, s, w, rng, h, windows, ms), dump_story(dump, seed, a, s), dump, seed, a, c, s, k, w, rng, placed, sites)
+
+def caves_of(+o: Options) -> Bool:
+  match o:
+    case Options{_, _, _, +caves, _, _}:
+      caves
+
+def dump_of(+o: Options) -> U32:
+  match o:
+    case Options{_, _, _, _, +dump, _}:
+      dump
 
 def platform_of(+o: Options) -> Bool:
   match o:
@@ -117,16 +173,19 @@ def times_of(+o: Options) -> Bool:
     case Options{_, +times, _, _, _, _}:
       times
 
-def line_summary(job: GenJob.Job, +seed: U32, +windows: Bool, +ms: Nat) -> String:
+def shard_fields(caves: Bool) -> List<&2, String>:
+  Bool.pick(List<&2, String>, caves, [Canon.field("shard", "caves")], Nil{})
+
+def line_summary(job: GenJob.Job, +seed: U32, +windows: Bool, +caves: Bool, +ms: Nat) -> String:
   Canon.record("gen", List.append(&2, String, [Canon.number("seed", seed), Canon.field("platform", platform_name(windows))],
-    List.append(&2, String, outcome_fields(job, seed), [Canon.field("ms", Nat.show(ms))])))
+    List.append(&2, String, shard_fields(caves), List.append(&2, String, outcome_fields(job, seed), [Canon.field("ms", Nat.show(ms))]))))
 
 def summary(job: GenJob.Job, +seed: U32, +o: Options, +ms: Nat) -> String:
   match job:
-    case GenJob.JTiled{_, +a, +s, _, +w, grid, +rng, _, _}:
-      tiled_summary(Grid.tiles_digest(grid), seed, a, s, w, rng, o, ms)
+    case GenJob.JTiled{+c, +a, +s, +k, +w, grid, +rng, placed, +sites}:
+      tiled_summary(Grid.tiles_digest(grid), seed, a, c, s, k, w, rng, placed, sites, o, ms)
     case other:
-      line_summary(other, seed, platform_of(o), ms)
+      line_summary(other, seed, platform_of(o), caves_of(o), ms)
 
 def print_if(on: Bool, +line: String) -> IO(Unit):
   match on:
@@ -167,9 +226,9 @@ def decided(final: Bool, job: GenJob.Job, +at: GenJob.Where, +since: Nat, +seed:
 def stepped(got: GenJob.Job & GenJob.Where, +seed: U32, +o: Options, +prev: GenJob.Where, +since: Nat, +now: Nat, +start: Nat) -> IO(Stepped):
   (job, +at) = got
   +moved = Bool.not(same(prev, at))
-  +final = GenJob.settled(stage_of(at))
+  +final = GenJob.settled(stage_of(at)) || (U32.is_eq(stage_of(at), 10) && Bool.not(U32.is_zero((dump_of(o) .&. 3 : U32))))
   do IO<Stepped>:
-    print_if(times_of(o) && moved && (stage_of(prev) < 9 : U32), stage_line(seed, prev, Nat.sub(now, since)))
+    print_if(times_of(o) && moved && U32.is_ne(stage_of(prev), 9), stage_line(seed, prev, Nat.sub(now, since)))
     decided(final, job, at, Bool.pick(Nat, moved, now, since), seed, o, Nat.sub(now, start))
 
 def job_of(caves: Bool, +seed: U32, +o: Options) -> GenJob.Job:
@@ -180,11 +239,6 @@ def job_of(caves: Bool, +seed: U32, +o: Options) -> GenJob.Job:
           GenJob.start_caves(seed, windows, draws)
     case False{}:
       GenJob.start(seed, platform_of(o), False{})
-
-def caves_of(+o: Options) -> Bool:
-  match o:
-    case Options{_, _, _, +caves, _, _}:
-      caves
 
 def drive(fuel: Nat, st: Stepped, +seed: U32, +o: Options, +start: Nat) -> IO(Unit):
   match fuel:

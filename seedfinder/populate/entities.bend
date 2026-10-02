@@ -71,6 +71,11 @@ def centred_tile(+t: U32, +size: U32) -> F64Repr.F64:
 def tile_entity(+prefab: U32, +x: U32, +y: U32, +width: U32, +height: U32, jitter: Bool, rng: Pcg.Rng) -> Ent:
   rounded(prefab, F64Repr.from_u32(x), F64Repr.from_u32(y), offsets(jitter, centred_tile(x, width), centred_tile(y, height), rng))
 
+# `tile_entity` with its two offset outputs (raw PCG32 words for x, then z) drawn earlier; `rng` is recorded as the state after them.
+def drawn_entity(+prefab: U32, +x: F64Repr.F64, +y: F64Repr.F64, +width: U32, +height: U32, +rx: U32, +ry: U32, +rng: Pcg.Rng) -> Ent:
+  rounded(prefab, x, y,
+    Placed{jittered(centred(x, width), F64Random.from_output(rx)), jittered(centred(y, height), F64Random.from_output(ry)), rng})
+
 def with_rng(+e: Ent, +rng: Pcg.Rng) -> Ent:
   match e:
     case Ent{+prefab, +tx, +ty, +x, +z, +xk, +zk, _}:

@@ -13,15 +13,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 import ids  # noqa: E402
+import union  # noqa: E402
 
+KEY_BITS, WEIGHT_BITS = 12, 8
 PICK_BITS = 5
 PICKS_PER_UNIT = 4
 
 
 def pair(entry):
     key, weight = ids.sid(entry["key"]), ids.weight_id(entry["value"])
-    assert key < 1 << 10 and weight < 1 << 10
-    return key << 10 | weight
+    assert key < 1 << KEY_BITS and weight < 1 << WEIGHT_BITS
+    return key << WEIGHT_BITS | weight
 
 
 def tile_classes(d):
@@ -74,7 +76,7 @@ def distribute_module(d):
     m.table("cases", cases, "Row 2 * room + depth - 1: number of swappable entries, then per entry (key string id, "
                             "choice count) in pairs() order, then the variant of every case. Empty: no distribute.")
     m.table("variants", variants, "Row variant: the pickspawnprefab input table in pairs() order, one "
-                                  "unit per entry: prefab string id << 10 | weight id (data/rooms.bend).")
+                                  "unit per entry: prefab string id << 8 | weight id (data/rooms.bend).")
     m.table("tile_classes", [[u for tile in sorted(classes) for u in (tile, classes[tile])]],
             "Row 0: (land tile, tile class) pairs, tiles ascending; pickspawnprefab filters equally on one class.")
     m.const("tile_class_count", len(set(classes.values())))
@@ -108,11 +110,11 @@ def tile_class_scan(xs: List<&2, U32>, +tile: U32, +found: U32) -> U32:
 
 # The prefab string id of a variants / ocean_picks unit.
 def entry_prefab(+u: U32) -> U32:
-  (u >> 10n : U32)
+  (u >> 8n : U32)
 
 # The weight id (data/rooms.bend) of a variants / ocean_picks unit.
 def entry_weight(+u: U32) -> U32:
-  (u .&. 1023 : U32)
+  (u .&. 255 : U32)
 
 # The pickspawnprefab tile class of a land tile (NONE for other tiles).
 def tile_class(+tile: U32) -> U32:
@@ -178,7 +180,7 @@ def pick(+variant: U32, +class: U32) -> List<&2, U32>:
 
 
 def main():
-    d = blob.sidecar("distribute.json")
+    d = union.distribute()
     which = [a for a in sys.argv[1:] if a != "-"]
     module = picks_module(d) if which == ["picks"] else distribute_module(d)
     if sys.argv[-1:] == ["-"]:

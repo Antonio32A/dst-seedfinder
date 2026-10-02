@@ -115,7 +115,7 @@ def ocean_bunch_ground():
   {==}
 
 law ocean_wormhole_pairs:
-  {OceanEnts.count(OceanPost.swap_wormholes([OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.one(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.two(), F64Repr.zero(), 0, 0, 0}]), OceanPostData.wormhole_prefab()) == 2 : U32}
+  {OceanEnts.count(OceanPost.swap_wormholes(OceanPostData.wormhole_prefab(), [OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.one(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.two(), F64Repr.zero(), 0, 0, 0}]), OceanPostData.wormhole_prefab()) == 2 : U32}
 
 def ocean_wormhole_pairs():
   {==}

@@ -3,6 +3,9 @@ import ../storygen/graph.bend as StoryGraph
 import ../trace/canon.bend as Canon
 import ../worldsim/grid.bend as Grid
 import ../data/cave_story.bend as CaveStory
+import ../data/strings.bend as Strings
+import ../rng/pcg.bend as Pcg
+import ../populate/entities.bend as Entities
 import ../storygen/catalog.bend as StoryCatalog
 import ./tags.bend as GenTags
 
@@ -40,6 +43,16 @@ def tiles_line(+seed: U32, +a: U32, g: Grid.Grid, +label: String) -> String:
   match g:
     case Grid.Grid{cells, +width, +height}:
       tiles_record(seed, a, label, width, height, rle_text(rle_loop(U32.to_nat((width * height : U32)), cells[0], 0, 0, 0, Nil{})))
+
+def kept_tiles(got: Array<U32> & List<&2, String>, +seed: U32, +a: U32, +label: String, +width: U32, +height: U32) -> Grid.Grid & String:
+  (cells, +tokens) = got
+  (Grid.Grid{cells, width, height}, tiles_record(seed, a, label, width, height, String.join(tokens, ",")))
+
+# `tiles_line` that hands the grid back.
+def tiles_kept(+seed: U32, +a: U32, g: Grid.Grid, +label: String) -> Grid.Grid & String:
+  match g:
+    case Grid.Grid{cells, +width, +height}:
+      kept_tiles(rle_loop(U32.to_nat((width * height : U32)), cells[0], 0, 0, 0, Nil{}), seed, a, label, width, height)
 
 def quoted_all(names: List<&2, String>) -> List<&2, String>:
   match names:
@@ -88,3 +101,29 @@ def story_json(+seed: U32, +a: U32, +s: StoryGraph.St) -> String:
   "{\"seed\":" ++ U32.show(seed) ++ ",\"attempt\":" ++ U32.show(a) ++ ",\"nodes\":[" ++ String.join(nodes_json(U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, 0), ",")
     ++ "],\"edges\":[" ++ String.join(edges_json(U32.to_nat(StoryGraph.get(s, StoryGraph.s_edges())), s, 0), ",")
     ++ "],\"globals\":[" ++ String.join(globals_json(U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, 0), ",") ++ "]}"
+
+def entity_json(+e: Entities.Ent) -> String:
+  match e:
+    case Entities.Ent{+prefab, _, _, _, _, +xk, +zk, _}:
+      "[" ++ Canon.quoted(Strings.name(prefab)) ++ "," ++ U32.show(xk) ++ "," ++ U32.show(zk) ++ "]"
+
+def entities_json(ents: List<&2, Entities.Ent>) -> List<&2, String>:
+  match ents:
+    case Nil{}:
+      Nil{}
+    case Con{+e, rest}:
+      List.append(&2, String, entities_json(rest), [entity_json(e)])
+
+def counters_json(marks: List<&2, Pcg.Rng>, +seed: U32) -> List<&2, String>:
+  match marks:
+    case Nil{}:
+      Nil{}
+    case Con{+rng, rest}:
+      U32.show(Pcg.counter(seed, rng)) <> counters_json(rest, seed)
+
+# The maze passes of an attempt as one JSON line: the stream counter right after each maze engine call in call order, the
+# counter after the passes, and the entities they added in insertion order as [prefab, x, z] with x and z in hundredths
+# (two's complement) of world units.
+def mazes_json(+seed: U32, +a: U32, +marks: List<&2, Pcg.Rng>, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>) -> String:
+  "{\"seed\":" ++ U32.show(seed) ++ ",\"attempt\":" ++ U32.show(a) ++ ",\"marks\":[" ++ String.join(counters_json(marks, seed), ",")
+    ++ "],\"end\":" ++ U32.show(Pcg.counter(seed, rng)) ++ ",\"ents\":[" ++ String.join(entities_json(ents), ",") ++ "]}"

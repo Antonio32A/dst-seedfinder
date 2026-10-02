@@ -13,6 +13,7 @@ import ./savedata.bend as SaveData
 # `seedfinder world dump`: generates the seeds a slot each, several at once, and writes each world's dump
 # (docs/world-dump.md), with one line per seed when it is written:
 #   dump seed=S platform=P outcome=world|gaveup|crashed ents=N ms=T
+# (--shard caves: the caves shard, with shard=caves after the platform)
 # (ents: the entities in the dump, ms: from the start of the seed's generation to its dump written). A round runs the
 # CPU stages of every slot in parallel, each up to its next KK pass or to its world (encoded there, also in parallel),
 # starts the KK passes as their own computations (the native KK runs on the runtime's IO helper threads), writes the
@@ -49,17 +50,22 @@ type Ctx is Data:
 
 def windows_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, +windows, _, _, _}, _}:
+    case Ctx{Args.Dump{_, _, +windows, _, _, _, _}, _}:
       windows
 
 def native_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, +native, _, _}, _}:
+    case Ctx{Args.Dump{_, _, _, +native, _, _, _}, _}:
       native
+
+def caves_of(+ctx: Ctx) -> Bool:
+  match ctx:
+    case Ctx{Args.Dump{_, _, _, _, _, _, +caves}, _}:
+      caves
 
 def path_of(+ctx: Ctx, +seed: U32) -> String:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, _, +out, +folder}, _}:
+    case Ctx{Args.Dump{_, _, _, _, +out, +folder, _}, _}:
       Bool.pick(String, folder, out ++ "/" ++ U32.show(seed) ++ ".dstw", out)
 
 def instance_count(prefabs: List<&2, FilterDump.Prefab>, +n: U32) -> U32:
@@ -72,14 +78,24 @@ def instance_count(prefabs: List<&2, FilterDump.Prefab>, +n: U32) -> U32:
 def world_finished(+d: FilterDump.Dump, +seed: U32, +since: Nat) -> Slot:
   Finished{seed, 0, instance_count(FilterDump.prefabs(d), 0), FilterDump.bytes(d), since}
 
+def dumped(caves: Bool, +seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
+  match caves:
+    case True{}:
+      SaveData.dump_caves(seed, windows, final)
+    case False{}:
+      SaveData.dump(seed, windows, final)
+
+def gave_up(+seed: U32, +ctx: Ctx) -> List<&2, U32>:
+  FilterDump.bytes(FilterDump.GaveUp{seed, Bool.pick(U32, windows_of(ctx), 1, 2), Bool.to_u32(caves_of(ctx))})
+
 def finished(job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
   match job:
     case GenJob.JWorld{_, _, final}:
-      world_finished(SaveData.dump(seed, windows_of(ctx), final), seed, since)
+      world_finished(dumped(caves_of(ctx), seed, windows_of(ctx), final), seed, since)
     case GenJob.JDone{_, _, GenJob.Crashed{}}:
       Finished{seed, 2, 0, Nil{}, since}
     case _:
-      Finished{seed, 1, 0, FilterDump.bytes(FilterDump.GaveUp{seed, Bool.pick(U32, windows_of(ctx), 1, 2), 0}), since}
+      Finished{seed, 1, 0, gave_up(seed, ctx), since}
 
 def at_pass(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +since: Nat) -> Slot:
   (job, pass) = got
@@ -258,9 +274,12 @@ def reported(r: Result<&1, &1, U32 & String, Unit>, +feed: Feed) -> IO(Feed):
         Bool.pick(IO(Unit), U32.is_eq(code, 1), IO.pure(Unit, Unit{}), IO.print_err(message))
         return Feed{next, left, busy, (failed + 1 : U32)}
 
+def shard_fields(caves: Bool) -> List<&2, String>:
+  Bool.pick(List<&2, String>, caves, [Canon.field("shard", "caves")], Nil{})
+
 def line(+seed: U32, +ctx: Ctx, +outcome: U32, +count: U32, +ms: Nat) -> String:
-  Canon.record("dump", [Canon.number("seed", seed), Canon.field("platform", Bool.pick(String, windows_of(ctx), "windows", "linux")),
-    Canon.field("outcome", outcome_name(outcome)), Canon.number("ents", count), Canon.field("ms", Nat.show(ms))])
+  Canon.record("dump", List.append(&2, String, [Canon.number("seed", seed), Canon.field("platform", Bool.pick(String, windows_of(ctx), "windows", "linux"))],
+    List.append(&2, String, shard_fields(caves_of(ctx)), [Canon.field("outcome", outcome_name(outcome)), Canon.number("ents", count), Canon.field("ms", Nat.show(ms))])))
 
 def written_dump(+seed: U32, +outcome: U32, +count: U32, bytes: List<&2, U32>, +since: Nat, +feed: Feed, +ctx: Ctx) -> IO(Feed):
   do IO<Feed>:
@@ -269,10 +288,17 @@ def written_dump(+seed: U32, +outcome: U32, +count: U32, bytes: List<&2, U32>, +
     IO.print(line(seed, ctx, outcome, count, Nat.sub(now, since)))
     reported(r, feed)
 
+def started_job(caves: Bool, +seed: U32, +windows: Bool) -> GenJob.Job:
+  match caves:
+    case True{}:
+      GenJob.start_caves(seed, windows, 0)
+    case False{}:
+      GenJob.start(seed, windows, True{})
+
 def refilled(+feed: Feed, +ctx: Ctx, +now: Nat) -> Slot:
   match feed:
     case Feed{+next, +left, _, _}:
-      Bool.pick(Slot, Nat.is_eq(left, 0n), Free{}, Busy{next, GenJob.start(next, windows_of(ctx), True{}), now})
+      Bool.pick(Slot, Nat.is_eq(left, 0n), Free{}, Busy{next, started_job(caves_of(ctx), next, windows_of(ctx)), now})
 
 def fed_after(+feed: Feed) -> Feed:
   match feed:
@@ -346,8 +372,8 @@ def slots_for(+threads: U32, +total: Nat) -> Nat:
 
 def started(+q: Args.Dump, +threads: U32) -> IO(Unit):
   match q:
-    case Args.Dump{+from, +total, +windows, +native, +out, +folder}:
-      +ctx = {Ctx{Args.Dump{from, total, windows, native, out, folder}, slots_for(threads, total)} : Ctx}
+    case Args.Dump{+from, +total, +windows, +native, +out, +folder, +caves}:
+      +ctx = {Ctx{Args.Dump{from, total, windows, native, out, folder, caves}, slots_for(threads, total)} : Ctx}
       do IO<Unit>:
         first : Fed <- written(free_slots(slots_for(threads, total)), Feed{from, total, 0, 0}, ctx, Nil{})
         rounds(round_limit(), first, ctx)

@@ -367,13 +367,73 @@ def roads_kept(roads: List<&2, List<&2, TileWorld.Point>>, +min_road: U32, +w: U
 def roads_of(roads: List<&2, List<&2, TileWorld.Point>>, +min_road: U32, +w: U32) -> List<&2, FilterDump.Road>:
   roads_kept(roads, min_road, w, 3)
 
+def named_of(slots: Nat, a: Array<List<&2, OceanEnts.Ent>>) -> List<&2, Named>:
+  +found = named_loop(slots, Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, Nil{})
+  List.sort(~Named, ~named_le, with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container()))
+
 def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>, +roads: List<&2, FilterDump.Road>) -> FilterDump.Dump:
   (a, +wormholes) = got
-  +found = named_loop(U32.to_nat(sid_slots()), Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, Nil{})
-  +named = List.sort(~Named, ~named_le, with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container()))
+  +named = named_of(U32.to_nat(sid_slots()), a)
   FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), 0, Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
     prefabs_of(named, windows), links(wormholes), [], Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}, Some{roads}}
+
+# A tentacle pillar with a teleporter: its prefab's position in ENTS, its index in the prefab, its id and its target.
+type Pil is Data:
+  Pil{prefab: U32, index: U32, id: U32, target: U32}
+
+def is_pillar(+name: String) -> Bool:
+  String.eq(name, "tentacle_pillar") || String.eq(name, "tentacle_pillar_atrium")
+
+def pillars_of_prefab(ents: List<&2, OceanEnts.Ent>, +prefab: U32, +index: U32) -> List<&2, Pil>:
+  match ents:
+    case Nil{}:
+      Nil{}
+    case Con{OceanEnts.Ent{_, _, _, +id, +target, _}, rest}:
+      +tail = pillars_of_prefab(rest, prefab, (index + 1 : U32))
+      Bool.pick(List<&2, Pil>, U32.is_zero(target), tail, Pil{prefab, index, id, target} <> tail)
+
+# Every pillar with a teleporter, in savedata order (prefabs in name order, then instance order).
+def pillars_named(named: List<&2, Named>, +prefab: U32) -> List<&2, Pil>:
+  match named:
+    case Nil{}:
+      Nil{}
+    case Con{Named{+name, +ents}, rest}:
+      +tail = pillars_named(rest, (prefab + 1 : U32))
+      Bool.pick(List<&2, Pil>, is_pillar(name), List.append(&2, Pil, pillars_of_prefab(ents, prefab, 0), tail), tail)
+
+def pil_id(+p: Pil) -> U32:
+  match p:
+    case Pil{_, _, +id, _}:
+      id
+
+def exit_with_id(pils: List<&2, Pil>, +id: U32, +found: Pil) -> Pil:
+  match pils:
+    case Nil{}:
+      found
+    case Con{+p, rest}:
+      exit_with_id(rest, id, Bool.pick(Pil, U32.is_eq(pil_id(p), id), p, found))
+
+def pillar_link(+p: Pil, +exit: Pil, +more: List<&2, FilterDump.Pillar>) -> List<&2, FilterDump.Pillar>:
+  match p exit:
+    case Pil{+ep, +ei, _, _} Pil{+xp, +xi, +xid, _}:
+      Bool.pick(List<&2, FilterDump.Pillar>, U32.is_eq(xid, no_vocab()), more, FilterDump.Pillar{ep, ei, xp, xi} <> more)
+
+def pillar_links(pils: List<&2, Pil>, +all: List<&2, Pil>) -> List<&2, FilterDump.Pillar>:
+  match pils:
+    case Nil{}:
+      Nil{}
+    case Con{+p, rest}:
+      match p:
+        case Pil{_, _, _, +target}:
+          pillar_link(p, exit_with_id(all, target, Pil{0, 0, no_vocab(), 0}), pillar_links(rest, all))
+
+def cave_dump_of(a: Array<List<&2, OceanEnts.Ent>>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>) -> FilterDump.Dump:
+  +named = named_of(U32.to_nat(U32.pow(2, GenTagsData.cave_sid_depth())), a)
+  +pillars = pillars_named(named, 0)
+  FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), 1, Constants.game_build(), w, w,
+    List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
+    prefabs_of(named, windows), [], pillar_links(pillars, pillars), None{}, Some{[]}}
 
 def wormhole_sid() -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, GenTagsData.vocab_prefab_sids(), U32.to_nat(GenTagsData.vocab_wormhole())), 0)
@@ -387,3 +447,10 @@ def dump(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
       +tiles = packed(g, (w * w : U32))
       dump_of(Array.get(List<&2, OceanEnts.Ent>, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.sid_depth(), Nil{})), wormhole_sid()),
         seed, windows, w, tiles, pieces, roads_of(roads, min_road, w))
+
+# The world dump of a generated caves world: every savedata.ents entry, the tentacle pillar links, no set pieces
+# (the caves job does not record its layouts) and no roads.
+def dump_caves(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
+  match final:
+    case GenJob.Final{g, _, +ents, +w, _, _, _}:
+      cave_dump_of(sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), seed, windows, w, packed(g, (w * w : U32)))

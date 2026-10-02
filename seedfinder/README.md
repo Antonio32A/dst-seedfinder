@@ -52,7 +52,9 @@ build/seedfinder --threads 16 -- world find --shard caves --limit 5 --config cav
 build/seedfinder -- world show 123456 --shard caves                                     # the caves level table
 build/seedfinder --threads 1 -- gen 123456 --platform windows
 build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves --dump 3  # the caves up to the mazes
+build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves            # the whole caves worldgen
 build/seedfinder -- world dump 123456 --platform linux -o 123456.dstw
+build/seedfinder -- world dump 123456 --platform linux --shard caves -o 123456.dstw
 build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # worlds/<seed>.dstw, worlds must exist
 ```
 
@@ -60,23 +62,25 @@ build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # 
 - `--config F`: the search config (without one every seed matches).
 - `--platform windows|linux`: overrides the config's `platform`.
 - `--shard forest|caves`: overrides the config's `shard` (default forest); also on `world show`, `world dump`, `gen` and
-  `setpiece`. The caves shard has the level table (`world find`, `world show`, `setpiece find|show`) and its worldgen
-  up to the tile map right before the mazes (`gen`, see below): the rest is not ported yet, so `world dump` refuses it,
-  and so do `--worlds` and the world sections of a config.
+  `setpiece`. The caves shard has the level table (`world find`, `world show`, `setpiece find|show`) and its whole
+  worldgen (`gen`, `world dump`, see below); `--worlds` and the world sections of a config do not read cave dumps yet.
 - `FROM [TO]`: scan a seed range instead of the whole space (can't be combined with `--start-seed`).
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them.
 - `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).
 
-`gen --shard caves` stops after the custom tile pass (stage `tiled`: story, layout, Commit, tiles, SeparateIslands,
-ForceConnectivity and the RunCA rooms) and prints `gen seed=S ... a=A outcome=tiled ctr=C nodes=N w=W tiles=H`.
-`--dump BITS` adds the attempt's tile map (bit 1, a `tiles` record, `tile*count` runs) and story graph (bit 2, one JSON
-line); `--draws N` starts the attempt N draws into the seed's stream (the position of a real attempt's
-`generate_begin`) to check the attempts after the first.
+`gen --shard caves` runs the whole caves worldgen (up to 5 attempts, retried like the forest's: CheckForValidCells, the
+site areas, DetectDisconnect and the required prefabs fail an attempt) and prints the forest's line with `shard=caves`.
+With `--dump BITS` it stops after the first attempt's custom tile pass (stage `tiled`: story, layout, Commit, tiles,
+SeparateIslands, ForceConnectivity and the RunCA rooms) and prints `gen seed=S ... a=A outcome=tiled ctr=C nodes=N w=W
+tiles=H`; `BITS` adds the attempt's tile map (bit 1, a `tiles` record, `tile*count` runs) and story graph (bit 2, one
+JSON line), bit 4 the entities of the Labyrinth and Maze passes with the stream counters around every maze engine call
+(one JSON line) and bit 8 the tile map after them (a `tiles` record); `--draws N` starts the attempt N draws into the seed's
+stream (the position of a real attempt's `generate_begin`) to check the attempts after the first.
 
 `world eval --config F --world DUMP.dstw [--json] [--fast]` checks one config against one world dump. Both read the
 format of [docs/world-dump.md](../docs/world-dump.md) (version 3, older dumps have to be regenerated; only forest dumps can be read).
 
-`world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH` generates worlds and writes their dumps:
+`world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH` generates worlds and writes their dumps:
 `PATH` is the dump of `SEED`, or with `TO` an existing folder that gets `PATH/<seed>.dstw` for every seed, ready for
 `world find --worlds PATH`. It prints one line per seed (`dump seed=S platform=P outcome=world|gaveup|crashed ents=N
 ms=T`). A seed whose world generation gave up gets the 24-byte gave-up dump, and a crashed one gets none (the exit
@@ -85,6 +89,23 @@ status is then 1). The platform defaults to windows, like `gen`.
 - `--time-limit` stops the search, `--start-seed` with the printed `next_seed` continues it.
 - Pass `--threads` in a container, the runtime's default is the host's CPU count, not the quota.
 - Don't run it under a low `ulimit -v`, each thread reserves a lot of virtual memory.
+
+## Throughput
+
+Measured with the production binary, `--threads 8`, on a 24-core machine that was shared with other jobs (load average
+about 6), so read them as ratios. Seeds 1 to 200, `--platform linux`:
+
+| | forest | caves |
+|---|---|---|
+| `world dump 1 200`, wall time | 45.8 s (4.4 worlds/s) | 30.2 s (6.6 worlds/s) |
+| ms per seed in the dump lines (median / mean) | 2973 / 3276 | 2373 / 2306 |
+| outcomes | 199 worlds, 1 gave up | 196 worlds, 4 gave up |
+| `world find` with a filter that never matches | 83 M seeds/s (level search) | 21 M seeds/s (level table search) |
+
+The caves' ms include the retried attempts (331 attempts for the 240 seeds of the real dumps, 1.4 per world).
+`gen 1 --shard caves --times` on one thread (261 ms) spends 112 ms in the two KK layouts (`kk1`), 39 ms in the mazes, 37 ms
+in the custom tile pass, 23 ms in the tile conversion and 23 ms in the post steps; the rest of the caves' stages are small,
+and no stage has a linear scan worth fixing.
 
 ## Regenerating the data
 
@@ -126,4 +147,9 @@ The `generate_begin`, `generate_failed` and `generate_end` checkpoints of a worl
 stream after the Lua draw counter, engine draws included. `scripts/groundtruth/compare_caves_land.py build/seedfinder`
 checks the seedfinder's caves worldgen against the caves worlds: every attempt's tile map right before the mazes (each
 attempt starting at its real stream position), the story graph of the final attempt and the global tags of every
-attempt.
+attempt. `scripts/groundtruth/compare_caves_trace.py build/seedfinder_trace` runs the trace binary's `cavegen` stage
+(`build/seedfinder_trace trace SEED --stage cavegen --platform linux [--draws POSITION]`, one attempt: the story, Voronoi
+and tile stages, every RunCA, RunMaze, GetPointsForMetaMaze, ReserveSpace and GetPointsForSite, DetectDisconnect, the
+entity counts of the post steps and the required prefab table) for every attempt and names the first stage that differs
+from the real probes; with `--draws` it also checks the random-draw counts of every engine call. `scripts/groundtruth/compare_caves_world.py build/seedfinder` compares whole cave world dumps byte for byte with
+the converted real ones and reports the attempts each needed.

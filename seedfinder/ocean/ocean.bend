@@ -11,32 +11,19 @@ import ./place.bend as OceanPlace
 import ./populate.bend as OceanPopulate
 import ./monkey.bend as Monkey
 import ./post.bend as OceanPost
-import ./bunches.bend as Bunches
+import ../post/finish.bend as Finish
 import ./convert.bend as OceanConvert
 import ./convert_blend.bend as ConvertBlend
 
 # forest_map.Generate from land_done to the required prefab check (has_ocean): Ocean_PlaceSetPieces (prefill),
-# Ocean_ConvertImpassibleToWater, PopulateOcean, MonkeyIsland_GenerateDocks, Graph:GlobalPostPopulate, the
-# impassable filter, BunchSpawnerRun, and the check that decides whether the attempt is the world (its map then
-# goes through GetEncodedMap's ReplaceSingleNonLandTiles).
+# Ocean_ConvertImpassibleToWater, PopulateOcean, MonkeyIsland_GenerateDocks, and the steps both shards share
+# (post/finish.bend): Graph:GlobalPostPopulate, the impassable filter, BunchSpawnerRun, AncientArchivePass and the check
+# that decides whether the attempt is the world.
 
 # The prefill: level.ocean_prefill_setpieces on IMPASSABLE with ocean_prefill_setpieces_min_land_dist.
 def prefill(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   OceanState.digest(c, OceanPlace.place_set_pieces(OceanPopulate.prefill_specs(), c, TileGroups.impassable(), OceanData.config_ocean_prefill_setpieces_min_land_dist(),
     PopulateSetpiece.ocean_prefill(), s), 0)
-
-def encoded(ok: Bool, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
-  match ok:
-    case False{}:
-      s
-    case True{}:
-      match s:
-        case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-          OceanState.digest(c, OceanState.Sea{Points.replace_single_non_land(g), ids, rng, ents, topo, events}, 10)
-
-def checked(got: OceanState.Sea & Bool, +c: OceanState.Ctx) -> OceanState.Sea & Bool:
-  (s, +ok) = got
-  (encoded(ok, c, s), ok)
 
 def with_counts(got: OceanState.Sea & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx) -> OceanState.Sea:
   (s, +ents) = got
@@ -48,7 +35,7 @@ def populated(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
 # Everything after the conversion, with the required prefab table: the final state and whether it passed.
 def after_convert(+c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
   docked = OceanState.digest(c, Monkey.docks(c, populated(c, s)), 7)
-  checked(OceanPost.required(reqs, c, Bunches.bunches(c, OceanPost.impassable_filter(c, OceanPost.post_populate(c, docked)))), c)
+  Finish.run(c, Finish.forest(), reqs, docked)
 
 def fills_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:

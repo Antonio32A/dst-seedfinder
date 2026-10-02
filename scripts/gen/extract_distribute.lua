@@ -168,7 +168,7 @@ for _, name in ipairs(Reach.room_names) do
 end
 
 local ocean_out = array()
-for _, name in ipairs(BOOT.level.ocean_population) do
+for _, name in ipairs(BOOT.level.ocean_population or {}) do
     local room = deepcopy(Rooms.GetRoomByName(name))
     local contents = room.contents or {}
     local entry = { name = name, tile = room.value }

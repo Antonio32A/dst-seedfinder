@@ -74,6 +74,26 @@ def turn(fixed: Bool, rng: Pcg.Rng) -> Turn & Pcg.Rng:
     case False{}:
       turned(MathRandom.random_upto(rng, 2))
 
+# layout.force_rotation's translation (switch_xy, flip_x, flip_y) for LAYOUT_ROTATION 0..3.
+def forced(+rotation: U32) -> Turn:
+  match rotation:
+    case 0:
+      Turn{False{}, False{}, True{}}
+    case 1:
+      Turn{True{}, True{}, True{}}
+    case 2:
+      Turn{False{}, True{}, False{}}
+    case _:
+      Turn{True{}, False{}, False{}}
+
+def rotated(got: Turn & Pcg.Rng, +rotation: U32) -> Turn & Pcg.Rng:
+  (+random, rng) = got
+  (Bool.pick(Turn, Blob.is_none(rotation), random, forced(rotation)), rng)
+
+# The transform of layout variant v: the random turn (drawn unless disable_transform) unless the layout forces a rotation.
+def turn_of(+v: U32, rng: Pcg.Rng) -> Turn & Pcg.Rng:
+  rotated(turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), Layouts.force_rotation(v))
+
 def flipped(+keep: Bool, +n: U32, +k: U32) -> U32:
   Bool.pick(U32, keep, k, (n - 1 - k : U32))
 
@@ -248,4 +268,4 @@ def place(+c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +v: U32, 
     case PopulateState.Land{g, +rng, +ents, +events}:
       +start = {Box{million(), F64Repr.neg(million()), million(), F64Repr.neg(million())} : Box}
       +size = F64Arith.mul(scale_of(Layouts.scale(v)), half_extent(bounds(items, start)))
-      placed_turn(turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), c, node, v, items, size, g, ents, events, name, source)
+      placed_turn(turn_of(v, rng), c, node, v, items, size, g, ents, events, name, source)

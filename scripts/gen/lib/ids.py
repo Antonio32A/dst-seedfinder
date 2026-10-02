@@ -4,6 +4,10 @@ Ids are dense: the tasks first (in data/world_catalog.bend's task order, so a ta
 world_catalog task id), then every other string (rooms, layouts, prefabs, layout keys, tags, region ids, ...) sorted
 by bytes. Rooms and layouts also have their own dense indices (sorted names); some names are both a task and a room.
 Every generator rebuilds the same tables from the sidecars.
+
+The tables are unions of the forest and the caves. Everything the forest reaches keeps the id it has without the
+caves; what only the caves reach follows, in the same kind of order (strings, rooms, layouts sorted by bytes; closures by
+first source site; weights sorted).
 """
 import sys
 from functools import lru_cache
@@ -66,16 +70,8 @@ def _layout_strings(layout):
     return out
 
 
-@lru_cache(maxsize=None)
-def table():
-    story = blob.sidecar("story.json")
-    layouts = blob.sidecar("layouts.json")
-    distribute = blob.sidecar("distribute.json")
-    ocean = blob.sidecar("ocean.json")
-    tasks = [t["id"] for t in story["tasks"]]
-    assert sorted(tasks) == sorted(LITERAL_ORDER), "task set differs from data/world_catalog.bend"
-    rooms = sorted(r["name"] for r in story["rooms"])
-    layout_names = sorted(layout["name"] for layout in layouts["layouts"])
+def _strings(story, layouts, distribute, ocean):
+    """Every constant string the sidecars of one shard mention (the ocean one is forest only)."""
     others = set()
     for t in story["tasks"]:
         others.update(_task_strings(t))
@@ -88,7 +84,8 @@ def table():
     level = story["level"]
     for field in ("required_setpieces", "random_set_pieces", "required_prefabs", "ocean_population"):
         others.update(level[field])
-    others.update([level["start_setpeice"], level["start_node"]])
+    others.add(level["start_setpeice"])
+    others.update(level["start_node"] if isinstance(level["start_node"], list) else [level["start_node"]])
     for layout in layouts["layouts"]:
         others.update(_layout_strings(layout))
     for kind in layouts["sandboxes"].values():
@@ -115,6 +112,37 @@ def table():
             others.add(bunch["prefab"])
         others.update(bunch.get("prefab_results") or [])
     others.discard(None)
+    return others
+
+
+def _cave_strings():
+    """The strings only the caves need: their sidecars, the names of the post-populate steps and the maze data."""
+    story = blob.sidecar("story_caves.json")
+    layouts = blob.sidecar("layouts_caves.json")
+    strings = _strings(story, layouts, blob.sidecar("distribute_caves.json"), {"bunches": []})
+    strings.update(r["name"] for r in story["rooms"])
+    strings.update(x["name"] for x in layouts["layouts"])
+    strings.update(t["id"] for t in story["tasks"])
+    for literals in layouts.get("area_literals", []):
+        strings.update(literals["literals"])
+    wormhole_prefab = blob.sidecar("caves.json")["level"]["overrides"].get("wormhole_prefab")
+    strings.update([wormhole_prefab] if wormhole_prefab else [])
+    names = (blob.GEN / "lib" / "cave_names.txt").read_text().split("\n")
+    strings.update(n for n in names if n)
+    return strings
+
+
+@lru_cache(maxsize=None)
+def table():
+    story = blob.sidecar("story.json")
+    layouts = blob.sidecar("layouts.json")
+    distribute = blob.sidecar("distribute.json")
+    ocean = blob.sidecar("ocean.json")
+    tasks = [t["id"] for t in story["tasks"]]
+    assert sorted(tasks) == sorted(LITERAL_ORDER), "task set differs from data/world_catalog.bend"
+    rooms = sorted(r["name"] for r in story["rooms"])
+    layout_names = sorted(layout["name"] for layout in layouts["layouts"])
+    others = _strings(story, layouts, distribute, ocean)
     others.update(rooms)
     others.update(layout_names)
     rest = sorted((s for s in others if s not in set(tasks)), key=lambda s: s.encode())
@@ -125,13 +153,23 @@ def table():
     known = set(ordered)
     ocean_post = blob.sidecar("ocean_post.json")
     ordered += sorted({s for s in ocean_post["strings"] if s not in known}, key=lambda s: s.encode())
+    forest_string_count = len(ordered)
+    known = set(ordered)
+    ordered += sorted((s for s in _cave_strings() if s not in known), key=lambda s: s.encode())
     assert len(set(ordered)) == len(ordered)
+    cave_story = blob.sidecar("story_caves.json")
+    cave_layouts = blob.sidecar("layouts_caves.json")
+    cave_rooms = sorted(r["name"] for r in cave_story["rooms"] if r["name"] not in set(rooms))
+    cave_layout_names = sorted(x["name"] for x in cave_layouts["layouts"] if x["name"] not in set(layout_names))
     return {
         "strings": ordered,
         "index": {s: i for i, s in enumerate(ordered)},
         "others_base": len(LITERAL_ORDER),
-        "rooms": sorted(rooms, key=lambda s: s.encode()),
-        "layouts": sorted(layout_names, key=lambda s: s.encode()),
+        "forest_string_count": forest_string_count,
+        "rooms": sorted(rooms, key=lambda s: s.encode()) + sorted(cave_rooms, key=lambda s: s.encode()),
+        "forest_room_count": len(rooms),
+        "layouts": sorted(layout_names, key=lambda s: s.encode()) + sorted(cave_layout_names, key=lambda s: s.encode()),
+        "forest_layout_count": len(layout_names),
     }
 
 
@@ -150,31 +188,50 @@ def layout_index(name):
     return table()["layouts"].index(name)
 
 
-def _all_closures():
-    out = []
-    for name in ("story.json", "layouts.json", "ocean.json"):
-        out += blob.sidecar(name)["closures"]
-    return out
+@lru_cache(maxsize=None)
+def maptags():
+    """The map tags (data/rooms.bend's maptags rows): the forest's sorted by string id, then the caves' only ones."""
+    forest = blob.sidecar("layouts.json")["maptags"]
+    known = {t["tag"] for t in forest}
+    caves = [t for t in blob.sidecar("layouts_caves.json")["maptags"] if t["tag"] not in known]
+    return sorted(forest, key=lambda t: sid(t["tag"])) + sorted(caves, key=lambda t: sid(t["tag"]))
+
+
+def _site_key(site):
+    path, lines = site.rsplit(":", 1)
+    return path, int(lines.split("-")[0])
+
+
+def _merge_closures(sidecars):
+    merged = {}
+    for name in sidecars:
+        for c in blob.sidecar(name)["closures"]:
+            entry = merged.setdefault(c["key"], {"key": c["key"], "body": c["body"], "upvalues": c["upvalues"],
+                                                 "globals": c["globals"], "sites": set(), "contexts": set()})
+            entry["sites"].update(c["sites"])
+            entry["contexts"].update(c["contexts"])
+    return merged
 
 
 @lru_cache(maxsize=None)
 def closures():
-    """Every closure variant (distinct body + upvalues) of every sidecar, ordered by first source site."""
-    merged = {}
-    for c in _all_closures():
-        entry = merged.setdefault(c["key"], {"key": c["key"], "body": c["body"], "upvalues": c["upvalues"],
-                                             "globals": c["globals"], "sites": set(), "contexts": set()})
-        entry["sites"].update(c["sites"])
-        entry["contexts"].update(c["contexts"])
+    """Every closure variant (distinct body + upvalues), the forest's first ordered by first source site, then those
+    only the caves reach in the same order. A closure both reach keeps its forest id and its forest sites and
+    contexts; the caves' ones are in cave_sites and cave_contexts."""
+    forest = _merge_closures(("story.json", "layouts.json", "ocean.json"))
+    caves = _merge_closures(("story_caves.json", "layouts_caves.json"))
 
-    def site_key(site):
-        path, lines = site.rsplit(":", 1)
-        return path, int(lines.split("-")[0])
+    def order(entries):
+        return sorted(entries, key=lambda e: (min(_site_key(s) for s in e["sites"]), e["key"]))
 
-    ordered = sorted(merged.values(), key=lambda e: (min(site_key(s) for s in e["sites"]), e["key"]))
+    ordered = order(forest.values()) + order(e for k, e in caves.items() if k not in forest)
     for i, e in enumerate(ordered):
+        cave = caves.get(e["key"])
         e["id"] = i
-        e["sites"] = sorted(e["sites"], key=site_key)
+        e["forest"] = e["key"] in forest
+        e["cave_sites"] = sorted(cave["sites"], key=_site_key) if cave else []
+        e["cave_contexts"] = sorted(cave["contexts"]) if cave else []
+        e["sites"] = sorted(e["sites"], key=_site_key)
         e["contexts"] = sorted(e["contexts"])
     return ordered
 
@@ -183,23 +240,29 @@ def closure_id(key):
     return {c["key"]: c["id"] for c in closures()}[key]
 
 
-@lru_cache(maxsize=None)
-def weights():
-    """Distinct distribute weights (doubles), sorted; rows of data/rooms.bend's weights table."""
+def _weights(story, distribute):
     values = set()
-    for r in blob.sidecar("story.json")["rooms"]:
+    for r in story["rooms"]:
         for depth in ("depth1", "depth2"):
             for e in ((r["contents"].get(depth) or {}).get("distributeprefabs") or {}).get("entries", []):
                 v = e["value"]
                 values.add(float(v["weight"]) if isinstance(v, dict) else float(v))
-    d = blob.sidecar("distribute.json")
-    for v in d["variants"]:
+    for v in distribute["variants"]:
         values.update(float(e["value"]) for e in v["entries"])
-    for p in d["picks"]:
+    for p in distribute["picks"]:
         values.update(float(e["value"]) for e in p)
-    for o in d["ocean"]:
+    for o in distribute["ocean"]:
         values.update(float(e["value"]) for e in o.get("entries", []))
-    return sorted(values)
+    return values
+
+
+@lru_cache(maxsize=None)
+def weights():
+    """Distinct distribute weights (doubles): the forest's sorted, then those only the caves have, sorted; rows of
+    data/rooms.bend's weights table."""
+    forest = _weights(blob.sidecar("story.json"), blob.sidecar("distribute.json"))
+    caves = _weights(blob.sidecar("story_caves.json"), blob.sidecar("distribute_caves.json"))
+    return sorted(forest) + sorted(caves - forest)
 
 
 def weight_id(v):

@@ -345,10 +345,16 @@ def pumpkin_drawn(got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (_, s) = got
   (names(lits(30)), s)
 
-def placed_area(+obj: Obj) -> List<&2, Res>:
+def placed_at(+id: U32, +obj: Obj) -> List<&2, Res>:
   match obj:
     case Obj{Pos{+x, +y, _}, _, _}:
-      [RPlaced{Blob.at(lits(29), 0), x, y}]
+      [RPlaced{id, x, y}]
+
+def placed_area(+obj: Obj) -> List<&2, Res>:
+  placed_at(Blob.at(lits(29), 0), obj)
+
+def placed_cookpot(+obj: Obj) -> List<&2, Res>:
+  placed_at(Blob.at(lits(136), 0), obj)
 
 def cooking_drawn(got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+xs, s) = got
@@ -473,9 +479,74 @@ def area_low(low: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> L
     case False{}:
       area_mid((c >= 24 : U32), c, area, obj, s)
 
+def scaled_count(+scale: F64Repr.F64, +area: F64Repr.F64) -> U32:
+  F64Repr.to_i32(F64Repr.floor(F64Arith.mul(area, scale)))
+
+def dups_scaled(+scale: F64Repr.F64, +area: F64Repr.F64, +xs: List<&2, U32>, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  as_res(dups(scaled_count(scale, area), xs, s))
+
+def worm_spawners_drawn(got: List<&2, U32> & Pcg.Rng, +lures: List<&2, U32>) -> List<&2, Res> & Pcg.Rng:
+  (+spawners, s) = got
+  (names(List.append(&2, U32, lures, spawners)), s)
+
+def worm_lures_drawn(got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  (+lures, s) = got
+  worm_spawners_drawn(dups(3, part(140, 1, 1), s), lures)
+
+def placed_if(got: Bool & Pcg.Rng, +obj: Obj) -> List<&2, Res> & Pcg.Rng:
+  (+hit, s) = got
+  (Bool.pick(List<&2, Res>, hit, placed_cookpot(obj), Nil{}), s)
+
+def cave_area_b(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  match c:
+    case 133:
+      dups_scaled(F64Repr.F64{1070596096, 0}, area, lits(c), s)
+    case 134:
+      only_if(chance(s, 1, 5), Blob.at(lits(c), 0))
+    case 135:
+      only_if(chance(s, 1, 2), Blob.at(lits(c), 0))
+    case 136:
+      placed_if(chance(s, 1, 5), obj)
+    case 137:
+      only_if(chance(s, 2, 25), Blob.at(lits(c), 0))
+    case 138:
+      only_if(chance(s, 1, 4), Blob.at(lits(c), 0))
+    case 121:
+      (names(lits(c)), s)
+    case 139:
+      (names(lits(c)), s)
+    case _:
+      (Nil{}, s)
+
+# The caves' layout area closures 117-122 (layouts.lua), 132-138 (maze_layouts.lua) and 139-140 (pointsofinterest.lua,
+# protected_resources.lua).
+def cave_area(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  match c:
+    case 117:
+      dups_scaled(F64Repr.half(), area, lits(c), s)
+    case 118:
+      dups_scaled(F64Repr.F64{1070176665, 2576980378}, area, lits(c), s)
+    case 119:
+      dups_scaled(F64Repr.F64{1071225241, 2576980378}, area, lits(c), s)
+    case 120:
+      dups_scaled(F64Repr.F64{1070805811, 858993459}, area, lits(c), s)
+    case 122:
+      as_res(dups(15, lits(c), s))
+    case 140:
+      worm_lures_drawn(dups(10, part(c, 0, 1), s))
+    case _:
+      cave_area_b(c, area, obj, s)
+
+def area_dispatch(cave: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  match cave:
+    case True{}:
+      cave_area(c, area, obj, s)
+    case False{}:
+      area_low((c < 13 : U32), c, area, obj, s)
+
 # A layout area closure (data/closures.bend category 2) called as area_contents(width * height, data).
 def area_run(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
-  area_low((c < 13 : U32), c, area, obj, s)
+  area_dispatch((c >= 117 : U32), c, area, obj, s)
 
 # ConvertLayoutToEntitylist's areas: every area object in pairs(layout.layout) x ipairs order, its contents, and
 # their positions (x then y: (c - size / 2) + math.random() * size), collected into to_add.

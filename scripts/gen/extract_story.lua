@@ -101,6 +101,7 @@ for _, name in ipairs(task_names) do
         cove_room_chance = task.cove_room_chance,
         cove_room_max_edges = task.cove_room_max_edges,
         maze_tiles = task.maze_tiles and value_of(task.maze_tiles) or nil,
+        maze_tile_size = task.maze_tile_size,
         crosslink_factor = task.crosslink_factor,
         make_loop = task.make_loop,
         room_tags = task.room_tags and sequence_info(task.room_tags) or nil,

@@ -19,49 +19,52 @@ import ./state.bend as PopulateState
 # the map tag items, then the distributed prefabs, each through Node:AddEntity (dropped off land, else ReserveTile
 # and a position with the random offset).
 
-def found_kind(xs: List<&2, PopulateNodes.Count>, found: Bool, +prefab: U32, +kind: U32) -> U32:
+def closure_of(+kind: U32, +value: U32) -> U32:
+  Bool.pick(U32, U32.is_eq(kind, 1), value, 0)
+
+def found_data(xs: List<&2, PopulateNodes.Count>, found: Bool, +prefab: U32, +closure: U32) -> U32:
   match xs:
     case Nil{}:
-      Bool.pick(U32, found, kind, 0)
-    case Con{PopulateNodes.Count{+k, +v, _}, rest}:
+      Bool.pick(U32, found, closure, 0)
+    case Con{PopulateNodes.Count{+k, +kind, +v}, rest}:
       match found:
         case True{}:
-          kind
+          closure
         case False{}:
-          found_kind(rest, U32.is_eq(k, prefab), prefab, v)
+          found_data(rest, U32.is_eq(k, prefab), prefab, closure_of(kind, v))
 
-# The prefabdata value kind for a prefab (1 = a closure to call), 0 when it has none.
-def data_kind(+xs: List<&2, PopulateNodes.Count>, +prefab: U32) -> U32:
-  found_kind(xs, False{}, prefab, 0)
+# The prefabdata closure (data/closures.bend id) for a prefab, 0 when it has none.
+def data_closure(+xs: List<&2, PopulateNodes.Count>, +prefab: U32) -> U32:
+  found_data(xs, False{}, prefab, 0)
 
-def placed(got: Grid.Grid & Bool, +c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +kind: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
+def placed(got: Grid.Grid & Bool, +c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +closure: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   (g, _) = got
   match p:
     case Points.Pt{+x, +y, _}:
       +e = Entities.tile_entity(prefab, x, y, PopulateState.width_of(c), PopulateState.height_of(c), True{}, rng)
-      PopulateState.added_in(c, PopulateState.Land{g, rng, ents, events}, Entities.with_rng(e, PopulateCounts.prefab_data_call(kind, Entities.rng_of(e))))
+      PopulateState.added_in(c, PopulateState.Land{g, rng, ents, events}, Entities.with_rng(e, PopulateCounts.prefab_data_call(closure, Entities.rng_of(e))))
 
-def add_on(land: Bool, g: Grid.Grid, +c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +kind: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
+def add_on(land: Bool, g: Grid.Grid, +c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +closure: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   match land:
     case False{}:
       PopulateState.Land{g, rng, ents, events}
     case True{}:
       match p:
         case Points.Pt{+x, +y, +t}:
-          placed(Points.reserve_tile(g, x, y), c, prefab, Points.Pt{x, y, t}, kind, rng, ents, events)
+          placed(Points.reserve_tile(g, x, y), c, prefab, Points.Pt{x, y, t}, closure, rng, ents, events)
 
-def add_tile(got: Grid.Grid & U32, +c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +kind: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
+def add_tile(got: Grid.Grid & U32, +c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +closure: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   (g, +tile) = got
-  add_on(TileGroups.is_land(tile), g, c, prefab, p, kind, rng, ents, events)
+  add_on(TileGroups.is_land(tile), g, c, prefab, p, closure, rng, ents, events)
 
-# Node:AddEntity with rand_offset: GetTile, then PopulateWorld_AddEntity on land (`kind` 1: call the prefabdata
-# closure after the offsets).
-def add_entity(+c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +kind: U32, l: PopulateState.Land) -> PopulateState.Land:
+# Node:AddEntity with rand_offset: GetTile, then PopulateWorld_AddEntity on land (a prefabdata `closure` is called after the
+# offsets).
+def add_entity(+c: PopulateState.Ctx, +prefab: U32, +p: Points.Pt, +closure: U32, l: PopulateState.Land) -> PopulateState.Land:
   match p:
     case Points.Pt{+x, +y, +t}:
       match l:
         case PopulateState.Land{g, +rng, +ents, +events}:
-          add_tile(Points.get_tile(g, x, y), c, prefab, Points.Pt{x, y, t}, kind, rng, ents, events)
+          add_tile(Points.get_tile(g, x, y), c, prefab, Points.Pt{x, y, t}, closure, rng, ents, events)
 
 def point_tile(+p: Points.Pt) -> U32:
   match p:
@@ -72,7 +75,7 @@ def point_tile(+p: Points.Pt) -> U32:
 type Walk is Type:
   Walk{land: PopulateState.Land, pts: List<&2, Points.Pt>, alive: Bool}
 
-def place_count(n: Nat, w: Walk, +c: PopulateState.Ctx, +prefab: U32, +kind: U32) -> Walk:
+def place_count(n: Nat, w: Walk, +c: PopulateState.Ctx, +prefab: U32, +closure: U32) -> Walk:
   match n:
     case 0n:
       w
@@ -83,7 +86,7 @@ def place_count(n: Nat, w: Walk, +c: PopulateState.Ctx, +prefab: U32, +kind: U32
             case Nil{}:
               Walk{l, Nil{}, alive}
             case Con{+pt, rest}:
-              place_count(p, Walk{add_entity(c, prefab, pt, kind, l), rest, alive}, c, prefab, kind)
+              place_count(p, Walk{add_entity(c, prefab, pt, closure, l), rest, alive}, c, prefab, closure)
 
 def still(w: Walk) -> Walk:
   match w:
@@ -115,9 +118,9 @@ def place_counts(keys: List<&2, U32>, w: Walk, +counts: List<&2, Counted>, +data
             case False{}:
               Walk{l, pts, False{}}
             case True{}:
-              +kind = data_kind(data, key)
+              +closure = data_closure(data, key)
               +n = found_count(counts, False{}, key, 0)
-              place_counts(rest, still(place_count(U32.to_nat(n), Walk{l, pts, True{}}, c, key, kind)), counts, data, c)
+              place_counts(rest, still(place_count(U32.to_nat(n), Walk{l, pts, True{}}, c, key, closure)), counts, data, c)
 
 type Evaluated is Data:
   Evaluated{counts: List<&2, Counted>, total: U32, rng: Pcg.Rng}
@@ -196,11 +199,11 @@ def distribute_add(skip: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +pr
     case True{}:
       l
     case False{}:
-      add_entity(c, prefab, pt, data_kind(data, prefab), l)
+      add_entity(c, prefab, pt, data_closure(data, prefab), l)
 
-def distribute_pick(got: U32 & Pcg.Rng, l: PopulateState.Land, +c: PopulateState.Ctx, +pt: Points.Pt, +kind_of: List<&2, PopulateNodes.Count>) -> PopulateState.Land:
+def distribute_pick(got: U32 & Pcg.Rng, l: PopulateState.Land, +c: PopulateState.Ctx, +pt: Points.Pt, +data_of: List<&2, PopulateNodes.Count>) -> PopulateState.Land:
   (+prefab, rng) = got
-  distribute_add(U32.is_eq(prefab, 4294967295), PopulateState.with_rng(l, rng), c, prefab, pt, kind_of)
+  distribute_add(U32.is_eq(prefab, 4294967295), PopulateState.with_rng(l, rng), c, prefab, pt, data_of)
 
 # pickspawnprefab's prepared items per tile seen so far in the node (the variant is fixed per node).
 type Cached is Data:
@@ -332,9 +335,12 @@ def populate_body(skip: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +nod
         case PopulateState.Land{g, +rng, +ents, +events}:
           populate_points(Points.points_for_site(PopulateState.windows_of(c), PopulateState.sites_of(c), PopulateState.site_of(c, node), g, rng), c, node, rng, ents, events)
 
-def skipped(+s: StoryGraph.St, +node: U32) -> Bool:
+def contentless(+s: StoryGraph.St, +node: U32) -> Bool:
   +none = Bool.not(PopulateNodes.has_countprefabs(s, node)) && Bool.not(PopulateNodes.has_distribute(s, node))
   StoryData.is_impassable(PopulateNodes.tile(s, node)) || Bool.not(PopulateNodes.has_contents(s, node)) || none
+
+def skipped(+s: StoryGraph.St, +node: U32) -> Bool:
+  PopulateNodes.has_custom_tiles(s, node) || contentless(s, node)
 
 def noted_node(got: PopulateState.Land & Pcg.Rng, +node: U32, +before: Pcg.Rng) -> PopulateState.Land:
   (l, +after) = got

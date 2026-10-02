@@ -35,7 +35,7 @@ def piece_specials(+i: U32) -> List<&2, U32>:
 
 # Row room: its tags (ipairs order) as rows of data/rooms.bend's maptags table.
 def room_maptags_count() -> U32:
-  68
+  168
 
 def room_maptags_chunk(+c: U32) -> String:
   match c:
@@ -44,7 +44,13 @@ def room_maptags_chunk(+c: U32) -> String:
     case 1:
       "𐀂𐀎𐀉𐀀𐀂𐀊𐀔𐀂𐀊𐀔𐀂𐀊𐀔𐀃𐀅𐀄𐀁𐀀𐀃𐀅𐀄𐀁𐀃𐀅𐀄𐀁𐀀𐀁𐀊𐀀𐀂𐀇𐀊𐀀𐀁𐀊𐀀𐀀𐀁𐀊𐀂𐀆𐀊𐀀𐀀𐀀𐀀𐀀𐀁𐀎𐀁𐀎𐀃𐀅𐀄𐀀𐀀𐀃𐀅𐀄𐀀𐀃𐀅𐀄𐀁𐀀𐀀"
     case 2:
-      "𐀀𐀀𐀀𐀂𐀆𐀊"
+      "𐀀𐀀𐀀𐀂𐀆𐀊𐀁𐀝𐀃𐀛𐀊𐀏𐀃𐀇𐀚𐀊𐀃𐀛𐀊𐀗𐀃𐀇𐀚𐀊𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀝𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀞𐀁𐀗𐀁𐀗𐀁𐀝𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀝𐀁𐀗𐀁𐀗𐀁𐀗"
+    case 3:
+      "𐀃𐀆𐀊𐀝𐀁𐀝𐀀𐀁𐀗𐀁𐀞𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀂𐀘𐀝𐀃𐀆𐀙𐀝𐀁𐀗𐀁𐀗𐀁𐀗𐀃𐀆𐀛𐀝𐀂𐀚𐀝𐀁𐀗𐀀𐀁𐀖𐀁𐀗𐀀𐀀"
+    case 4:
+      "𐀀𐀀𐀀𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀞𐀁𐀗𐀁𐀗𐀂𐀚𐀝𐀃𐀆𐀛𐀝𐀁𐀝𐀁𐀝𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀀𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀝𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀁𐀗𐀀"
+    case 5:
+      "𐀀𐀀𐀀𐀁𐀝𐀁𐀞𐀂𐀅𐀞𐀁𐀗𐀁𐀗"
     case _:
       ""
 
@@ -53,7 +59,7 @@ def room_maptags(+i: U32) -> List<&2, U32>:
 
 # Row closure id (data/closures.bend), for the task room_choices count closures: shape 0 = a + math.random(b) - c (no draw when b = 0), shape 1 = (math.random() < p) and c or d, p's exact threshold as units a, b. Other rows are empty.
 def count_closures_count() -> U32:
-  117
+  150
 
 def count_closures_chunk(+c: U32) -> String:
   match c:
@@ -64,7 +70,9 @@ def count_closures_chunk(+c: U32) -> String:
     case 2:
       "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
     case 3:
-      "𐀀𐀀𐀅𐀀𐀁𐀃𐀀𐀀𐀅𐀀𐀁𐀀𐀀𐀀𐀅𐀀𐀀𐀃𐀀𐀀𐀅𐀀𐀅𐀃𐀀𐀀𐀅𐀀𐀀𐀃𐀁𐀀𐀅𐀀𐀃𐀃𐀀𐀀𐀅𐀁𕑺𞅈𐀂𐀁𐀅𐀁𘀀𐀀𐀂𐀁𐀅𐀀𐀂𐀃𐀀𐀀𐀅𐀀𐀃𐀂𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+      "𐀀𐀀𐀅𐀀𐀁𐀃𐀀𐀀𐀅𐀀𐀁𐀀𐀀𐀀𐀅𐀀𐀀𐀃𐀀𐀀𐀅𐀀𐀅𐀃𐀀𐀀𐀅𐀀𐀀𐀃𐀁𐀀𐀅𐀀𐀃𐀃𐀀𐀀𐀅𐀁𕑺𞅈𐀂𐀁𐀅𐀁𘀀𐀀𐀂𐀁𐀅𐀀𐀂𐀃𐀀𐀀𐀅𐀀𐀃𐀂𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
+    case 4:
+      "𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀𐀀"
     case _:
       ""
 
