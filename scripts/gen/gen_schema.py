@@ -19,6 +19,7 @@ from gen_cave_catalog import Catalog  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "scripts" / "catalog" / "catalog.json"
+CAVE_CATALOG = ROOT / "scripts" / "catalog" / "cave_catalog.json"
 OUTPUT = ROOT / "config.schema.json"
 FILTERS = ROOT / "seedfinder" / "filters"
 SPEC = ROOT / "docs" / "config.md"
@@ -85,8 +86,8 @@ def rules(rule):
     return {"type": "array", "maxItems": CAPS["rules"], "items": ref(rule)}
 
 
-def metric_fields():
-    return {"metric": ref("metric"), "wormholes": {"type": "boolean", "default": False}}
+def metric_fields(links="wormholes"):
+    return {"metric": ref("metric"), links: {"type": "boolean", "default": False}}
 
 
 def names(catalog):
@@ -145,6 +146,7 @@ def cave_names():
     return cat, {
         "caveTaskId": sorted(cat.tasks),
         "caveSetPieceName": sorted(name for name in cat.keys),
+        "cavePrefabId": sorted(prefab["id"] for prefab in json.loads(CAVE_CATALOG.read_text(encoding="utf-8"))["prefabs"]),
     }
 
 
@@ -162,13 +164,29 @@ def cave_definitions():
             "tasks": ref("caveTaskList"),
             "required": {"type": "object", "maxProperties": CAPS["set pieces"],
                          "propertyNames": ref("caveSetPieceName"), "additionalProperties": ref("bound")}}),
+        "cavePrefabs": one_or_list("cavePrefabId", CAPS["prefab ids"], "A caves prefab id or a list of them (their union)."),
+        "caveNear": closed({"prefab": ref("cavePrefabs"), "within": ref("distance"), **metric_fields("pillars")},
+                           ("prefab", "within")),
+        "caveCountRule": closed({"prefab": ref("cavePrefabs"), "min": ref("uint32"), "max": ref("uint32"),
+                                 "near": ref("caveNear")}, ("prefab",)),
+        "caveDistanceRule": closed({"from": ref("cavePrefabs"), "to": ref("cavePrefabs"), "min": ref("distance"),
+                                    "max": ref("distance"), **metric_fields("pillars")}, ("from", "to")),
+        "caveRouteRule": closed({"from": ref("cavePrefabs"),
+                                 "visit": {"type": "array", "minItems": 1, "maxItems": CAPS["stops"],
+                                           "items": ref("cavePrefabs")},
+                                 "to": ref("cavePrefabs"), "max": ref("distance"),
+                                 "order": {"enum": list(ORDERS), "default": "any"}, **metric_fields("pillars")},
+                                ("from", "visit", "max")),
         "caveEntry": closed({"passive": {"type": "boolean", "default": False,
                                          "description": "Only decided on candidates of the entries that aren't "
                                                         "passive."},
                              "tasks": ref("caveTasks"), "prefab_swaps": ref("cavePrefabSwaps"),
-                             "setpieces": rules("caveSetPieceRule")},
-                            description="All sections and all rules must hold (AND). The caves shard only has the "
-                                        "level table sections for now."),
+                             "setpieces": rules("caveSetPieceRule"), "counts": rules("caveCountRule"),
+                             "distances": rules("caveDistanceRule"), "tiles": rules("tileRule"),
+                             "routes": rules("caveRouteRule")},
+                            description="All sections and all rules must hold (AND). Counts, distances and routes "
+                                        "use the caves' prefabs, and `pillars` lets a distance use the tentacle "
+                                        "pillar links."),
     }
 
 

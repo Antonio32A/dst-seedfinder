@@ -3,15 +3,17 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Toggle from "@/components/ui/Toggle";
 import {
-    PICKER_GROUPS,
     type PickerEntry,
+    pickerGroups,
     prefabCountText,
     type PrefabFamily,
     prefabName,
     prefabTags
 } from "@/lib/catalog/prefab-sets";
-import { NAMED_ANCHORS, PREFAB_BY_ID, type WorldPrefab } from "@/lib/catalog/world";
-import { MAX_PREFAB_IDS } from "@/lib/config/seedfinder-config";
+import { shardCatalog } from "@/lib/catalog/shard-catalog";
+import type { WorldPrefab } from "@/lib/catalog/world";
+import { MAX_PREFAB_IDS, type Shard } from "@/lib/config/seedfinder-config";
+import { useWorldShard } from "./WorldShard";
 
 export type Blocked = (id: string) => string | undefined;
 
@@ -30,7 +32,15 @@ interface Draft {
     toggle: (ids: string[], on: boolean) => void;
 }
 
-const ANCHOR_PREFABS: WorldPrefab[] = NAMED_ANCHORS.flatMap((anchor) => PREFAB_BY_ID.get(anchor.id) ?? []);
+const anchorPrefabs = (shard: Shard): WorldPrefab[] => {
+    const { anchors, byId } = shardCatalog(shard);
+    return anchors.flatMap((anchor) => byId.get(anchor.id) ?? []);
+};
+
+const SEARCH_EXAMPLES: Record<Shard, string> = {
+    forest: "Search, e.g. beefalo, boulder, pig king",
+    caves: "Search, e.g. rabbit, slurper, ancient guardian"
+};
 
 const matches = (needle: string, ...texts: string[]) => needle === "" || texts.some((text) => text.toLowerCase().includes(needle));
 
@@ -53,7 +63,7 @@ function Checkbox({ checked, mixed = false, disabled, onChange }: {
     );
 }
 
-function PrefabOption({ prefab, draft }: { prefab: WorldPrefab; draft: Draft }) {
+function PrefabOption({ prefab, draft, shard }: { prefab: WorldPrefab; draft: Draft; shard: Shard }) {
     const checked = draft.ids.includes(prefab.id);
     const reason = draft.blocked(prefab.id);
     const counts = prefabCountText(prefab);
@@ -63,7 +73,7 @@ function PrefabOption({ prefab, draft }: { prefab: WorldPrefab; draft: Draft }) 
                     <Checkbox checked={checked} disabled={!checked && (reason !== undefined || draft.full)}
                               onChange={(on) => draft.toggle([prefab.id], on)}/>
                     <span className="pick__text">
-          <span className="pick__name">{prefabName(prefab.id)}</span>
+          <span className="pick__name">{prefabName(prefab.id, shard)}</span>
                         {[...(reason ? [reason] : []), ...prefabTags(prefab)].map((tag) => (
                                 <span key={tag} className="tag">
               {tag}
@@ -76,11 +86,12 @@ function PrefabOption({ prefab, draft }: { prefab: WorldPrefab; draft: Draft }) 
     );
 }
 
-function FamilyOption({ family, members, draft, open }: {
+function FamilyOption({ family, members, draft, open, shard }: {
     family: PrefabFamily;
     members: WorldPrefab[];
     draft: Draft;
-    open: boolean
+    open: boolean;
+    shard: Shard
 }) {
     const [expanded, setExpanded] = useState<boolean>();
     const free = members.filter((member) => !draft.blocked(member.id)).map((member) => member.id);
@@ -105,7 +116,7 @@ function FamilyOption({ family, members, draft, open }: {
                 {shown && (
                         <ul className="picker__items picker__items--nested">
                             {members.map((member) => (
-                                    <PrefabOption key={member.id} prefab={member} draft={draft}/>
+                                    <PrefabOption key={member.id} prefab={member} draft={draft} shard={shard}/>
                             ))}
                         </ul>
                 )}
@@ -125,10 +136,10 @@ function GroupToggle({ ids, draft }: { ids: string[]; draft: Draft }) {
     );
 }
 
-function visibleEntries(entries: PickerEntry[], needle: string, groupName: string, listed: (prefab: WorldPrefab) => boolean): PickerEntry[] {
+function visibleEntries(entries: PickerEntry[], needle: string, groupName: string, listed: (prefab: WorldPrefab) => boolean, shard: Shard): PickerEntry[] {
     return entries.flatMap((entry) => {
         const members = entry.family ? entry.members : [entry.prefab];
-        const label = entry.family ? entry.family.label : prefabName(entry.prefab.id);
+        const label = entry.family ? entry.family.label : prefabName(entry.prefab.id, shard);
         const reachable = members.filter(listed);
         if (reachable.length === 0 || !matches(needle, groupName, label, ...members.flatMap((member) => [member.name, member.id]))) return [];
         if (!entry.family || reachable.length === entry.members.length) return [entry];
@@ -136,15 +147,15 @@ function visibleEntries(entries: PickerEntry[], needle: string, groupName: strin
     });
 }
 
-function EntryList({ entries, draft, open }: { entries: PickerEntry[]; draft: Draft; open: boolean }) {
+function EntryList({ entries, draft, open, shard }: { entries: PickerEntry[]; draft: Draft; open: boolean; shard: Shard }) {
     return (
             <ul className="picker__items">
                 {entries.map((entry) =>
                         entry.family ? (
                                 <FamilyOption key={entry.family.label} family={entry.family} members={entry.members}
-                                              draft={draft} open={open}/>
+                                              draft={draft} open={open} shard={shard}/>
                         ) : (
-                                <PrefabOption key={entry.prefab.id} prefab={entry.prefab} draft={draft}/>
+                                <PrefabOption key={entry.prefab.id} prefab={entry.prefab} draft={draft} shard={shard}/>
                         )
                 )}
             </ul>
@@ -158,6 +169,8 @@ export default function PrefabPicker({
                                          onDone,
                                          onClose
                                      }: PrefabPickerProps) {
+    const shard = useWorldShard();
+    const { byId } = shardCatalog(shard);
     const dialog = useRef<HTMLDialogElement>(null);
     const search = useRef<HTMLInputElement>(null);
     const titleId = useId();
@@ -173,13 +186,13 @@ export default function PrefabPicker({
     const needle = query.trim().toLowerCase();
     const groups = useMemo(() => {
         const listed = (prefab: WorldPrefab) => showAll || !prefab.unreachable || selected.includes(prefab.id);
-        return PICKER_GROUPS.map((group) => ({
+        return pickerGroups(shard).map((group) => ({
             group,
-            entries: visibleEntries(group.entries, needle, group.name, listed),
-            addable: group.pickable ? group.ids.filter((id) => showAll || !PREFAB_BY_ID.get(id)?.unreachable) : []
+            entries: visibleEntries(group.entries, needle, group.name, listed, shard),
+            addable: group.pickable ? group.ids.filter((id) => showAll || !byId.get(id)?.unreachable) : []
         })).filter(({ entries }) => entries.length > 0);
-    }, [needle, showAll, selected]);
-    const anchors = ANCHOR_PREFABS.filter((prefab) => matches(needle, prefabName(prefab.id), prefab.name, prefab.id));
+    }, [needle, showAll, selected, shard, byId]);
+    const anchors = anchorPrefabs(shard).filter((prefab) => matches(needle, prefabName(prefab.id, shard), prefab.name, prefab.id));
 
     const draft: Draft = {
         ids,
@@ -199,7 +212,7 @@ export default function PrefabPicker({
                         </button>
                     </div>
                     <input type="search" aria-label="Search things in the world"
-                           placeholder="Search, e.g. beefalo, boulder, pig king" value={query}
+                           placeholder={SEARCH_EXAMPLES[shard]} value={query}
                            onChange={(event) => setQuery(event.target.value)} ref={search}/>
                     <div className="picker__bar">
           <span className="counter" aria-live="polite">
@@ -221,7 +234,7 @@ export default function PrefabPicker({
                                 <h4>Common places</h4>
                                 <ul className="picker__items">
                                     {anchors.map((prefab) => (
-                                            <PrefabOption key={prefab.id} prefab={prefab} draft={draft}/>
+                                            <PrefabOption key={prefab.id} prefab={prefab} draft={draft} shard={shard}/>
                                     ))}
                                 </ul>
                             </section>
@@ -232,7 +245,7 @@ export default function PrefabPicker({
                                     <h4>{group.name}</h4>
                                     {addable.length > 1 && <GroupToggle ids={addable} draft={draft}/>}
                                 </div>
-                                <EntryList entries={entries} draft={draft} open={needle !== ""}/>
+                                <EntryList entries={entries} draft={draft} open={needle !== ""} shard={shard}/>
                             </section>
                     ))}
                 </div>

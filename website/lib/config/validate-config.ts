@@ -1,7 +1,8 @@
 import { CAVE_SWAPS } from "@/lib/catalog/cave-vocab";
 import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { SWAPS } from "@/lib/catalog/level";
-import { LAND_TILES, NON_LAND_TILE_NAMES, PREFAB_BY_ID, PREFAB_GROUP_IDS, PREFAB_VARIANTS } from "@/lib/catalog/world";
+import { shardCatalog } from "@/lib/catalog/shard-catalog";
+import { LAND_TILES, NON_LAND_TILE_NAMES, PREFAB_GROUP_IDS, PREFAB_VARIANTS } from "@/lib/catalog/world";
 import { hasAtMostTwoDecimals, MAX_MAX_COST, MIN_MAX_COST, roundCredits } from "@/lib/jobs/credits";
 import { isRecord } from "@/lib/records";
 import {
@@ -9,6 +10,7 @@ import {
     DEFAULT_PLATFORM,
     DEFAULT_SHARD,
     type JobRequest,
+    LINKS_KEY,
     MAX_CRITERIA,
     MAX_DISTANCE,
     MAX_PREFAB_IDS,
@@ -32,13 +34,18 @@ import {
 
 const LAND_TILE_NAMES: ReadonlySet<string> = new Set(LAND_TILES.map((tile) => tile.name));
 const TILE_NAMES: ReadonlySet<string> = new Set([...LAND_TILE_NAMES, ...NON_LAND_TILE_NAMES]);
-const PREFAB_GROUP_NAMES: ReadonlySet<string> = new Set(
-    [...PREFAB_GROUP_IDS, ...PREFAB_VARIANTS.keys()].filter((name) => !PREFAB_BY_ID.has(name))
-);
+const PREFAB_GROUP_NAMES: Record<Shard, ReadonlySet<string>> = {
+    forest: new Set([...PREFAB_GROUP_IDS, ...PREFAB_VARIANTS.keys()].filter((name) => !shardCatalog("forest").byId.has(name))),
+    caves: new Set([...PREFAB_GROUP_IDS, ...variantsOf("caves")].filter((name) => !shardCatalog("caves").byId.has(name)))
+};
 const SWAP_OPTIONS: Record<Shard, ReadonlyMap<string, readonly string[]>> = {
     forest: new Map(SWAPS.map((swap) => [swap.id, swap.options.map((option) => option.id)])),
     caves: new Map(CAVE_SWAPS.map((swap) => [swap.category, swap.options]))
 };
+
+function variantsOf(shard: Shard): string[] {
+    return shardCatalog(shard).prefabs.flatMap(({ variantOf }) => (variantOf ? [variantOf] : []));
+}
 
 class ValidationError extends Error {
 }
@@ -133,14 +140,15 @@ const taskListOf = (catalog: LevelCatalog) =>
         "tasks"
     );
 
-const prefabSet = nameSetOf(
-    (prefab, path) =>
-        PREFAB_BY_ID.has(prefab) ||
-        fail(`unknown prefab ${quoted(prefab)} in ${path}${PREFAB_GROUP_NAMES.has(prefab) ? " (a catalog group name: list its prefab ids)" : ""}`),
-    MAX_PREFAB_IDS,
-    "prefab ids",
-    "must be a prefab id or a list of prefab ids"
-);
+const prefabSetOf = (shard: Shard) =>
+    nameSetOf(
+        (prefab, path) =>
+            shardCatalog(shard).byId.has(prefab) ||
+            fail(`unknown prefab ${quoted(prefab)} in ${path}${PREFAB_GROUP_NAMES[shard].has(prefab) ? " (a catalog group name: list its prefab ids)" : ""}`),
+        MAX_PREFAB_IDS,
+        "prefab ids",
+        "must be a prefab id or a list of prefab ids"
+    );
 
 const tileSet = nameSetOf(
     (tile, path) => {
@@ -176,67 +184,67 @@ const prefabSwapsOf =
             return Object.fromEntries(swaps);
         };
 
-const metricFields: Fields = { metric: optional(choiceOf(METRICS)), wormholes: optional(flag) };
+const metricFieldsOf = (shard: Shard): Fields => ({ metric: optional(choiceOf(METRICS)), [LINKS_KEY[shard]]: optional(flag) });
 
-const routeShape = objectOf({
-    from: required(prefabSet),
-    visit: required(listOf(prefabSet, MAX_ROUTE_STOPS, "stops", MIN_ROUTE_STOPS)),
-    to: optional(prefabSet),
-    max: required(distance),
-    order: optional(choiceOf(ROUTE_ORDERS)),
-    ...metricFields
-});
+const routeShapeOf = (shard: Shard) => {
+    const prefabSet = prefabSetOf(shard);
+    return objectOf({
+        from: required(prefabSet),
+        visit: required(listOf(prefabSet, MAX_ROUTE_STOPS, "stops", MIN_ROUTE_STOPS)),
+        to: optional(prefabSet),
+        max: required(distance),
+        order: optional(choiceOf(ROUTE_ORDERS)),
+        ...metricFieldsOf(shard)
+    });
+};
 
 const idsOf = (set: unknown): string[] => (set === undefined ? [] : ([] as string[]).concat(set as string | string[]));
 
-const route: Parse = (value, path) => {
-    const parsed = routeShape(value, path);
-    const stopOf = new Map<string, number>();
-    (parsed.visit as unknown[]).forEach((stop, index) =>
-        new Set(idsOf(stop)).forEach((prefab) => {
-            const earlier = stopOf.get(prefab);
-            if (earlier !== undefined) fail(`${path}: ${quoted(prefab)} is in both visit[${earlier}] and visit[${index}]`);
-            stopOf.set(prefab, index);
-        })
-    );
-    const endpoint = [...idsOf(parsed.from), ...idsOf(parsed.to)].filter((prefab) => stopOf.has(prefab)).sort()[0];
-    if (endpoint !== undefined) fail(`${path}: ${quoted(endpoint)} is both a visit stop and the route's from/to`);
-    return parsed;
+const routeOf = (shard: Shard): Parse => {
+    const routeShape = routeShapeOf(shard);
+    return (value, path) => {
+        const parsed = routeShape(value, path);
+        const stopOf = new Map<string, number>();
+        (parsed.visit as unknown[]).forEach((stop, index) =>
+            new Set(idsOf(stop)).forEach((prefab) => {
+                const earlier = stopOf.get(prefab);
+                if (earlier !== undefined) fail(`${path}: ${quoted(prefab)} is in both visit[${earlier}] and visit[${index}]`);
+                stopOf.set(prefab, index);
+            })
+        );
+        const endpoint = [...idsOf(parsed.from), ...idsOf(parsed.to)].filter((prefab) => stopOf.has(prefab)).sort()[0];
+        if (endpoint !== undefined) fail(`${path}: ${quoted(endpoint)} is both a visit stop and the route's from/to`);
+        return parsed;
+    };
 };
 
 const rules = (parse: Parse) => optional(listOf(parse, MAX_RULES_PER_SECTION, "rules"));
 
-const worldSections = {
-    counts: rules(
-        objectOf({
-            prefab: required(prefabSet),
-            min: optional(uint32),
-            max: optional(uint32),
-            near: optional(objectOf({ prefab: required(prefabSet), within: required(distance), ...metricFields }))
-        })
-    ),
-    distances: rules(
-        objectOf({
-            from: required(prefabSet),
-            to: required(prefabSet),
-            min: optional(distance),
-            max: optional(distance),
-            ...metricFields
-        })
-    ),
-    tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
-    routes: rules(route)
+const worldSectionsOf = (shard: Shard): Fields => {
+    const prefabSet = prefabSetOf(shard);
+    const metricFields = metricFieldsOf(shard);
+    return {
+        counts: rules(
+            objectOf({
+                prefab: required(prefabSet),
+                min: optional(uint32),
+                max: optional(uint32),
+                near: optional(objectOf({ prefab: required(prefabSet), within: required(distance), ...metricFields }))
+            })
+        ),
+        distances: rules(
+            objectOf({
+                from: required(prefabSet),
+                to: required(prefabSet),
+                min: optional(distance),
+                max: optional(distance),
+                ...metricFields
+            })
+        ),
+        tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
+        routes: rules(routeOf(shard))
+    };
 };
-
-const worldSectionsOn = (catalog: LevelCatalog): Fields =>
-    catalog.hasWorlds
-        ? worldSections
-        : Object.fromEntries(
-            Object.keys(worldSections).map((section) => [
-                section,
-                optional((_value, path) => fail(`${path} is not supported for the ${catalog.shard} shard yet (only tasks, prefab_swaps and setpieces are)`))
-            ])
-        );
 
 const criterionOf = (catalog: LevelCatalog) => {
     const taskList = taskListOf(catalog);
@@ -245,7 +253,7 @@ const criterionOf = (catalog: LevelCatalog) => {
         tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
         prefab_swaps: optional(prefabSwapsOf(catalog.shard)),
         setpieces: rules(objectOf({ tasks: optional(taskList), required: optional(setPieceBoundsOf(catalog)) })),
-        ...worldSectionsOn(catalog)
+        ...worldSectionsOf(catalog.shard)
     });
 };
 

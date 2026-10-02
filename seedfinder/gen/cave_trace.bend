@@ -629,4 +629,4 @@ def trace_loop(fuel: Nat, got: Tr & Next) -> Tr:
 # The stage's records for a seed on the platform; the input is the stream position the attempt starts from (empty for the first).
 def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
   GenTrace.lines_of(GenTrace.Tr{seed, 0, 0, 0, tr_chunks(trace_loop(256n,
-    (Tr{seed, 0, 0, Nil{}}, More{GenJob.start_caves(seed, windows, Maybe.default(&2, U32, U32.read(input), 0))})))})
+    (Tr{seed, 0, 0, Nil{}}, More{GenJob.start_caves(seed, windows, Maybe.default(&2, U32, U32.read(input), 0), False{})})))})

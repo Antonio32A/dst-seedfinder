@@ -115,7 +115,7 @@ def dump_story(bits: U32, +seed: U32, +a: U32, +s: StoryGraph.St) -> List<&2, St
 
 def marked_lines(m: CaveMaze.Mazed, +marks: List<&2, Pcg.Rng>, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
   match m:
-    case CaveMaze.Mazed{g, +rng, +ents}:
+    case CaveMaze.Mazed{g, +rng, +ents, _}:
       List.append(&2, String, Bool.pick(List<&2, String>, U32.is_zero((bits .&. 4 : U32)), Nil{}, [CaveDump.mazes_json(seed, a, marks, rng, ents)]),
         Bool.pick(List<&2, String>, U32.is_zero((bits .&. 8 : U32)), Nil{}, [CaveDump.tiles_line(seed, a, g, "after_mazes")]))
 
@@ -236,7 +236,7 @@ def job_of(caves: Bool, +seed: U32, +o: Options) -> GenJob.Job:
     case True{}:
       match o:
         case Options{+windows, _, _, _, _, +draws}:
-          GenJob.start_caves(seed, windows, draws)
+          GenJob.start_caves(seed, windows, draws, False{})
     case False{}:
       GenJob.start(seed, platform_of(o), False{})
 

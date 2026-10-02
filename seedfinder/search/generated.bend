@@ -1,5 +1,5 @@
 import Base
-import ../filters/config.bend as Config
+import ../filters/shard_search.bend as ShardSearch
 import ../filters/world.bend as FilterWorld
 import ../worldsim/layout/space.bend as LayoutSpace
 import ../gen/job.bend as GenJob
@@ -142,17 +142,15 @@ type Note is Data:
 # The per-run constants: scan start and length, hit limit, time limit, output mode, config, the start time, the slots
 # (seeds in flight), the KK engine and the channel the passes answer on.
 type Ctx is Data:
-  Ctx{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Config.Config, started: Nat, slots: U32, native: Bool, laid: Chan(Note)}
+  Ctx{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: ShardSearch.Search, started: Nat, slots: U32, native: Bool, laid: Chan(Note)}
 
-def config_of(+ctx: Ctx) -> Config.Config:
+def config_of(+ctx: Ctx) -> ShardSearch.Search:
   match ctx:
     case Ctx{_, _, _, _, _, +config, _, _, _, _}:
       config
 
-def windows_of(+config: Config.Config) -> Bool:
-  match config:
-    case Config.Config{+windows, _, _, _, _}:
-      windows
+def windows_of(+config: ShardSearch.Search) -> Bool:
+  ShardSearch.windows(config)
 
 def ctx_start(+ctx: Ctx) -> U32:
   match ctx:
@@ -174,10 +172,10 @@ def elapsed(+ctx: Ctx, +now: Nat) -> Nat:
     case Ctx{_, _, _, _, _, _, +started, _, _, _}:
       Nat.sub(now, started)
 
-def criteria_of(+ctx: Ctx) -> List<&2, Config.Criteria>:
+def criteria_of(+ctx: Ctx) -> ShardSearch.Levels:
   match ctx:
-    case Ctx{_, _, _, _, _, Config.Config{_, _, _, _, +scanned}, _, _, _, _}:
-      scanned
+    case Ctx{_, _, _, _, _, +config, _, _, _, _}:
+      ShardSearch.scanned(config)
 
 def slots_of(+ctx: Ctx) -> U32:
   match ctx:
@@ -189,10 +187,20 @@ def laid_of(+ctx: Ctx) -> Chan(Note):
     case Ctx{_, _, _, _, _, _, _, _, _, +laid}:
       laid
 
-def world_verdict(job: GenJob.Job, +config: Config.Config, +seed: U32) -> SearchWorlds.Verdict:
+def generated_in(caves: Bool, +windows: Bool, +seed: U32, final: GenJob.Final) -> Result<&1, &1, U32 & String, FilterWorld.Loaded>:
+  match caves:
+    case True{}:
+      FilterWorld.loaded_of(Done{SaveData.dump_caves(seed, windows, final)}, True{})
+    case False{}:
+      Done{FilterWorld.Generated{SaveData.world(seed, windows, final), 0}}
+
+def generated_world(+config: ShardSearch.Search, +seed: U32, final: GenJob.Final) -> Result<&1, &1, U32 & String, FilterWorld.Loaded>:
+  generated_in(ShardSearch.caves(config), ShardSearch.windows(config), seed, final)
+
+def world_verdict(job: GenJob.Job, +config: ShardSearch.Search, +seed: U32) -> SearchWorlds.Verdict:
   match job:
     case GenJob.JWorld{_, _, final}:
-      SearchWorlds.world_verdict(Done{FilterWorld.Generated{SaveData.world(seed, windows_of(config), final), 0}}, config, seed)
+      SearchWorlds.world_verdict(generated_world(config, seed, final), config, seed)
     case _:
       SearchWorlds.Miss{}
 
@@ -222,7 +230,7 @@ def asked(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +stage: U32
     case None{}:
       Cpu{seed, job, stage_cost(stage)}
 
-def settled_at(settled: Bool, job: GenJob.Job, +stage: U32, +config: Config.Config, +seed: U32) -> Slot:
+def settled_at(settled: Bool, job: GenJob.Job, +stage: U32, +config: ShardSearch.Search, +seed: U32) -> Slot:
   match settled:
     case True{}:
       Decided{seed, world_verdict(job, config, seed)}
@@ -230,7 +238,7 @@ def settled_at(settled: Bool, job: GenJob.Job, +stage: U32, +config: Config.Conf
       asked(GenJob.layout(job), seed, stage)
 
 # Where a job stands after its CPU work: decided, asking for a KK pass, or its next stage for the next round.
-def parked(got: GenJob.Job & GenJob.Where, +config: Config.Config, +seed: U32) -> Slot:
+def parked(got: GenJob.Job & GenJob.Where, +config: ShardSearch.Search, +seed: U32) -> Slot:
   (job, +at) = got
   match at:
     case GenJob.Where{+stage, _}:
@@ -258,7 +266,7 @@ def moved(got: GenJob.Job & GenJob.Where) -> GenJob.Job:
     case GenJob.Where{+stage, _}:
       moved_at(GenJob.settled(stage), job)
 
-def rushed(budget: Nat, job: GenJob.Job, +config: Config.Config, +seed: U32) -> Slot:
+def rushed(budget: Nat, job: GenJob.Job, +config: ShardSearch.Search, +seed: U32) -> Slot:
   match budget:
     case 0n:
       parked(GenJob.stage(job), config, seed)
@@ -286,7 +294,7 @@ def rush_cost() -> U32:
 
 # One stage transition per slot and round (or the resume after a pass), so the work of a round splits evenly; a
 # rushed seed runs on to its next pass or verdict.
-def work(slot: Slot, +config: Config.Config) -> Slot:
+def work(slot: Slot, +config: ShardSearch.Search) -> Slot:
   match slot:
     case Cpu{+seed, job, _}:
       parked(GenJob.stage(GenJob.step(job)), config, seed)
@@ -298,7 +306,7 @@ def work(slot: Slot, +config: Config.Config) -> Slot:
       other
 
 # The CPU work of every slot, both halves of each fork in parallel.
-def worked_all(s: Slots, +config: Config.Config) -> Slots:
+def worked_all(s: Slots, +config: ShardSearch.Search) -> Slots:
   match s:
     case Leaf{slot}:
       Leaf{work(slot, config)}
@@ -362,7 +370,7 @@ def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slo
         case other:
           merge(rest, done, (tag + 1 : U32), other <> acc, asked)
 
-def worked_slots(g: Gathered, +config: Config.Config) -> Merged:
+def worked_slots(g: Gathered, +config: ShardSearch.Search) -> Merged:
   match g:
     case Gathered{slots, todo, +costs}:
       merge(slots, flat(worked_all(tree_of(todo, costs), config)), 0, Nil{}, Nil{})
@@ -440,7 +448,14 @@ def harvest(xs: List<&1, Slot>, +done: List<&2, SearchWorlds.Judged>, acc: List<
 type Filled is Type:
   Filled{slots: List<&1, Slot>, pending: List<&2, U32>, first: Nat, busy: U32, ready: U32, positions: List<&2, Nat>}
 
-def fill(xs: List<&1, Slot>, +pending: List<&2, U32>, +windows: Bool, +start: U32, +first: Nat, +busy: U32, +ready: U32, +at: List<&2, Nat>, acc: List<&1, Slot>) -> Filled:
+def started_job(caves: Bool, +seed: U32, +windows: Bool) -> GenJob.Job:
+  match caves:
+    case True{}:
+      GenJob.start_caves(seed, windows, 0, False{})
+    case False{}:
+      GenJob.start(seed, windows, False{})
+
+def fill(xs: List<&1, Slot>, +pending: List<&2, U32>, +windows: Bool, +caves: Bool, +start: U32, +first: Nat, +busy: U32, +ready: U32, +at: List<&2, Nat>, acc: List<&1, Slot>) -> Filled:
   match xs:
     case Nil{}:
       Filled{List.reverse(&1, Slot, acc), pending, first, busy, ready, at}
@@ -450,20 +465,20 @@ def fill(xs: List<&1, Slot>, +pending: List<&2, U32>, +windows: Bool, +start: U3
           match pending:
             case Con{+seed, +more}:
               +p = SearchOrder.position(seed, start)
-              fill(rest, more, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, GenJob.start(seed, windows, False{}), stage_cost(0)} <> acc)
+              fill(rest, more, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, started_job(caves, seed, windows), stage_cost(0)} <> acc)
             case Nil{}:
-              fill(rest, Nil{}, windows, start, first, busy, ready, at, Free{} <> acc)
+              fill(rest, Nil{}, windows, caves, start, first, busy, ready, at, Free{} <> acc)
         case Cpu{+seed, job, +cost}:
           +p = SearchOrder.position(seed, start)
-          fill(rest, pending, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, job, cost} <> acc)
+          fill(rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, job, cost} <> acc)
         case Wait{+seed, job, +cost}:
           +p = SearchOrder.position(seed, start)
-          fill(rest, pending, windows, start, lesser(first, p), (busy + 1 : U32), ready, p <> at, Wait{seed, job, cost} <> acc)
+          fill(rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), ready, p <> at, Wait{seed, job, cost} <> acc)
         case Back{+seed, job, +ps, +cost}:
           +p = SearchOrder.position(seed, start)
-          fill(rest, pending, windows, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Back{seed, job, ps, cost} <> acc)
+          fill(rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Back{seed, job, ps, cost} <> acc)
         case other:
-          fill(rest, pending, windows, start, first, busy, ready, at, other <> acc)
+          fill(rest, pending, windows, caves, start, first, busy, ready, at, other <> acc)
 
 def inserted(+sorted: List<&2, Nat>, +x: Nat) -> List<&2, Nat>:
   match sorted:
@@ -546,7 +561,7 @@ def max_chunk() -> Nat:
 def round_seeds() -> Nat:
   16777216n
 
-def scanned_chunk(+sc: Scan, +criteria: List<&2, Config.Criteria>, +wanted: Nat) -> Scan:
+def scanned_chunk(+sc: Scan, +criteria: ShardSearch.Levels, +wanted: Nat) -> Scan:
   match sc:
     case Scan{+next, +left, +size, +pending}:
       +len = lesser(size, left)
@@ -565,7 +580,7 @@ def chunk_of(+sc: Scan) -> Nat:
       size
 
 # Scans part A chunk by chunk while candidates are short of `wanted`, up to round_seeds() seeds.
-def refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +criteria: List<&2, Config.Criteria>, +wanted: Nat) -> Scan:
+def refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +criteria: ShardSearch.Levels, +wanted: Nat) -> Scan:
   match n:
     case 0n:
       sc
@@ -578,7 +593,7 @@ def refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +criteria: List<&2, Conf
           +rest = Nat.sub(budget, chunk_of(sc))
           refilled(p, short(next, rest, wanted), next, rest, criteria, wanted)
 
-def refill(+sc: Scan, +criteria: List<&2, Config.Criteria>, +wanted: Nat) -> Scan:
+def refill(+sc: Scan, +criteria: ShardSearch.Levels, +wanted: Nat) -> Scan:
   refilled(64n, short(sc, round_seeds(), wanted), sc, round_seeds(), criteria, wanted)
 
 def covered(+sc: Scan, +ctx: Ctx) -> Nat:
@@ -792,7 +807,7 @@ def harvested(h: Harvested, +b: Book, +now: Nat, +ctx: Ctx) -> State:
       +room = Nat.sub(allowed(ctx, now), Nat.sub(U32.to_nat(book_busy(b)), List.length(&2, SearchWorlds.Judged, done)))
       +next = refill(book_scan(b), criteria_of(ctx), cap)
       +pending = pending_of(next)
-      filled_round(fill(slots, List.take(&2, U32, pending, room), windows_of(config_of(ctx)), ctx_start(ctx), covered(next, ctx), 0, 0, Nil{}, Nil{}),
+      filled_round(fill(slots, List.take(&2, U32, pending, room), windows_of(config_of(ctx)), ShardSearch.caves(config_of(ctx)), ctx_start(ctx), covered(next, ctx), 0, 0, Nil{}, Nil{}),
         List.drop(&2, U32, pending, room), with_decided(b, next, done, ctx), now, ctx)
 
 def late_or(late: Bool, +b: Book, slots: List<&1, Slot>, +laid: List<&2, Note>, +now: Nat, +ctx: Ctx) -> State:
@@ -883,13 +898,13 @@ def stats_line(+s: Stats) -> String:
 
 def report(host: Host, +code: U32, +ctx: Ctx) -> IO(Unit):
   match host ctx:
-    case Host{Book{_, _, _, Tally{+found, +hits, _, +last, _, +scanned}, +made, _, _, +stats}, _} Ctx{+start, +total, _, _, +json, Config.Config{+windows, _, _, _, _}, _, _, _, _}:
+    case Host{Book{_, _, _, Tally{+found, +hits, _, +last, _, +scanned}, +made, _, _, +stats}, _} Ctx{+start, +total, _, _, +json, +config, _, _, _, _}:
       +position = SearchReport.position_json(start, scanned_at(Tally{found, hits, Nil{}, last, code, scanned}, code, total), code)
       do IO<Unit>:
         IO.print_err("search: " ++ U32.show(made) ++ " candidate worlds generated")
         IO.print_err(stats_line(stats))
         IO.print(Bool.pick(String, json,
-          "{\"version\":1,\"platform\":\"" ++ SearchWorlds.platform_name(windows) ++ "\",\"hits\":[" ++ String.join(hits, ",") ++ "]," ++ position ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}",
+          "{\"version\":1,\"platform\":\"" ++ SearchWorlds.platform_name(ShardSearch.windows(config)) ++ "\",\"hits\":[" ++ String.join(hits, ",") ++ "]," ++ position ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}",
           "done {" ++ position ++ ",\"hits\":" ++ U32.show(found) ++ ",\"stopped\":\"" ++ SearchReport.stop_name(code) ++ "\"}"))
         SearchReport.exit_status(found)
 
@@ -935,7 +950,7 @@ def started(+ctx: Ctx) -> State:
       State{Host{book, free_slots(U32.to_nat(slots))}, False{}, 0n, Out{Nil{}, 0, "search: " ++ U32.show(slots) ++ " slots"}}
 
 # world find on generated worlds for a config with parts B-E (docs/config.md section 8 output).
-def run(+q: Args.Query, +config: Config.Config) -> IO(Unit):
+def run(+q: Args.Query, +config: ShardSearch.Search) -> IO(Unit):
   match q:
     case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, +native}:
       do IO<Unit>:

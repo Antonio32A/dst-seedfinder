@@ -18,13 +18,11 @@ export interface LevelCatalog {
     optionalTaskIds: string[];
     /** How many of the optional tasks a world has. */
     optionalPicked: number;
-    /** Whether the finder can generate the shard's worlds, i.e. the world filters work. */
-    hasWorlds: boolean;
 }
 
 function catalogOf(
     shard: Shard,
-    parts: Pick<LevelCatalog, "tasks" | "swaps" | "setPieceKinds" | "setPieces" | "optionalPicked" | "hasWorlds">
+    parts: Pick<LevelCatalog, "tasks" | "swaps" | "setPieceKinds" | "setPieces" | "optionalPicked">
 ): LevelCatalog {
     const optionalTasks = parts.tasks.filter((task) => task.kind === "optional");
     return {
@@ -46,16 +44,14 @@ export const LEVEL_CATALOGS: Record<Shard, LevelCatalog> = {
         swaps: SWAPS,
         setPieceKinds: SET_PIECE_KINDS,
         setPieces: SET_PIECES,
-        optionalPicked: FOREST_OPTIONAL_PICKED,
-        hasWorlds: true
+        optionalPicked: FOREST_OPTIONAL_PICKED
     }),
     caves: catalogOf("caves", {
         tasks: CAVE_TASKS,
         swaps: CAVE_SWAP_INFOS,
         setPieceKinds: CAVE_SET_PIECE_KINDS,
         setPieces: CAVE_SET_PIECES,
-        optionalPicked: CAVE_OPTIONAL_PICKED,
-        hasWorlds: false
+        optionalPicked: CAVE_OPTIONAL_PICKED
     })
 };
 

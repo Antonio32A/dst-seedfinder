@@ -112,6 +112,7 @@ not, because the game's savedata does not say where the layouts went. A file wit
   | 3 | a map tag's layout (`terrain_contents_extra.static_layouts`) |
   | 4 | the level's `ocean_prefill_setpieces` |
   | 5 | an ocean room's `countstaticlayouts` (`PopulateOcean`) |
+  | 6 | a maze or labyrinth of the caves' maze passes (not a layout of the game's tables): its name is its task's id (`ArchiveMaze`, `AtriumMaze`, ...) or `Labyrinth`, and its members are the entities the pass put in it (the Labyrinth's chests, a maze's layouts' objects and seals) |
 
   A reader treats another code as unknown.
 - `u32` transform: how the layout was turned, as `ReserveAndPlaceLayout` applies it. Bit 0 is `switch_xy`, bit 1 is

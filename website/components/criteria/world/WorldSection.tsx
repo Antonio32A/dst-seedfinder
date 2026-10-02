@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MAX_RULES_PER_SECTION } from "@/lib/config/seedfinder-config";
+import { MAX_RULES_PER_SECTION, type Shard } from "@/lib/config/seedfinder-config";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import {
     MAP_SIZE_TILES,
@@ -13,6 +13,7 @@ import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
 import RouteRuleRow from "./RouteRuleRow";
 import TileRuleRow from "./TileRuleRow";
+import { WorldShardProvider } from "./WorldShard";
 
 interface RowProps<T> {
     row: T;
@@ -38,6 +39,7 @@ const SECTIONS: { id: Section; title: string; add: string }[] = [
 ];
 
 interface WorldSectionProps {
+    shard: Shard;
     rows: WorldRows;
     onChange: (rows: Partial<WorldRows>) => void;
 }
@@ -64,11 +66,12 @@ function RowList<S extends Section>({ section, rows, onChange }: {
     );
 }
 
-export default function WorldSection({ rows, onChange }: WorldSectionProps) {
+export default function WorldSection({ shard, rows, onChange }: WorldSectionProps) {
     const full = SECTIONS.filter(({ id }) => rows[id].length >= MAX_RULES_PER_SECTION);
-    const add = (section: Section) => onChange({ [section]: [...rows[section], NEW_WORLD_ROW[section]()] });
+    const add = (section: Section) => onChange({ [section]: [...rows[section], NEW_WORLD_ROW[section](shard)] });
 
     return (
+            <WorldShardProvider value={shard}>
             <div className="subsection world-area">
                 <h4 className="subsection__title">
                     World details <span className="tag tag--accent">slow</span>
@@ -96,5 +99,6 @@ export default function WorldSection({ rows, onChange }: WorldSectionProps) {
                         <p className="hint">{full.map(({ title }) => title).join(", ")}: max {MAX_RULES_PER_SECTION} per
                             option.</p>}
             </div>
+            </WorldShardProvider>
     );
 }

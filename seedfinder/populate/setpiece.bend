@@ -38,3 +38,7 @@ def ocean_prefill() -> U32:
 
 def ocean_room() -> U32:
   5
+
+# A maze or labyrinth of the caves' maze passes.
+def maze() -> U32:
+  6

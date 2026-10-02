@@ -7,10 +7,13 @@ import { validateConfig } from "@/lib/config/validate-config";
 import { parseJobResult } from "@/lib/jobs/job-result";
 import { parseOutputLine } from "@/lib/jobs/runner-output";
 import {
+    decodeShareParam,
     defaultState,
     emptyGroup,
+    encodeShareParam,
     fromSeedfinderConfig,
     newRule,
+    PRESETS,
     switchShard,
     toSeedfinderConfig,
     validateSearch
@@ -29,7 +32,6 @@ describe("the caves catalog", () => {
         expect(CAVE_OPTIONAL_TASK_IDS).toHaveLength(18);
         expect(caves.optionalTasks.map((task) => task.id)).toEqual(CAVE_OPTIONAL_TASK_IDS);
         expect(caves.optionalPicked).toBe(8);
-        expect(caves.hasWorlds).toBe(false);
     });
 
     it("describes every task and set piece the finder knows", () => {
@@ -51,7 +53,6 @@ describe("the caves catalog", () => {
     it("leaves the forest catalog as it was", () => {
         expect(forest.tasks).toHaveLength(25);
         expect(forest.optionalPicked).toBe(5);
-        expect(forest.hasWorlds).toBe(true);
     });
 });
 
@@ -116,7 +117,7 @@ describe("switching shard", () => {
         expect(switchShard(state, "forest")).toEqual({ state, dropped: 0 });
     });
 
-    it("drops the world details, which the caves don't have yet", () => {
+    it("drops the world details whose prefabs the caves don't have", () => {
         const state = defaultState();
         state.groups[0].counts = [{ key: "a", prefabs: ["beefalo"], mode: "atLeast", min: 1, max: 1, near: null }];
         const { state: cave, dropped } = switchShard(state, "caves");
@@ -138,12 +139,8 @@ describe("validating a config", () => {
         expect(validateConfig({ shard: "caves", criteria: [{ setpieces: [{ required: { CaveEntrance: 1 } }] }] }).ok).toBe(false);
     });
 
-    it("rejects an unknown shard and the world sections of the caves like the finder", () => {
+    it("rejects an unknown shard like the finder", () => {
         expect(validateConfig({ shard: "nether" })).toEqual({ ok: false, error: "config: unknown shard \"nether\" (forest or caves)" });
-        expect(validateConfig({ shard: "caves", criteria: [{ counts: [{ prefab: "rook" }] }] })).toEqual({
-            ok: false,
-            error: "config: criteria[0].counts is not supported for the caves shard yet (only tasks, prefab_swaps and setpieces are)"
-        });
     });
 
     it("has no gekko in the caves", () => {
@@ -184,5 +181,119 @@ describe("the output of a caves search", () => {
         const hits = parsed.flatMap((line) => (line?.kind === "hit" ? [line.hit] : []));
         const result = parseJobResult({ version: 1, platform: "windows", hits, scanned: 9, last_scanned: 9, next_seed: 10, stopped: "limit" });
         expect(result?.kind === "search" && result.search.hits.map((hit) => hit.seed)).toEqual([3, 9]);
+    });
+});
+
+describe("the world filters on the caves", () => {
+    const caveGroup = () => ({
+        ...emptyGroup(),
+        counts: [{ key: "c", prefabs: ["rabbithouse"], mode: "atLeast" as const, min: 10, max: 10, near: null }],
+        distances: [{
+            key: "d",
+            from: ["cave_exit"],
+            to: ["minotaur_spawner"],
+            mode: "within" as const,
+            min: 0,
+            max: 520,
+            metric: "walk" as const,
+            links: true
+        }],
+        routes: [{
+            key: "r",
+            from: ["cave_exit"],
+            stops: [{ key: "s", prefabs: ["atrium_gate"] }],
+            to: [],
+            roundTrip: true,
+            order: "any" as const,
+            metric: "straight" as const,
+            links: false,
+            max: 2000
+        }]
+    });
+
+    it("writes the pillar links as `pillars`, and the forest's as `wormholes`", () => {
+        const config = toSeedfinderConfig({ shard: "caves", platform: "linux", groups: [caveGroup()] });
+        expect(config.criteria?.[0].distances).toEqual([{ from: "cave_exit", to: "minotaur_spawner", max: 520, metric: "walk", pillars: true }]);
+        expect(config.criteria?.[0].counts).toEqual([{ prefab: "rabbithouse", min: 10 }]);
+        expect(config.criteria?.[0].routes).toEqual([{ from: "cave_exit", visit: ["atrium_gate"], to: "cave_exit", max: 2000 }]);
+        expect(validateConfig(config).ok).toBe(true);
+        const forestRow = { ...caveGroup().distances[0], from: ["multiplayer_portal"], to: ["pigking"] };
+        const forestConfig = toSeedfinderConfig({ shard: "forest", platform: "linux", groups: [{ ...emptyGroup(), distances: [forestRow] }] });
+        expect(forestConfig.criteria?.[0].distances?.[0]).toEqual({ from: "multiplayer_portal", to: "pigking", max: 520, metric: "walk", wormholes: true });
+    });
+
+    it("reads a saved caves config back with its rows and keeps the shard", () => {
+        const config = toSeedfinderConfig({ shard: "caves", platform: "linux", groups: [caveGroup()] });
+        const back = fromSeedfinderConfig(JSON.parse(JSON.stringify(config)));
+        expect(back.shard).toBe("caves");
+        expect(back.platform).toBe("linux");
+        expect(back.groups[0].distances[0]).toMatchObject({ from: ["cave_exit"], to: ["minotaur_spawner"], metric: "walk", links: true });
+        expect(toSeedfinderConfig(back)).toEqual(config);
+        expect(toSeedfinderConfig(fromSeedfinderConfig(decodeShareParam(encodeShareParam(config))))).toEqual(config);
+    });
+
+    it("rejects the other shard's prefabs and link flag like the finder", () => {
+        expect(validateConfig({ shard: "caves", criteria: [{ counts: [{ prefab: "beefalo" }] }] })).toEqual({
+            ok: false,
+            error: "config: unknown prefab \"beefalo\" in criteria[0].counts[0].prefab"
+        });
+        expect(validateConfig({ criteria: [{ counts: [{ prefab: "cave_exit" }] }] })).toEqual({
+            ok: false,
+            error: "config: unknown prefab \"cave_exit\" in criteria[0].counts[0].prefab"
+        });
+        expect(validateConfig({ shard: "caves", criteria: [{ distances: [{ from: "cave_exit", to: "cave_hole", wormholes: true }] }] })).toEqual({
+            ok: false,
+            error: "config: unknown key \"wormholes\" in criteria[0].distances[0]"
+        });
+        expect(validateConfig({ criteria: [{ distances: [{ from: "pigking", to: "pigking", pillars: true }] }] }).ok).toBe(false);
+        expect(validateConfig({ shard: "caves", criteria: [{ distances: [{ from: "cave_exit", to: "cave_hole", pillars: true }] }] }).ok).toBe(true);
+    });
+
+    it("moves the rows to the other shard, the spawn becoming its spawn", () => {
+        const state = { shard: "caves" as const, platform: "linux" as const, groups: [caveGroup()] };
+        const forestState = switchShard(state, "forest");
+        expect(forestState.state.shard).toBe("forest");
+        expect(forestState.state.groups[0].counts).toEqual([]);
+        expect(forestState.state.groups[0].distances).toEqual([]);
+        expect(forestState.dropped).toBe(3);
+        const shared = {
+            ...emptyGroup(),
+            distances: [{ ...caveGroup().distances[0], from: ["cave_exit"], to: ["bat", "minotaur_spawner"] }]
+        };
+        const moved = switchShard({ ...state, groups: [shared] }, "forest");
+        expect(moved.state.groups[0].distances[0]).toMatchObject({ from: ["multiplayer_portal"], to: ["bat"], links: true });
+    });
+
+    it("keeps the prefabs both shards have", () => {
+        const forestGroup = {
+            ...emptyGroup(),
+            distances: [{
+                key: "d", from: ["multiplayer_portal"], to: ["bat", "pigking"], mode: "within" as const, min: 0, max: 100,
+                metric: "straight" as const, links: false
+            }]
+        };
+        const moved = switchShard({ ...defaultState(), groups: [forestGroup] }, "caves");
+        expect(moved.state.groups[0].distances[0]).toMatchObject({ from: ["cave_exit"], metric: "straight" });
+        expect(moved.state.groups[0].distances[0].to).toEqual(["bat"]);
+        expect(moved.dropped).toBe(1);
+    });
+
+    it("has presets that are valid searches on their shard", () => {
+        for (const shard of ["forest", "caves"] as const) {
+            expect(PRESETS[shard].length).toBeGreaterThan(0);
+            for (const preset of PRESETS[shard]) {
+                const state = preset.build();
+                expect(state.shard).toBe(shard);
+                const config = toSeedfinderConfig(state);
+                expect(validateConfig(config).ok, preset.id).toBe(true);
+                expect(validateSearch(state).filter((issue) => issue.severity === "error"), preset.id).toEqual([]);
+            }
+        }
+    });
+
+    it("warns that cave worlds on Windows aren't checked against the game yet", () => {
+        const state = { shard: "caves" as const, platform: "windows" as const, groups: [caveGroup()] };
+        expect(validateSearch(state).some((issue) => issue.message.includes("only checked against the real game on Linux"))).toBe(true);
+        expect(validateSearch({ ...state, platform: "linux" }).some((issue) => issue.message.includes("Linux"))).toBe(false);
     });
 });

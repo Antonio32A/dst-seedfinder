@@ -62,13 +62,7 @@ export default function CriteriaGroupCard({
                 <BiomeSection catalog={catalog} biomes={group.biomes} onChange={(biomes) => onChange({ ...group, biomes })}/>
                 <ResourceSection catalog={catalog} swaps={group.swaps} onChange={(swaps) => onChange({ ...group, swaps })}/>
                 <SetPieceSection catalog={catalog} rules={group.rules} onChange={(rules) => onChange({ ...group, rules })}/>
-                {catalog.hasWorlds ? (
-                        <WorldSection rows={group} onChange={(rows) => onChange({ ...group, ...rows })}/>
-                ) : (
-                        <p className="muted small">
-                            World details (prefab counts, distances, tiles and routes) aren&apos;t available for the {catalog.shard} yet.
-                        </p>
-                )}
+                <WorldSection shard={catalog.shard} rows={group} onChange={(rows) => onChange({ ...group, ...rows })}/>
             </section>
     );
 }

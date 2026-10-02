@@ -302,7 +302,7 @@ NO_IMAGE = set(
     "ruins_statue_head_nogem_spawner ruins_statue_head_spawner ruins_statue_mage_nogem_spawner "
     "ruins_statue_mage_spawner shadow_container shadowthrall_centipede_spawner skeleton "
     "skeleton_notplayer_1 skeleton_notplayer_2 slurper_spawner spawnpoint_master spawnpoint_multiplayer "
-    "tentacle wall_ruins wall_ruins_2 wall_stone_2 worm_spawner wormlight_plant"
+    "tentacle wall_ruins wall_ruins_2 wall_stone_2 wall_wood worm_spawner wormlight_plant"
     .split())
 
 TASK_NAMES = {

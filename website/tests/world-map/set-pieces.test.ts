@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
-import { defaultShownSetPieces, setPieceDetails, setPieceLegend } from "@/lib/world-map/legend/set-pieces";
+import { defaultShownSetPieces, setPieceDetails, setPieceLegend, setPieceName } from "@/lib/world-map/legend/set-pieces";
 
 const prefab = (name: string, ...positions: number[]) => ({ name, positions: new Int32Array(positions) });
 
@@ -98,5 +98,16 @@ describe("a set piece's details", () => {
             height: 1.84,
             members: []
         });
+    });
+});
+
+describe("the caves' maze names", () => {
+    it("name the mazes after their task and the Labyrinth, and leave the rest and the forest alone", () => {
+        expect(setPieceName("ArchiveMaze", "caves")).toBe("Ancient Archive (maze)");
+        expect(setPieceName("Labyrinth", "caves")).toBe("The Labyrinth (maze)");
+        expect(setPieceName("CaveStart", "caves")).toBe("CaveStart");
+        expect(setPieceName("ArchiveMaze")).toBe("ArchiveMaze");
+        const world = { ...WORLD, shard: "caves" as const, setPieces: [piece("ArchiveMaze", 0, 0, 800), piece("Labyrinth", 0, 0, 800)] };
+        expect(setPieceLegend(world)!.prefabs.map(({ displayName }) => displayName)).toEqual(["Ancient Archive (maze)", "The Labyrinth (maze)"]);
     });
 });

@@ -29,8 +29,20 @@ const ANCHORS = [
     ["wormhole", "Worm Hole"],
 ];
 
-const prefabIds = new Set(catalog.prefabs.map((prefab) => prefab.id));
-const missingAnchors = ANCHORS.filter(([id]) => !prefabIds.has(id));
+const CAVE_ANCHORS = [
+    ["cave_exit", "Stairs (where you arrive in the caves)"],
+    ["multiplayer_portal", "Cave start (Florid Postern)"],
+    ["tentacle_pillar", "Big Tentacle"],
+    ["tentacle_pillar_atrium", "Big Tentacle (Atrium)"],
+    ["minotaur_spawner", "Ancient Guardian"],
+    ["atrium_gate", "Ancient Gateway"],
+    ["archive_portal", "Sealed Portal (Ancient Archive)"],
+];
+
+const missingAnchors = [
+    ...ANCHORS.filter(([id]) => !catalog.prefabs.some((prefab) => prefab.id === id)),
+    ...CAVE_ANCHORS.filter(([id]) => !caveCatalog.prefabs.some((prefab) => prefab.id === id)),
+];
 if (missingAnchors.length > 0) throw new Error(`anchors missing from the catalog: ${missingAnchors.join(", ")}`);
 const groups = [...new Set([...catalog.prefabs, ...caveCatalog.prefabs].map((prefab) => prefab.group))];
 const orderedGroups = [...GROUP_ORDER.filter((group) => groups.includes(group)), ...groups.filter((group) => !GROUP_ORDER.includes(group))];
@@ -61,6 +73,12 @@ const landTileRow = ({ name, display_name, in_forest_worlds }) => ({
     name,
     displayName: display_name ?? titleCase(name),
     ...((in_forest_worlds?.worlds ?? 0) > 0 ? { inDefaultWorlds: true } : {}),
+});
+
+const caveLandTileRow = ({ name, display_name, in_caves_worlds }) => ({
+    name,
+    displayName: display_name ?? titleCase(name),
+    ...((in_caves_worlds?.worlds ?? 0) > 0 ? { inDefaultWorlds: true } : {}),
 });
 
 const caveNoise = new Map(caveCatalog.tiles.map((tile) => [tile.name, tile.minimap_noise]));
@@ -191,6 +209,18 @@ ${rows(caveCatalog.prefabs.map(prefabRow))}
 ];
 
 export const CAVE_PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(CAVE_PREFABS.map((prefab) => [prefab.id, prefab]));
+
+/** How many real cave worlds the caves' prefab counts and tiles come from. */
+export const CAVE_SAMPLE_WORLDS = ${caveCatalog.worlds.total};
+
+/** The caves' land tiles; \`inDefaultWorlds\` marks the ones the sampled cave worlds have. */
+export const CAVE_LAND_TILES: LandTile[] = [
+${rows(caveCatalog.tiles.filter((tile) => tile.land).map(caveLandTileRow))}
+];
+
+export const CAVE_ANCHORS: NamedAnchor[] = [
+${rows(CAVE_ANCHORS.map(([id, label]) => ({ id, label })))}
+];
 
 export const PREFAB_GROUPS: PrefabGroup[] = PREFAB_GROUP_IDS.map((id) => ({
     id,

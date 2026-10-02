@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Toggle from "@/components/ui/Toggle";
-import { LAND_TILES } from "@/lib/catalog/world";
+import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import { MAX_TILE_NAMES } from "@/lib/config/seedfinder-config";
 import { toggled } from "@/lib/criteria/state-helpers";
+import { useWorldShard } from "./WorldShard";
 
 interface TileSetFieldProps {
     label: string;
@@ -13,9 +14,10 @@ interface TileSetFieldProps {
 }
 
 export default function TileSetField({ label, names, onChange }: TileSetFieldProps) {
+    const shard = useWorldShard();
     const [showAll, setShowAll] = useState(false);
     const full = names.length >= MAX_TILE_NAMES;
-    const shown = LAND_TILES.filter((tile) => showAll || tile.inDefaultWorlds || names.includes(tile.name));
+    const shown = shardCatalog(shard).landTiles.filter((tile) => showAll || tile.inDefaultWorlds || names.includes(tile.name));
 
     return (
             <fieldset className="seg tile-set">

@@ -5,7 +5,7 @@ import { SHARD_LABELS, type Shard, SHARDS } from "@/lib/config/seedfinder-config
 
 const HINTS: Record<Shard, string> = {
     forest: "Search the overworld's seeds.",
-    caves: "Search the caves' seeds. Each shard has its own seed, so this looks at cave seeds. Only the biomes, resources and set pieces work here for now."
+    caves: "Search the caves' seeds. Each shard has its own seed, so this looks at cave seeds. Switching keeps what also exists in the other shard, with the spawn becoming the stairs you arrive on."
 };
 
 interface ShardSwitchProps {

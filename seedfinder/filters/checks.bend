@@ -60,6 +60,11 @@ def hop_items(hops: List<&2, Metric.Hop>) -> List<&2, String>:
 def hops_json(hops: List<&2, Metric.Hop>) -> String:
   json_list(hop_items(hops))
 
+def hops_field(+metric: Rules.Metric, hops: List<&2, Metric.Hop>) -> String:
+  match metric:
+    case Rules.Metric{_, _, +caves}:
+      ",\"" ++ Rules.links_key(caves) ++ "\":" ++ hops_json(hops)
+
 def counted_items(targets: List<&2, Anchor.Point>, relaxed: List<&2, Metric.Relaxed>, +anchors: List<&2, Anchor.Point>, +within: F64Repr.F64, +acc: List<&2, String>) -> List<&2, String>:
   match targets relaxed:
     case Con{+t, ts} Con{Metric.Relaxed{+cost, +seed}, rs}:
@@ -96,16 +101,16 @@ def count(+world: FilterWorld.World, rule: Rules.Count) -> Check:
     case Rules.Count{+prefabs, +min, +max, near}:
       count_with(near, world, FilterWorld.instances(world, prefabs), min, max)
 
-def distance_leg(leg: Metric.Leg, +cost: Metric.Cost, +source: Anchor.Point, +goal: Anchor.Point, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
+def distance_leg(leg: Metric.Leg, +metric: Rules.Metric, +cost: Metric.Cost, +source: Anchor.Point, +goal: Anchor.Point, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
   match leg:
     case Metric.Leg{_, hops}:
       Check{Metric.within(cost, min, max), ",\"distance\":" ++ cost_text(cost) ++ ",\"from\":" ++ Witness.instance(point_inst(source)) ++ ",\"to\":"
-        ++ Witness.instance(point_inst(goal)) ++ ",\"wormholes\":" ++ hops_json(hops)}
+        ++ Witness.instance(point_inst(goal)) ++ hops_field(metric, hops)}
 
-def distance_found(reached: Bool, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
+def distance_found(reached: Bool, +metric: Rules.Metric, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
   match reached best:
     case True{} Routes.Best{+cost, +seed, +target}:
-      distance_leg(Relax.leg(s, point_at(sources, seed), point_at(targets, target)), cost, point_at(sources, seed), point_at(targets, target), min, max)
+      distance_leg(Relax.leg(s, point_at(sources, seed), point_at(targets, target)), metric, cost, point_at(sources, seed), point_at(targets, target), min, max)
     case False{} _:
       Check{Metric.within(Metric.Unreached{}, min, max), ",\"distance\":null"}
 
@@ -114,8 +119,8 @@ def best_cost(+b: Routes.Best) -> Metric.Cost:
     case Routes.Best{+cost, _, _}:
       cost
 
-def distance_best(+s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
-  distance_found(Metric.is_reached(best_cost(best)), s, best, sources, targets, min, max)
+def distance_best(+metric: Rules.Metric, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
+  distance_found(Metric.is_reached(best_cost(best)), metric, s, best, sources, targets, min, max)
 
 # criteria.py check_distance.
 def distance(+world: FilterWorld.World, rule: Rules.Distance) -> Check:
@@ -124,7 +129,7 @@ def distance(+world: FilterWorld.World, rule: Rules.Distance) -> Check:
       +s = Relax.space(world, metric)
       +sources = Relax.points(s, FilterWorld.instances(world, from))
       +targets = Relax.points(s, FilterWorld.instances(world, to))
-      distance_best(s, Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{})), sources, targets, min, max)
+      distance_best(metric, s, Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{})), sources, targets, min, max)
 
 def world_size(+world: FilterWorld.World) -> U32:
   match world:
@@ -164,16 +169,16 @@ def end_points(+s: Relax.Space, +world: FilterWorld.World, to: Maybe<&2, List<&2
     case Some{+ids}:
       Some{Relax.points(s, FilterWorld.instances(world, ids))}
 
-def leg_item(leg: Metric.Leg, +a: Anchor.Point, +b: Anchor.Point) -> String:
+def leg_item(leg: Metric.Leg, +metric: Rules.Metric, +a: Anchor.Point, +b: Anchor.Point) -> String:
   match leg:
     case Metric.Leg{+cost, hops}:
       "{\"from\":" ++ Witness.instance(point_inst(a)) ++ ",\"to\":" ++ Witness.instance(point_inst(b)) ++ ",\"distance\":" ++ cost_text(cost)
-        ++ ",\"wormholes\":" ++ hops_json(hops) ++ "}"
+        ++ hops_field(metric, hops) ++ "}"
 
-def leg_items(+s: Relax.Space, path: List<&2, Anchor.Point>) -> List<&2, String>:
+def leg_items(+metric: Rules.Metric, +s: Relax.Space, path: List<&2, Anchor.Point>) -> List<&2, String>:
   match path:
     case Con{+a, Con{+b, rest}}:
-      leg_item(Relax.leg(s, a, b), a, b) <> leg_items(s, Con{b, rest})
+      leg_item(Relax.leg(s, a, b), metric, a, b) <> leg_items(metric, s, Con{b, rest})
     case _:
       Nil{}
 
@@ -184,18 +189,18 @@ def stop_items(path: List<&2, Anchor.Point>) -> List<&2, String>:
     case Con{+p, rest}:
       Witness.instance(point_inst(p)) <> stop_items(rest)
 
-def route_found(last: Maybe<&2, Routes.Path>, +s: Relax.Space, +max: F64Repr.F64) -> Check:
+def route_found(last: Maybe<&2, Routes.Path>, +metric: Rules.Metric, +s: Relax.Space, +max: F64Repr.F64) -> Check:
   match last:
     case None{}:
       Check{False{}, ",\"length\":null"}
     case Some{+p}:
       +path = Routes.unwind(p)
       Check{Metric.within_max(Routes.path_cost(p), Some{max}), ",\"length\":" ++ cost_text(Routes.path_cost(p)) ++ ",\"stops\":" ++ json_list(stop_items(path))
-        ++ ",\"legs\":" ++ json_list(leg_items(s, path))}
+        ++ ",\"legs\":" ++ json_list(leg_items(metric, s, path))}
 
 # criteria.py check_route.
 def route(+world: FilterWorld.World, rule: Rules.Route) -> Check:
   match rule:
     case Rules.Route{+from, +visit, +to, +max, +fixed, +metric}:
       +s = Relax.space(world, metric)
-      route_found(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed), s, max)
+      route_found(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed), metric, s, max)

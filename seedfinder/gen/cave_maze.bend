@@ -18,17 +18,18 @@ import ./maze_meta.bend as MazeMeta
 # The tile map and RNG after both passes and the entities they added to savedata.ents (newest first; not the custom tile
 # pass's items).
 type Mazed is Type:
-  Mazed{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>}
+  Mazed{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, built: List<&2, MazeEnv.Built>}
 
 # The same with the stream just before and just after each maze engine call in call order (before, after, before, after,
 # ...; the Lua side's own draws lie between an after and the next before).
 type Marked is Type:
   Marked{mazed: Mazed, marks: List<&2, Pcg.Rng>}
 
-def finished(p: MazeEnv.Pass) -> Marked:
+def finished(got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> Marked:
+  (p, built) = got
   match p:
     case MazeEnv.Pass{g, rng, ents, marks}:
-      Marked{Mazed{g, rng, ents}, List.reverse(&2, Pcg.Rng, marks)}
+      Marked{Mazed{g, rng, ents, built}, List.reverse(&2, Pcg.Rng, marks)}
 
 def unmarked(m: Marked) -> Mazed:
   match m:

@@ -56,13 +56,22 @@ def task_pass(+e: MazeEnv.Env, +task: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
     case MazeEnv.Pass{g, rng, +ents, +marks}:
       drawn(F64Random.random(rng), e, MazeTags.nodes(MazeEnv.story_of(e), "Labyrinth", task), MazeTags.nodes(MazeEnv.story_of(e), "LabyrinthEntrance", task), g, ents, marks)
 
-def tasks_loop(tasks: List<&2, U32>, +e: MazeEnv.Env, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def built_after(got: MazeEnv.Pass & U32, +before: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  (p, +after) = got
+  (p, MazeEnv.built_with(MazeEnv.prefab("Labyrinth"), before, after, built))
+
+def task_step(got: MazeEnv.Pass & U32, +e: MazeEnv.Env, +task: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  (q, +before) = got
+  built_after(MazeEnv.counted(task_pass(e, task, q)), before, built)
+
+def tasks_loop(tasks: List<&2, U32>, +e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
   match tasks:
     case Nil{}:
-      p
+      got
     case Con{+task, rest}:
-      tasks_loop(rest, e, task_pass(e, task, p))
+      (p, built) = got
+      tasks_loop(rest, e, task_step(MazeEnv.counted(p), e, task, built))
 
-# `for task, labyrinth_nodes in pairs(GlobalTags["Labyrinth"])`.
-def run(+e: MazeEnv.Env, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  tasks_loop(MazeTags.tasks(MazeEnv.story_of(e), "Labyrinth"), e, p)
+# `for task, labyrinth_nodes in pairs(GlobalTags["Labyrinth"])`, with the labyrinths built (one per task, named Labyrinth).
+def run(+e: MazeEnv.Env, p: MazeEnv.Pass) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  tasks_loop(MazeTags.tasks(MazeEnv.story_of(e), "Labyrinth"), e, (p, Nil{}))

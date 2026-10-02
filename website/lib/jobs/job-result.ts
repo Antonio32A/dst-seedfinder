@@ -24,6 +24,7 @@ export interface WitnessTile {
     z: number;
 }
 
+/** A jump through a teleporter link: a wormhole in the forest, a tentacle pillar in the caves. */
 export interface WormholeJump {
     entry: WitnessInstance;
     exit: WitnessInstance;
@@ -180,7 +181,19 @@ const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> 
 
 const witnessSection = oneOf(Object.keys(WITNESS_PARSERS) as WitnessSection[]);
 
-const witness: Parser<Witness> = (value) => {
+/** The caves' witnesses list their jumps as `pillars`, the forest's as `wormholes`. */
+function withJumps(value: unknown): unknown {
+    if (!isRecord(value)) return value;
+    const { pillars, legs, ...rest } = value;
+    return {
+        ...rest,
+        ...(pillars === undefined ? {} : { wormholes: pillars }),
+        ...(Array.isArray(legs) ? { legs: legs.map(withJumps) } : {})
+    };
+}
+
+const witness: Parser<Witness> = (raw) => {
+    const value = withJumps(raw);
     const section = witnessSection(asRecord(value).section);
     const parsed = section && WITNESS_PARSERS[section](value);
     return parsed ? ({ ...parsed, section } as Witness) : undefined;

@@ -1022,6 +1022,297 @@
     "skeleton_wizard_ice"
    ]
   },
+  "cavePrefabId": {
+   "enum": [
+    "amulet",
+    "ancient_altar_broken_spawner",
+    "ancient_altar_spawner",
+    "archive_ambient_sfx",
+    "archive_centipede_husk",
+    "archive_chandelier",
+    "archive_cookpot",
+    "archive_lockbox_dispencer",
+    "archive_moon_statue",
+    "archive_orchestrina_main",
+    "archive_orchestrina_small",
+    "archive_pillar",
+    "archive_portal",
+    "archive_rune_statue",
+    "archive_security_desk",
+    "archive_security_waypoint",
+    "archive_switch",
+    "archive_switch_base",
+    "armorgrass",
+    "armormarble",
+    "armorwood",
+    "ash",
+    "atrium_fence",
+    "atrium_gate",
+    "atrium_light",
+    "atrium_overgrowth",
+    "atrium_rubble",
+    "atrium_statue",
+    "atrium_statue_facing",
+    "axe",
+    "backpack",
+    "bat",
+    "batbat",
+    "batcave",
+    "batwing",
+    "beardhair",
+    "bedroll_straw",
+    "beebox",
+    "beefalohat",
+    "beefalowool",
+    "beehat",
+    "beemine",
+    "berrybush",
+    "berrybush_juicy",
+    "birdtrap",
+    "bishop_nightmare",
+    "bishop_nightmare_spawner",
+    "blowdart_fire",
+    "blowdart_pipe",
+    "blowdart_sleep",
+    "blue_mushroom",
+    "bluegem",
+    "blueprint",
+    "boards",
+    "boneshard",
+    "boomerang",
+    "brokenwall_ruins",
+    "bugnet",
+    "bushhat",
+    "cane",
+    "carrot_planted",
+    "cave_banana_tree",
+    "cave_exit",
+    "cave_fern",
+    "cave_fern_withered",
+    "cave_hole",
+    "cave_vent_mite_spawner",
+    "cave_vent_rock",
+    "cavein_boulder",
+    "cavelight",
+    "cavelight_atrium",
+    "cavelight_small",
+    "cavelight_tiny",
+    "cavelightmoon",
+    "cavelightmoon_small",
+    "cavelightmoon_tiny",
+    "chessjunk_spawner",
+    "cookbook",
+    "cookingrecipecard",
+    "cookpot",
+    "cutgrass",
+    "cutstone",
+    "daywalkerspawningground",
+    "dropperweb",
+    "dustmothden",
+    "evergreen",
+    "evergreen_normal",
+    "evergreen_short",
+    "evergreen_tall",
+    "farm_plow_item",
+    "featherhat",
+    "fireflies",
+    "firehound",
+    "firepit",
+    "firestaff",
+    "fishingrod",
+    "fissure",
+    "fissure_lower",
+    "flint",
+    "flower_cave",
+    "flower_cave_double",
+    "flower_cave_double_withered",
+    "flower_cave_triple",
+    "flower_cave_triple_withered",
+    "flower_cave_withered",
+    "flower_evil",
+    "footballhat",
+    "goldenpickaxe",
+    "goldnugget",
+    "grass",
+    "gravestone",
+    "green_mushroom",
+    "grotto_pool_big",
+    "grotto_pool_small",
+    "guano",
+    "gunpowder",
+    "hambat",
+    "hammer",
+    "houndbone",
+    "houndmound",
+    "houndstooth",
+    "hutch_fishbowl",
+    "icehound",
+    "icestaff",
+    "insanityrock",
+    "knight_nightmare_spawner",
+    "lantern",
+    "leif",
+    "lichen",
+    "lightflier_flower",
+    "log",
+    "marblepillar",
+    "marsh_bush",
+    "marsh_tree",
+    "meatrack",
+    "minerhat",
+    "minotaur_spawner",
+    "molehat",
+    "monkeybarrel_spawner",
+    "moonglass_stalactite1",
+    "moonglass_stalactite2",
+    "moonglass_stalactite3",
+    "mound",
+    "multiplayer_portal",
+    "mushgnome_spawner",
+    "mushtree_medium",
+    "mushtree_moon",
+    "mushtree_small",
+    "mushtree_tall",
+    "mushtree_tall_stump",
+    "nightmarelight",
+    "nightstick",
+    "nightsword",
+    "oceanfishingbobber_ball",
+    "oceanfishingbobber_crow",
+    "oceanfishingbobber_oval",
+    "oceanfishingbobber_robin",
+    "oceanfishinglure_spinner_blue",
+    "oceanfishinglure_spinner_green",
+    "oceanfishinglure_spinner_red",
+    "oceanfishinglure_spoon_blue",
+    "oceanfishinglure_spoon_green",
+    "oceanfishinglure_spoon_red",
+    "oceanfishingrod",
+    "onemanband",
+    "pandoraschest",
+    "panflute",
+    "pickaxe",
+    "pighead",
+    "pigskin",
+    "pigtorch",
+    "pillar_algae",
+    "pillar_atrium",
+    "pillar_cave",
+    "pillar_cave_flintless",
+    "pillar_cave_rock",
+    "pillar_ruins",
+    "pillar_stalactite",
+    "pitchfork",
+    "plantregistryhat",
+    "pond",
+    "pond_cave",
+    "pond_mos",
+    "poop",
+    "rabbithouse",
+    "rabbitkinghorn_container",
+    "raincoat",
+    "rainhat",
+    "red_mushroom",
+    "redgem",
+    "reeds",
+    "reflectivevest",
+    "researchlab",
+    "researchlab2",
+    "researchlab3",
+    "resurrectionstone",
+    "rock1",
+    "rock2",
+    "rock_flintless",
+    "rock_flintless_low",
+    "rock_flintless_med",
+    "rocks",
+    "rocky",
+    "rook_nightmare_spawner",
+    "rope",
+    "rubble1",
+    "rubble2",
+    "ruins_bowl",
+    "ruins_chair",
+    "ruins_chipbowl",
+    "ruins_plate",
+    "ruins_rubble_chair",
+    "ruins_rubble_table",
+    "ruins_rubble_vase",
+    "ruins_statue_head_nogem_spawner",
+    "ruins_statue_head_spawner",
+    "ruins_statue_mage_nogem_spawner",
+    "ruins_statue_mage_spawner",
+    "ruins_table",
+    "ruins_vase",
+    "sacred_chest",
+    "sanityrock",
+    "sapling",
+    "seeds",
+    "shadow_container",
+    "shadowthrall_centipede_spawner",
+    "shovel",
+    "silk",
+    "skeleton",
+    "skeleton_notplayer_1",
+    "skeleton_notplayer_2",
+    "slurper",
+    "slurper_spawner",
+    "slurtlehole",
+    "spawnpoint_master",
+    "spawnpoint_multiplayer",
+    "spear",
+    "spider_warrior",
+    "spiderden",
+    "spiderhole",
+    "spoiled_fish",
+    "spoiled_fish_small",
+    "spoiled_food",
+    "stalagmite",
+    "stalagmite_low",
+    "stalagmite_med",
+    "stalagmite_tall",
+    "stalagmite_tall_low",
+    "stalagmite_tall_med",
+    "statuemaxwell",
+    "stinger",
+    "strawhat",
+    "sweatervest",
+    "tallbirdnest",
+    "tent",
+    "tentacle",
+    "tentacle_pillar",
+    "tentacle_pillar_atrium",
+    "thulecite",
+    "thulecite_pieces",
+    "toadstool_cap",
+    "tophat",
+    "torch",
+    "trap",
+    "treasurechest",
+    "tree_rock1",
+    "tree_rock2",
+    "trinket_1",
+    "trinket_3",
+    "trinket_8",
+    "trunkvest_summer",
+    "trunkvest_winter",
+    "twiggy_normal",
+    "twiggy_tall",
+    "twiggytree",
+    "twigs",
+    "wall_hay",
+    "wall_ruins",
+    "wall_ruins_2",
+    "wall_stone",
+    "wall_stone_2",
+    "wall_wood",
+    "wasphive",
+    "winterhat",
+    "winterometer",
+    "worm_spawner",
+    "wormlight_plant"
+   ]
+  },
   "caveTaskList": {
    "type": "array",
    "maxItems": 25,
@@ -1083,8 +1374,139 @@
     }
    }
   },
+  "cavePrefabs": {
+   "description": "A caves prefab id or a list of them (their union).",
+   "oneOf": [
+    {
+     "$ref": "#/$defs/cavePrefabId"
+    },
+    {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/cavePrefabId"
+     }
+    }
+   ]
+  },
+  "caveNear": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "prefab": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "within": {
+     "$ref": "#/$defs/distance"
+    },
+    "metric": {
+     "$ref": "#/$defs/metric"
+    },
+    "pillars": {
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "prefab",
+    "within"
+   ]
+  },
+  "caveCountRule": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "prefab": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "min": {
+     "$ref": "#/$defs/uint32"
+    },
+    "max": {
+     "$ref": "#/$defs/uint32"
+    },
+    "near": {
+     "$ref": "#/$defs/caveNear"
+    }
+   },
+   "required": [
+    "prefab"
+   ]
+  },
+  "caveDistanceRule": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "from": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "to": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "min": {
+     "$ref": "#/$defs/distance"
+    },
+    "max": {
+     "$ref": "#/$defs/distance"
+    },
+    "metric": {
+     "$ref": "#/$defs/metric"
+    },
+    "pillars": {
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "from",
+    "to"
+   ]
+  },
+  "caveRouteRule": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "from": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "visit": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 6,
+     "items": {
+      "$ref": "#/$defs/cavePrefabs"
+     }
+    },
+    "to": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "max": {
+     "$ref": "#/$defs/distance"
+    },
+    "order": {
+     "enum": [
+      "any",
+      "fixed"
+     ],
+     "default": "any"
+    },
+    "metric": {
+     "$ref": "#/$defs/metric"
+    },
+    "pillars": {
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "from",
+    "visit",
+    "max"
+   ]
+  },
   "caveEntry": {
-   "description": "All sections and all rules must hold (AND). The caves shard only has the level table sections for now.",
+   "description": "All sections and all rules must hold (AND). Counts, distances and routes use the caves' prefabs, and `pillars` lets a distance use the tentacle pillar links.",
    "type": "object",
    "additionalProperties": false,
    "properties": {
@@ -1104,6 +1526,34 @@
      "maxItems": 16,
      "items": {
       "$ref": "#/$defs/caveSetPieceRule"
+     }
+    },
+    "counts": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/caveCountRule"
+     }
+    },
+    "distances": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/caveDistanceRule"
+     }
+    },
+    "tiles": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/tileRule"
+     }
+    },
+    "routes": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/caveRouteRule"
      }
     }
    }

@@ -1,5 +1,8 @@
 import Base
 import ../filters/config.bend as Config
+import ../filters/cave_config.bend as CaveConfig
+import ../filters/cave_evaluate.bend as CaveEvaluate
+import ../filters/shard_search.bend as ShardSearch
 import ../filters/rules.bend as Rules
 import ../filters/world.bend as FilterWorld
 import ../filters/evaluate.bend as Evaluate
@@ -26,11 +29,14 @@ def evaluated_step(+outcomes: List<&2, Evaluate.Outcome>, +i: U32, e: Evaluated)
     case Evaluated{+entries, +matched}:
       Evaluated{List.append(&2, String, entries, [entry_json(outcomes)]), Bool.pick(List<&2, U32>, Evaluate.holds(outcomes), List.append(&2, U32, matched, [i]), matched)}
 
-def entries_loop(shown: List<&2, LevelChecks.Shown>, laters: List<&2, Rules.Later>, stop: Bool, +world: FilterWorld.World, +s: LevelSummary.Summary, +fast: Bool, +i: U32, +e: Evaluated) -> Evaluated:
+def level_outcomes_of(+caves: Bool, +shown: LevelChecks.Shown, +seed: U32) -> List<&2, Evaluate.Outcome>:
+  Bool.pick(List<&2, Evaluate.Outcome>, caves, CaveEvaluate.level_outcomes(shown, seed), Evaluate.level_outcomes(shown, LevelSummary.summary(seed)))
+
+def entries_loop(shown: List<&2, LevelChecks.Shown>, laters: List<&2, Rules.Later>, stop: Bool, +world: FilterWorld.World, +caves: Bool, +seed: U32, +fast: Bool, +i: U32, +e: Evaluated) -> Evaluated:
   match shown laters stop:
     case Con{+sh, ss} Con{+later, ls} False{}:
-      +outcomes = Evaluate.entry_outcomes(sh, later, world, s, fast)
-      entries_loop(ss, ls, fast && Evaluate.holds(outcomes), world, s, fast, (i + 1 : U32), evaluated_step(outcomes, i, e))
+      +outcomes = Evaluate.entry_outcomes_from(level_outcomes_of(caves, sh, seed), later, world, fast)
+      entries_loop(ss, ls, fast && Evaluate.holds(outcomes), world, caves, seed, fast, (i + 1 : U32), evaluated_step(outcomes, i, e))
     case _ _ _:
       e
 
@@ -62,32 +68,32 @@ def platform_mismatch(+windows: Bool, +platform: U32) -> Bool:
 def platform_message(+windows: Bool) -> String:
   "config: the world dump was generated on " ++ Bool.pick(String, windows, "linux", "windows") ++ ", the config's platform is " ++ Bool.pick(String, windows, "windows", "linux")
 
-def evaluate_world(+config: Config.Config, +text: String, loaded: FilterWorld.Loaded, +path: String, +fast: Bool) -> IO(Unit):
-  match config loaded:
-    case Config.Config{+windows, +criteria, +laters, _, _} FilterWorld.Generated{+world, +platform}:
+def evaluate_world(+config: ShardSearch.Search, +text: String, loaded: FilterWorld.Loaded, +path: String, +fast: Bool) -> IO(Unit):
+  match loaded:
+    case FilterWorld.Generated{+world, +platform}:
       match world:
         case FilterWorld.World{+seed, _, _, _, _, _, _}:
-          Bool.pick(IO(Unit), platform_mismatch(windows, platform), IO.die(Unit, 2, platform_message(windows)),
-            print_outcome(outcome_line(seed, windows, List.is_empty(&2, Config.Criteria, criteria),
-              entries_loop(LevelChecks.shown_of(text), laters, False{}, world, LevelSummary.summary(seed), fast, 0, Evaluated{Nil{}, Nil{}}))))
-    case _ FilterWorld.GaveUp{+seed}:
+          Bool.pick(IO(Unit), platform_mismatch(ShardSearch.windows(config), platform), IO.die(Unit, 2, platform_message(ShardSearch.windows(config))),
+            print_outcome(outcome_line(seed, ShardSearch.windows(config), ShardSearch.is_unfiltered(config),
+              entries_loop(LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))
+    case FilterWorld.GaveUp{+seed}:
       IO.die(Unit, 1, "evaluate: seed " ++ path ++ ": world generation did not finish (seed " ++ U32.show(seed) ++ "); no match")
 
-def with_loaded(+config: Config.Config, +text: String, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +path: String, +fast: Bool) -> IO(Unit):
+def with_loaded(+config: ShardSearch.Search, +text: String, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +path: String, +fast: Bool) -> IO(Unit):
   match loaded:
     case Fail{(code, message)}:
       IO.die(Unit, 2, "world: " ++ path ++ ": " ++ message)
     case Done{world}:
       evaluate_world(config, text, world, path, fast)
 
-def with_world(+config: Config.Config, +text: String, bytes: Result<&1, &1, U32 & String, List<&2, U32>>, +path: String, +fast: Bool) -> IO(Unit):
+def with_world(+config: ShardSearch.Search, +text: String, bytes: Result<&1, &1, U32 & String, List<&2, U32>>, +path: String, +fast: Bool) -> IO(Unit):
   match bytes:
     case Fail{(code, message)}:
       IO.die(Unit, 2, message)
     case Done{data}:
-      with_loaded(config, text, FilterWorld.of_bytes(data), path, fast)
+      with_loaded(config, text, FilterWorld.of_bytes_in(data, ShardSearch.caves(config)), path, fast)
 
-def with_compiled(compiled: Result<&1, &1, U32 & String, Config.Config>, +text: String, +world_path: String, +fast: Bool) -> IO(Unit):
+def with_compiled(compiled: Result<&1, &1, U32 & String, ShardSearch.Search>, +text: String, +world_path: String, +fast: Bool) -> IO(Unit):
   match compiled:
     case Fail{(code, message)}:
       IO.die(Unit, 2, message)
@@ -96,13 +102,27 @@ def with_compiled(compiled: Result<&1, &1, U32 & String, Config.Config>, +text: 
         bytes : Result<&1, &1, U32 & String, List<&2, U32>> <- Files.read_bytes("world: ", world_path)
         with_world(config, text, bytes, world_path, fast)
 
+def search_of_forest(compiled: Result<&1, &1, U32 & String, Config.Config>) -> Result<&1, &1, U32 & String, ShardSearch.Search>:
+  match compiled:
+    case Fail{failure}:
+      Fail{failure}
+    case Done{config}:
+      Done{ShardSearch.of_forest(config)}
+
+def search_of_caves(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -> Result<&1, &1, U32 & String, ShardSearch.Search>:
+  match compiled:
+    case Fail{failure}:
+      Fail{failure}
+    case Done{config}:
+      Done{ShardSearch.of_caves(config)}
+
 def with_config(text: Result<&1, &1, U32 & String, String>, +world_path: String, +fast: Bool) -> IO(Unit):
   match text:
     case Fail{(code, message)}:
       IO.die(Unit, 2, message)
     case Done{+t}:
-      Bool.pick(IO(Unit), U32.is_eq(Config.shard_named(t), 2), IO.die(Unit, 2, "config: world eval of the caves shard needs a caves world dump, and there are none yet"),
-        with_compiled(Config.config_of(t), t, world_path, fast))
+      Bool.pick(IO(Unit), U32.is_eq(Config.shard_named(t), 2), with_compiled(search_of_caves(CaveConfig.config_of(t)), t, world_path, fast),
+        with_compiled(search_of_forest(Config.config_of(t)), t, world_path, fast))
 
 def eval_paths(config: Maybe<&2, String>, world: Maybe<&2, String>, +fast: Bool) -> IO(Unit):
   match config world:

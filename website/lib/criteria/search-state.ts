@@ -19,7 +19,15 @@ import {
 import { validateConfig } from "@/lib/config/validate-config";
 import { asRecord, isRecord } from "@/lib/records";
 import { asArray, asStrings, clamp, newKey, nonEmpty } from "./state-helpers";
-import { NEW_WORLD_ROW, worldIssues, worldRowCount, type WorldRows, worldRowsOf, worldSections } from "./world-rules";
+import {
+    NEW_WORLD_ROW,
+    worldIssues,
+    worldRowCount,
+    type WorldRows,
+    worldRowsFor,
+    worldRowsOf,
+    worldSections
+} from "./world-rules";
 
 export type BiomeChoice = "include" | "exclude";
 export type CountMode = "atLeast" | "exactly" | "between" | "none";
@@ -172,7 +180,7 @@ function groupToCriterion(group: CriteriaGroup, catalog: LevelCatalog): Criterio
         }),
         prefab_swaps: compact(group.swaps),
         setpieces: nonEmpty(rulesToSetPieces(group.rules, catalog)),
-        ...(catalog.hasWorlds ? worldSections(group) : {})
+        ...worldSections(group, catalog.shard)
     });
     return sections && { passive: group.passive, ...sections };
 }
@@ -228,7 +236,7 @@ function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGr
             catalog.swaps.filter((swap) => swap.options.some((option) => option.id === swaps[swap.id])).map((swap) => [swap.id, swaps[swap.id]])
         ),
         rules: asArray(record.setpieces).slice(0, MAX_RULES_PER_SECTION).flatMap((entry) => entryToRules(entry, catalog)).slice(0, MAX_RULES_PER_SECTION),
-        ...(catalog.hasWorlds ? worldRowsOf(record) : NO_WORLD_ROWS)
+        ...worldRowsOf(record, catalog.shard)
     };
 }
 
@@ -253,11 +261,10 @@ export function upgradeConfig(config: unknown): unknown {
     return { version: CONFIG_VERSION, ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== "settings")) };
 }
 
-const NO_WORLD_ROWS: WorldRows = { counts: [], distances: [], tiles: [], routes: [] };
-
 /**
- * The search on another shard: every pick that also exists there stays (the resource varieties), the biomes, set
- * pieces and world details of the old shard are dropped. `dropped` counts what was lost.
+ * The search on another shard: every pick that also exists there stays (the resource varieties, and the world
+ * details whose prefabs exist there, with the spawn becoming the other shard's spawn), the biomes and set pieces of
+ * the old shard are dropped. `dropped` counts what was lost.
  */
 export function switchShard(state: SearchState, shard: Shard): { state: SearchState; dropped: number } {
     if (state.shard === shard) return { state: state, dropped: 0 };
@@ -272,13 +279,14 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
         dropped += Object.keys(group.swaps).length - Object.keys(swaps).length;
         dropped += group.rules.length - rules.length;
         dropped += Object.keys(group.biomes).length - Object.keys(biomes).length;
-        dropped += to.hasWorlds ? 0 : worldRowCount(group);
+        const world = worldRowsFor(group, state.shard, shard);
+        dropped += world.dropped;
         return {
             ...group,
             swaps,
             biomes,
             rules: rules.map((rule) => ({ ...rule, scopeTasks: rule.scopeTasks.filter((id) => Object.hasOwn(to.taskById, id)) })),
-            ...(to.hasWorlds ? {} : NO_WORLD_ROWS)
+            ...world.rows
         };
     });
     return { state: { ...state, shard, groups }, dropped };
@@ -339,14 +347,14 @@ const GROUP_CHECKS: GroupCheck[] = [
             }] : [];
         });
     },
-    (group, catalog) =>
-        catalog.hasWorlds && !group.passive && worldRowCount(group) > 0 && levelTableChoices(group) === 0
+    (group) =>
+        !group.passive && worldRowCount(group) > 0 && levelTableChoices(group) === 0
             ? [{
                 severity: "warning",
                 message: "only world details are picked, so every seed's world gets generated. Add a biome, resource or set piece to speed it up."
             }]
             : [],
-    (group, catalog) => (catalog.hasWorlds ? worldIssues(group) : [])
+    (group, catalog) => worldIssues(group, catalog.shard)
 ];
 
 /** An error means the search can never match. */
@@ -375,7 +383,14 @@ export function validateSearch(state: SearchState): Issue[] {
                 message: "Every option is passive. At least one option has to pick the seeds the passive ones are checked on."
             }]
             : [];
-    const issues = [...nothing, ...allPassive, ...perGroup];
+    const unverified: Issue[] =
+        state.shard === "caves" && state.platform === "windows" && picked.some((group) => worldRowCount(group) > 0)
+            ? [{
+                severity: "warning",
+                message: "Cave world details are only checked against the real game on Linux so far. Pick Linux for results you can rely on."
+            }]
+            : [];
+    const issues = [...nothing, ...allPassive, ...unverified, ...perGroup];
     if (issues.some((issue) => issue.severity === "error")) return issues;
     const checked = validateConfig(toSeedfinderConfig(state));
     return checked.ok ? issues : [...issues, {
@@ -400,20 +415,22 @@ export function decodeShareParam(param: string): unknown {
     }
 }
 
-function presetState(...groups: Partial<CriteriaGroup>[]): SearchState {
-    return { shard: "forest", platform: DEFAULT_PLATFORM, groups: groups.map((group) => ({ ...emptyGroup(), ...group })) };
+function presetState(shard: Shard, ...groups: Partial<CriteriaGroup>[]): SearchState {
+    return { shard, platform: DEFAULT_PLATFORM, groups: groups.map((group) => ({ ...emptyGroup(), ...group })) };
 }
 
-const atLeast = (pieceId: string, min: number): PieceRule => ({ ...newRule(pieceId, levelCatalogOf("forest")), min });
+const atLeast = (shard: Shard, pieceId: string, min: number): PieceRule => ({ ...newRule(pieceId, levelCatalogOf(shard)), min });
 
-export const PRESETS: Preset[] = [
+const tiles = (count: number) => count * WORLD_UNITS_PER_TILE;
+
+const FOREST_PRESETS: Preset[] = [
     {
         id: "walking-cane",
         name: "Guaranteed Walking Cane",
         description: "World will contain a walking cane.",
-        build: () => presetState({
-            rules: [atLeast("MiscBoon", 5)],
-            counts: [{ ...NEW_WORLD_ROW.counts(), prefabs: ["cane"] }]
+        build: () => presetState("forest", {
+            rules: [atLeast("forest", "MiscBoon", 5)],
+            counts: [{ ...NEW_WORLD_ROW.counts("forest"), prefabs: ["cane"] }]
         })
     },
     {
@@ -421,21 +438,61 @@ export const PRESETS: Preset[] = [
         name: "Dark Sword at spawn",
         description: "Dark Sword within 15 tiles of the world spawn. Will take a few minutes.",
         build: () =>
-            presetState({
-                rules: [atLeast("Level4Boon", 4)],
-                distances: [{ ...NEW_WORLD_ROW.distances(), to: ["nightsword"], max: 15 * WORLD_UNITS_PER_TILE }]
+            presetState("forest", {
+                rules: [atLeast("forest", "Level4Boon", 4)],
+                distances: [{ ...NEW_WORLD_ROW.distances("forest"), to: ["nightsword"], max: tiles(15) }]
             })
     },
     {
         id: "twiggy-juicy",
         name: "Twiggy trees + juicy berries",
         description: "Both swapped resources in the same world.",
-        build: () => presetState({ swaps: { twigs: "twiggy trees", berries: "juicy berries" } })
+        build: () => presetState("forest", { swaps: { twigs: "twiggy trees", berries: "juicy berries" } })
     },
     {
         id: "no-killer-bees",
         name: "No killer bees",
         description: "Skips all worlds with killer bees.",
-        build: () => presetState({ biomes: { "Killer bees!": "exclude" } })
+        build: () => presetState("forest", { biomes: { "Killer bees!": "exclude" } })
     }
 ];
+
+const CAVE_PRESETS: Preset[] = [
+    {
+        id: "guardian-by-the-stairs",
+        name: "Ancient Guardian by the stairs",
+        description: "The Ancient Guardian within 130 tiles of the stairs you arrive on. Will take a few minutes.",
+        build: () =>
+            presetState("caves", {
+                distances: [{ ...NEW_WORLD_ROW.distances("caves"), to: ["minotaur_spawner"], max: tiles(130) }]
+            })
+    },
+    {
+        id: "atrium-by-tentacle",
+        name: "Atrium Gate through the tentacles",
+        description: "The Ancient Gateway within 75 tiles of the stairs, counting the jumps through Big Tentacles. Will take a few minutes.",
+        build: () =>
+            presetState("caves", {
+                distances: [{
+                    ...NEW_WORLD_ROW.distances("caves"),
+                    to: ["atrium_gate"],
+                    max: tiles(75),
+                    links: true
+                }]
+            })
+    },
+    {
+        id: "twiggy-juicy",
+        name: "Twiggy trees + juicy berries",
+        description: "Both swapped resources in the same world.",
+        build: () => presetState("caves", { swaps: { twigs: "twiggy trees", berries: "juicy berries" } })
+    },
+    {
+        id: "jungle-without-spiders",
+        name: "Cave jungle, no spider land",
+        description: "The cave jungle biome without the spider land.",
+        build: () => presetState("caves", { biomes: { CaveJungle: "include", SpiderLand: "exclude" } })
+    }
+];
+
+export const PRESETS: Record<Shard, Preset[]> = { forest: FOREST_PRESETS, caves: CAVE_PRESETS };

@@ -53,7 +53,7 @@ def second_runs() -> U32:
 # Lua error verdict and the RNG at Generate's first attempt.
 type Seed is Data:
   Seed{seed: U32, windows: Bool, level: LevelSummary.Summary, pieces: Bool}
-  CaveSeed{seed: U32, windows: Bool, plan: StoryPlan.Plan, swaps: U32, crashed: Bool, start: Pcg.Rng}
+  CaveSeed{seed: U32, windows: Bool, plan: StoryPlan.Plan, swaps: U32, crashed: Bool, start: Pcg.Rng, pieces: Bool}
 
 def seed_inputs(+seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
   Seed{seed, windows, LevelSummary.summary(seed), pieces}
@@ -68,60 +68,60 @@ def cave_crashed(+w: CaveChoose.World) -> Bool:
     case CaveChoose.World{_, _, _, +crashed}:
       crashed
 
-def cave_seed(+seed: U32, +windows: Bool, +w: CaveChoose.World) -> Seed:
-  CaveSeed{seed, windows, StoryPlan.caves(w, 0), cave_swaps(w), cave_crashed(w), CaveChoose.generate_rng(seed)}
+def cave_seed(+seed: U32, +windows: Bool, +pieces: Bool, +w: CaveChoose.World) -> Seed:
+  CaveSeed{seed, windows, StoryPlan.caves(w, 0), cave_swaps(w), cave_crashed(w), CaveChoose.generate_rng(seed), pieces}
 
-def cave_inputs(+seed: U32, +windows: Bool) -> Seed:
-  cave_seed(seed, windows, CaveChoose.world(seed))
+def cave_inputs(+seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
+  cave_seed(seed, windows, pieces, CaveChoose.world(seed))
 
 def is_caves(+c: Seed) -> Bool:
   match c:
     case Seed{_, _, _, _}:
       False{}
-    case CaveSeed{_, _, _, _, _, _}:
+    case CaveSeed{_, _, _, _, _, _, _}:
       True{}
 
 def seed_of(+c: Seed) -> U32:
   match c:
     case Seed{+seed, _, _, _}:
       seed
-    case CaveSeed{+seed, _, _, _, _, _}:
+    case CaveSeed{+seed, _, _, _, _, _, _}:
       seed
 
 def windows_of(+c: Seed) -> Bool:
   match c:
     case Seed{_, +windows, _, _}:
       windows
-    case CaveSeed{_, +windows, _, _, _, _}:
+    case CaveSeed{_, +windows, _, _, _, _, _}:
       windows
 
 def plan_of(+c: Seed) -> StoryPlan.Plan:
   match c:
     case Seed{_, _, +level, _}:
       StoryPlan.ForestPlan{level}
-    case CaveSeed{_, _, +plan, _, _, _}:
+    case CaveSeed{_, _, +plan, _, _, _, _}:
       plan
 
 def swaps_of(+c: Seed) -> U32:
   match c:
     case Seed{_, _, LevelSummary.Summary{+swaps, _, _, _, _, _, _}, _}:
       swaps
-    case CaveSeed{_, _, _, +swaps, _, _}:
+    case CaveSeed{_, _, _, +swaps, _, _, _}:
       swaps
 
 def pieces_of(+c: Seed) -> Bool:
   match c:
     case Seed{_, _, _, +pieces}:
       pieces
-    case CaveSeed{_, _, _, _, _, _}:
-      False{}
+    case CaveSeed{_, _, _, _, _, _, +pieces}:
+      pieces
 
 # The level table raises a Lua error before Generate.
 def crashed(+c: Seed) -> Bool:
   match c:
     case Seed{_, _, LevelSummary.Summary{_, _, _, _, _, _, +crashed}, _}:
       crashed
-    case CaveSeed{_, _, _, _, +crashed, _}:
+    case CaveSeed{_, _, _, _, +crashed, _, _}:
       crashed
 
 # The RNG at the first attempt's first WorldSim call.
@@ -129,7 +129,7 @@ def first_rng(+c: Seed) -> Pcg.Rng:
   match c:
     case Seed{+seed, _, _, _}:
       LevelChoose.generate_rng(seed)
-    case CaveSeed{_, _, _, _, _, +start}:
+    case CaveSeed{_, _, _, _, _, +start, _}:
       start
 
 # The seed for the next attempt: the caves' entrance_room list pick made in an attempt's story lasts (Plan).
@@ -137,16 +137,16 @@ def carried(+c: Seed, +s: StoryGraph.St) -> Seed:
   match c:
     case Seed{+seed, +windows, +level, +pieces}:
       Seed{seed, windows, level, pieces}
-    case CaveSeed{+seed, +windows, +plan, +swaps, +crashed, +start}:
-      CaveSeed{seed, windows, StoryPlan.with_entrance(plan, StoryGraph.get(s, StoryGraph.s_entrance())), swaps, crashed, start}
+    case CaveSeed{+seed, +windows, +plan, +swaps, +crashed, +start, +pieces}:
+      CaveSeed{seed, windows, StoryPlan.with_entrance(plan, StoryGraph.get(s, StoryGraph.s_entrance())), swaps, crashed, start, pieces}
 
 # The seed as a later attempt sees it: the entrance list pick (always the list's first room) already made.
 def entrance_resolved(+c: Seed) -> Seed:
   match c:
     case Seed{+seed, +windows, +level, +pieces}:
       Seed{seed, windows, level, pieces}
-    case CaveSeed{+seed, +windows, +plan, +swaps, +crashed, +start}:
-      CaveSeed{seed, windows, StoryPlan.with_entrance(plan, 1), swaps, crashed, start}
+    case CaveSeed{+seed, +windows, +plan, +swaps, +crashed, +start, +pieces}:
+      CaveSeed{seed, windows, StoryPlan.with_entrance(plan, 1), swaps, crashed, start, pieces}
 
 # Generate from its first WorldSim call to WorldGen_VoronoiPass(100).
 def first_story(+c: Seed, +rng: Pcg.Rng) -> StoryGraph.St:

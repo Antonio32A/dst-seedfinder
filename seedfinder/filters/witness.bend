@@ -9,9 +9,6 @@ import ../data/search_vocab.bend as SearchVocab
 
 # Witness JSON (docs/config.md section 8), without spaces.
 
-def prefab_name(+id: U32) -> String:
-  Maybe.default(&2, String, List.get(&2, String, SearchVocab.prefabs(), U32.to_nat(id)), "")
-
 def is_negative(+k: U32) -> Bool:
   (k >= 2147483648 : U32)
 
@@ -65,7 +62,7 @@ def length_text(+l: Walk.Length) -> String:
 def instance_fields(+i: FilterWorld.Inst) -> String:
   match i:
     case FilterWorld.Inst{+prefab, +index, _, _, +xk, +zk, +flags}:
-      "\"prefab\":\"" ++ prefab_name(prefab) ++ "\",\"index\":" ++ U32.show(index) ++ ",\"x\":"
+      "\"prefab\":\"" ++ SearchVocab.prefab_name(prefab) ++ "\",\"index\":" ++ U32.show(index) ++ ",\"x\":"
         ++ coordinate(xk, U32.is_eq((flags .&. 1 : U32), 1)) ++ ",\"z\":" ++ coordinate(zk, U32.is_eq((flags .&. 2 : U32), 2))
 
 # {"prefab", "index", "x", "z"} of an instance.

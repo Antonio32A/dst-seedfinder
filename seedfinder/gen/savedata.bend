@@ -428,12 +428,20 @@ def pillar_links(pils: List<&2, Pil>, +all: List<&2, Pil>) -> List<&2, FilterDum
         case Pil{_, _, _, +target}:
           pillar_link(p, exit_with_id(all, target, Pil{0, 0, no_vocab(), 0}), pillar_links(rest, all))
 
-def cave_dump_of(a: Array<List<&2, OceanEnts.Ent>>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>) -> FilterDump.Dump:
+# The SETP section's pieces: none (no section) for a job that recorded no layouts.
+def pieces_section(pieces: List<&2, PopulateSetpiece.Piece>, groups: List<&2, Group>, +w: U32, +windows: Bool) -> Maybe<&2, List<&2, FilterDump.Piece>>:
+  match pieces:
+    case Nil{}:
+      None{}
+    case Con{+p, +rest}:
+      Some{pieces_of(p <> rest, groups, 1, w, windows)}
+
+def cave_dump_of(a: Array<List<&2, OceanEnts.Ent>>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>) -> FilterDump.Dump:
   +named = named_of(U32.to_nat(U32.pow(2, GenTagsData.cave_sid_depth())), a)
   +pillars = pillars_named(named, 0)
   FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), 1, Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
-    prefabs_of(named, windows), [], pillar_links(pillars, pillars), None{}, Some{[]}}
+    prefabs_of(named, windows), [], pillar_links(pillars, pillars), pieces_section(pieces, groups_of(tagged_of(named, 0)), w, windows), Some{[]}}
 
 def wormhole_sid() -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, GenTagsData.vocab_prefab_sids(), U32.to_nat(GenTagsData.vocab_wormhole())), 0)
@@ -448,9 +456,9 @@ def dump(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
       dump_of(Array.get(List<&2, OceanEnts.Ent>, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.sid_depth(), Nil{})), wormhole_sid()),
         seed, windows, w, tiles, pieces, roads_of(roads, min_road, w))
 
-# The world dump of a generated caves world: every savedata.ents entry, the tentacle pillar links, no set pieces
-# (the caves job does not record its layouts) and no roads.
+# The world dump of a generated caves world: every savedata.ents entry, the tentacle pillar links, the recorded layouts
+# and mazes as set pieces (none when the job did not record them) and no roads.
 def dump_caves(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match final:
-    case GenJob.Final{g, _, +ents, +w, _, _, _}:
-      cave_dump_of(sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), seed, windows, w, packed(g, (w * w : U32)))
+    case GenJob.Final{g, _, +ents, +w, +pieces, _, _}:
+      cave_dump_of(sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), seed, windows, w, packed(g, (w * w : U32)), pieces)

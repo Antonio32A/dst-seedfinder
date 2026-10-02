@@ -1,10 +1,13 @@
 import Base
 import ../filters/cave_config.bend as CaveConfig
+import ../filters/shard_search.bend as ShardSearch
 import ../cli/args.bend as Args
 import ../level/cave_summary.bend as CaveSummary
 import ./common.bend as SearchCommon
 import ./report.bend as SearchReport
 import ./scan.bend as SearchScan
+import ./generated.bend as SearchGenerated
+import ./worlds.bend as SearchWorlds
 
 # `world find` and `world show` on the caves shard: the level table scan of scan.bend over CaveConfig criteria.
 
@@ -84,16 +87,17 @@ def world_rounds(
 
 def level_rounds(+q: Args.Query, +config: CaveConfig.Config) -> IO(Unit):
   match q config:
-    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} CaveConfig.Config{+windows, +entries, +scanned}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _} CaveConfig.Config{+windows, +entries, _, +scanned}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         world_rounds(SearchScan.round_fuel(), (0, Nil{}), SearchScan.Scan{start, total, SearchScan.min_round(), 0, Nil{}, 0, 0n},
           Args.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}}, entries, scanned, started, started)
 
-# world find on the caves shard: the level table scan (there are no caves worlds to decide parts B-E on yet).
+# world find on the caves shard: the level table scan, or (with parts B-E) the search over caves worlds generated in
+# memory, or with --worlds DIR over pre-generated caves world dumps.
 def run_query(+q: Args.Query, +config: CaveConfig.Config) -> IO(Unit):
-  match q:
-    case Args.Query{_, _, _, _, +json, _, _, Some{_}, _}:
-      SearchReport.fail_job(json, (2, "search: --worlds is not supported for the caves shard yet"))
-    case _:
-      level_rounds(q, config)
+  match q config:
+    case Args.Query{_, _, _, _, _, _, _, None{}, _} CaveConfig.Config{_, _, +laters, _}:
+      Bool.pick(IO(Unit), SearchScan.any_rules(laters), SearchGenerated.run(q, ShardSearch.of_caves(config)), level_rounds(q, config))
+    case Args.Query{_, _, _, _, _, _, _, Some{+dir}, _} CaveConfig.Config{_, _, +laters, _}:
+      Bool.pick(IO(Unit), SearchScan.any_rules(laters), SearchWorlds.run(q, ShardSearch.of_caves(config), dir), level_rounds(q, config))

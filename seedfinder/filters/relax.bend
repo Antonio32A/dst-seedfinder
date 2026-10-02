@@ -38,7 +38,7 @@ def space_of(walk: Bool, +world: FilterWorld.World, +wormholes: Bool) -> Space:
 # The metric of a rule in a world.
 def space(+world: FilterWorld.World, +metric: Rules.Metric) -> Space:
   match metric:
-    case Rules.Metric{+walk, +wormholes}:
+    case Rules.Metric{+walk, +wormholes, _}:
       space_of(walk, world, wormholes)
 
 def plain_points(insts: List<&2, FilterWorld.Inst>) -> List<&2, Anchor.Point>:

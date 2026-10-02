@@ -156,10 +156,13 @@ def later_outcomes(skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -
     case False{}:
       parallel_jobs(world, jobs_of(later))
 
-def entry_outcomes(+shown: LevelChecks.Shown, +later: Rules.Later, +world: FilterWorld.World, +s: LevelSummary.Summary, +fast: Bool) -> List<&2, Outcome>:
-  +level = level_outcomes(shown, s)
+# The outcomes of an entry whose part A outcomes are `level`.
+def entry_outcomes_from(+level: List<&2, Outcome>, +later: Rules.Later, +world: FilterWorld.World, +fast: Bool) -> List<&2, Outcome>:
   +all = List.append(&2, Outcome, level, later_outcomes(fast && Bool.not(all_ok(level)), world, later))
   Bool.pick(List<&2, Outcome>, fast, until_failure(all), all)
+
+def entry_outcomes(+shown: LevelChecks.Shown, +later: Rules.Later, +world: FilterWorld.World, +s: LevelSummary.Summary, +fast: Bool) -> List<&2, Outcome>:
+  entry_outcomes_from(level_outcomes(shown, s), later, world, fast)
 
 def outcome_texts(outcomes: List<&2, Outcome>, +later_only: Bool) -> List<&2, String>:
   match outcomes:

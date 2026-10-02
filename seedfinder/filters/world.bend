@@ -6,6 +6,7 @@ import ../gen/centi.bend as Centi
 import ../data/search_vocab.bend as SearchVocab
 import ../data/gen_tags.bend as GenTagsData
 import ./dump.bend as FilterDump
+import ./parse.bend as Parse
 
 # A generated world as the filters see it (gen/savedata.bend builds it, of_bytes reads it from a world dump).
 # Instances are savedata.ents entries: `index` is the position in its prefab's list, x/z the doubles the worldgen
@@ -24,7 +25,7 @@ type World is Data:
   World{seed: U32, width: U32, height: U32, tile_ids: List<&2, U32>, entities: List<&2, List<&2, Inst>>, links: List<&2, Link>, tiles: List<&2, U32>}
 
 # A dump: a generated world with its platform (0 unknown, 1 windows, 2 linux), or the seed of a world whose
-# generation gave up. Only forest dumps load; a caves dump is refused.
+# generation gave up. A dump of the other shard than the one asked for is refused.
 type Loaded is Data:
   Generated{world: World, platform: U32}
   GaveUp{seed: U32}
@@ -94,23 +95,58 @@ def links_of(links: List<&2, FilterDump.Link>, +groups: List<&2, List<&2, Inst>>
     case Con{FilterDump.Link{+entry, +exit}, rest}:
       Link{instance_at(groups, wormhole, entry), instance_at(groups, wormhole, exit)} <> links_of(rest, groups, wormhole)
 
-def loaded_of(dump: Result<&1, &1, U32 & String, FilterDump.Dump>) -> Result<&1, &1, U32 & String, Loaded>:
+def prefab_name_at(prefabs: List<&2, FilterDump.Prefab>, +position: U32) -> String:
+  match prefabs:
+    case Nil{}:
+      ""
+    case Con{FilterDump.Prefab{+name, _}, rest}:
+      Bool.pick(String, U32.is_zero(position), name, prefab_name_at(rest, (position - 1 : U32)))
+
+def vocab_id(+name: String) -> U32:
+  Maybe.default(&2, U32, Parse.index_of(SearchVocab.all_prefabs(), name, 0), 65535)
+
+def pillar_inst(+groups: List<&2, List<&2, Inst>>, +prefabs: List<&2, FilterDump.Prefab>, +prefab: U32, +index: U32) -> Inst:
+  instance_at(groups, vocab_id(prefab_name_at(prefabs, prefab)), index)
+
+def pillar_links_of(pillars: List<&2, FilterDump.Pillar>, +prefabs: List<&2, FilterDump.Prefab>, +groups: List<&2, List<&2, Inst>>) -> List<&2, Link>:
+  match pillars:
+    case Nil{}:
+      Nil{}
+    case Con{FilterDump.Pillar{+entry_prefab, +entry, +exit_prefab, +exit}, rest}:
+      Link{pillar_inst(groups, prefabs, entry_prefab, entry), pillar_inst(groups, prefabs, exit_prefab, exit)} <> pillar_links_of(rest, prefabs, groups)
+
+def wrong_shard(+caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
+  Fail{(2, Bool.pick(String, caves, "world dump of the forest shard, this finder searches the caves shard",
+    "world dump of the caves shard, this finder searches the forest shard"))}
+
+def forest_loaded(+seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +links: List<&2, FilterDump.Link>) -> Loaded:
+  +groups = groups_of(SearchVocab.prefabs(), prefabs, 0)
+  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole()), tiles}, platform}
+
+def cave_loaded(+seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +pillars: List<&2, FilterDump.Pillar>) -> Loaded:
+  +groups = groups_of(SearchVocab.all_prefabs(), prefabs, 0)
+  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, pillar_links_of(pillars, prefabs, groups), tiles}, platform}
+
+# The world of a parsed dump of the shard `caves` names; a dump of the other shard is refused.
+def loaded_of(dump: Result<&1, &1, U32 & String, FilterDump.Dump>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
   match dump:
-    case Done{FilterDump.Generated{_, _, 1, _, _, _, _, _, _, _, _, _, _}}:
-      Fail{(2, "world dump of the caves shard, this finder searches the forest shard")}
-    case Done{FilterDump.GaveUp{_, _, 1}}:
-      Fail{(2, "world dump of the caves shard, this finder searches the forest shard")}
-    case Done{FilterDump.Generated{+seed, +platform, _, _, +width, +height, +tile_names, +tiles, +prefabs, +links, _, _, _}}:
-      +groups = groups_of(SearchVocab.prefabs(), prefabs, 0)
-      Done{Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole()), tiles}, platform}}
-    case Done{FilterDump.GaveUp{+seed, _, _}}:
-      Done{GaveUp{seed}}
+    case Done{FilterDump.Generated{+seed, +platform, +shard, _, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, _, _}}:
+      Bool.pick(Result<&1, &1, U32 & String, Loaded>, U32.is_eq(shard, Bool.to_u32(caves)),
+        Done{Bool.pick(Loaded, caves, cave_loaded(seed, platform, width, height, tile_names, tiles, prefabs, pillars),
+          forest_loaded(seed, platform, width, height, tile_names, tiles, prefabs, links))},
+        wrong_shard(caves))
+    case Done{FilterDump.GaveUp{+seed, _, +shard}}:
+      Bool.pick(Result<&1, &1, U32 & String, Loaded>, U32.is_eq(shard, Bool.to_u32(caves)), Done{GaveUp{seed}}, wrong_shard(caves))
     case Fail{error}:
       Fail{error}
 
-# Reads a world dump (docs/world-dump.md) from its bytes, with the prefabs and tiles of the vocabulary.
+# Reads a world dump (docs/world-dump.md) of the forest shard from its bytes, with the prefabs and tiles of the vocabulary.
 def of_bytes(bytes: List<&2, U32>) -> Result<&1, &1, U32 & String, Loaded>:
-  loaded_of(FilterDump.of_bytes(bytes))
+  loaded_of(FilterDump.of_bytes(bytes), False{})
+
+# Reads a world dump of the shard `caves` names (True: the caves) from its bytes.
+def of_bytes_in(bytes: List<&2, U32>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
+  loaded_of(FilterDump.of_bytes(bytes), caves)
 
 def instance_groups(+groups: List<&2, List<&2, Inst>>, ids: List<&2, U32>) -> List<&2, List<&2, Inst>>:
   match ids:

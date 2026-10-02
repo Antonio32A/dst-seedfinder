@@ -63,7 +63,8 @@ build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # 
 - `--platform windows|linux`: overrides the config's `platform`.
 - `--shard forest|caves`: overrides the config's `shard` (default forest); also on `world show`, `world dump`, `gen` and
   `setpiece`. The caves shard has the level table (`world find`, `world show`, `setpiece find|show`) and its whole
-  worldgen (`gen`, `world dump`, see below); `--worlds` and the world sections of a config do not read cave dumps yet.
+  worldgen (`gen`, `world dump`, see below). A caves config's world sections (`counts`, `distances`, `tiles`, `routes`)
+  are decided on caves worlds generated in memory, or with `--worlds` on caves dumps, and `world eval` reads a caves dump.
 - `FROM [TO]`: scan a seed range instead of the whole space (can't be combined with `--start-seed`).
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them.
 - `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).

@@ -148,7 +148,7 @@ export default function SeedFinderApp() {
                 <main className="content">
                     <Intro/>
                     <ShardSwitch shard={state.shard} onChange={changeShard}/>
-                    {state.shard === "forest" && <Presets onPick={pickPreset}/>}
+                    <Presets shard={state.shard} onPick={pickPreset}/>
                     <CriteriaEditor state={state} onChange={setState}/>
                     <SearchPanel
                             config={config}

@@ -1,7 +1,7 @@
 # Search config (format v1)
 
 The search config JSON that the website writes and `seedfinder world find --config` reads, and the finder's output.
-Scope: the forest shard (preset `SURVIVAL_TOGETHER`) and the caves shard (preset `DST_CAVE`, level table only for now),
+Scope: the forest shard (preset `SURVIVAL_TOGETHER`) and the caves shard (preset `DST_CAVE`),
 default settings, game build 747465, worlds generated on a Windows or a Linux host (`platform`, § 1).
 
 The JSON Schema for it is [`config.schema.json`](../config.schema.json) (draft 2020-12: types, required fields, enums
@@ -39,8 +39,9 @@ entry before the ones it rides along with to have it reported as `entry` on seed
 
 **Shard.** `shard` picks the world that is searched: `"forest"` (the overworld, the default) or `"caves"`. A cave
 world is a separate `GenerateNewWorld` with its own seed, so a caves search scans cave seeds. The shard decides the
-vocabulary of `tasks`, `prefab_swaps` and `setpieces` (§ 3, § 4 A). The caves shard only has the level table sections
-for now: an entry with `counts`, `distances`, `tiles` or `routes` is a config error (§ 7). The finder's `--shard
+vocabulary of `tasks`, `prefab_swaps` and `setpieces` (§ 3, § 4 A) and of the prefabs of `counts`, `distances` and
+`routes` (§ 3); the caves also have tentacle pillar links where the forest has wormholes (`pillars` for `wormholes`, § 5).
+Every section works on both shards. The finder's `--shard
 forest|caves` flag (on `world find`, `world show`, `world dump`, `gen` and `setpiece`) overrides the config's `shard`,
 the way `--platform` overrides `platform`. An unknown shard is an error, in the config and in the flag.
 
@@ -49,7 +50,8 @@ generation (`forest_map.Generate`) on: the tile map and every entity position. T
 So:
 - part A (`tasks`, `prefab_swaps`, `setpieces`) ignores `platform`: its results are identical on both platforms;
 - parts B–E (`counts`, `distances`, `tiles`, `routes`) are evaluated on that platform's world, and their verdicts and
-  witnesses hold only for worlds generated on that OS.
+  witnesses hold only for worlds generated on that OS. The caves' Linux worlds are checked against the real game
+  (301 worlds); its Windows worlds are generated the same way but not checked yet.
 
 Windows is the primary platform, hence the default: a v1 config without `platform` is a Windows config. The value is
 case-sensitive, and there is no "any platform" value. A finder that can't generate a platform's worlds rejects a
@@ -72,7 +74,7 @@ General rules:
 | **uint32** | JSON integer, `0..4294967295` | Written without a fraction or exponent (`20`, not `20.0`). |
 | **distance** | JSON number, `0..1000000` | World units, fractions allowed. |
 | **metric** | `"straight"` \| `"walk"` | Default `"straight"` (§ 5). |
-| **wormholes** | `true` \| `false` | Default `false` (§ 5). |
+| **wormholes** | `true` \| `false` | Default `false` (§ 5). In the caves the key is `pillars`: the same flag, for the tentacle pillar links. |
 
 **Units.** Coordinates and distances are world units, as in savedata `x`/`z`. 1 tile = 4 units. The forest map is
 about 425 × 425 tiles (±850 units). Tile criteria count tile steps. Every bound is inclusive. An omitted bound doesn't
@@ -85,14 +87,15 @@ schema's enums are generated from the same lists.
 
 | Names | Authoritative list |
 |---|---|
-| prefab ids | `prefabs[].id`: **every** entry, including `default_reachable: false` ones (those just count 0) |
+| prefab ids | `prefabs[].id`: **every** entry, including `default_reachable: false` ones (those just count 0); for the caves, the ids of `scripts/catalog/cave_catalog.json` (287: every prefab a cave room, layout, map tag or maze can place, and the ones the real cave worlds have) |
 | task ids | `tasks[].id`; for the caves, the 33 required and 18 optional tasks of the `cave_default` task set |
 | set piece names | `setpieces[].name` where `filterable && forest` (level-table pieces placeable in the forest); for the caves, the task set's set pieces and the trap, point of interest, protected resource and boon pieces that a cave task can host |
-| tile names | `tiles[].name` where `land` (tiles criteria only look at land tiles) |
+| tile names | `tiles[].name` where `land` (tiles criteria only look at land tiles); the caves use the same tile table, and 22 of its land tiles occur in the real cave worlds |
 | prefab swaps | `prefab_swaps[].category` → `options[].name`; the caves have no `"grass gekko"` |
 
-`catalog.json` lists exactly the prefabs forest worldgen can place. Validate against the whole list: a prefab that no
-default world contains is allowed and counts 0. Catalog **group** names (`clockwork`, `rocks`, ...) and `variant_of`
+`catalog.json` lists exactly the prefabs forest worldgen can place, and `cave_catalog.json` the caves'. Validate against
+the whole list of the config's shard: a prefab that no default world contains is allowed and counts 0, and one of the
+other shard's is an unknown prefab. Catalog **group** names (`clockwork`, `rocks`, ...) and `variant_of`
 keys (`rock`, `sculpture`, ...) are not ids. The UI expands a group into its id list when it writes the config.
 
 ## 4. Sections
@@ -199,6 +202,20 @@ In straight, the graph is complete on `{a, b, the 16 wormhole ends}` with Euclid
 the link joins the entry's anchor tile to the exit's, costing `offset(entry) + offset(exit)` (0 in practice). The
 default `false` ignores wormholes.
 
+**`pillars: true`** (the caves' `wormholes`). The links are the tentacle pillars' `teleporter.target`s: the 7 to 10
+`tentacle_pillar` of a world are paired at random, and its 2 `tentacle_pillar_atrium` with each other, so there are 8 to
+12 directed links (12 in 213 of the 301 real worlds), each a free edge from the entry pillar to the exit one and
+chainable like wormholes. A pillar link never leaves its group. Everything
+else of `wormholes` holds with the pillars as the link ends: both metrics, the witnesses' `pillars` jump lists, and the
+default `false`, which ignores the links. A caves entry that says `wormholes` is a config error (the key is unknown
+there), as is `pillars` in a forest entry.
+
+**The start of the caves.** The forest's rules start from the `multiplayer_portal`. A player gets into the caves down
+one of the 10 `cave_exit`s (the stairs, each paired with a forest cave entrance), so the caves' rules start from
+`cave_exit`: `D(cave_exit, X)` is the distance from the nearest stairs. The `CaveStart` layout also holds a
+`multiplayer_portal` and a `spawnpoint_master` (1 each), where a player who spawns in a caves-only world appears, and
+they can be used as a start too.
+
 **Pairs.** `D(S, T) = min { d(s, t) : s ∈ S, t ∈ T, s ≠ t }`, and ∞ without such a pair. An instance never pairs with
 itself (with or without wormholes). Distinct instances at distance 0 do pair.
 
@@ -252,7 +269,6 @@ parse it: it validates with the schema and the caps first.
 | unknown task | `unknown task "<id>" in <path>` |
 | `shard` not `"forest"` or `"caves"` | `unknown shard <value> (forest or caves)`, e.g. `unknown shard "nether" (forest or caves)` |
 | `--shard` not `forest` or `caves` | `--shard must be forest or caves, got "<value>"` (a usage error, exit 2) |
-| world section on the caves shard | `<path>.<section> is not supported for the caves shard yet (only tasks, prefab_swaps and setpieces are)` |
 | unknown set piece | `unknown set piece "<name>" in <path>` |
 | unknown tile | `unknown tile "<name>" in <path>` |
 | non-land tile | `tile "<name>" in <path> is not a land tile` |
@@ -308,8 +324,8 @@ hit). Instances are `{"prefab", "index", "x", "z"}`, and distances are world uni
 |---|---|
 | counts | `count`. With `near`, also `total` (instances of `prefab`) and `instances`: every counted instance plus `near` (its nearest near-instance) and `distance`. |
 | tiles | `distance` (steps), `from_tile`, `to_tile` as `{"tx", "ty", "x", "z"}` (x/z of the tile centre) |
-| distances | `distance`, `from`, `to`, `wormholes: [{"entry", "exit"}]` (jumps in path order). With `D = ∞` (possible with only `min`), it's just `"distance": null`. |
-| routes | `length`, `stops` (instances in visiting order, `from` first), `legs: [{"from", "to", "distance", "wormholes"}]` |
+| distances | `distance`, `from`, `to`, `wormholes: [{"entry", "exit"}]` (jumps in path order; `pillars` in the caves). With `D = ∞` (possible with only `min`), it's just `"distance": null`. |
+| routes | `length`, `stops` (instances in visiting order, `from` first), `legs: [{"from", "to", "distance", "wormholes"}]` (`pillars` in the caves) |
 
 On ties, the witness instances are any optimal choice. Only the values are normative.
 
@@ -367,6 +383,23 @@ On seed 1 the walk through two wormholes is 822.774, so this fails. Its witness:
                 "exit": {"prefab": "wormhole", "index": 3, "x": 612, "z": 80}},
                {"entry": {"prefab": "wormhole", "index": 0, "x": 284, "z": -116},
                 "exit": {"prefab": "wormhole", "index": 1, "x": -484, "z": -140}}]}
+```
+
+**Atrium Gate through the tentacles, caves** (`"shard": "caves"`, `"platform": "linux"`). "Within 75 tiles of the stairs,
+jumps through tentacle pillars allowed" is a `distances` rule from `cave_exit`:
+
+```json
+{"from": "cave_exit", "to": "atrium_gate", "max": 300, "pillars": true}
+```
+
+On cave seed 1 the shortest way is 387.113 units, through the two Atrium pillars, so this fails. Its witness:
+
+```json
+{"section": "distances", "index": 0, "ok": false, "distance": 387.113,
+ "from": {"prefab": "cave_exit", "index": 0, "x": 472.31, "z": 464.5},
+ "to": {"prefab": "atrium_gate", "index": 0, "x": -166, "z": 742},
+ "pillars": [{"entry": {"prefab": "tentacle_pillar_atrium", "index": 1, "x": 388, "z": 288},
+              "exit": {"prefab": "tentacle_pillar_atrium", "index": 0, "x": -142, "z": 552}}]}
 ```
 
 **A clockwork group** (a `counts` rule): the UI's "Clockwork" group becomes the id list.

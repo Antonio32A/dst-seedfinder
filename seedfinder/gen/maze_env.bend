@@ -17,6 +17,21 @@ type Env is Data:
 type Pass is Type:
   Pass{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>}
 
+# A maze or labyrinth a pass built: the string id of its name and the entries it added to the pass's entity list (the
+# oldest `from` entries came before it, `to` after it).
+type Built is Data:
+  Built{name: U32, from: U32, to: U32}
+
+# The pass and how many entities it holds.
+def counted(p: Pass) -> Pass & U32:
+  match p:
+    case Pass{g, rng, +ents, marks}:
+      (Pass{g, rng, ents, marks}, U32.from_nat(List.length(&2, Entities.Ent, ents)))
+
+# `built` with what `name` added between the two entity counts, when it added anything.
+def built_with(+name: U32, +from: U32, +to: U32, +built: List<&2, Built>) -> List<&2, Built>:
+  Bool.pick(List<&2, Built>, (from < to : U32), Built{name, from, to} <> built, built)
+
 # The string id of a prefab name.
 def prefab(+name: String) -> U32:
   PopulateNames.string_id(name)

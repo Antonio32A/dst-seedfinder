@@ -2429,13 +2429,13 @@ export const PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(PREFABS.ma
 
 /** The caves shard's prefabs: what its sampled worlds and its rooms and layouts can contain. */
 export const CAVE_PREFABS: WorldPrefab[] = [
-    { "id": "amulet", "name": "Life Giving Amulet", "group": "set-piece loot", "unique": true },
+    { "id": "amulet", "name": "Life Giving Amulet", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
         "id": "ancient_altar_broken_spawner",
         "name": "Broken Ancient Pseudoscience Station (spawner)",
         "group": "markers",
         "always": true,
-        "counts": [1, 4, 8]
+        "counts": [1, 4, 10]
     },
     {
         "id": "ancient_altar_spawner",
@@ -2451,7 +2451,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "markers",
         "unreachable": true,
         "always": true,
-        "counts": [2, 10, 19]
+        "counts": [2, 10, 24]
     },
     {
         "id": "archive_centipede_husk",
@@ -2459,7 +2459,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "unreachable": true,
         "always": true,
-        "counts": [1, 4, 9]
+        "counts": [1, 4, 10]
     },
     {
         "id": "archive_chandelier",
@@ -2467,7 +2467,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "unreachable": true,
         "always": true,
-        "counts": [12, 24, 33]
+        "counts": [9, 25, 37]
     },
     {
         "id": "archive_cookpot",
@@ -2476,7 +2476,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "always": true,
-        "counts": [1, 2, 5],
+        "counts": [1, 2, 6],
         "icon": { "x": 1888.5, "y": 48.5, "w": 63, "h": 63 }
     },
     {
@@ -2486,7 +2486,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "always": true,
-        "counts": [3, 4, 6],
+        "counts": [3, 4, 7],
         "icon": { "x": 608.5, "y": 48.5, "w": 63, "h": 63 }
     },
     {
@@ -2496,7 +2496,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "always": true,
-        "counts": [18, 33, 47],
+        "counts": [14, 34, 53],
         "icon": { "x": 1824.5, "y": 224.5, "w": 63, "h": 63 }
     },
     {
@@ -2525,7 +2525,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "always": true,
-        "counts": [17, 27.5, 42],
+        "counts": [13, 28, 46],
         "icon": { "x": 288.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -2546,7 +2546,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "always": true,
-        "counts": [6, 24, 42],
+        "counts": [4, 24, 44],
         "icon": { "x": 736.5, "y": 44.5, "w": 63, "h": 63 }
     },
     {
@@ -2555,7 +2555,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "unreachable": true,
         "always": true,
-        "counts": [5, 16, 28]
+        "counts": [4, 16, 28]
     },
     {
         "id": "archive_security_waypoint",
@@ -2563,7 +2563,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "markers",
         "unreachable": true,
         "always": true,
-        "counts": [8, 20, 29]
+        "counts": [5, 21, 33]
     },
     {
         "id": "archive_switch",
@@ -2585,10 +2585,10 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [1, 1, 1]
     },
     { "id": "armorgrass", "name": "Grass Suit", "group": "set-piece loot", "counts": [0, 0, 3] },
-    { "id": "armormarble", "name": "Marble Suit", "group": "set-piece loot", "unique": true },
-    { "id": "armorwood", "name": "Log Suit", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
+    { "id": "armormarble", "name": "Marble Suit", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
+    { "id": "armorwood", "name": "Log Suit", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "ash", "name": "Ashes", "group": "set-piece loot", "counts": [0, 0, 8] },
-    { "id": "atrium_fence", "name": "Ancient Fence", "group": "structures", "always": true, "counts": [87, 215, 419] },
+    { "id": "atrium_fence", "name": "Ancient Fence", "group": "structures", "always": true, "counts": [87, 214, 431] },
     {
         "id": "atrium_gate",
         "name": "Ancient Gateway",
@@ -2606,7 +2606,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "defaultShown": true,
         "always": true,
-        "counts": [14, 50, 88],
+        "counts": [14, 52, 96],
         "icon": { "x": 288.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
@@ -2615,7 +2615,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "unreachable": true,
         "defaultShown": true,
-        "counts": [0, 6, 16],
+        "counts": [0, 6, 20],
         "icon": { "x": 416.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
@@ -2624,7 +2624,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "defaultShown": true,
         "always": true,
-        "counts": [10, 20.5, 32],
+        "counts": [10, 21, 32],
         "icon": { "x": 544.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
@@ -2647,7 +2647,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [4, 4, 4],
         "icon": { "x": 672.5, "y": 384.5, "w": 63, "h": 63 }
     },
-    { "id": "axe", "name": "Axe", "group": "set-piece loot", "counts": [0, 0.5, 3] },
+    { "id": "axe", "name": "Axe", "group": "set-piece loot", "counts": [0, 1, 3] },
     {
         "id": "backpack",
         "name": "Backpack",
@@ -2664,7 +2664,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "always": true,
-        "counts": [6, 20.5, 45],
+        "counts": [6, 21, 45],
         "icon": { "x": 992.5, "y": 44.5, "w": 63, "h": 63 }
     },
     { "id": "batwing", "name": "Batilisk Wing", "group": "set-piece loot", "counts": [0, 0, 2] },
@@ -2678,7 +2678,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unique": true,
         "icon": { "x": 1120.5, "y": 44.5, "w": 63, "h": 63 }
     },
-    { "id": "beefalohat", "name": "Beefalo Hat", "group": "set-piece loot", "unique": true },
+    { "id": "beefalohat", "name": "Beefalo Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "beefalowool", "name": "Beefalo Wool", "group": "set-piece loot", "unreachable": true, "unique": true },
     { "id": "beehat", "name": "Beekeeper Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
@@ -2695,7 +2695,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "variantOf": "berrybush",
         "defaultShown": true,
-        "counts": [0, 4, 14],
+        "counts": [0, 4, 18],
         "swapOption": "regular berries",
         "icon": { "x": 1824.5, "y": 384.5, "w": 63, "h": 63 }
     },
@@ -2705,7 +2705,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "variantOf": "berrybush",
         "defaultShown": true,
-        "counts": [0, 0, 7],
+        "counts": [0, 0, 8],
         "swapOption": "juicy berries",
         "icon": { "x": 32.5, "y": 512.5, "w": 63, "h": 63 }
     },
@@ -2724,35 +2724,35 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Damaged Bishop (spawner)",
         "group": "clockwork",
         "always": true,
-        "counts": [7, 20, 34]
+        "counts": [7, 20, 47]
     },
     { "id": "blowdart_fire", "name": "Fire Dart", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "blowdart_pipe", "name": "Blow Dart", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "blowdart_sleep", "name": "Sleep Dart", "group": "set-piece loot", "counts": [0, 0, 2] },
-    { "id": "blue_mushroom", "name": "Blue Mushroom", "group": "plants", "always": true, "counts": [96, 183.5, 331] },
-    { "id": "bluegem", "name": "Blue Gem", "group": "set-piece loot", "unique": true },
+    { "id": "blue_mushroom", "name": "Blue Mushroom", "group": "plants", "always": true, "counts": [68, 180, 362] },
+    { "id": "bluegem", "name": "Blue Gem", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "blueprint", "name": "Blueprint", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
-    { "id": "boards", "name": "Boards", "group": "set-piece loot", "counts": [0, 0, 7] },
-    { "id": "boneshard", "name": "Bone Shards", "group": "items", "always": true, "counts": [2, 8, 24] },
+    { "id": "boards", "name": "Boards", "group": "set-piece loot", "counts": [0, 0, 13] },
+    { "id": "boneshard", "name": "Bone Shards", "group": "items", "always": true, "counts": [1, 9, 26] },
     { "id": "boomerang", "name": "Boomerang", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
         "id": "brokenwall_ruins",
         "name": "Broken Thulecite Wall",
         "group": "structures",
         "always": true,
-        "counts": [79, 143.5, 267]
+        "counts": [74, 149, 298]
     },
     { "id": "bugnet", "name": "Bug Net", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "bushhat", "name": "Bush Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "cane", "name": "Walking Cane", "group": "set-piece loot", "counts": [0, 0, 2] },
-    { "id": "carrot_planted", "name": "Carrot", "group": "plants", "always": true, "counts": [32, 81.5, 162] },
+    { "id": "carrot_planted", "name": "Carrot", "group": "plants", "always": true, "counts": [31, 82, 194] },
     {
         "id": "cave_banana_tree",
         "name": "Cave Banana Tree",
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [2, 29, 89],
+        "counts": [2, 29, 92],
         "icon": { "x": 1056.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2764,13 +2764,13 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [10, 10, 10],
         "icon": { "x": 1440.5, "y": 512.5, "w": 63, "h": 63 }
     },
-    { "id": "cave_fern", "name": "Fern", "group": "plants", "always": true, "counts": [713, 1126, 1594] },
+    { "id": "cave_fern", "name": "Fern", "group": "plants", "always": true, "counts": [713, 1116, 1594] },
     {
         "id": "cave_fern_withered",
         "name": "Withered Fern",
         "group": "plants",
         "always": true,
-        "counts": [116, 204.5, 550]
+        "counts": [98, 213, 596]
     },
     {
         "id": "cave_hole",
@@ -2778,7 +2778,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "spawn & travel",
         "defaultShown": true,
         "always": true,
-        "counts": [5, 13, 19],
+        "counts": [5, 13, 21],
         "icon": { "x": 1312.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2786,7 +2786,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Fumarole Mite (spawner)",
         "group": "mobs & dens",
         "always": true,
-        "counts": [6, 12, 15]
+        "counts": [6, 12, 16]
     },
     {
         "id": "cave_vent_rock",
@@ -2794,7 +2794,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [51, 102.5, 273],
+        "counts": [48, 107, 282],
         "icon": { "x": 1568.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2803,9 +2803,9 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "unreachable": true,
         "always": true,
-        "counts": [11, 37, 63]
+        "counts": [9, 37, 63]
     },
-    { "id": "cavelight", "name": "Cave Light", "group": "markers", "always": true, "counts": [59, 117, 231] },
+    { "id": "cavelight", "name": "Cave Light", "group": "markers", "always": true, "counts": [55, 115, 231] },
     {
         "id": "cavelight_atrium",
         "name": "Cave Light (Atrium)",
@@ -2820,36 +2820,36 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Cave Light (small)",
         "group": "markers",
         "always": true,
-        "counts": [36, 85.5, 199]
+        "counts": [29, 82, 199]
     },
     {
         "id": "cavelight_tiny",
         "name": "Cave Light (tiny)",
         "group": "markers",
         "always": true,
-        "counts": [20, 81, 176]
+        "counts": [20, 77, 176]
     },
-    { "id": "cavelightmoon", "name": "Lunar Cave Light", "group": "markers", "always": true, "counts": [1, 12, 26] },
+    { "id": "cavelightmoon", "name": "Lunar Cave Light", "group": "markers", "always": true, "counts": [1, 12, 30] },
     {
         "id": "cavelightmoon_small",
         "name": "Lunar Cave Light (small)",
         "group": "markers",
         "always": true,
-        "counts": [8, 16, 31]
+        "counts": [7, 17, 31]
     },
     {
         "id": "cavelightmoon_tiny",
         "name": "Lunar Cave Light (tiny)",
         "group": "markers",
         "always": true,
-        "counts": [3, 12, 24]
+        "counts": [1, 12, 29]
     },
     {
         "id": "chessjunk_spawner",
         "name": "Chess Junk (spawner)",
         "group": "clockwork",
         "always": true,
-        "counts": [25, 56, 100]
+        "counts": [25, 59, 100]
     },
     { "id": "cookbook", "name": "Cookbook", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "cookingrecipecard", "name": "{item} Recipe Card", "group": "set-piece loot", "counts": [0, 0, 4] },
@@ -2861,7 +2861,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [0, 0, 2],
         "icon": { "x": 1952.5, "y": 512.5, "w": 63, "h": 63 }
     },
-    { "id": "cutgrass", "name": "Cut Grass", "group": "items", "counts": [0, 0, 10] },
+    { "id": "cutgrass", "name": "Cut Grass", "group": "items", "counts": [0, 0, 15] },
     { "id": "cutstone", "name": "Cut Stone", "group": "set-piece loot", "counts": [0, 0, 16] },
     {
         "id": "daywalkerspawningground",
@@ -2876,7 +2876,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "always": true,
-        "counts": [59, 100, 157],
+        "counts": [59, 104, 169],
         "icon": { "x": 1952.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
@@ -2896,7 +2896,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "always": true,
-        "counts": [168, 339.5, 717],
+        "counts": [157, 322, 717],
         "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
@@ -2929,7 +2929,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
     },
     { "id": "farm_plow_item", "name": "Garden Digamajig", "group": "set-piece loot", "counts": [0, 0, 4] },
     { "id": "featherhat", "name": "Feather Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
-    { "id": "fireflies", "name": "Fireflies", "group": "plants", "always": true, "counts": [10, 31, 67] },
+    { "id": "fireflies", "name": "Fireflies", "group": "plants", "always": true, "counts": [10, 31, 68] },
     { "id": "firehound", "name": "Fire Hound", "group": "mobs & dens", "counts": [0, 0, 5] },
     {
         "id": "firepit",
@@ -2937,26 +2937,33 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
+        "counts": [0, 0, 1],
         "icon": { "x": 32.5, "y": 236.5, "w": 63, "h": 63, "priority": 1 }
     },
     { "id": "firestaff", "name": "Fire Staff", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
-    { "id": "fishingrod", "name": "Freshwater Fishing Rod", "group": "set-piece loot", "unique": true },
-    { "id": "fissure", "name": "Nightmare Fissure", "group": "markers", "always": true, "counts": [8, 24, 44] },
+    {
+        "id": "fishingrod",
+        "name": "Freshwater Fishing Rod",
+        "group": "set-piece loot",
+        "unique": true,
+        "counts": [0, 0, 1]
+    },
+    { "id": "fissure", "name": "Nightmare Fissure", "group": "markers", "always": true, "counts": [8, 25, 44] },
     {
         "id": "fissure_lower",
         "name": "Nightmare Fissure (lower)",
         "group": "markers",
         "always": true,
-        "counts": [4, 22, 55]
+        "counts": [4, 23, 59]
     },
-    { "id": "flint", "name": "Flint", "group": "items", "counts": [0, 7, 19] },
+    { "id": "flint", "name": "Flint", "group": "items", "counts": [0, 7, 20] },
     {
         "id": "flower_cave",
         "name": "Light Flower",
         "group": "plants",
         "defaultShown": true,
         "always": true,
-        "counts": [209, 381.5, 575],
+        "counts": [209, 376, 614],
         "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2966,7 +2973,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "flower_cave",
         "defaultShown": true,
         "always": true,
-        "counts": [63, 138, 255],
+        "counts": [63, 137, 255],
         "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2976,7 +2983,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "flower_cave",
         "defaultShown": true,
         "always": true,
-        "counts": [1, 11, 49],
+        "counts": [1, 12, 49],
         "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2986,7 +2993,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "flower_cave",
         "defaultShown": true,
         "always": true,
-        "counts": [54, 109, 221],
+        "counts": [54, 111, 221],
         "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -2996,7 +3003,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "flower_cave",
         "defaultShown": true,
         "always": true,
-        "counts": [3, 12, 39],
+        "counts": [3, 12, 45],
         "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
@@ -3006,20 +3013,20 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "flower_cave",
         "defaultShown": true,
         "always": true,
-        "counts": [9, 23.5, 83],
+        "counts": [9, 25, 83],
         "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "flower_evil", "name": "Evil Flower", "group": "plants", "counts": [0, 0, 10] },
     { "id": "footballhat", "name": "Football Helmet", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "goldenpickaxe", "name": "Opulent Pickaxe", "group": "set-piece loot", "unique": true },
-    { "id": "goldnugget", "name": "Gold Nugget", "group": "items", "counts": [0, 6.5, 24] },
+    { "id": "goldnugget", "name": "Gold Nugget", "group": "items", "counts": [0, 7, 24] },
     {
         "id": "grass",
         "name": "Grass",
         "group": "plants",
         "defaultShown": true,
         "always": true,
-        "counts": [250, 507.5, 783],
+        "counts": [231, 473, 795],
         "swapOption": "regular grass",
         "icon": { "x": 928.5, "y": 640.5, "w": 63, "h": 63 }
     },
@@ -3028,10 +3035,10 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Headstone",
         "group": "structures",
         "defaultShown": true,
-        "counts": [0, 6.5, 26],
+        "counts": [0, 6, 26],
         "icon": { "x": 1056.5, "y": 640.5, "w": 63, "h": 63 }
     },
-    { "id": "green_mushroom", "name": "Green Mushroom", "group": "plants", "always": true, "counts": [22, 74.5, 178] },
+    { "id": "green_mushroom", "name": "Green Mushroom", "group": "plants", "always": true, "counts": [22, 75, 180] },
     {
         "id": "grotto_pool_big",
         "name": "Vitreoasis",
@@ -3050,11 +3057,11 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [13, 21, 29],
         "icon": { "x": 1312.5, "y": 640.5, "w": 63, "h": 63 }
     },
-    { "id": "guano", "name": "Guano", "group": "items", "always": true, "counts": [10, 31.5, 79] },
+    { "id": "guano", "name": "Guano", "group": "items", "always": true, "counts": [6, 31, 92] },
     { "id": "gunpowder", "name": "Gunpowder", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "hambat", "name": "Ham Bat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "hammer", "name": "Hammer", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
-    { "id": "houndbone", "name": "Bones", "group": "structures", "always": true, "counts": [4, 14.5, 35] },
+    { "id": "houndbone", "name": "Bones", "group": "structures", "always": true, "counts": [2, 14, 42] },
     {
         "id": "houndmound",
         "name": "Hound Mound",
@@ -3083,14 +3090,14 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "unreachable": true,
         "defaultShown": true,
-        "counts": [0, 22.5, 61],
+        "counts": [0, 23, 76],
         "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "knight_nightmare_spawner",
         "name": "Damaged Knight (spawner)",
         "group": "clockwork",
-        "counts": [0, 14, 41]
+        "counts": [0, 13, 41]
     },
     { "id": "lantern", "name": "Lantern", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "leif", "name": "Treeguard", "group": "bosses & spawners", "unreachable": true, "unique": true },
@@ -3100,7 +3107,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "defaultShown": true,
         "always": true,
-        "counts": [109, 239, 460],
+        "counts": [109, 244, 509],
         "icon": { "x": 416.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
@@ -3109,10 +3116,10 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "defaultShown": true,
         "always": true,
-        "counts": [22, 66.5, 102],
+        "counts": [15, 65, 120],
         "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
     },
-    { "id": "log", "name": "Log", "group": "items", "counts": [0, 0, 9] },
+    { "id": "log", "name": "Log", "group": "items", "counts": [0, 0, 12] },
     {
         "id": "marblepillar",
         "name": "Marble Pillar",
@@ -3126,7 +3133,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Spiky Bush (marsh)",
         "group": "plants",
         "defaultShown": true,
-        "counts": [0, 103, 412],
+        "counts": [0, 96, 412],
         "icon": { "x": 928.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
@@ -3134,7 +3141,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Spiky Tree",
         "group": "trees",
         "defaultShown": true,
-        "counts": [0, 13, 57],
+        "counts": [0, 11, 57],
         "icon": { "x": 1056.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
@@ -3160,28 +3167,28 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Splumonkey Pod (spawner)",
         "group": "mobs & dens",
         "always": true,
-        "counts": [6, 21, 53]
+        "counts": [3, 22, 79]
     },
     {
         "id": "moonglass_stalactite1",
         "name": "Moon Glass Stalactite (1)",
         "group": "rocks",
         "always": true,
-        "counts": [5, 28, 45]
+        "counts": [5, 28, 48]
     },
     {
         "id": "moonglass_stalactite2",
         "name": "Moon Glass Stalactite (2)",
         "group": "rocks",
         "always": true,
-        "counts": [13, 30, 62]
+        "counts": [10, 28, 62]
     },
     {
         "id": "moonglass_stalactite3",
         "name": "Moon Glass Stalactite (3)",
         "group": "rocks",
         "always": true,
-        "counts": [11, 28, 63]
+        "counts": [9, 28, 63]
     },
     { "id": "mound", "name": "Grave", "group": "structures", "counts": [0, 6, 8] },
     {
@@ -3207,7 +3214,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [62, 389, 842],
+        "counts": [62, 394, 842],
         "icon": { "x": 288.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
@@ -3216,7 +3223,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [101, 305.5, 480],
+        "counts": [78, 302, 495],
         "icon": { "x": 672.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
@@ -3225,7 +3232,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [172, 344.5, 707],
+        "counts": [152, 349, 792],
         "icon": { "x": 416.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
@@ -3234,7 +3241,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [213, 508, 1144],
+        "counts": [131, 503, 1157],
         "icon": { "x": 160.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
@@ -3251,7 +3258,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "defaultShown": true,
         "always": true,
-        "counts": [12, 29, 66],
+        "counts": [12, 29, 70],
         "icon": { "x": 800.5, "y": 896.5, "w": 63, "h": 63 }
     },
     { "id": "nightstick", "name": "Morning Star", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -3276,8 +3283,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Hardened Slip Bobber",
         "group": "set-piece loot",
         "variantOf": "oceanfishingbobber",
-        "unique": true,
-        "counts": [0, 0, 1]
+        "counts": [0, 0, 2]
     },
     {
         "id": "oceanfishingbobber_robin",
@@ -3322,8 +3328,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Dusky Spoon",
         "group": "set-piece loot",
         "variantOf": "oceanfishinglure",
-        "unique": true,
-        "counts": [0, 0, 1]
+        "counts": [0, 0, 2]
     },
     {
         "id": "oceanfishinglure_spoon_red",
@@ -3334,7 +3339,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [0, 0, 1]
     },
     { "id": "oceanfishingrod", "name": "Sea Fishing Rod", "group": "set-piece loot", "counts": [0, 0, 3] },
-    { "id": "onemanband", "name": "One-man Band", "group": "set-piece loot", "unique": true },
+    { "id": "onemanband", "name": "One-man Band", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
         "id": "pandoraschest",
         "name": "Ornate Chest",
@@ -3342,15 +3347,15 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "always": true,
-        "counts": [15, 35, 53],
+        "counts": [15, 36, 56],
         "icon": { "x": 1952.5, "y": 896.5, "w": 63, "h": 63 }
     },
-    { "id": "panflute", "name": "Pan Flute", "group": "set-piece loot", "unique": true },
-    { "id": "pickaxe", "name": "Pickaxe", "group": "set-piece loot", "counts": [0, 1, 2] },
-    { "id": "pighead", "name": "Pig Head", "group": "structures", "always": true, "counts": [4, 8, 8] },
-    { "id": "pigskin", "name": "Pig Skin", "group": "set-piece loot", "unique": true },
+    { "id": "panflute", "name": "Pan Flute", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
+    { "id": "pickaxe", "name": "Pickaxe", "group": "set-piece loot", "counts": [0, 1, 3] },
+    { "id": "pighead", "name": "Pig Head", "group": "structures", "always": true, "counts": [4, 8, 9] },
+    { "id": "pigskin", "name": "Pig Skin", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "pigtorch", "name": "Pig Torch", "group": "structures", "unreachable": true, "unique": true },
-    { "id": "pillar_algae", "name": "Algae Pillar", "group": "rocks", "always": true, "counts": [10, 32, 91] },
+    { "id": "pillar_algae", "name": "Algae Pillar", "group": "rocks", "always": true, "counts": [10, 32, 98] },
     {
         "id": "pillar_atrium",
         "name": "Atrium Pillar",
@@ -3359,24 +3364,24 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "counts": [3, 3, 3]
     },
-    { "id": "pillar_cave", "name": "Cave Pillar", "group": "rocks", "always": true, "counts": [9, 69.5, 148] },
+    { "id": "pillar_cave", "name": "Cave Pillar", "group": "rocks", "always": true, "counts": [9, 69, 148] },
     {
         "id": "pillar_cave_flintless",
         "name": "Cave Pillar (flintless)",
         "group": "rocks",
         "always": true,
-        "counts": [4, 13, 30]
+        "counts": [4, 13, 36]
     },
-    { "id": "pillar_cave_rock", "name": "Cave Pillar (rock)", "group": "rocks", "always": true, "counts": [7, 21, 41] },
-    { "id": "pillar_ruins", "name": "Ruins Pillar", "group": "rocks", "always": true, "counts": [24, 36.5, 65] },
+    { "id": "pillar_cave_rock", "name": "Cave Pillar (rock)", "group": "rocks", "always": true, "counts": [7, 22, 47] },
+    { "id": "pillar_ruins", "name": "Ruins Pillar", "group": "rocks", "always": true, "counts": [24, 36, 65] },
     {
         "id": "pillar_stalactite",
         "name": "Stalactite Pillar",
         "group": "rocks",
         "always": true,
-        "counts": [16, 50, 124]
+        "counts": [11, 52, 124]
     },
-    { "id": "pitchfork", "name": "Pitchfork", "group": "set-piece loot", "always": true, "counts": [1, 5, 7] },
+    { "id": "pitchfork", "name": "Pitchfork", "group": "set-piece loot", "always": true, "counts": [1, 5, 9] },
     { "id": "plantregistryhat", "name": "Gardeneer Hat", "group": "set-piece loot", "counts": [0, 0, 4] },
     {
         "id": "pond",
@@ -3384,8 +3389,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "variantOf": "pond",
         "defaultShown": true,
-        "always": true,
-        "counts": [1, 4, 10],
+        "counts": [0, 4, 13],
         "icon": { "x": 416.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3394,7 +3398,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "defaultShown": true,
         "always": true,
-        "counts": [14, 43, 83],
+        "counts": [14, 43, 95],
         "icon": { "x": 544.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3403,8 +3407,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "variantOf": "pond",
         "defaultShown": true,
-        "unique": true,
-        "counts": [0, 0, 1],
+        "counts": [0, 0, 2],
         "icon": { "x": 672.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "poop", "name": "Manure", "group": "set-piece loot", "counts": [0, 0, 8] },
@@ -3414,7 +3417,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [13, 43, 90],
+        "counts": [7, 41, 105],
         "icon": { "x": 928.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3425,16 +3428,16 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unique": true,
         "counts": [1, 1, 1]
     },
-    { "id": "raincoat", "name": "Rain Coat", "group": "set-piece loot", "unique": true },
-    { "id": "rainhat", "name": "Rain Hat", "group": "set-piece loot", "unique": true },
-    { "id": "red_mushroom", "name": "Red Mushroom", "group": "plants", "always": true, "counts": [18, 81, 162] },
-    { "id": "redgem", "name": "Red Gem", "group": "set-piece loot", "unique": true },
+    { "id": "raincoat", "name": "Rain Coat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
+    { "id": "rainhat", "name": "Rain Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
+    { "id": "red_mushroom", "name": "Red Mushroom", "group": "plants", "always": true, "counts": [18, 76, 162] },
+    { "id": "redgem", "name": "Red Gem", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
         "id": "reeds",
         "name": "Reeds",
         "group": "plants",
         "defaultShown": true,
-        "counts": [0, 24.5, 119],
+        "counts": [0, 23, 119],
         "icon": { "x": 1184.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "reflectivevest", "name": "Summer Frest", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -3452,6 +3455,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
+        "counts": [0, 0, 1],
         "icon": { "x": 1568.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
@@ -3498,7 +3502,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "rock",
         "defaultShown": true,
         "always": true,
-        "counts": [11, 37, 88],
+        "counts": [11, 38, 88],
         "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3507,7 +3511,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [14, 39, 78],
+        "counts": [7, 37, 96],
         "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3516,19 +3520,19 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [10, 37.5, 81],
+        "counts": [8, 38, 97],
         "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     { "id": "rocks", "name": "Rocks", "group": "items", "counts": [0, 5, 19] },
-    { "id": "rocky", "name": "Rock Lobster", "group": "mobs & dens", "always": true, "counts": [1, 10, 40] },
+    { "id": "rocky", "name": "Rock Lobster", "group": "mobs & dens", "always": true, "counts": [1, 10, 43] },
     {
         "id": "rook_nightmare_spawner",
         "name": "Damaged Rook (spawner)",
         "group": "clockwork",
         "always": true,
-        "counts": [4, 16, 33]
+        "counts": [4, 16, 40]
     },
-    { "id": "rope", "name": "Rope", "group": "set-piece loot", "counts": [0, 0, 11] },
+    { "id": "rope", "name": "Rope", "group": "set-piece loot", "counts": [0, 0, 18] },
     {
         "id": "rubble1",
         "name": "Rubble (1)",
@@ -3561,7 +3565,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [9, 19, 33],
+        "counts": [9, 19, 36],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3569,7 +3573,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Ancient Chipped Bowl",
         "group": "structures",
         "defaultShown": true,
-        "counts": [0, 2, 7],
+        "counts": [0, 2, 8],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3586,7 +3590,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [23, 44, 80],
+        "counts": [23, 44, 86],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3595,7 +3599,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [7, 24.5, 45],
+        "counts": [7, 24, 56],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3604,7 +3608,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [9, 24, 45],
+        "counts": [9, 25, 55],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3612,14 +3616,14 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Ancient Head Statue (spawner, no gem)",
         "group": "statues",
         "always": true,
-        "counts": [1, 4, 11]
+        "counts": [1, 3, 12]
     },
     {
         "id": "ruins_statue_head_spawner",
         "name": "Ancient Head Statue (spawner)",
         "group": "statues",
         "always": true,
-        "counts": [5, 15, 32]
+        "counts": [4, 15, 32]
     },
     {
         "id": "ruins_statue_mage_nogem_spawner",
@@ -3633,7 +3637,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Ancient Mage Statue (spawner)",
         "group": "statues",
         "always": true,
-        "counts": [8, 14.5, 25]
+        "counts": [8, 15, 25]
     },
     {
         "id": "ruins_table",
@@ -3641,7 +3645,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [4, 9, 15],
+        "counts": [3, 9, 19],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3650,7 +3654,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "always": true,
-        "counts": [5, 13, 29],
+        "counts": [5, 13, 31],
         "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
@@ -3669,7 +3673,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "unreachable": true,
         "defaultShown": true,
-        "counts": [0, 39.5, 111],
+        "counts": [0, 40, 136],
         "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
@@ -3678,7 +3682,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "defaultShown": true,
         "always": true,
-        "counts": [20, 281.5, 554],
+        "counts": [19, 270, 554],
         "swapOption": "regular twigs",
         "icon": { "x": 800.5, "y": 1152.5, "w": 63, "h": 63 }
     },
@@ -3701,7 +3705,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
     },
     { "id": "shovel", "name": "Shovel", "group": "set-piece loot", "counts": [0, 0, 3] },
     { "id": "silk", "name": "Silk", "group": "set-piece loot", "counts": [0, 3, 3] },
-    { "id": "skeleton", "name": "Skeleton", "group": "structures", "always": true, "counts": [2, 5, 9] },
+    { "id": "skeleton", "name": "Skeleton", "group": "structures", "always": true, "counts": [2, 6, 9] },
     {
         "id": "skeleton_notplayer_1",
         "name": "Skeleton (not a player, 1)",
@@ -3716,13 +3720,13 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unique": true,
         "counts": [0, 1, 1]
     },
-    { "id": "slurper", "name": "Slurper", "group": "items", "counts": [0, 0, 2] },
+    { "id": "slurper", "name": "Slurper", "group": "items", "counts": [0, 0, 3] },
     {
         "id": "slurper_spawner",
         "name": "Slurper (spawner)",
         "group": "mobs & dens",
         "always": true,
-        "counts": [13, 30.5, 67]
+        "counts": [6, 31, 69]
     },
     {
         "id": "slurtlehole",
@@ -3730,7 +3734,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "always": true,
-        "counts": [6, 15, 31],
+        "counts": [4, 15, 33],
         "icon": { "x": 1056.5, "y": 236.5, "w": 63, "h": 63 }
     },
     {
@@ -3756,7 +3760,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "always": true,
-        "counts": [6, 28, 60],
+        "counts": [6, 27, 63],
         "icon": { "x": 1440.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3765,7 +3769,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "always": true,
-        "counts": [9, 29, 66],
+        "counts": [9, 31, 66],
         "icon": { "x": 1696.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "spoiled_fish", "name": "Spoiled Fish", "group": "set-piece loot", "counts": [0, 0, 6] },
@@ -3774,7 +3778,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Spoiled Fish Morsel",
         "group": "set-piece loot",
         "variantOf": "spoiled_fish",
-        "counts": [0, 0, 5]
+        "counts": [0, 0, 7]
     },
     { "id": "spoiled_food", "name": "Rot", "group": "set-piece loot", "counts": [0, 0, 12] },
     {
@@ -3783,7 +3787,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [84, 211.5, 481],
+        "counts": [68, 216, 481],
         "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3792,7 +3796,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [8, 30, 73],
+        "counts": [2, 32, 73],
         "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3801,7 +3805,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [25, 66, 139],
+        "counts": [17, 67, 139],
         "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3810,7 +3814,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [95, 194, 299],
+        "counts": [95, 195, 317],
         "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3819,7 +3823,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [61, 153, 262],
+        "counts": [59, 157, 276],
         "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3828,7 +3832,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "always": true,
-        "counts": [59, 166, 261],
+        "counts": [59, 165, 288],
         "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
@@ -3857,9 +3861,10 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
+        "counts": [0, 0, 1],
         "icon": { "x": 928.5, "y": 1280.5, "w": 63, "h": 63 }
     },
-    { "id": "tentacle", "name": "Tentacle", "group": "mobs & dens", "counts": [0, 65, 254] },
+    { "id": "tentacle", "name": "Tentacle", "group": "mobs & dens", "counts": [0, 58, 254] },
     {
         "id": "tentacle_pillar",
         "name": "Big Tentacle",
@@ -3878,8 +3883,8 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [2, 2, 2],
         "icon": { "x": 1056.5, "y": 1280.5, "w": 63, "h": 63 }
     },
-    { "id": "thulecite", "name": "Thulecite", "group": "items", "counts": [0, 0, 2] },
-    { "id": "thulecite_pieces", "name": "Thulecite Fragments", "group": "items", "always": true, "counts": [3, 9, 21] },
+    { "id": "thulecite", "name": "Thulecite", "group": "items", "counts": [0, 0, 3] },
+    { "id": "thulecite_pieces", "name": "Thulecite Fragments", "group": "items", "counts": [0, 10, 21] },
     {
         "id": "toadstool_cap",
         "name": "Toadstool",
@@ -3913,7 +3918,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [23, 45, 122],
+        "counts": [16, 46, 141],
         "icon": { "x": 1568.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
@@ -3922,7 +3927,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "always": true,
-        "counts": [14, 44, 117],
+        "counts": [14, 45, 122],
         "icon": { "x": 1568.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "trinket_1", "name": "Melty Marbles", "group": "set-piece loot", "unique": true },
@@ -3935,7 +3940,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "counts": [0, 0, 1]
     },
     { "id": "trunkvest_summer", "name": "Breezy Vest", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
-    { "id": "trunkvest_winter", "name": "Puffy Vest", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
+    { "id": "trunkvest_winter", "name": "Puffy Vest", "group": "set-piece loot", "counts": [0, 0, 2] },
     {
         "id": "twiggy_normal",
         "name": "Twiggy Tree (normal)",
@@ -3966,14 +3971,14 @@ export const CAVE_PREFABS: WorldPrefab[] = [
     },
     { "id": "twigs", "name": "Twigs", "group": "items", "counts": [0, 3, 24], "swapOption": "twiggy trees" },
     { "id": "wall_hay", "name": "Hay Wall", "group": "structures", "unreachable": true, "unique": true },
-    { "id": "wall_ruins", "name": "Thulecite Wall", "group": "structures", "always": true, "counts": [110, 189, 366] },
+    { "id": "wall_ruins", "name": "Thulecite Wall", "group": "structures", "always": true, "counts": [100, 197, 416] },
     {
         "id": "wall_ruins_2",
         "name": "Archival Thulecite Wall",
         "group": "structures",
         "unreachable": true,
         "always": true,
-        "counts": [22, 65, 109]
+        "counts": [13, 67, 110]
     },
     { "id": "wall_stone", "name": "Stone Wall", "group": "structures", "unique": true },
     {
@@ -3982,9 +3987,9 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "unreachable": true,
         "always": true,
-        "counts": [108, 323.5, 524]
+        "counts": [62, 328, 540]
     },
-    { "id": "wall_wood", "name": "Wood Wall", "group": "structures", "unique": true },
+    { "id": "wall_wood", "name": "Wood Wall", "group": "structures", "counts": [0, 0, 25] },
     {
         "id": "wasphive",
         "name": "Killer Bee Hive",
@@ -4001,6 +4006,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
+        "counts": [0, 0, 1],
         "icon": { "x": 32.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
@@ -4008,18 +4014,98 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "name": "Depths Worm (spawner)",
         "group": "mobs & dens",
         "always": true,
-        "counts": [2, 16, 53]
+        "counts": [2, 17, 56]
     },
-    {
-        "id": "wormlight_plant",
-        "name": "Mysterious Plant",
-        "group": "plants",
-        "always": true,
-        "counts": [23, 57.5, 113]
-    }
+    { "id": "wormlight_plant", "name": "Mysterious Plant", "group": "plants", "always": true, "counts": [18, 59, 113] }
 ];
 
 export const CAVE_PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(CAVE_PREFABS.map((prefab) => [prefab.id, prefab]));
+
+/** How many real cave worlds the caves' prefab counts and tiles come from. */
+export const CAVE_SAMPLE_WORLDS = 301;
+
+/** The caves' land tiles; `inDefaultWorlds` marks the ones the sampled cave worlds have. */
+export const CAVE_LAND_TILES: LandTile[] = [
+    { "name": "ROAD", "displayName": "Cobblestones", "inDefaultWorlds": true },
+    { "name": "ROCKY", "displayName": "Rocky Turf", "inDefaultWorlds": true },
+    { "name": "DIRT", "displayName": "Dirt", "inDefaultWorlds": true },
+    { "name": "SAVANNA", "displayName": "Savanna Turf", "inDefaultWorlds": true },
+    { "name": "GRASS", "displayName": "Grass Turf", "inDefaultWorlds": true },
+    { "name": "FOREST", "displayName": "Forest Turf", "inDefaultWorlds": true },
+    { "name": "MARSH", "displayName": "Marsh Turf", "inDefaultWorlds": true },
+    { "name": "WEB", "displayName": "Web" },
+    { "name": "WOODFLOOR", "displayName": "Wooden Flooring", "inDefaultWorlds": true },
+    { "name": "CARPET", "displayName": "Carpeted Flooring", "inDefaultWorlds": true },
+    { "name": "CHECKER", "displayName": "Checkered Flooring" },
+    { "name": "CAVE", "displayName": "Guano Turf", "inDefaultWorlds": true },
+    { "name": "FUNGUS", "displayName": "Fungal Turf", "inDefaultWorlds": true },
+    { "name": "SINKHOLE", "displayName": "Slimy Turf", "inDefaultWorlds": true },
+    { "name": "UNDERROCK", "displayName": "Cave Rock Turf", "inDefaultWorlds": true },
+    { "name": "MUD", "displayName": "Mud Turf", "inDefaultWorlds": true },
+    { "name": "BRICK", "displayName": "Ancient Flooring", "inDefaultWorlds": true },
+    { "name": "BRICK_GLOW", "displayName": "Imitation Ancient Flooring" },
+    { "name": "TILES", "displayName": "Ancient Tilework", "inDefaultWorlds": true },
+    { "name": "TILES_GLOW", "displayName": "Imitation Ancient Tilework" },
+    { "name": "TRIM", "displayName": "Ancient Brickwork", "inDefaultWorlds": true },
+    { "name": "TRIM_GLOW", "displayName": "Imitation Ancient Brickwork" },
+    { "name": "FUNGUSRED", "displayName": "Fungal Turf", "inDefaultWorlds": true },
+    { "name": "FUNGUSGREEN", "displayName": "Fungal Turf", "inDefaultWorlds": true },
+    { "name": "DECIDUOUS", "displayName": "Deciduous Turf" },
+    { "name": "DESERT_DIRT", "displayName": "Sandy Turf" },
+    { "name": "SCALE", "displayName": "Scaled Flooring" },
+    { "name": "LAVAARENA_FLOOR", "displayName": "Forge Floor" },
+    { "name": "LAVAARENA_TRIM", "displayName": "Forge Trim" },
+    { "name": "QUAGMIRE_PEATFOREST", "displayName": "Gorge Peat Forest" },
+    { "name": "QUAGMIRE_PARKFIELD", "displayName": "Gorge Park Grass" },
+    { "name": "QUAGMIRE_PARKSTONE", "displayName": "Gorge Park Path" },
+    { "name": "QUAGMIRE_GATEWAY", "displayName": "Gorge Gateway" },
+    { "name": "QUAGMIRE_SOIL", "displayName": "Gorge Soil" },
+    { "name": "QUAGMIRE_CITYSTONE", "displayName": "Gorge Citystone" },
+    { "name": "PEBBLEBEACH", "displayName": "Rocky Beach Turf" },
+    { "name": "METEOR", "displayName": "Moon Crater Turf" },
+    { "name": "SHELLBEACH", "displayName": "Shell Beach Turf" },
+    { "name": "ARCHIVE", "displayName": "Ancient Stonework", "inDefaultWorlds": true },
+    { "name": "FUNGUSMOON", "displayName": "Mutated Fungal Turf", "inDefaultWorlds": true },
+    { "name": "FARMING_SOIL", "displayName": "Farm soil" },
+    { "name": "FUNGUSMOON_NOISE", "displayName": "Fungusmoon Noise" },
+    { "name": "METEORMINE_NOISE", "displayName": "Meteormine Noise" },
+    { "name": "METEORCOAST_NOISE", "displayName": "Meteorcoast Noise" },
+    { "name": "DIRT_NOISE", "displayName": "Dirt Noise" },
+    { "name": "ABYSS_NOISE", "displayName": "Abyss Noise" },
+    { "name": "GROUND_NOISE", "displayName": "Ground Noise" },
+    { "name": "CAVE_NOISE", "displayName": "Cave Noise" },
+    { "name": "FUNGUS_NOISE", "displayName": "Fungus Noise" },
+    { "name": "COTL_BRICK", "displayName": "Brick Flooring" },
+    { "name": "MONKEY_GROUND", "displayName": "Moon Quay Beach Turf" },
+    { "name": "LUNAR_MARSH", "displayName": "Lunar Marsh" },
+    { "name": "SHADOW_MARSH", "displayName": "Shadow Marsh" },
+    { "name": "VENT", "displayName": "Cave Fumarole Turf", "inDefaultWorlds": true },
+    { "name": "VAULT", "displayName": "Vault" },
+    { "name": "VAULT_CLEAN", "displayName": "Ancient Sanctum Stonework" },
+    { "name": "MONKEY_DOCK", "displayName": "Monkey Island dock" },
+    { "name": "OCEAN_ICE", "displayName": "Ocean (ice)" },
+    { "name": "CHARLIE_VINE", "displayName": "Charlie Vine" },
+    { "name": "ROPE_BRIDGE", "displayName": "Rope Bridge" },
+    { "name": "WAGSTAFF_FLOOR", "displayName": "Wagstaff Floor" },
+    { "name": "COTL_GOLD", "displayName": "Gold Flooring" },
+    { "name": "MOSAIC_GREY", "displayName": "Grey Mosaic Flooring" },
+    { "name": "MOSAIC_RED", "displayName": "Red Mosaic Flooring" },
+    { "name": "MOSAIC_BLUE", "displayName": "Blue Mosaic Flooring" },
+    { "name": "CARPET2", "displayName": "Lush Carpet" },
+    { "name": "BEARD_RUG", "displayName": "Beard Hair Rug" },
+    { "name": "RIFT_MOON", "displayName": "Lunar Rift" },
+    { "name": "VENT_NOISE", "displayName": "Vent Noise" }
+];
+
+export const CAVE_ANCHORS: NamedAnchor[] = [
+    { "id": "cave_exit", "label": "Stairs (where you arrive in the caves)" },
+    { "id": "multiplayer_portal", "label": "Cave start (Florid Postern)" },
+    { "id": "tentacle_pillar", "label": "Big Tentacle" },
+    { "id": "tentacle_pillar_atrium", "label": "Big Tentacle (Atrium)" },
+    { "id": "minotaur_spawner", "label": "Ancient Guardian" },
+    { "id": "atrium_gate", "label": "Ancient Gateway" },
+    { "id": "archive_portal", "label": "Sealed Portal (Ancient Archive)" }
+];
 
 export const PREFAB_GROUPS: PrefabGroup[] = PREFAB_GROUP_IDS.map((id) => ({
     id,

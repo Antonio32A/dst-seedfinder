@@ -211,7 +211,7 @@ def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Ent
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
     listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
-    later : Rules.Later <- Rules.later_of(fields, path)
+    later : Rules.Later <- Rules.later_of(fields, path, False{})
     +required : U32 <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
     +excluded : U32 <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
     +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")

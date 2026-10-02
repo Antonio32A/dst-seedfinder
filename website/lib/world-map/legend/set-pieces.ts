@@ -1,5 +1,6 @@
+import { CAVE_TASKS } from "@/lib/catalog/cave-level";
 import { prefabName } from "@/lib/catalog/prefab-sets";
-import { type SeedfinderConfig, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
+import { type SeedfinderConfig, type Shard, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import type { LegendGroup, LegendPrefab } from "./prefab-visibility";
 
@@ -17,15 +18,25 @@ const tally = (names: Iterable<string>) => {
 export const setPieceCounts = (world: Pick<GeneratedWorld, "setPieces">) =>
     tally((world.setPieces ?? []).map(({ name }) => name));
 
+const CAVE_TASK_NAMES: ReadonlyMap<string, string> = new Map(CAVE_TASKS.map((task) => [task.id, task.name]));
+
+/** What the legend calls a set piece: the layout's name, except the caves' mazes (named after their task) and the Labyrinth. */
+export function setPieceName(name: string, shard: Shard = "forest"): string {
+    if (shard !== "caves") return name;
+    if (name === "Labyrinth") return "The Labyrinth (maze)";
+    const task = CAVE_TASK_NAMES.get(name);
+    return task === undefined ? name : `${task} (maze)`;
+}
+
 /** `null` when the world has none or its dump doesn't say. */
-export function setPieceLegend(world: Pick<GeneratedWorld, "setPieces">): LegendGroup | null {
+export function setPieceLegend(world: Pick<GeneratedWorld, "setPieces"> & Partial<Pick<GeneratedWorld, "shard">>): LegendGroup | null {
     const counts = setPieceCounts(world);
     if (counts.size === 0) return null;
     return {
         group: { id: "set pieces", name: "Set pieces", colour: SET_PIECE_COLOUR },
         count: world.setPieces!.length,
         prefabs: [...counts]
-            .map(([name, count]) => ({ prefab: name, displayName: name, count }))
+            .map(([name, count]) => ({ prefab: name, displayName: setPieceName(name, world.shard), count }))
             .sort((a, b) => a.displayName.localeCompare(b.displayName))
     };
 }
@@ -65,7 +76,7 @@ export function setPieceDetails(
     const counts = tally(Array.from({ length: members.length / 2 }, (_, at) => world.prefabs[members[2 * at]].name));
     return {
         index,
-        name,
+        name: setPieceName(name, world.shard),
         source: source.replace("-", " "),
         x: xk / 100,
         z: zk / 100,

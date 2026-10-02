@@ -22,7 +22,7 @@ export const DEFAULT_START_SEED = 0;
 export const METRICS = ["straight", "walk"] as const;
 export type Metric = (typeof METRICS)[number];
 export const DEFAULT_METRIC: Metric = "straight";
-export const DEFAULT_WORMHOLES = false;
+export const DEFAULT_LINKS = false;
 
 export const ROUTE_ORDERS = ["any", "fixed"] as const;
 export type RouteOrder = (typeof ROUTE_ORDERS)[number];
@@ -32,6 +32,8 @@ export const SHARDS = ["forest", "caves"] as const;
 export type Shard = (typeof SHARDS)[number];
 export const DEFAULT_SHARD: Shard = "forest";
 export const SHARD_LABELS: Record<Shard, string> = { forest: "Forest", caves: "Caves" };
+/** The key of the flag that lets a distance use the shard's teleporter links: the forest's wormholes, the caves' tentacle pillars. */
+export const LINKS_KEY = { forest: "wormholes", caves: "pillars" } as const satisfies Record<Shard, string>;
 
 export const PLATFORMS = ["windows", "linux"] as const;
 export type Platform = (typeof PLATFORMS)[number];
@@ -55,11 +57,16 @@ export interface SetPieceRule {
     required?: Record<string, SetPieceBound>;
 }
 
-export interface Near {
-    prefab: PrefabSet;
-    within: number;
+/** A rule's travel options: its metric and whether it may use the links, as `wormholes` in the forest and `pillars` in the caves. */
+export interface TravelFields {
     metric?: Metric;
     wormholes?: boolean;
+    pillars?: boolean;
+}
+
+export interface Near extends TravelFields {
+    prefab: PrefabSet;
+    within: number;
 }
 
 export interface CountRule {
@@ -69,13 +76,11 @@ export interface CountRule {
     near?: Near;
 }
 
-export interface DistanceRule {
+export interface DistanceRule extends TravelFields {
     from: PrefabSet;
     to: PrefabSet;
     min?: number;
     max?: number;
-    metric?: Metric;
-    wormholes?: boolean;
 }
 
 export interface TileRule {
@@ -84,14 +89,12 @@ export interface TileRule {
     max: number;
 }
 
-export interface RouteRule {
+export interface RouteRule extends TravelFields {
     from: PrefabSet;
     visit: PrefabSet[];
     to?: PrefabSet;
     max: number;
     order?: RouteOrder;
-    metric?: Metric;
-    wormholes?: boolean;
 }
 
 export interface Criterion {

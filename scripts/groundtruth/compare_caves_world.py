@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Compares the seedfinder's caves world dumps with the real Linux cave worlds, byte for byte.
+"""Compares the seedfinder's caves world dumps with the real Linux cave worlds, section by section (the SETP section is
+the seedfinder's own: the game's savedata does not record where layouts and mazes went).
 
 usage: compare_caves_world.py BINARY [SEEDS] [--worlds DIR] [--jobs N] [--no-attempts]
 
@@ -66,6 +67,7 @@ def compare_sections(ours, real):
     if ours[:HEADER_BYTES] != real[:HEADER_BYTES]:
         return [f"header differs: ours {words(ours[:HEADER_BYTES])} real {words(real[:HEADER_BYTES])}"]
     a, b = sections_of(ours), sections_of(real)
+    a.pop("SETP", None)
     problems = []
     for tag in sorted(set(a) | set(b)):
         if a.get(tag) != b.get(tag):
@@ -110,7 +112,7 @@ def check(binary, world_path, with_attempts):
         if not target.exists():
             return seed, [f"no dump ({run.stdout.strip() or run.stderr.strip()[:200]})"], None
         ours = target.read_bytes()
-    problems = [] if ours == real else compare_sections(ours, real)
+    problems = compare_sections(ours, real)
     if problems and "ENTS" in "".join(problems):
         problems += entity_problems(ours, real)
     attempts = f"attempts ours {attempts_of(binary, seed)} real {world.get('attempts')}" if with_attempts else None

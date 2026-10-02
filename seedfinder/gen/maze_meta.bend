@@ -7,6 +7,7 @@ import ../f64/arith.bend as F64Arith
 import ../data/enums.bend as Enums
 import ../data/blob.bend as Blob
 import ../data/cave_story.bend as CaveStory
+import ../data/cave_catalog.bend as CaveCatalog
 import ../storygen/graph.bend as StoryGraph
 import ../storygen/catalog.bend as StoryCatalog
 import ../storygen/order.bend as StoryOrder
@@ -276,13 +277,25 @@ def task_pass(+e: MazeEnv.Env, +g: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
       mapped(WorldCaveMaze.meta_maze(MazeEnv.windows_of(e), CaveStory.task_maze_size(StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))),
         MazeEnv.node_sites(MazeTags.nodes(MazeEnv.story_of(e), "Maze", g), e), rng), e, g, grid, rng, ents, marks)
 
-def tasks_loop(tasks: List<&2, U32>, +e: MazeEnv.Env, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def built_after(got: MazeEnv.Pass & U32, +name: U32, +before: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  (p, +after) = got
+  (p, MazeEnv.built_with(name, before, after, built))
+
+def maze_name(+e: MazeEnv.Env, +g: U32) -> U32:
+  MazeEnv.prefab(CaveCatalog.task_name(StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))))
+
+def task_step(got: MazeEnv.Pass & U32, +e: MazeEnv.Env, +g: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  (q, +before) = got
+  built_after(MazeEnv.counted(task_pass(e, g, q)), maze_name(e, g), before, built)
+
+def tasks_loop(tasks: List<&2, U32>, +e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
   match tasks:
     case Nil{}:
-      p
+      got
     case Con{+g, rest}:
-      tasks_loop(rest, e, task_pass(e, g, p))
+      (p, built) = got
+      tasks_loop(rest, e, task_step(MazeEnv.counted(p), e, g, built))
 
-# `for task, nodes in pairs(GlobalTags["Maze"])`.
-def run(+e: MazeEnv.Env, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  tasks_loop(MazeTags.tasks(MazeEnv.story_of(e), "Maze"), e, p)
+# `for task, nodes in pairs(GlobalTags["Maze"])`, with the mazes built (one per task, named after it) added to `built`.
+def run(+e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  tasks_loop(MazeTags.tasks(MazeEnv.story_of(e), "Maze"), e, got)

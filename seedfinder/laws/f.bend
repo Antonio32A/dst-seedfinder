@@ -108,6 +108,39 @@ law world_refuses_caves_gave_up:
 def world_refuses_caves_gave_up():
   {==}
 
+def pillar_dump() -> List<&2, U32>:
+  FilterDump.bytes(FilterDump.Generated{7, 2, 1, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [FilterDump.Prefab{"cave_exit", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}, FilterDump.Prefab{"tentacle_pillar_atrium", [FilterDump.Position{5, 6}]}], [], [FilterDump.Pillar{1, 0, 1, 1}, FilterDump.Pillar{1, 1, 1, 0}, FilterDump.Pillar{2, 0, 0, 0}], None{}, None{}})
+
+type Ends is Data:
+  Ends{entry_prefab: U32, entry: U32, exit_prefab: U32, exit: U32}
+
+def link_ends(links: List<&2, FilterWorld.Link>) -> List<&2, Ends>:
+  match links:
+    case Nil{}:
+      Nil{}
+    case Con{FilterWorld.Link{FilterWorld.Inst{+a, +i, _, _, _, _, _}, FilterWorld.Inst{+b, +j, _, _, _, _, _}}, rest}:
+      Ends{a, i, b, j} <> link_ends(rest)
+
+def world_links(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>) -> List<&2, Ends>:
+  match loaded:
+    case Done{FilterWorld.Generated{FilterWorld.World{_, _, _, _, _, +links, _}, _}}:
+      link_ends(links)
+    case _:
+      Nil{}
+
+# A caves dump loads with its tentacle pillar links, as vocabulary prefab instances (cave_exit 370, tentacle_pillar 454, tentacle_pillar_atrium 455).
+law world_loads_pillar_links:
+  {world_links(FilterWorld.of_bytes_in(pillar_dump(), True{})) == [Ends{454, 0, 454, 1}, Ends{454, 1, 454, 0}, Ends{455, 0, 370, 0}] : List<&2, Ends>}
+
+def world_loads_pillar_links():
+  {==}
+
+law caves_finder_refuses_forest_dump:
+  {FilterWorld.of_bytes_in(FilterDump.bytes(FilterDump.GaveUp{7, 2, 0}), True{}) == Fail{(2, "world dump of the forest shard, this finder searches the caves shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+
+def caves_finder_refuses_forest_dump():
+  {==}
+
 # Seed 7 on Linux, build 747465, 3 x 1 tiles GRASS GRASS IMPASSABLE.
 law dump_tiles:
   {FilterDump.of_bytes([68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 201, 103, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0]) == Done{FilterDump.Generated{7, 2, 0, 747465, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [], [], [], None{}, None{}}} : Result<&1, &1, U32 & String, FilterDump.Dump>}

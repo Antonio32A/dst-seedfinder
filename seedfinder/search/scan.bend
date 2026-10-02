@@ -6,6 +6,7 @@ import ./report.bend as SearchReport
 import ./worlds.bend as SearchWorlds
 import ./generated.bend as SearchGenerated
 import ../filters/rules.bend as Rules
+import ../filters/shard_search.bend as ShardSearch
 
 def world_scan(
   n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +cap: U32, +count: U32, hits: List<&2, U32>
@@ -145,9 +146,9 @@ def any_rules(laters: List<&2, Rules.Later>) -> Bool:
 def with_worlds(worlds: Maybe<&2, String>, +q: Args.Query, +config: Config.Config) -> IO(Unit):
   match worlds config:
     case None{} Config.Config{_, _, +laters, _, _}:
-      Bool.pick(IO(Unit), any_rules(laters), SearchGenerated.run(q, config), level_rounds(q, config))
+      Bool.pick(IO(Unit), any_rules(laters), SearchGenerated.run(q, ShardSearch.of_forest(config)), level_rounds(q, config))
     case Some{+dir} Config.Config{_, _, +laters, _, _}:
-      Bool.pick(IO(Unit), any_rules(laters), SearchWorlds.run(q, config, dir), level_rounds(q, config))
+      Bool.pick(IO(Unit), any_rules(laters), SearchWorlds.run(q, ShardSearch.of_forest(config), dir), level_rounds(q, config))
 
 def with_platform(+config: Config.Config, +platform: U32) -> Config.Config:
   match config:

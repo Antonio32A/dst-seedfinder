@@ -1,4 +1,4 @@
-import type { Witness, WitnessInstance, WitnessSection } from "./job-result";
+import type { DistancesWitness, Witness, WitnessInstance, WitnessSection } from "./job-result";
 
 const UNITS_PER_TILE = 4;
 
@@ -20,7 +20,10 @@ const distance = (units: number) => `${DISTANCE.format(units)} units (${DISTANCE
 const chain = (instances: (WitnessInstance | undefined)[]) =>
     instances.map((instance) => instance?.prefab ?? "?").join(" -> ");
 
-const jumps = (count: number) => (count > 0 ? `, ${plural(count, "wormhole jump")}` : "");
+const jumps = (witness: DistancesWitness) => {
+    const noun = witness.wormholes[0]?.entry.prefab.startsWith("tentacle_pillar") ? "tentacle pillar jump" : "wormhole jump";
+    return witness.wormholes.length > 0 ? `, ${plural(witness.wormholes.length, noun)}` : "";
+};
 
 type WitnessFigures = { [S in WitnessSection]: (witness: Extract<Witness, { section: S }>) => string };
 
@@ -31,7 +34,7 @@ const WITNESS_FIGURES: WitnessFigures = {
     distances: (witness) =>
         witness.distance === null
             ? "no pair"
-            : `${chain([witness.from, witness.to])}: ${distance(witness.distance)}${jumps(witness.wormholes.length)}`,
+            : `${chain([witness.from, witness.to])}: ${distance(witness.distance)}${jumps(witness)}`,
     routes: (witness) => `${chain(witness.stops)}: ${distance(witness.length)}`
 };
 

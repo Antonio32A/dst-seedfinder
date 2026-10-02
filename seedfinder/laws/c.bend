@@ -3,6 +3,7 @@ import ../rng/pcg.bend as Pcg
 import ../cli/args.bend as Args
 import ../filters/config.bend as Config
 import ../filters/cave_config.bend as CaveConfig
+import ../filters/rules.bend as Rules
 import ../filters/cave_setpiece.bend as CaveFilter
 import ../level/cave_prefix.bend as CavePrefix
 import ../level/cave_summary.bend as CaveSummary
@@ -72,7 +73,7 @@ def config_names_its_shard():
   {==}
 
 law cave_config_tasks:
-  {CaveConfig.config_of("{\"shard\": \"caves\", \"criteria\": [{\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, []}], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, []}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"shard\": \"caves\", \"criteria\": [{\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, []}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, []}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_tasks():
   {==}
@@ -89,10 +90,44 @@ law cave_config_rejects_the_gekko:
 def cave_config_rejects_the_gekko():
   {==}
 
-law cave_config_rejects_world_sections:
-  {CaveConfig.config_of("{\"criteria\": [{\"counts\": [{\"prefab\": \"rook\"}]}]}") == Fail{(2, "config: criteria[0].counts is not supported for the caves shard yet (only tasks, prefab_swaps and setpieces are)")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+def later_of(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
+  match compiled:
+    case Done{CaveConfig.Config{_, _, +later, _}}:
+      Done{later}
+    case Fail{failure}:
+      Fail{failure}
 
-def cave_config_rejects_world_sections():
+def cave_later(+text: String) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
+  later_of(CaveConfig.config_of(text))
+
+law cave_config_counts_cave_prefabs:
+  {cave_later("{\"criteria\": [{\"counts\": [{\"prefab\": \"cave_exit\", \"min\": 3}]}]}") == Done{[Rules.Later{[Rules.Count{[370], Some{3}, None{}, None{}}], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+
+def cave_config_counts_cave_prefabs():
+  {==}
+
+law cave_config_pillars_replace_wormholes:
+  {cave_later("{\"criteria\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": [\"tentacle_pillar\", \"tentacle_pillar_atrium\"], \"pillars\": true}]}]}") == Done{[Rules.Later{[], [Rules.Distance{[370], [454, 455], None{}, None{}, Rules.Metric{False{}, True{}, True{}}}], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+
+def cave_config_pillars_replace_wormholes():
+  {==}
+
+law cave_config_rejects_wormholes:
+  {cave_later("{\"criteria\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": \"cave_exit\", \"wormholes\": true}]}]}") == Fail{(2, "config: unknown key \"wormholes\" in criteria[0].distances[0]")} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+
+def cave_config_rejects_wormholes():
+  {==}
+
+law cave_config_rejects_forest_prefabs:
+  {cave_later("{\"criteria\": [{\"counts\": [{\"prefab\": \"beefalo\"}]}]}") == Fail{(2, "config: unknown prefab \"beefalo\" in criteria[0].counts[0].prefab")} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+
+def cave_config_rejects_forest_prefabs():
+  {==}
+
+law forest_config_rejects_cave_prefabs_and_pillars:
+  {(Config.config_of("{\"criteria\": [{\"counts\": [{\"prefab\": \"cave_exit\"}]}]}"), Config.config_of("{\"criteria\": [{\"distances\": [{\"from\": \"rook\", \"to\": \"rook\", \"pillars\": true}]}]}")) == (Fail{(2, "config: unknown prefab \"cave_exit\" in criteria[0].counts[0].prefab")}, Fail{(2, "config: unknown key \"pillars\" in criteria[0].distances[0]")}) : (Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>)}
+
+def forest_config_rejects_cave_prefabs_and_pillars():
   {==}
 
 law cave_config_rejects_forest_set_pieces:
@@ -102,7 +137,7 @@ def cave_config_rejects_forest_set_pieces():
   {==}
 
 law cave_config_set_pieces:
-  {CaveConfig.config_of("{\"criteria\": [{\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}]}], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}]}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"criteria\": [{\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}]}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}]}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_set_pieces():
   {==}

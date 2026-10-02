@@ -6,10 +6,11 @@ import ../level/choose.bend as LevelChoose
 import ./json.bend as Json
 import ./parse.bend as Parse
 import ./config.bend as Config
+import ./rules.bend as Rules
 
 # The search config of the caves shard (docs/config.md): its part A, the level table. Task sets are two words over
 # data/cave_catalog.bend task ids (ids 0-31 in `lo`, ids 32.. in `hi`); a rule bounds how many times a set piece (a
-# cave_catalog key) is placed in the rule's tasks. Parts B-E need the caves world and are rejected for now.
+# cave_catalog key) is placed in the rule's tasks. Parts B-E (rules.bend) are decided on the caves world.
 type TaskSet is Data:
   TaskSet{lo: U32, hi: U32}
 
@@ -19,10 +20,11 @@ type Rule is Data:
 type Criteria is Data:
   Criteria{required: TaskSet, excluded: TaskSet, swap_care: U32, swap_want: U32, rules: List<&2, Rule>}
 
-# A compiled caves config: the platform for the report, the part A criteria of the entries and those that make a seed a
-# candidate (the ones that are not passive; anything when there are no entries).
+# A compiled caves config: the platform for the report, the part A criteria of the entries, their parts B-E (in the same
+# order) and the part A criteria that make a seed a candidate (those of the entries that are not passive; anything when
+# there are no entries).
 type Config is Data:
-  Config{windows: Bool, criteria: List<&2, Criteria>, scanned: List<&2, Criteria>}
+  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, Rules.Later>, scanned: List<&2, Criteria>}
 
 def every_task() -> TaskSet:
   TaskSet{4294967295, 4294967295}
@@ -152,18 +154,8 @@ def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&
         more : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), acc)
         rules_of(rest, (index + 1 : U32), path, more)
 
-# The world sections need the caves world, which the finder does not generate yet.
-def level_table_only(+fields: List<&2, Json.Json>, sections: List<&2, String>, +path: String) -> Result<&1, &1, U32 & String, Unit>:
-  match sections:
-    case Nil{}:
-      Done{Unit{}}
-    case Con{+section, rest}:
-      Bool.pick(Result<&1, &1, U32 & String, Unit>, Maybe.is_some(&2, Json.Json, Parse.field(fields, section)),
-        Fail{Parse.failure(path ++ "." ++ section ++ " is not supported for the caves shard yet (only tasks, prefab_swaps and setpieces are)")},
-        level_table_only(fields, rest, path))
-
 type Entry is Data:
-  Entry{level: Criteria, passive: Bool}
+  Entry{level: Criteria, later: Rules.Later, passive: Bool}
 
 def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
   do Result<&1, &1, U32 & String, Entry>:
@@ -172,11 +164,11 @@ def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Ent
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
     listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
-    only : Unit <- level_table_only(fields, Config.later_parts(), path)
+    later : Rules.Later <- Rules.later_of(fields, path, True{})
     required : TaskSet <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
     excluded : TaskSet <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
     +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, passive}
+    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, passive}
 
 def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
   match items:
@@ -192,14 +184,21 @@ def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
   match entries:
     case Nil{}:
       Nil{}
-    case Con{Entry{level, _}, rest}:
+    case Con{Entry{level, _, _}, rest}:
       level <> levels_of(rest)
+
+def laters_of(entries: List<&2, Entry>) -> List<&2, Rules.Later>:
+  match entries:
+    case Nil{}:
+      Nil{}
+    case Con{Entry{_, later, _}, rest}:
+      later <> laters_of(rest)
 
 def active_levels(entries: List<&2, Entry>) -> List<&2, Criteria>:
   match entries:
     case Nil{}:
       Nil{}
-    case Con{Entry{level, False{}}, rest}:
+    case Con{Entry{level, _, False{}}, rest}:
       level <> active_levels(rest)
     case Con{_, rest}:
       active_levels(rest)
@@ -216,7 +215,7 @@ def or_anything(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
       criteria
 
 def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
-  Config{windows, levels_of(entries), or_anything(active_levels(entries))}
+  Config{windows, levels_of(entries), laters_of(entries), or_anything(active_levels(entries))}
 
 # Compiles the JSON text of a search config (docs/config.md) for the caves shard.
 def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:

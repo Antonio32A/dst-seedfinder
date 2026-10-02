@@ -20,7 +20,7 @@ export interface DumpPrefab {
 }
 
 /** Indexed by the SETP source code (docs/world-dump.md). */
-export const SET_PIECE_SOURCES = ["room", "task", "start", "map-tag", "ocean-prefill", "ocean-room"] as const;
+export const SET_PIECE_SOURCES = ["room", "task", "start", "map-tag", "ocean-prefill", "ocean-room", "maze"] as const;
 export type SetPieceSource = (typeof SET_PIECE_SOURCES)[number] | "unknown";
 
 export interface DumpSetPiece {

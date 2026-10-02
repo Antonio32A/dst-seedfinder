@@ -291,7 +291,7 @@ def written_dump(+seed: U32, +outcome: U32, +count: U32, bytes: List<&2, U32>, +
 def started_job(caves: Bool, +seed: U32, +windows: Bool) -> GenJob.Job:
   match caves:
     case True{}:
-      GenJob.start_caves(seed, windows, 0)
+      GenJob.start_caves(seed, windows, 0, True{})
     case False{}:
       GenJob.start(seed, windows, True{})
 
