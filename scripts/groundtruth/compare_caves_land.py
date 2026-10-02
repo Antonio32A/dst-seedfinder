@@ -22,16 +22,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compare_common import CAVE_WORLDS, attempts_of_seeds  # noqa: E402
+
 POISON_BITS = {"ForceConnected": 2, "RoadPoison": 4, "ForceDisconnected": 8}
-
-
-def seeds_of(text):
-    out = []
-    for part in text.split(","):
-        first, _, last = part.partition("-")
-        out += range(int(first), int(last or first) + 1)
-    return out
 
 
 def start_positions(world):
@@ -113,16 +107,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("binary")
     ap.add_argument("seeds", nargs="?", default="1-120")
-    ap.add_argument("--worlds", default=str(ROOT / "build/groundtruth/data/worlds_caves"))
+    ap.add_argument("--worlds", default=str(CAVE_WORLDS))
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--first-attempts", action="store_true", help="only the first attempt of every seed")
     ap.add_argument("--label", default="before_mazes")
     args = ap.parse_args()
-    work = []
-    for seed in seeds_of(args.seeds):
-        world = json.loads((Path(args.worlds) / f"{seed}.json").read_text())
-        for attempt in [1] if args.first_attempts else range(1, world["attempts"] + 1):
-            work.append((world, attempt))
+    work = attempts_of_seeds(args.seeds, args.worlds, args.first_attempts)
     failed = 0
     with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
         futures = [pool.submit(check, args.binary, world, attempt, args.label) for world, attempt in work]

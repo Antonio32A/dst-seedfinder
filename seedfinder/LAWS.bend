@@ -10,7 +10,7 @@ import ./filters/config.bend as Config
 import ./level/choose.bend as LevelChoose
 
 # Golden values below come from the reference harness (the real worldgen Lua under DST's PCG32),
-# which matches set pieces dumped from the game (build 747465) for seeds 1..1000.
+# which matches set pieces dumped from the game (builds 747465 and 756039) for seeds 1..1000.
 
 # The first draw set piece selection inspects, after the 13 skipped by Pcg.seeded.
 law seed_1_first_inspected_draw:

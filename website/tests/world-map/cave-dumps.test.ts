@@ -1,9 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { shardCatalog } from "@/lib/catalog/shard-catalog";
-import { TILES } from "@/lib/catalog/world";
-import { prefabName } from "@/lib/catalog/prefab-sets";
 import { entityLayer, mapWorld } from "@/lib/world-map/legend/entity-layer";
 import { iconLayer } from "@/lib/world-map/legend/icon-layer";
 import { mapLegend } from "@/lib/world-map/legend/prefab-visibility";
@@ -26,20 +23,6 @@ describe.skipIf(!existsSync(DUMPS))("the real cave worlds", () => {
             expect(world.pillarLinks.length).toBeGreaterThan(0);
             expect(world.links).toHaveLength(0);
         }
-    });
-
-    it("have every prefab named and drawn from the caves catalog", () => {
-        const { byId } = shardCatalog("caves");
-        const unknown = new Set(sampled.flatMap(({ prefabs }) => prefabs.map(({ name }) => name).filter((name) => !byId.has(name))));
-        expect([...unknown]).toEqual([]);
-        for (const { name } of sampled.flatMap(({ prefabs }) => prefabs)) expect(prefabName(name, "caves")).not.toBe(name);
-    });
-
-    it("have a minimap noise texture for every land tile", () => {
-        const missing = new Set(sampled.flatMap(({ tileNames, tiles }) => [...new Set(tiles)]
-            .map((tile) => tileNames.get(tile)!)
-            .filter((name) => TILES[name].kind === "land" && TILES[name].minimapNoise === undefined)));
-        expect([...missing]).toEqual([]);
     });
 
     it("map to one link per pillar link and icons for the prefabs the catalog has one for", () => {

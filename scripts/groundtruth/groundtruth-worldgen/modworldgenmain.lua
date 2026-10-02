@@ -220,9 +220,8 @@ end
 
 local STREAM_SCAN_LIMIT = 4000000
 
--- The number of generator steps since the last math.randomseed, engine draws included (`draws` counts only the Lua
--- calls). The next three outputs are read, the stream is restarted to find where they occur, and it is put back
--- there, so the world generation goes on undisturbed.
+-- Steps since the last math.randomseed, engine draws included (`draws` counts only Lua calls): reads the next three
+-- outputs, finds them by replaying the stream from the seed, and restores the stream to that position.
 local function stream_position()
     if seed_args == nil then
         return nil
@@ -289,8 +288,8 @@ local PROBES = {}
 local PRE_PROBES = {}
 local probe_enabled = (os and os.getenv and os.getenv("GTWORLD_PROBES") or "1") ~= "0"
 
-local function run_probe(name, args, results)
-    local probe = PROBES[name]
+local function run_probe(probes, name, args, results)
+    local probe = probes[name]
     if probe and probe_enabled and world then
         local ok, err = pcall(probe, args, results)
         if not ok then
@@ -300,20 +299,9 @@ local function run_probe(name, args, results)
     end
 end
 
-local function run_pre_probe(name, args)
-    local probe = PRE_PROBES[name]
-    if probe and probe_enabled and world then
-        local ok, err = pcall(probe, args)
-        if not ok then
-            world.probe_errors = (world.probe_errors or 0) + 1
-            world.probe_error = tostring(err)
-        end
-    end
-end
-
 local function finish_probed(id, before, name, args, ...)
     record_call(id, before, draws)
-    run_probe(name, args, { n = select("#", ...), ... })
+    run_probe(PROBES, name, args, { n = select("#", ...), ... })
     return ...
 end
 
@@ -327,7 +315,7 @@ local function traced(name, method)
     end
     return function(...)
         if PRE_PROBES[name] then
-            run_pre_probe(name, { n = select("#", ...), ... })
+            run_probe(PRE_PROBES, name, { n = select("#", ...), ... })
         end
         if PROBES[name] then
             local before = draws

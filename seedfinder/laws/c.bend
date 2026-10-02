@@ -23,7 +23,7 @@ import ../filters/dump.bend as FilterDump
 import ../post/archive.bend as Archive
 import ../data/cave_story.bend as CaveStory
 
-# Caves laws. The golden values are the real caves worlds of build 747465 (scripts/groundtruth, seed 1 of
+# Caves laws. The golden values are the real caves worlds of builds 747465 and 756039 (scripts/groundtruth, seed 1 of
 # build/groundtruth/data/worlds_caves): the level table decodes byte for byte into the dumped tasks and set pieces,
 # and the draw counts are the dump's rng_checkpoints (choose_tasks 21).
 

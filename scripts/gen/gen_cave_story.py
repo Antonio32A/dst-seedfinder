@@ -53,15 +53,10 @@ def lua_list(table):
     return [table[str(i)] for i in range(1, len(table) + 1)] if table else []
 
 
-def maze_choices(layouts):
-    return sorted(layouts["mazes"], key=lambda maze: maze["choice"].encode())
-
-
 def maze_data(m, story_tasks, maze_constants):
     """The maze tables: the constants MAZE_TYPE and MAZE_CELL_EXITS, the maze layout choices (AllLayouts keys, sorted by
     name bytes) with the layout row of each cell type, and per task the fields of task.maze_tiles."""
-    layouts = blob.sidecar("layouts_caves.json")
-    choices = maze_choices(layouts)
+    choices = sorted(blob.sidecar("layouts_caves.json")["mazes"], key=lambda maze: maze["choice"].encode())
     choice_id = {c["choice"]: i for i, c in enumerate(choices)}
     cells = maze_constants["cell_exits"]
     inverse = maze_constants["cell_exits_inv"]

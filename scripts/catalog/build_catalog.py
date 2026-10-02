@@ -50,17 +50,13 @@ def load_json(path):
 # Empirical worlds
 
 
-def cave_world_sources():
-    for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds_caves/[0-9]*.json"))):
-        world = load_json(path)
-        if isinstance(world, dict) and world.get("shard") == "caves":
-            yield "groundtruth_dump", path, summarize(world, "groundtruth_dump")
-
-
 def real_world_sources():
     """Yields (seed, source_label, summary) for every real-game world on disk."""
     if SHARD == "caves":
-        yield from cave_world_sources()
+        for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds_caves/[0-9]*.json"))):
+            world = load_json(path)
+            if isinstance(world, dict) and world.get("shard") == "caves":
+                yield "groundtruth_dump", path, summarize(world, "groundtruth_dump")
         return
     for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds/*.json"))):
         yield "groundtruth_dump", path, summarize(load_json(path), "groundtruth_dump")
@@ -819,15 +815,6 @@ def missing_names_and_images(prefabs):
     return problems
 
 
-def forest_sections(static, layout_reach, ss, emp_setpieces):
-    return {
-        "settings": build_settings(static),
-        "prefab_swaps": build_swaps(static),
-        "tasks": build_tasks(static),
-        "setpieces": build_setpieces(static, layout_reach, emp_setpieces, ss),
-    }
-
-
 def main():
     global SHARD
     ap = argparse.ArgumentParser()
@@ -867,7 +854,12 @@ def main():
         "preset": static["level"]["id"],
         "worlds": {"total": n_worlds, "by_source": dict(per_source), "with_tiles": n_tile_worlds,
                    "failed": failed, "seed_disagreements": disagreements},
-        **(forest_sections(static, layout_reach, ss, emp_setpieces) if SHARD == "forest" else {}),
+        **({
+            "settings": build_settings(static),
+            "prefab_swaps": build_swaps(static),
+            "tasks": build_tasks(static),
+            "setpieces": build_setpieces(static, layout_reach, emp_setpieces, ss),
+        } if SHARD == "forest" else {}),
         "prefabs": prefabs,
         "tiles": tiles,
         "cross_check": {

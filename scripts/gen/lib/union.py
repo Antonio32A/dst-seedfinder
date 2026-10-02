@@ -10,10 +10,6 @@ from functools import lru_cache
 import blob
 
 
-def _bytes(s):
-    return s.encode()
-
-
 def _dump(v):
     return json.dumps(v, sort_keys=True)
 
@@ -33,7 +29,7 @@ def story():
     for name in forest_rooms.keys() & cave_rooms.keys():
         forest_view = {k: v for k, v in forest_rooms[name].items() if k != "start"}
         assert _dump(forest_view) == _dump(cave_rooms[name]), f"room {name} differs between the forest and the caves"
-    only = sorted((r for n, r in cave_rooms.items() if n not in forest_rooms), key=lambda r: _bytes(r["name"]))
+    only = sorted((r for n, r in cave_rooms.items() if n not in forest_rooms), key=lambda r: r["name"].encode())
     merged = dict(forest)
     merged["rooms"] = forest["rooms"] + only
     return merged

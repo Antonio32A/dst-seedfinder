@@ -62,10 +62,6 @@ def windows_tables():
     return log, recip, exp2
 
 
-def maze_exponents():
-    return [blob.f32_bits(math.pow(2.718281828459045, -val)) for val in MAZE_VALS]
-
-
 def f64(bits):
     return f"F64Repr.F64{{{bits >> 32}, {bits & 0xFFFFFFFF}}}"
 
@@ -74,7 +70,7 @@ def f64_row(bits):
     return blob.f64(struct.unpack("<d", struct.pack("<Q", bits))[0])
 
 
-def bend_module():
+def main():
     log_tab, poly, exp_tab, head = glibc_tables()
     m = blob.Module("powf", "scripts/gen/gen_powf.py", "Tables of f32/powf.bend: powf on Linux and Windows.",
                     ("./blob.bend as Blob", "../f64/repr.bend as F64Repr"))
@@ -89,13 +85,10 @@ def bend_module():
     small_table(m, "win_log_tab", [f64_row(b) for b in log], "ln(1 + i / 128).")
     small_table(m, "win_recip_tab", [f64_row(b) for b in recip], "2 / (1 + i / 128).")
     small_table(m, "win_exp2_tab", [f64_row(b) for b in exp2], "2^(j / 32).")
-    small_table(m, "maze_exponent_tab", [blob.word(b) for b in maze_exponents()],
+    maze_exponents = [blob.f32_bits(math.pow(2.718281828459045, -val)) for val in MAZE_VALS]
+    small_table(m, "maze_exponent_tab", [blob.word(b) for b in maze_exponents],
                 "(float)pow(e, -val) bits for val = -3..7, at row val + 3.")
-    return m
-
-
-def main():
-    bend_module().emit()
+    m.emit()
 
 
 if __name__ == "__main__":

@@ -69,8 +69,6 @@ def sandbox(name, areas):
 
 
 def check_against_extraction():
-    """The hand-written sandbox tables against the extracted ones (pairs() order of areas and items, and which
-    non-empty areas no forest task hosts)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
     import blob
     sandboxes = blob.sidecar("layouts.json")["sandboxes"]

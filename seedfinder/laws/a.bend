@@ -10,7 +10,8 @@ import ../worldsim/cave/shuffle.bend as CaveShuffle
 # Golden values of the cave engines' kernels (RunCA's automaton, the growing tree, the meta-maze walk and the C++ shuffle) on
 # explicit grids, from a native reconstruction of WorldSim's RunCA, RunMaze and GetPointsForMetaMaze that reproduces the
 # real dedicated server (build 747465) exactly on 948 real calls: the tile maps, the returned points and the number of PCG
-# draws. The Windows variants differ by the RAND_MAX 0x7fff shuffle (VC9 random_shuffle) and MSVCR90's powf.
+# draws. Build 756039 generates the same caves worlds. The Windows variants differ by the RAND_MAX 0x7fff shuffle (VC9
+# random_shuffle) and MSVCR90's powf.
 
 def load(xs: List<&2, U32>, a: Array<U32>, +k: U32) -> Array<U32>:
   match xs:

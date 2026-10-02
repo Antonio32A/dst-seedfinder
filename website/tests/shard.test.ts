@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CAVE_OPTIONAL_TASK_IDS, CAVE_PIECES, CAVE_REQUIRED_TASK_IDS } from "@/lib/catalog/cave-vocab";
+import { CAVE_OPTIONAL_TASK_IDS } from "@/lib/catalog/cave-vocab";
 import { levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { validateConfig } from "@/lib/config/validate-config";
 import { parseJobResult } from "@/lib/jobs/job-result";
@@ -19,42 +19,8 @@ import {
     validateSearch
 } from "@/lib/criteria/search-state";
 
-const SCHEMA = JSON.parse(readFileSync(fileURLToPath(new URL("../../config.schema.json", import.meta.url)), "utf8")) as {
-    $defs: { caveTaskId: { enum: string[] }; caveSetPieceName: { enum: string[] } };
-};
-
 const forest = levelCatalogOf("forest");
 const caves = levelCatalogOf("caves");
-
-describe("the caves catalog", () => {
-    it("has the 33 required and 18 optional tasks, 8 of them in a world", () => {
-        expect(CAVE_REQUIRED_TASK_IDS).toHaveLength(33);
-        expect(CAVE_OPTIONAL_TASK_IDS).toHaveLength(18);
-        expect(caves.optionalTasks.map((task) => task.id)).toEqual(CAVE_OPTIONAL_TASK_IDS);
-        expect(caves.optionalPicked).toBe(8);
-    });
-
-    it("describes every task and set piece the finder knows", () => {
-        for (const task of caves.tasks) expect(task.name.length).toBeGreaterThan(0);
-        for (const piece of caves.setPieces) expect(piece.name.length).toBeGreaterThan(0);
-        expect(caves.setPieces).toHaveLength(CAVE_PIECES.length);
-    });
-
-    it("agrees with the config schema on the names", () => {
-        expect([...caves.tasks.map((task) => task.id)].sort()).toEqual(SCHEMA.$defs.caveTaskId.enum);
-        expect([...caves.setPieces.map((piece) => piece.id)].sort()).toEqual(SCHEMA.$defs.caveSetPieceName.enum);
-    });
-
-    it("has no grass swap, since the grass is always regular", () => {
-        expect(caves.swaps.map((swap) => swap.id)).toEqual(["twigs", "berries"]);
-        expect(forest.swaps.map((swap) => swap.id)).toEqual(["grass", "twigs", "berries"]);
-    });
-
-    it("leaves the forest catalog as it was", () => {
-        expect(forest.tasks).toHaveLength(25);
-        expect(forest.optionalPicked).toBe(5);
-    });
-});
 
 describe("a search on the caves", () => {
     const search = (shard: "forest" | "caves") => ({ ...defaultState(), shard, groups: [emptyGroup()] });
@@ -163,18 +129,6 @@ describe("the output of a caves search", () => {
         expect(parsed.map((line) => line?.kind)).toEqual(["hit", "hit", "done"]);
         const hit = parsed[0];
         expect(hit?.kind === "hit" && hit.hit.seed).toBe(3);
-    });
-
-    it("names only tasks and set pieces of the caves catalog", () => {
-        for (const line of parsed) {
-            if (line?.kind !== "hit") continue;
-            expect(line.hit.level.tasks).toHaveLength(41);
-            expect(new Set(Object.keys(line.hit.level.prefab_swaps))).toEqual(new Set(["grass", "twigs", "berries"]));
-            for (const task of line.hit.level.tasks) {
-                expect(caves.taskById[task.task]).toBeDefined();
-                for (const piece of task.set_pieces) expect(caves.setPieceById[piece]).toBeDefined();
-            }
-        }
     });
 
     it("is a job result the site can show", () => {

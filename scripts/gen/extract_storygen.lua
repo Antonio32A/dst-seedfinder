@@ -1,5 +1,5 @@
 -- Extracts the few game facts storygen needs beyond story.json: which tile values TileGroupManager:IsImpassableTile
--- accepts (InsertAdditionalSetPieces' isnt_blank; the values below 1024 and the range above the ocean tiles), and the map tag each room tag resolves to.
+-- accepts (InsertAdditionalSetPieces' isnt_blank), and the map tag each room tag resolves to.
 -- usage: scripts/harness/bin/lua-dst scripts/gen/extract_storygen.lua
 
 local GEN = arg[0]:match("^(.*)/[^/]*$") or "."

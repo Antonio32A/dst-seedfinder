@@ -16,7 +16,6 @@ export interface LevelCatalog {
     setPieceKindById: Record<SetPieceKind, SetPieceKindInfo>;
     optionalTasks: TaskInfo[];
     optionalTaskIds: string[];
-    /** How many of the optional tasks a world has. */
     optionalPicked: number;
 }
 

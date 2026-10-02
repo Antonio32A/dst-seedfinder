@@ -80,7 +80,8 @@ def write_worlds(worlds_by_seed, outdir):
             name = f"{seed}.json" if position == 0 else f"{seed}.{world['mode']}.{world['launch']}-{world['run']}.json"
             (outdir / name).write_text(json.dumps(world, separators=(",", ":")))
             index.append({
-                "file": name, "seed": seed, "shard": world.get("shard"), "mode": world["mode"], "launch": world["launch"], "run": world["run"],
+                "file": name, "seed": seed, "shard": world.get("shard"), "mode": world["mode"],
+                "launch": world["launch"], "run": world["run"],
                 "status": world.get("status"), "attempts": world.get("attempts"),
                 "width": world.get("width"), "height": world.get("height"),
                 "entities": sum((world.get("entity_counts") or {}).values()),

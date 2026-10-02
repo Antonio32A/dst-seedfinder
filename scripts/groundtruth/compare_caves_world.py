@@ -6,8 +6,7 @@ usage: compare_caves_world.py BINARY [SEEDS] [--platform linux|windows] [--world
 
 Every seed is one `BINARY -- world dump SEED --shard caves --platform PLATFORM -o TMP.dstw`, compared with the world JSON
 of that platform's server (scripts/groundtruth/run_worldgen.sh) converted by world_dump.py (the same code path the
-forest's dumps use). A seed
-that differs reports its first differing section and, inside it, the first differing tile, prefab or pillar link; and
+forest's dumps use). A seed that differs reports its first differing section and, inside it, the first differing tile, prefab or pillar link; and
 every seed reports the attempts the seedfinder needed (`gen SEED --shard caves`) next to the real world's.
 
 SEEDS: `1-120` (default) or `1,5,9`. WORLDS: the world JSONs (default build/groundtruth/data/worlds_caves).
@@ -23,18 +22,10 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compare_common import CAVE_WORLDS, seeds_of  # noqa: E402
 from world_dump import dump_of  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
 HEADER_BYTES = 36
-
-
-def seeds_of(text):
-    out = []
-    for part in text.split(","):
-        first, _, last = part.partition("-")
-        out += range(int(first), int(last or first) + 1)
-    return out
 
 
 def sections_of(raw):
@@ -125,7 +116,7 @@ def main():
     ap.add_argument("binary")
     ap.add_argument("seeds", nargs="?", default="1-120")
     ap.add_argument("--platform", choices=["linux", "windows"], default="linux")
-    ap.add_argument("--worlds", default=str(ROOT / "build/groundtruth/data/worlds_caves"))
+    ap.add_argument("--worlds", default=str(CAVE_WORLDS))
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--no-attempts", action="store_true", help="skip the `gen` run that counts the attempts")
     args = ap.parse_args()

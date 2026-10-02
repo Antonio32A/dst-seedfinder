@@ -52,8 +52,12 @@ def section(tag, payload):
     return tag + u32s(len(payload)) + payload
 
 
+def placed_prefabs(entities):
+    return sorted((prefab for prefab, positions in entities.items() if positions), key=str.encode)
+
+
 def entities_payload(entities):
-    prefabs = sorted((prefab for prefab, positions in entities.items() if positions), key=str.encode)
+    prefabs = placed_prefabs(entities)
     payload = u32s(len(prefabs))
     for prefab in prefabs:
         positions = entities[prefab]
@@ -72,8 +76,7 @@ def roads_payload(roads):
 
 
 def pillars_payload(links, entities):
-    positions = {prefab: position for position, prefab in enumerate(sorted(
-        (prefab for prefab, instances in entities.items() if instances), key=str.encode))}
+    positions = {prefab: position for position, prefab in enumerate(placed_prefabs(entities))}
     return u32s(len(links), *(word for entry, leave in links
                               for word in (positions[entry.prefab], entry.index, positions[leave.prefab], leave.index)))
 
@@ -115,18 +118,17 @@ def main():
     platform = None
     if args[:1] == ["--platform"]:
         platform, args = args[1], args[2:]
-    if args[0] == "--tree":
+    if args[0] in ("--tree", "--worlds"):
         out = Path(args[2])
         out.mkdir(parents=True, exist_ok=True)
-        for world in sorted(Path(args[1]).glob("*/world.json")):
-            seed = convert(world, out / f"{world.parent.name}.dstw", platform)
-            print(f"{world} -> {out / (world.parent.name + '.dstw')} (seed {seed})")
-    elif args[0] == "--worlds":
-        out = Path(args[2])
-        out.mkdir(parents=True, exist_ok=True)
-        for world in sorted(Path(args[1]).glob("*.json"), key=lambda path: path.stem):
-            if world.stem.isdigit():
-                print(f"{world} -> {out / (world.stem + '.dstw')} (seed {convert(world, out / (world.stem + '.dstw'), platform)})")
+        if args[0] == "--tree":
+            worlds = [(world, world.parent.name) for world in sorted(Path(args[1]).glob("*/world.json"))]
+        else:
+            worlds = [(world, world.stem) for world in sorted(Path(args[1]).glob("*.json"), key=lambda path: path.stem)
+                      if world.stem.isdigit()]
+        for world, name in worlds:
+            seed = convert(world, out / f"{name}.dstw", platform)
+            print(f"{world} -> {out / (name + '.dstw')} (seed {seed})")
     else:
         convert(args[0], args[1], platform)
 

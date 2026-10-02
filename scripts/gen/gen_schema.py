@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Writes config.schema.json (JSON Schema 2020-12 for search config v1, docs/config.md) from the caps the finder
 enforces (seedfinder/filters/), the names of scripts/catalog/catalog.json (forest) and of the caves sidecar caves.json.
-`-` prints it instead. Fails when the caps
-table of docs/config.md (its rows in the order of WEBSITE_CAPS) or the website's caps disagree with the finder.
+`-` prints it instead. Fails when the caps table of docs/config.md (its rows in the order of WEBSITE_CAPS) or the website's caps disagree with the
+finder.
 
 Run from the project root (regen.sh runs it after the catalog modules):
     python3 scripts/gen/gen_schema.py
@@ -141,17 +141,13 @@ def definitions(catalog):
     }
 
 
-def cave_names():
+def cave_definitions():
     cat = Catalog(blob.sidecar("caves.json"), blob.sidecar("layouts.json"))
-    return cat, {
+    names = {
         "caveTaskId": sorted(cat.tasks),
-        "caveSetPieceName": sorted(name for name in cat.keys),
+        "caveSetPieceName": sorted(cat.keys),
         "cavePrefabId": sorted(prefab["id"] for prefab in json.loads(CAVE_CATALOG.read_text(encoding="utf-8"))["prefabs"]),
     }
-
-
-def cave_definitions():
-    cat, names = cave_names()
     swaps = {}
     for swap in cat.caves["prefab_swaps"]:
         swaps[swap["category"]] = {"enum": [option["name"] for option in swap["sets"] if option["valid"]]}

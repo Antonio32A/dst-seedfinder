@@ -53,7 +53,9 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compare_common import CAVE_WORLDS, attempts_of_seeds  # noqa: E402
+
 FNV_OFFSET = 0xCBF29CE484222325
 FNV_PRIME = 0x100000001B3
 MASK64 = (1 << 64) - 1
@@ -63,14 +65,6 @@ TILE_LABELS = ["tilemap", "separate_islands", "force_connectivity", "before_maze
 KINDS = {"cattempt", "ccommit", "cdigest", "cca", "cpoints", "cmaze", "creserve", "cdisconnect", "cents", "creq", "cstatus", "cverdict"}
 WORLD_ADDED = ("multiplayer_portal", "spawnpoint_master")
 TOKEN = re.compile(r'(\w+)=("(?:\\.|[^"\\])*"|\S+)')
-
-
-def seeds_of(text):
-    out = []
-    for part in text.split(","):
-        first, _, last = part.partition("-")
-        out += range(int(first), int(last or first) + 1)
-    return out
 
 
 def fnv_bytes(h, data):
@@ -130,14 +124,6 @@ def run_trace(binary, seed, position):
     return parse(done.stdout), done.stderr.strip()
 
 
-def attempt_ends(world):
-    return [c for c in world["rng_checkpoints"] if c[0] in ("generate_failed", "generate_end")]
-
-
-def attempt_begins(world):
-    return [c for c in world["rng_checkpoints"] if c[0] == "generate_begin"]
-
-
 class Real:
     """The probes of one real attempt, in execution order."""
 
@@ -161,10 +147,10 @@ class Real:
                 self.calls.append((p["kind"], p))
 
     def begin(self):
-        return attempt_begins(self.world)[self.attempt - 1]
+        return [c for c in self.world["rng_checkpoints"] if c[0] == "generate_begin"][self.attempt - 1]
 
     def end(self):
-        ends = attempt_ends(self.world)
+        ends = [c for c in self.world["rng_checkpoints"] if c[0] in ("generate_failed", "generate_end")]
         return ends[self.attempt - 1] if self.attempt <= len(ends) else None
 
 
@@ -208,7 +194,7 @@ def check_call(kind, record, probe):
     elif kind in ("runmaze", "metamaze"):
         want = real_triples(probe["pts"])
         pairs = [("nodes", record["nodes"], ";".join(probe["nodes"])), ("count", int(record["count"]), probe["count"]),
-                 ("hash", record["hash"], f"{point_hash([(x, y, t) for x, y, t in want]):016x}")]
+                 ("hash", record["hash"], f"{point_hash(want):016x}")]
     else:
         ok = record["ok"] == "1"
         pairs = [("node", record["node"], probe["id"]), ("size", record["size"], f"{float32_bits(probe['size']):08x}"),
@@ -338,10 +324,6 @@ def check_gaps(real, records, port, problems, draws):
             problems.setdefault("gaps", f"Lua draws from call {i} to the end: {got} vs real {ends[1] - lua_i}")
 
 
-def engine_calls(port):
-    return [(kind, record) for kind, record in port if kind in ("ca", "runmaze", "metamaze")]
-
-
 def check_engine(seed, ported, engine_dir, draws):
     path = Path(engine_dir) / str(seed) / "engine_probe.jsonl"
     if not path.exists():
@@ -375,7 +357,7 @@ def check(binary, world, attempt, want_draws):
     check_disconnect(real, records, problems)
     if want_draws:
         check_gaps(real, records, port, problems, draws)
-    return world["seed"], attempt, problems, draws, engine_calls(port)
+    return world["seed"], attempt, problems, draws, [(kind, record) for kind, record in port if kind in ("ca", "runmaze", "metamaze")]
 
 
 def first_problem(problems):
@@ -402,18 +384,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("binary")
     ap.add_argument("seeds", nargs="?", default="1-120")
-    ap.add_argument("--worlds", default=str(ROOT / "build/groundtruth/data/worlds_caves"))
+    ap.add_argument("--worlds", default=str(CAVE_WORLDS))
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--first-attempts", action="store_true", help="only the first attempt of every seed")
     ap.add_argument("--draws", action="store_true", help="check and tabulate the random-draw counts")
     ap.add_argument("--engine-probes", help="folder of <seed>/engine_probe.jsonl captures (with --draws)")
     args = ap.parse_args()
-    worlds = {}
-    work = []
-    for seed in seeds_of(args.seeds):
-        worlds[seed] = json.loads((Path(args.worlds) / f"{seed}.json").read_text())
-        for attempt in [1] if args.first_attempts else range(1, worlds[seed]["attempts"] + 1):
-            work.append((worlds[seed], attempt))
+    work = attempts_of_seeds(args.seeds, args.worlds, args.first_attempts)
+    worlds = {world["seed"]: world for world, _ in work}
     failed = 0
     total = Draws()
     ported = defaultdict(dict)

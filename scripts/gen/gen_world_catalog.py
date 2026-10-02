@@ -49,7 +49,6 @@ def keys():
 
 
 def check_forest_tables():
-    """The hand-written forest tables of model.py against the extracted default task set and level."""
     story = blob.sidecar("story.json")
     taskset, level = story["taskset"], story["level"]
     assert sorted(model.REQUIRED_TASKS + model.MOON_TASKS) == sorted(taskset["tasks"])

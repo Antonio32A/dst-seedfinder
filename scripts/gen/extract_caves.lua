@@ -1,9 +1,7 @@
--- Extracts the level table inputs of the caves shard (preset DST_CAVE, task set "cave_default", start location
--- "caves"): the level and location fields worldgen reads, the task set with the Lua 5.1 node layout of its set_pieces
--- (the table AddSetPeices keeps inserting into), every task's room_bg, the caves start rooms and which prefab swaps the
--- caves allow, and the story level data of the cave tasks and rooms (tasks as Level:EnqueueATask hands them to
--- storygen, the rooms they reach, the map tags of those rooms and the lock table). Prints one JSON document (the
--- sidecar out/caves.json).
+-- Extracts the caves shard (preset DST_CAVE, task set "cave_default", start location "caves"): the level, task set and
+-- location fields worldgen reads, the Lua 5.1 node layout of the set_pieces table AddSetPeices keeps inserting into,
+-- the allowed prefab swaps, and the story data of the cave tasks (as Level:EnqueueATask hands them to storygen), rooms,
+-- map tags and locks. Prints the sidecar out/caves.json.
 -- usage: scripts/harness/bin/lua-dst scripts/gen/extract_caves.lua
 
 local GEN = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -86,18 +84,20 @@ local function use_room(name)
 end
 
 local tag_names, tags_used = {}, {}
+local function use_tag(tag)
+    if not tags_used[tag] then
+        tags_used[tag] = true
+        tag_names[#tag_names + 1] = tag
+    end
+end
+
 local story_tasks = array()
 local locks_used = {}
 for index, name in ipairs(task_names) do
     local task = deepcopy(tasks_mod.GetTaskByName(name))
     known_fields(task, TASK_FIELDS, "task " .. name)
     for _, lock in ipairs(task.locks) do locks_used[lock] = true end
-    for _, tag in ipairs(task.room_tags or {}) do
-        if not tags_used[tag] then
-            tags_used[tag] = true
-            tag_names[#tag_names + 1] = tag
-        end
-    end
+    for _, tag in ipairs(task.room_tags or {}) do use_tag(tag) end
     local entrance = task.entrance_room
     if type(entrance) == "table" then
         for _, r in ipairs(entrance) do use_room(r) end
@@ -154,12 +154,7 @@ local story_rooms = array()
 for _, name in ipairs(room_names) do
     local room = deepcopy(assert(Rooms.GetRoomByName(name), "missing room " .. name))
     known_fields(room, ROOM_FIELDS, "room " .. name)
-    for _, tag in ipairs(room.tags or {}) do
-        if not tags_used[tag] then
-            tags_used[tag] = true
-            tag_names[#tag_names + 1] = tag
-        end
-    end
+    for _, tag in ipairs(room.tags or {}) do use_tag(tag) end
     story_rooms[#story_rooms + 1] = {
         name = name, value = room.value, type = room.type, internal_type = room.internal_type,
         random_node_exit_weight = room.random_node_exit_weight,

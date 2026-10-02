@@ -14,16 +14,12 @@ import ids  # noqa: E402
 from gen_closures import fingerprint  # noqa: E402
 
 
-def wanted(args):
-    for arg in args:
-        first, _, last = arg.partition("-")
-        yield from range(int(first), int(last or first) + 1)
-
-
 def main():
     by_id = {c["id"]: c for c in ids.closures()}
-    for i in wanted(sys.argv[1:]):
-        print(f"    Pin{{{i}, {fingerprint(by_id[i]['key'])}}},")
+    for arg in sys.argv[1:]:
+        first, _, last = arg.partition("-")
+        for i in range(int(first), int(last or first) + 1):
+            print(f"    Pin{{{i}, {fingerprint(by_id[i]['key'])}}},")
 
 
 if __name__ == "__main__":

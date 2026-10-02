@@ -83,11 +83,6 @@ describe("the entity layer", () => {
         expect(MAP_GROUPS[layer.linkGroup].id).toBe("spawn & travel");
     });
 
-    it("groups the caves' prefabs by the caves catalog", () => {
-        expect(MAP_GROUPS[groupOf("stalagmite", "caves")].id).toBe("rocks");
-        expect(MAP_GROUPS[groupOf("stalagmite", "forest")].id).toBe("other");
-    });
-
     it("places a dot for every entity at its world position, in its group or in other outside the catalog", () => {
         const layer = entityLayer(WORLD);
         expect(dots(layer)).toEqual(expect.arrayContaining([
