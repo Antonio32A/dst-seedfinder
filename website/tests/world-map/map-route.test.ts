@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { decodeShareParam, encodeShareParam } from "@/lib/criteria/search-state";
-import { mapPath, parseMapConfig, parseMapRoute } from "@/lib/world-map/map-route";
+import { mapPath, parseMapConfig, parseMapRoute, pickedMapPath } from "@/lib/world-map/map-route";
 
 const CONFIG: SeedfinderConfig = {
     version: 1,
@@ -56,5 +56,19 @@ describe("the map route", () => {
 
     it.each(["-1", "4294967296", "1.5", "1e3", "abc", " 1", ""])("refuses the seed %j", (seed) => {
         expect(parseMapRoute("windows", seed)).toEqual({ error: expect.stringMatching(/seed/) });
+    });
+
+    it.each([
+        ["windows", "forest", "1234", "/map/windows/1234"],
+        ["linux", "caves", "1234", "/map/linux/caves/1234"],
+        ["linux", "forest", " 42 ", "/map/linux/42"],
+        ["windows", "caves", "0007", "/map/windows/caves/7"],
+        ["windows", "forest", "4294967295", "/map/windows/4294967295"]
+    ] as const)("opens the picked %s %s seed %j at its map", (platform, shard, seed, path) => {
+        expect(pickedMapPath(platform, seed, shard)).toEqual({ path });
+    });
+
+    it.each(["", "-1", "4294967296", "1.5", "12 34", "abc"])("refuses to open the picked seed %j", (seed) => {
+        expect(pickedMapPath("windows", seed, "forest")).toEqual({ error: expect.stringMatching(/seed/) });
     });
 });

@@ -5,7 +5,8 @@
 Features:
 
 - local search (WASM version of seedfinder)
-- world map of any seed (`/map/<windows|linux>/<seed>`), generated in the browser from the same WASM build
+- world map of any seed (pick one at `/map`, or link `/map/<windows|linux>/[caves/]<seed>`), generated in the browser from
+  the same WASM build
 - cloud search which runs on Vast.ai (uses [runner](../runner/README.md))
 - log in with Discord
 - credit system (for rate limiting)

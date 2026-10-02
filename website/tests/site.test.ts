@@ -55,7 +55,21 @@ describe("every response carries the security headers", () => {
         const response = await api(path);
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toMatch(/^text\/html/);
-        expect(await response.text()).toContain("DST Seedfinder");
+        const page = await response.text();
+        expect(page).toContain("DST Seedfinder");
+        expect(page).toContain('<a href="/" class="link-button">back</a>');
+        expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
+    });
+
+    it("on the map picker, which serves the seed form under the site's header and footer", async () => {
+        const response = await api("/map");
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toMatch(/^text\/html/);
+        const page = await response.text();
+        expect(page).toMatch(/<header class="header"><div class="brand">[\s\S]*antonio32a\.com[\s\S]*seedfinder/);
+        expect(page).toMatch(/<form[^>]*>[\s\S]*World[\s\S]*Platform[\s\S]*Seed[\s\S]*>Map<\/button>/);
+        expect(page).not.toContain("caves are well");
+        expect(page).toContain('class="theme-toggle"');
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
     });
 

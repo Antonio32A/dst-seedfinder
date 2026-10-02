@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GAME_BUILD } from "@/lib/catalog/world";
 
 export default function Intro() {
@@ -8,6 +9,8 @@ export default function Intro() {
                     Don&apos;t Starve Together seed finding tool. Currently supports DST v{GAME_BUILD}.
                     <br/>
                     This is mostly a hobby project, no future support is guaranteed.
+                    <br/>
+                    Also contains a map viewer, you can find it <Link href="/map">here</Link>.
                 </p>
                 <details className="help">
                     <summary>How do I use a seed?</summary>

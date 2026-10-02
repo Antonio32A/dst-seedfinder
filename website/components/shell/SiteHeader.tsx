@@ -3,6 +3,7 @@
 import { loginUrl } from "@/lib/client/api-client";
 import type { Account } from "@/lib/client/use-account";
 import { creditsPerSecond, DAILY_CREDITS, formatCredits, MAX_DOLLARS_PER_HOUR, STARTING_FEE } from "@/lib/jobs/credits";
+import Brand from "./Brand";
 
 const CREDITS_HINT = `Credits are topped up to ${DAILY_CREDITS} daily at 00:00 UTC. A search costs ${STARTING_FEE} credits to start a server, then ${creditsPerSecond(MAX_DOLLARS_PER_HOUR)} credits a second on a $${MAX_DOLLARS_PER_HOUR}/h server, less on cheaper ones.`;
 
@@ -10,14 +11,7 @@ export default function SiteHeader({ account }: { account: Account }) {
     const { user, loading } = account;
     return (
             <header className="header">
-                <div className="brand">
-                    <a href="https://antonio32a.com" className="logo">
-                        antonio32a.com
-                    </a>
-                    <a href="/" className="brand__site">
-                        seedfinder
-                    </a>
-                </div>
+                <Brand/>
                 {!loading && (
                         <nav className="account" aria-label="Account">
                             {user ? (

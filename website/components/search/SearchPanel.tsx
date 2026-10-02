@@ -6,19 +6,14 @@ import Stepper from "@/components/ui/Stepper";
 import { type LocalSearchRequest, MEMORY_PER_THREAD_MB, type SearchTarget } from "@/lib/browser-search/local-search";
 import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/client/api-client";
 import type { Account } from "@/lib/client/use-account";
-import {
-    DEFAULT_START_SEED,
-    type Platform,
-    PLATFORM_LABELS,
-    PLATFORMS,
-    type SeedfinderConfig
-} from "@/lib/config/seedfinder-config";
+import { DEFAULT_START_SEED, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { validateJobRequest } from "@/lib/config/validate-config";
 import { type Issue, WANTED_OPTIONS } from "@/lib/criteria/search-state";
 import { creditsToUnits, formatCredits, notEnoughCredits } from "@/lib/jobs/credits";
 import { MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { SEED_SPACE } from "@/lib/jobs/job-result";
 import MaxCostField from "./MaxCostField";
+import PlatformField from "./PlatformField";
 
 export interface BrowserSearchOptions {
     supported: boolean | null;
@@ -266,15 +261,7 @@ export default function SearchPanel({
                         />
                     </label>
                 </div>
-                <div>
-                    <SegmentedControl
-                            legend="Platform"
-                            options={PLATFORMS.map((value) => ({ value, label: PLATFORM_LABELS[value] }))}
-                            value={platform}
-                            onChange={onPlatformChange}
-                    />
-                    <p className="hint">The OS of the computer that generates the world.</p>
-                </div>
+                <PlatformField platform={platform} onChange={onPlatformChange}/>
                 {inBrowser ? <ThreadsField browser={browser}/> :
                         <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange}/>}
                 <div className="search__actions">

@@ -16,6 +16,7 @@ import {
 import { canRunSeedfinder } from "@/lib/browser-search/seedfinder-wasm";
 import { useLocalSearch } from "@/lib/browser-search/use-local-search";
 import { copyText } from "@/lib/client/clipboard";
+import { rememberMapOrigin } from "@/lib/client/map-origin";
 import { useAccount } from "@/lib/client/use-account";
 import { SHARD_LABELS, type Shard } from "@/lib/config/seedfinder-config";
 import {
@@ -96,6 +97,8 @@ export default function SeedFinderApp() {
             async (text: string, what: string) => notify((await copyText(text)) ? `${what} copied.` : "Couldn't copy. Select the text instead."),
             [notify]
     );
+
+    useEffect(() => rememberMapOrigin("/"), []);
 
     useEffect(() => {
         const url = new URL(window.location.href);

@@ -285,7 +285,10 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
             ...group,
             swaps,
             biomes,
-            rules: rules.map((rule) => ({ ...rule, scopeTasks: rule.scopeTasks.filter((id) => Object.hasOwn(to.taskById, id)) })),
+            rules: rules.map((rule) => ({
+                ...rule,
+                scopeTasks: rule.scopeTasks.filter((id) => Object.hasOwn(to.taskById, id))
+            })),
             ...world.rows
         };
     });
@@ -412,7 +415,10 @@ function presetState(shard: Shard, ...groups: Partial<CriteriaGroup>[]): SearchS
     return { shard, platform: DEFAULT_PLATFORM, groups: groups.map((group) => ({ ...emptyGroup(), ...group })) };
 }
 
-const atLeast = (shard: Shard, pieceId: string, min: number): PieceRule => ({ ...newRule(pieceId, levelCatalogOf(shard)), min });
+const atLeast = (shard: Shard, pieceId: string, min: number): PieceRule => ({
+    ...newRule(pieceId, levelCatalogOf(shard)),
+    min
+});
 
 const tiles = (count: number) => count * WORLD_UNITS_PER_TILE;
 
@@ -452,31 +458,8 @@ const FOREST_PRESETS: Preset[] = [
 
 const CAVE_PRESETS: Preset[] = [
     {
-        id: "guardian-by-the-stairs",
-        name: "Ancient Guardian by the stairs",
-        description: "The Ancient Guardian within 130 tiles of the stairs you arrive on. Will take a few minutes.",
-        build: () =>
-            presetState("caves", {
-                distances: [{ ...NEW_WORLD_ROW.distances("caves"), to: ["minotaur_spawner"], max: tiles(130) }]
-            })
-    },
-    {
-        id: "atrium-by-tentacle",
-        name: "Atrium Gate through the tentacles",
-        description: "The Ancient Gateway within 75 tiles of the stairs, counting the jumps through Big Tentacles. Will take a few minutes.",
-        build: () =>
-            presetState("caves", {
-                distances: [{
-                    ...NEW_WORLD_ROW.distances("caves"),
-                    to: ["atrium_gate"],
-                    max: tiles(75),
-                    links: true
-                }]
-            })
-    },
-    {
         id: "guardian-walking-with-tentacles",
-        name: "Ancient Guardian within 75 tiles of walking, with wormholes",
+        name: "Ancient Guardian within 75 tiles (walking)",
         description: "The Ancient Guardian within 75 tiles of walking from the stairs, counting the jumps through Big Tentacles. Will take a few minutes.",
         build: () =>
             presetState("caves", {
@@ -491,14 +474,14 @@ const CAVE_PRESETS: Preset[] = [
     },
     {
         id: "atrium-at-spawn",
-        name: "Atrium gate at spawn",
-        description: "The Ancient Gateway within 10 tiles of walking from the stairs, without the tentacles. This is usually a \"bugged world\". Will take a few minutes.",
+        name: "Atrium Gateway at spawn",
+        description: "The Ancient Gateway within 20 tiles of walking from the stairs, without the tentacles. This is usually a bugged world. This is a very rare world so it may take a few hours.",
         build: () =>
             presetState("caves", {
                 distances: [{
                     ...NEW_WORLD_ROW.distances("caves"),
                     to: ["atrium_gate"],
-                    max: tiles(10),
+                    max: tiles(20),
                     metric: "walk"
                 }]
             })

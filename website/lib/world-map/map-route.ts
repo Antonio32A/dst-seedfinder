@@ -19,6 +19,12 @@ export function parseMapRoute(platform: string, seed: string, shard: Shard = DEF
     return { platform: known, shard, seed: value };
 }
 
+/** Where a typed seed's map lives on the platform and shard, or why the text isn't a seed. */
+export function pickedMapPath(platform: Platform, seed: string, shard: Shard): { path: string } | { error: string } {
+    const route = parseMapRoute(platform, seed.trim(), shard);
+    return "error" in route ? route : { path: mapPath(route.platform, route.seed, undefined, route.shard) };
+}
+
 /** On the map's platform and shard, since `world eval` refuses a config for another. */
 export function parseMapConfig(share: string, platform: Platform, shard: Shard = DEFAULT_SHARD): MapConfig {
     const checked = validateConfig(decodeShareParam(share));

@@ -2,6 +2,9 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import Brand from "@/components/shell/Brand";
+import { lastMapOrigin, type MapOrigin } from "@/lib/client/map-origin";
 import type { MapRoute } from "@/lib/world-map/map-route";
 import MapCorner from "./MapCorner";
 
@@ -11,18 +14,15 @@ const WorldMap = dynamic(() => import("./WorldMap"), {
 });
 
 export default function MapScreen({ route, share }: { route: MapRoute; share?: string }) {
+    const [back, setBack] = useState<MapOrigin>("/");
+
+    useEffect(() => setBack(lastMapOrigin()), []);
+
     return (
             <main className="map-screen">
                 <header className="map-bar map-screen__header">
-                    <div className="brand">
-                        <a href="https://antonio32a.com" className="logo">
-                            antonio32a.com
-                        </a>
-                        <Link href="/" className="brand__site">
-                            seedfinder
-                        </Link>
-                    </div>
-                    <Link href="/" className="link-button">back to search</Link>
+                    <Brand/>
+                    <Link href={back} className="link-button">back</Link>
                 </header>
                 <p className="map-credit">
                     <span>Game art © Klei Entertainment</span>
