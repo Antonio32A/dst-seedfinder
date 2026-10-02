@@ -383,14 +383,7 @@ export function validateSearch(state: SearchState): Issue[] {
                 message: "Every option is passive. At least one option has to pick the seeds the passive ones are checked on."
             }]
             : [];
-    const unverified: Issue[] =
-        state.shard === "caves" && state.platform === "windows" && picked.some((group) => worldRowCount(group) > 0)
-            ? [{
-                severity: "warning",
-                message: "Cave world details are only checked against the real game on Linux so far. Pick Linux for results you can rely on."
-            }]
-            : [];
-    const issues = [...nothing, ...allPassive, ...unverified, ...perGroup];
+    const issues = [...nothing, ...allPassive, ...perGroup];
     if (issues.some((issue) => issue.severity === "error")) return issues;
     const checked = validateConfig(toSeedfinderConfig(state));
     return checked.ok ? issues : [...issues, {

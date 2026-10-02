@@ -9,6 +9,7 @@ import ./laws/i.bend as LawsI
 import ./laws/c.bend as LawsC
 import ./laws/p.bend as LawsP
 import ./laws/w.bend as LawsW
+import ./laws/h.bend as LawsH
 import ./laws/m.bend as LawsM
 import ./laws/a.bend as LawsA
 import ./laws/q.bend as LawsQ

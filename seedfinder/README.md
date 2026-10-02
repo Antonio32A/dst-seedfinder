@@ -154,3 +154,5 @@ and tile stages, every RunCA, RunMaze, GetPointsForMetaMaze, ReserveSpace and Ge
 entity counts of the post steps and the required prefab table) for every attempt and names the first stage that differs
 from the real probes; with `--draws` it also checks the random-draw counts of every engine call. `scripts/groundtruth/compare_caves_world.py build/seedfinder` compares whole cave world dumps byte for byte with
 the converted real ones and reports the attempts each needed.
+`--platform windows --worlds DIR` compares against Windows server dumps instead: the Windows caves differ from the Linux ones only
+by the VC9 `random_shuffle` over `rand()` with RAND_MAX 0x7fff and MSVCR90's `powf` in the growing-tree maze.

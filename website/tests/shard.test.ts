@@ -291,9 +291,8 @@ describe("the world filters on the caves", () => {
         }
     });
 
-    it("warns that cave worlds on Windows aren't checked against the game yet", () => {
+    it("validates cave worlds the same way on both platforms", () => {
         const state = { shard: "caves" as const, platform: "windows" as const, groups: [caveGroup()] };
-        expect(validateSearch(state).some((issue) => issue.message.includes("only checked against the real game on Linux"))).toBe(true);
-        expect(validateSearch({ ...state, platform: "linux" }).some((issue) => issue.message.includes("Linux"))).toBe(false);
+        expect(validateSearch(state)).toEqual(validateSearch({ ...state, platform: "linux" }));
     });
 });

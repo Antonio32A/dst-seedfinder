@@ -2,7 +2,9 @@ import Base
 import ../f32/powf.bend as Powf
 
 # Golden values of the growing-tree maze's powf((float)u * 2^-32, e^-val): the machine code of MSVCR90 9.00.30729.9635's
-# powf, mapped from the DLL and called natively.
+# powf, mapped from the DLL and called natively. Every golden value was reproduced by calling the MSVCR90.dll that a Windows
+# dedicated server loads (WinSxS, SHA-256 9660860D3513934EAB21DE84462EDBAAC8E846E4273D07CDD371ED6E471EE2B8) inside the Windows VM,
+# as were the exhaustive fingerprints over all 9.2e8 maze inputs.
 
 type Case is Data:
   Case{u: U32, val: U32}
@@ -51,4 +53,3 @@ law msvcr90_picks:
 
 def msvcr90_picks():
   {==}
-
