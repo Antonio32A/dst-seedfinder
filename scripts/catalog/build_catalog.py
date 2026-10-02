@@ -7,6 +7,7 @@ Run from anywhere; paths are relative to this file. See README.md.
 import argparse
 import collections
 import datetime
+import functools
 import glob
 import json
 import os
@@ -333,15 +334,30 @@ def load_atlases():
     return atlases
 
 
+@functools.cache
+def ruins_respawned():
+    """Spawner prefab -> prefab for every `RuinsRespawner.WorldGen("<prefab>", ...)` of the game scripts: the spawner a
+    world holds is replaced by that prefab as the world loads, so the map draws the prefab's icon at it."""
+    respawned = {}
+    for path in glob.glob(os.path.join(SCRIPTS, "prefabs/*.lua")):
+        with open(path, errors="replace") as f:
+            for prefab in re.findall(r'RuinsRespawner\.WorldGen\("(\w+)"', f.read()):
+                respawned[prefab + "_spawner"] = prefab
+    return {**respawned, **handnames.RESPAWNED_ICON_OVERRIDES}
+
+
 def minimap_icon(prefab, table, atlas):
     """The prefab's minimap icon as the game draws it: the constructor's own MiniMapEntity calls, the icon of what a
-    spawner spawns, or an icon captured from the running game."""
+    spawner spawns or respawns as, or an icon captured from the running game."""
+    respawned = ruins_respawned().get(prefab)
     if prefab in handnames.SPAWNED_ICONS:
         row, match = table[handnames.SPAWNED_ICONS[prefab]], "spawned:" + handnames.SPAWNED_ICONS[prefab]
     elif prefab in handnames.CAPTURED_ICONS:
         row, match = dict(table[prefab], icon=handnames.CAPTURED_ICONS[prefab]), "captured"
     elif prefab in table:
         row, match = table[prefab], "game"
+    elif respawned in table:
+        row, match = table[respawned], "respawned:" + respawned
     else:
         return None
     if row["icon"] not in atlas:

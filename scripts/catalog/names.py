@@ -187,6 +187,10 @@ SPAWNED_ICONS = {
     "wobster_den_spawner_shore": "wobster_den",
 }
 
+RESPAWNED_ICON_OVERRIDES = {
+    "chessjunk_spawner": "chessjunk1",
+}
+
 CONDITIONAL_ICONS = {
     "rock_ice": "its icon is only enabled while the boulder has grown (RockIce growth stages); a freshly generated world "
                 "has them all unformed, and the capture drew none of its 53",
@@ -289,20 +293,17 @@ GROUPS.update(_group("playing_card", "set-piece loot"))
 
 # Prefabs of the caves worlds with neither a minimap nor an inventory icon: the map draws them as dots.
 NO_IMAGE = set(
-    "ancient_altar_broken_spawner ancient_altar_spawner archive_ambient_sfx archive_centipede_husk "
-    "archive_chandelier archive_orchestrina_small archive_security_desk archive_security_waypoint "
-    "archive_switch_base atrium_fence bishop_nightmare bishop_nightmare_spawner blue_mushroom "
-    "brokenwall_ruins carrot_planted cave_fern cave_fern_withered cave_vent_mite_spawner cavelight "
-    "cavelight_atrium cavelight_small cavelight_tiny cavelightmoon cavelightmoon_small cavelightmoon_tiny "
-    "chessjunk_spawner daywalkerspawningground firehound fissure fissure_lower flower_evil green_mushroom "
-    "houndbone icehound knight_nightmare_spawner minotaur_spawner monkeybarrel_spawner "
-    "moonglass_stalactite1 moonglass_stalactite2 moonglass_stalactite3 mound mushgnome_spawner pighead "
-    "pillar_algae pillar_atrium pillar_cave pillar_cave_flintless pillar_cave_rock pillar_ruins "
-    "pillar_stalactite rabbitkinghorn_container red_mushroom rocky rook_nightmare_spawner rubble1 rubble2 "
-    "ruins_statue_head_nogem_spawner ruins_statue_head_spawner ruins_statue_mage_nogem_spawner "
-    "ruins_statue_mage_spawner shadow_container shadowthrall_centipede_spawner skeleton "
-    "skeleton_notplayer_1 skeleton_notplayer_2 slurper_spawner spawnpoint_master spawnpoint_multiplayer "
-    "tentacle wall_ruins wall_ruins_2 wall_stone_2 wall_wood worm_spawner wormlight_plant"
+    "archive_ambient_sfx archive_centipede_husk archive_chandelier archive_orchestrina_small "
+    "archive_security_desk archive_security_waypoint archive_switch_base atrium_fence bishop_nightmare "
+    "bishop_nightmare_spawner blue_mushroom brokenwall_ruins carrot_planted cave_fern cave_fern_withered "
+    "cave_vent_mite_spawner cavelight cavelight_atrium cavelight_small cavelight_tiny cavelightmoon "
+    "cavelightmoon_small cavelightmoon_tiny daywalkerspawningground firehound fissure fissure_lower flower_evil "
+    "green_mushroom houndbone icehound knight_nightmare_spawner moonglass_stalactite1 moonglass_stalactite2 "
+    "moonglass_stalactite3 mound mushgnome_spawner pighead pillar_algae pillar_atrium pillar_cave "
+    "pillar_cave_flintless pillar_cave_rock pillar_ruins pillar_stalactite rabbitkinghorn_container red_mushroom "
+    "rocky rook_nightmare_spawner rubble1 rubble2 shadow_container shadowthrall_centipede_spawner skeleton "
+    "skeleton_notplayer_1 skeleton_notplayer_2 slurper_spawner spawnpoint_master spawnpoint_multiplayer tentacle "
+    "wall_ruins wall_ruins_2 wall_stone_2 wall_wood worm_spawner wormlight_plant"
     .split())
 
 TASK_NAMES = {

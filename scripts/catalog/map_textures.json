@@ -1,6 +1,6 @@
 {
  "iconSheet": {
-  "file": "minimap_icons.003d3ebe79.png",
+  "file": "minimap_icons.8afdd6289a.png",
   "height": 1504,
   "levels": [
    {
@@ -40,7 +40,7 @@
     "y": 1410
    }
   ],
-  "rects": "minimap_icon_rects.de892a3484.json",
+  "rects": "minimap_icon_rects.9d23b13826.json",
   "width": 2048
  },
  "mapEdge": "map_edge.859bee0330.png",

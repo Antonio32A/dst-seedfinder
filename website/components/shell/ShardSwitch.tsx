@@ -3,10 +3,7 @@
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { SHARD_LABELS, type Shard, SHARDS } from "@/lib/config/seedfinder-config";
 
-const HINTS: Record<Shard, string> = {
-    forest: "Search the overworld's seeds.",
-    caves: "Search the caves' seeds. Each shard has its own seed, so this looks at cave seeds. Switching keeps what also exists in the other shard, with the spawn becoming the stairs you arrive on."
-};
+const HINT = "The world type you wish to generate. Forest is the main world, and caves are well... caves!";
 
 interface ShardSwitchProps {
     shard: Shard;
@@ -26,7 +23,7 @@ export default function ShardSwitch({ shard, onChange }: ShardSwitchProps) {
                         value={shard}
                         onChange={onChange}
                 />
-                <p className="hint">{HINTS[shard]}</p>
+                <p className="hint">{HINT}</p>
             </section>
     );
 }

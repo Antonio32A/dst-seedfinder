@@ -475,6 +475,35 @@ const CAVE_PRESETS: Preset[] = [
             })
     },
     {
+        id: "guardian-walking-with-tentacles",
+        name: "Ancient Guardian within 75 tiles of walking, with wormholes",
+        description: "The Ancient Guardian within 75 tiles of walking from the stairs, counting the jumps through Big Tentacles. Will take a few minutes.",
+        build: () =>
+            presetState("caves", {
+                distances: [{
+                    ...NEW_WORLD_ROW.distances("caves"),
+                    to: ["minotaur_spawner"],
+                    max: tiles(75),
+                    metric: "walk",
+                    links: true
+                }]
+            })
+    },
+    {
+        id: "atrium-at-spawn",
+        name: "Atrium gate at spawn",
+        description: "The Ancient Gateway within 10 tiles of walking from the stairs, without the tentacles. This is usually a \"bugged world\". Will take a few minutes.",
+        build: () =>
+            presetState("caves", {
+                distances: [{
+                    ...NEW_WORLD_ROW.distances("caves"),
+                    to: ["atrium_gate"],
+                    max: tiles(10),
+                    metric: "walk"
+                }]
+            })
+    },
+    {
         id: "twiggy-juicy",
         name: "Twiggy trees + juicy berries",
         description: "Both swapped resources in the same world.",

@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 import names as handnames
-from build_catalog import hidden_by_default, minimap_icon, missing_names_and_images
+from build_catalog import hidden_by_default, minimap_icon, missing_names_and_images, ruins_respawned
 
 ATLAS = {name: {"xml": "minimap/minimap_data2.xml", "tex": "minimap/minimap_atlas2.tex"}
          for name in ["antlion.png", "rock.png", "flotsam_heavy.png", "storage_robot_broken.png", "lantern.png", "iceboulder.png"]}
@@ -32,6 +32,18 @@ class MinimapIcon(IconRules):
     def test_gives_a_spawner_the_icon_of_what_it_spawns(self):
         icon = minimap_icon("antlion_spawner", TABLE, ATLAS)
         self.assertEqual((icon["element"], icon["match"], icon["priority"]), ("antlion.png", "spawned:antlion", 1))
+
+    def test_gives_a_ruins_respawner_the_icon_of_the_prefab_it_respawns_as(self):
+        with mock.patch("build_catalog.ruins_respawned", return_value={"rock2_spawner": "rock1"}):
+            icon = minimap_icon("rock2_spawner", TABLE, ATLAS)
+        self.assertEqual((icon["element"], icon["match"]), ("rock.png", "respawned:rock1"))
+        self.assertIsNone(hidden_by_default("rock2_spawner", icon))
+
+    def test_finds_the_ruins_respawners_in_the_game_scripts(self):
+        respawned = ruins_respawned()
+        self.assertEqual(respawned["ancient_altar_spawner"], "ancient_altar")
+        self.assertEqual(respawned["ruins_statue_mage_nogem_spawner"], "ruins_statue_mage_nogem")
+        self.assertEqual(respawned["chessjunk_spawner"], "chessjunk1")
 
     def test_prefers_a_captured_icon_but_keeps_the_game_priority(self):
         icon = minimap_icon("storage_robot", TABLE, ATLAS)

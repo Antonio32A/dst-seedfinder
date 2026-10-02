@@ -60,7 +60,7 @@ export const MAP_TEXTURES = {
     mapEdge: "/world-map/map_edge.859bee0330.png",
     minimapPaper: "/world-map/minimap_paper.cfd82ee005.png",
     road: {"pathnoise":"/world-map/road/pathnoise.cf0c627885.png","roadcorner":"/world-map/road/roadcorner.f3964d6bd3.png","roadedge":"/world-map/road/roadedge.ad4d529847.png","roadendcap":"/world-map/road/roadendcap.33bf55de51.png","roadnoise":"/world-map/road/roadnoise.38a4cfbeb9.png","square":"/world-map/road/square.37836b879e.png"},
-    iconSheet: { url: "/world-map/minimap_icons.003d3ebe79.png", width: 2048, height: 1504, levels: [{"height":1504,"width":2048,"x":0,"y":0},{"height":752,"width":1024,"x":2048,"y":0},{"height":376,"width":512,"x":2048,"y":752},{"height":188,"width":256,"x":2048,"y":1128},{"height":94,"width":128,"x":2048,"y":1316},{"height":47,"width":64,"x":2048,"y":1410}] }
+    iconSheet: { url: "/world-map/minimap_icons.8afdd6289a.png", width: 2048, height: 1504, levels: [{"height":1504,"width":2048,"x":0,"y":0},{"height":752,"width":1024,"x":2048,"y":0},{"height":376,"width":512,"x":2048,"y":752},{"height":188,"width":256,"x":2048,"y":1128},{"height":94,"width":128,"x":2048,"y":1316},{"height":47,"width":64,"x":2048,"y":1410}] }
 } as const;
 
 export const PREFABS: WorldPrefab[] = [
@@ -72,7 +72,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1696.5, "y": 224.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 1824.5, "y": 224.5, "w": 63, "h": 63, "priority": 1 }
     },
     { "id": "armorgrass", "name": "Grass Suit", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "armormarble", "name": "Marble Suit", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -85,7 +85,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "set-piece loot",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 800.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "balatro_machine",
@@ -95,7 +95,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 928.5, "y": 384.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1056.5, "y": 384.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "bananabush",
@@ -104,7 +104,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 5, 9],
-        "icon": { "x": 1056.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 384.5, "w": 63, "h": 63 }
     },
     { "id": "bandage", "name": "Honey Poultice", "group": "set-piece loot", "counts": [0, 0, 2] },
     {
@@ -113,7 +113,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "rocks",
         "defaultShown": true,
         "counts": [0, 0, 20],
-        "icon": { "x": 1312.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 384.5, "w": 63, "h": 63 }
     },
     { "id": "bat", "name": "Batilisk", "group": "mobs & dens", "unreachable": true, "unique": true },
     { "id": "batbat", "name": "Bat Bat", "group": "set-piece loot", "unreachable": true, "unique": true },
@@ -134,7 +134,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1120.5, "y": 44.5, "w": 63, "h": 63 }
+        "icon": { "x": 1248.5, "y": 44.5, "w": 63, "h": 63 }
     },
     {
         "id": "beebox_hermit",
@@ -144,7 +144,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1440.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 384.5, "w": 63, "h": 63 }
     },
     { "id": "beefalo", "name": "Beefalo", "group": "mobs & dens", "always": true, "counts": [3, 20, 67] },
     { "id": "beefalohat", "name": "Beefalo Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -157,7 +157,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 41, 132],
-        "icon": { "x": 1248.5, "y": 48.5, "w": 63, "h": 63 }
+        "icon": { "x": 1376.5, "y": 48.5, "w": 63, "h": 63 }
     },
     {
         "id": "beemine",
@@ -165,7 +165,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "set-piece loot",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 1568.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "beequeenhive",
@@ -175,7 +175,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1696.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 384.5, "w": 63, "h": 63 }
     },
     { "id": "beeswax", "name": "Beeswax", "group": "set-piece loot", "unreachable": true, "unique": true },
     {
@@ -186,7 +186,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 137, 266],
         "swapOption": "regular berries",
-        "icon": { "x": 1824.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "berrybush2",
@@ -195,7 +195,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "berrybush",
         "defaultShown": true,
         "counts": [0, 6, 39],
-        "icon": { "x": 1952.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "berrybush_juicy",
@@ -205,7 +205,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 0, 123],
         "swapOption": "juicy berries",
-        "icon": { "x": 32.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "birdtrap",
@@ -213,7 +213,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 160.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "bishop", "name": "Clockwork Bishop", "group": "clockwork", "counts": [0, 0, 4] },
     { "id": "blowdart_fire", "name": "Fire Dart", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -229,7 +229,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "ocean",
         "defaultShown": true,
         "counts": [0, 1, 2],
-        "icon": { "x": 288.5, "y": 512.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 416.5, "y": 512.5, "w": 63, "h": 63, "priority": -1 }
     },
     { "id": "boat_cannon", "name": "Cannon", "group": "ocean", "counts": [0, 2, 7] },
     {
@@ -239,7 +239,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [14, 31, 51],
-        "icon": { "x": 416.5, "y": 512.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 544.5, "y": 512.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "boat_pirate",
@@ -248,7 +248,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 3, 3],
-        "icon": { "x": 544.5, "y": 512.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "boatfragment03",
@@ -289,7 +289,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [191, 260, 315],
-        "icon": { "x": 1376.5, "y": 44.5, "w": 63, "h": 63 }
+        "icon": { "x": 1504.5, "y": 44.5, "w": 63, "h": 63 }
     },
     { "id": "burnt_marsh_bush", "name": "Spiky Bush (burnt)", "group": "plants", "always": true, "counts": [5, 6, 6] },
     {
@@ -307,7 +307,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 14, 41],
-        "icon": { "x": 1504.5, "y": 44.5, "w": 63, "h": 63 }
+        "icon": { "x": 1632.5, "y": 44.5, "w": 63, "h": 63 }
     },
     {
         "id": "cactus",
@@ -316,7 +316,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 27, 55],
-        "icon": { "x": 1632.5, "y": 44.5, "w": 63, "h": 63 }
+        "icon": { "x": 1760.5, "y": 44.5, "w": 63, "h": 63 }
     },
     { "id": "cane", "name": "Walking Cane", "group": "set-piece loot", "counts": [0, 0, 2] },
     {
@@ -334,7 +334,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 7, 20],
-        "icon": { "x": 928.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "cave_entrance",
@@ -343,7 +343,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [8, 10, 10],
-        "icon": { "x": 1184.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "charlie_stage_post",
@@ -353,7 +353,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1824.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "chester_eyebone",
@@ -363,7 +363,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1760.5, "y": 44.5, "w": 63, "h": 63, "priority": 7 }
+        "icon": { "x": 1888.5, "y": 44.5, "w": 63, "h": 63, "priority": 7 }
     },
     { "id": "chum", "name": "Fish Food", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "cookbook", "name": "Cookbook", "group": "set-piece loot", "counts": [0, 0, 3] },
@@ -381,7 +381,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 0, 3],
-        "icon": { "x": 1952.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "crabking_spawner",
@@ -390,7 +390,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 32.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "critterlab",
@@ -400,7 +400,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 160.5, "y": 640.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 416.5, "y": 640.5, "w": 63, "h": 63, "priority": 5 }
     },
     { "id": "cutgrass", "name": "Cut Grass", "group": "items", "counts": [0, 3, 16] },
     { "id": "cutstone", "name": "Cut Stone", "group": "set-piece loot", "counts": [0, 0, 10] },
@@ -412,7 +412,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [319, 773, 1561],
-        "icon": { "x": 1312.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1952.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "deciduoustree_stump",
@@ -422,7 +422,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [2, 2, 2],
-        "icon": { "x": 1440.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 32.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "deerspawningground",
@@ -463,7 +463,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 16, 36],
-        "icon": { "x": 288.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "driftwood_small2",
@@ -473,7 +473,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 17, 38],
-        "icon": { "x": 288.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "driftwood_tall",
@@ -483,7 +483,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 5, 17],
-        "icon": { "x": 288.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen",
@@ -493,7 +493,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1272, 3497, 6373],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_normal",
@@ -502,7 +502,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "counts": [0, 0, 5],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_short",
@@ -511,7 +511,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "counts": [0, 0, 33],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_sparse",
@@ -521,7 +521,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [130, 599, 1612],
-        "icon": { "x": 672.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 928.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_stump",
@@ -530,7 +530,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "counts": [0, 4, 10],
-        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1056.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_tall",
@@ -539,7 +539,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "counts": [0, 0, 39],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     { "id": "farm_plant_pumpkin", "name": "Pumpkin Plant", "group": "plants", "unreachable": true, "unique": true },
     { "id": "farm_plow_item", "name": "Garden Digamajig", "group": "set-piece loot", "counts": [0, 0, 3] },
@@ -553,7 +553,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 32.5, "y": 236.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 160.5, "y": 236.5, "w": 63, "h": 63, "priority": 1 }
     },
     { "id": "firestaff", "name": "Fire Staff", "group": "set-piece loot", "counts": [0, 0, 2] },
     {
@@ -572,7 +572,7 @@ export const PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_double",
@@ -582,7 +582,7 @@ export const PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_triple",
@@ -592,7 +592,7 @@ export const PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "flower_evil", "name": "Evil Flower", "group": "plants", "counts": [0, 29, 77] },
     { "id": "flower_rose", "name": "Rose", "group": "plants", "always": true, "counts": [2, 5, 5] },
@@ -636,7 +636,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "counts": [137, 629, 1323],
         "swapOption": "regular grass",
-        "icon": { "x": 928.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "grassgekko",
@@ -652,7 +652,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 22, 48],
-        "icon": { "x": 1056.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "green_mushroom", "name": "Green Mushroom", "group": "plants", "always": true, "counts": [38, 75, 155] },
     { "id": "guano", "name": "Guano", "group": "set-piece loot", "counts": [0, 0, 3] },
@@ -693,7 +693,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1440.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "hotspring",
@@ -702,7 +702,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 9, 17],
-        "icon": { "x": 1568.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "houndbone", "name": "Bones", "group": "structures", "always": true, "counts": [16, 58, 104] },
     {
@@ -711,7 +711,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "counts": [0, 5, 31],
-        "icon": { "x": 1696.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "houndstooth", "name": "Hound's Tooth", "group": "set-piece loot", "counts": [0, 0, 4] },
     { "id": "icehound", "name": "Ice Hound", "group": "mobs & dens", "counts": [0, 0, 5] },
@@ -723,7 +723,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 4, 4],
-        "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "junk_pile",
@@ -732,7 +732,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 9, 9],
-        "icon": { "x": 32.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "junk_pile_big",
@@ -743,7 +743,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 160.5, "y": 768.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 416.5, "y": 768.5, "w": 63, "h": 63, "priority": 1 }
     },
     { "id": "knight", "name": "Clockwork Knight", "group": "clockwork", "always": true, "counts": [1, 4, 14] },
     { "id": "lantern", "name": "Lantern", "group": "set-piece loot", "unreachable": true, "unique": true },
@@ -754,7 +754,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 6, 6],
-        "icon": { "x": 288.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 768.5, "w": 63, "h": 63 }
     },
     { "id": "leif", "name": "Treeguard", "group": "bosses & spawners", "counts": [0, 0, 14] },
     { "id": "lightcrab", "name": "Crustashine", "group": "mobs & dens", "always": true, "counts": [4, 6, 8] },
@@ -765,7 +765,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "defaultShown": true,
         "counts": [0, 2, 6],
-        "icon": { "x": 544.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 768.5, "w": 63, "h": 63 }
     },
     { "id": "log", "name": "Log", "group": "items", "counts": [0, 3, 19] },
     { "id": "mandrake_planted", "name": "Mandrake", "group": "plants", "always": true, "counts": [2, 3, 4] },
@@ -776,7 +776,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "statues",
         "defaultShown": true,
         "counts": [0, 0, 8],
-        "icon": { "x": 672.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "marbletree",
@@ -784,7 +784,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "statues",
         "defaultShown": true,
         "counts": [0, 5, 26],
-        "icon": { "x": 800.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1056.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "marsh_bush",
@@ -793,7 +793,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [52, 141, 257],
-        "icon": { "x": 928.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1184.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "marsh_tree",
@@ -802,7 +802,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [62, 228, 448],
-        "icon": { "x": 1056.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1312.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "mast_broken",
@@ -819,7 +819,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 416.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 236.5, "w": 63, "h": 63 }
     },
     {
         "id": "meatrack_hermit",
@@ -828,7 +828,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 6, 6],
-        "icon": { "x": 544.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 236.5, "w": 63, "h": 63 }
     },
     { "id": "merm", "name": "Merm", "group": "mobs & dens", "counts": [0, 1, 11] },
     { "id": "mermhead", "name": "Merm Head", "group": "structures", "counts": [0, 0, 3] },
@@ -838,7 +838,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "counts": [0, 7, 22],
-        "icon": { "x": 1184.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 768.5, "w": 63, "h": 63 }
     },
     { "id": "messagebottle", "name": "Message in a Bottle", "group": "ocean", "always": true, "counts": [1, 8, 17] },
     { "id": "meteorspawner", "name": "Meteor field", "group": "markers", "always": true, "counts": [2, 6, 13] },
@@ -852,7 +852,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 8, 18],
-        "icon": { "x": 1568.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "monkeyisland_center",
@@ -890,7 +890,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1312.5, "y": 768.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 1568.5, "y": 768.5, "w": 63, "h": 63, "priority": 1 }
     },
     {
         "id": "monkeyisland_portal_debris",
@@ -909,7 +909,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1440.5, "y": 768.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 1696.5, "y": 768.5, "w": 63, "h": 63, "priority": 1 }
     },
     {
         "id": "monkeytail",
@@ -918,7 +918,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 6, 9],
-        "icon": { "x": 1696.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "moon_altar_astral_marker_1",
@@ -947,7 +947,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1824.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "moon_altar_rock_idol",
@@ -958,7 +958,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1952.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "moon_altar_rock_seed",
@@ -969,7 +969,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 672.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 236.5, "w": 63, "h": 63 }
     },
     {
         "id": "moon_fissure",
@@ -993,7 +993,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [81, 183, 261],
-        "icon": { "x": 800.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 928.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "moon_tree_blossom_worldgen",
@@ -1011,7 +1011,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 12, 12],
-        "icon": { "x": 800.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 928.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "moon_tree_short",
@@ -1021,7 +1021,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 4, 4],
-        "icon": { "x": 800.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 928.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "moon_tree_tall",
@@ -1031,7 +1031,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [8, 10, 10],
-        "icon": { "x": 800.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 928.5, "y": 236.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "moonbase",
@@ -1041,7 +1041,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 32.5, "y": 896.5, "w": 63, "h": 63, "priority": 4 }
+        "icon": { "x": 416.5, "y": 896.5, "w": 63, "h": 63, "priority": 4 }
     },
     { "id": "moonglass", "name": "Moon Shard", "group": "items", "always": true, "counts": [8, 16, 29] },
     {
@@ -1051,7 +1051,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [23, 52, 91],
-        "icon": { "x": 544.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "moonglass_wobster_den",
@@ -1059,7 +1059,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "mobs & dens",
         "defaultShown": true,
         "counts": [0, 4, 19],
-        "icon": { "x": 160.5, "y": 1408.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     { "id": "moonglassaxe", "name": "Moon Glass Axe", "group": "set-piece loot", "always": true, "counts": [3, 3, 3] },
     { "id": "moonrock_pieces", "name": "Moon Rubble", "group": "rocks", "always": true, "counts": [5, 6, 6] },
@@ -1071,7 +1071,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [5, 5, 8],
-        "icon": { "x": 1568.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "moose_nesting_ground",
@@ -1089,7 +1089,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 800.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "mushtree_tall_stump",
@@ -1098,7 +1098,7 @@ export const PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 544.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 896.5, "w": 63, "h": 63 }
     },
     { "id": "nightstick", "name": "Morning Star", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "nightsword", "name": "Dark Sword", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -1111,7 +1111,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [8, 27, 67],
-        "icon": { "x": 1056.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "oasislake",
@@ -1121,7 +1121,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 928.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "oceanfish_shoalspawner",
@@ -1130,7 +1130,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 11, 26],
-        "icon": { "x": 1312.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "oceanfishingbobber_ball",
@@ -1234,7 +1234,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [36, 54, 75],
-        "icon": { "x": 1440.5, "y": 896.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1824.5, "y": 896.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "oceanvine",
@@ -1243,7 +1243,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [33, 39, 54],
-        "icon": { "x": 1568.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "oceanvine_cocoon",
@@ -1252,7 +1252,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 18, 36],
-        "icon": { "x": 1696.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "oceanvine_deco",
@@ -1278,7 +1278,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 6, 9],
-        "icon": { "x": 1824.5, "y": 896.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 160.5, "y": 1024.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "palmconetree_short",
@@ -1287,7 +1287,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "palmconetree",
         "defaultShown": true,
         "counts": [0, 2, 6],
-        "icon": { "x": 1824.5, "y": 896.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 160.5, "y": 1024.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "palmconetree_tall",
@@ -1296,7 +1296,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "palmconetree",
         "defaultShown": true,
         "counts": [0, 2, 5],
-        "icon": { "x": 1824.5, "y": 896.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 160.5, "y": 1024.5, "w": 63, "h": 63, "priority": -1 }
     },
     { "id": "panflute", "name": "Pan Flute", "group": "set-piece loot", "always": true, "counts": [1, 1, 2] },
     { "id": "pickaxe", "name": "Pickaxe", "group": "set-piece loot", "counts": [0, 2, 6] },
@@ -1308,7 +1308,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [15, 40, 72],
-        "icon": { "x": 32.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "pigking",
@@ -1318,7 +1318,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 160.5, "y": 1024.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 544.5, "y": 1024.5, "w": 63, "h": 63, "priority": 1 }
     },
     { "id": "pigman", "name": "Pig Man", "group": "mobs & dens", "counts": [0, 1, 9] },
     { "id": "pigskin", "name": "Pig Skin", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -1343,7 +1343,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 23, 40],
-        "icon": { "x": 416.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "pond_mos",
@@ -1353,7 +1353,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [5, 22, 53],
-        "icon": { "x": 672.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "poop", "name": "Manure", "group": "set-piece loot", "counts": [0, 0, 6] },
     { "id": "pumpkin", "name": "Pumpkin", "group": "plants", "unreachable": true, "unique": true },
@@ -1387,7 +1387,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [33, 85, 207],
-        "icon": { "x": 1184.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "reflectivevest", "name": "Summer Frest", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
@@ -1397,7 +1397,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 1440.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1824.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "researchlab2",
@@ -1405,7 +1405,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1568.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1952.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "researchlab3",
@@ -1413,7 +1413,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 32.5, "y": 1152.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "resurrectionstone",
@@ -1422,7 +1422,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 2, 2],
-        "icon": { "x": 1824.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock1",
@@ -1432,7 +1432,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [62, 188, 392],
-        "icon": { "x": 1952.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock2",
@@ -1442,7 +1442,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [33, 149, 329],
-        "icon": { "x": 288.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_avocado_bush",
@@ -1451,7 +1451,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 29, 55],
-        "icon": { "x": 32.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_flintless",
@@ -1461,14 +1461,14 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [37, 121, 203],
-        "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_ice",
         "name": "Mini Glacier",
         "group": "rocks",
         "counts": [0, 35, 120],
-        "icon": { "x": 1952.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_moon",
@@ -1478,7 +1478,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 8, 18],
-        "icon": { "x": 416.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     { "id": "rocks", "name": "Rocks", "group": "items", "always": true, "counts": [51, 113, 236] },
     { "id": "rook", "name": "Clockwork Rook", "group": "clockwork", "counts": [0, 1, 3] },
@@ -1490,7 +1490,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [106, 120, 134],
-        "icon": { "x": 672.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "sanityrock",
@@ -1499,7 +1499,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 4, 11],
-        "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "sapling",
@@ -1508,7 +1508,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 761, 1255],
         "swapOption": "regular twigs",
-        "icon": { "x": 800.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "sapling_moon",
@@ -1517,7 +1517,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [23, 54, 88],
-        "icon": { "x": 800.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "scorched_skeleton",
@@ -1535,7 +1535,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 1, 6],
-        "icon": { "x": 928.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "sculpture_knight",
@@ -1545,7 +1545,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 1, 8],
-        "icon": { "x": 1056.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "sculpture_rook",
@@ -1555,7 +1555,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 1, 4],
-        "icon": { "x": 1184.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "seastack",
@@ -1564,7 +1564,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [803, 1358, 2785],
-        "icon": { "x": 1312.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "seastack_spawner_rough",
@@ -1573,7 +1573,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "seastack_spawner",
         "always": true,
         "counts": [11, 29, 68],
-        "icon": { "x": 1312.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "seastack_spawner_swell",
@@ -1582,7 +1582,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "seastack_spawner",
         "always": true,
         "counts": [3, 14, 30],
-        "icon": { "x": 1312.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     { "id": "seeds", "name": "Seeds", "group": "set-piece loot", "counts": [0, 0, 4] },
     {
@@ -1600,7 +1600,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 9, 9],
-        "icon": { "x": 160.5, "y": 240.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 240.5, "w": 63, "h": 63 }
     },
     { "id": "shovel", "name": "Shovel", "group": "set-piece loot", "counts": [0, 0, 3] },
     {
@@ -1652,7 +1652,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [10, 50, 92],
-        "icon": { "x": 1440.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     { "id": "spoiled_fish", "name": "Spoiled Fish", "group": "set-piece loot", "counts": [0, 0, 5] },
     {
@@ -1678,7 +1678,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "statue_marble",
         "defaultShown": true,
         "counts": [0, 0, 7],
-        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "statue_marble_muse",
@@ -1687,7 +1687,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "statue_marble",
         "defaultShown": true,
         "counts": [0, 1, 4],
-        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "statue_marble_pawn",
@@ -1696,7 +1696,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "statue_marble",
         "defaultShown": true,
         "counts": [0, 1, 4],
-        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "statueglommer",
@@ -1706,7 +1706,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 288.5, "y": 1280.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 800.5, "y": 1280.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "statueharp",
@@ -1714,7 +1714,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "statues",
         "defaultShown": true,
         "counts": [0, 8, 10],
-        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "statueharp_hedgespawner",
@@ -1724,7 +1724,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "statuemaxwell",
@@ -1732,7 +1732,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "statues",
         "defaultShown": true,
         "counts": [0, 2, 6],
-        "icon": { "x": 32.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "stinger", "name": "Stinger", "group": "set-piece loot", "counts": [0, 0, 3] },
     {
@@ -1743,7 +1743,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 416.5, "y": 1280.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 928.5, "y": 1280.5, "w": 63, "h": 63, "priority": 5 }
     },
     { "id": "strawhat", "name": "Straw Hat", "group": "set-piece loot", "counts": [0, 1, 2] },
     {
@@ -1752,7 +1752,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "landmarks",
         "defaultShown": true,
         "counts": [0, 1, 2],
-        "icon": { "x": 544.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "sweatervest", "name": "Dapper Vest", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
@@ -1761,7 +1761,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 1, 2],
-        "icon": { "x": 672.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "tallbirdnest",
@@ -1770,7 +1770,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [2, 6, 30],
-        "icon": { "x": 800.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "tent",
@@ -1778,7 +1778,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 928.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "tentacle", "name": "Tentacle", "group": "mobs & dens", "always": true, "counts": [60, 214, 430] },
     {
@@ -1789,7 +1789,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1184.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 236.5, "w": 63, "h": 63 }
     },
     { "id": "tophat", "name": "Top Hat", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "torch", "name": "Torch", "group": "set-piece loot", "counts": [0, 0, 3] },
@@ -1799,7 +1799,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "set-piece loot",
         "defaultShown": true,
         "counts": [0, 0, 4],
-        "icon": { "x": 1056.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "trap_starfish",
@@ -1808,7 +1808,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [8, 26, 55],
-        "icon": { "x": 1952.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "treasurechest",
@@ -1816,7 +1816,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 1, 3],
-        "icon": { "x": 1184.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "trinket_1", "name": "Melty Marbles", "group": "set-piece loot", "unique": true },
     { "id": "trinket_3", "name": "Gord's Knot", "group": "set-piece loot", "unique": true },
@@ -1837,7 +1837,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "twiggy",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 288.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "twiggy_tall",
@@ -1846,7 +1846,7 @@ export const PREFABS: WorldPrefab[] = [
         "variantOf": "twiggy",
         "defaultShown": true,
         "counts": [0, 0, 3],
-        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 288.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "twiggytree",
@@ -1856,7 +1856,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 0, 995],
         "swapOption": "twiggy trees",
-        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 288.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "twigs",
@@ -1873,7 +1873,7 @@ export const PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1440.5, "y": 236.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1568.5, "y": 236.5, "w": 63, "h": 63, "priority": 5 }
     },
     { "id": "wall_hay", "name": "Hay Wall", "group": "structures", "counts": [0, 0, 44] },
     { "id": "wall_stone", "name": "Stone Wall", "group": "structures", "unique": true },
@@ -1885,7 +1885,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 4, 4],
-        "icon": { "x": 288.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 236.5, "w": 63, "h": 63 }
     },
     {
         "id": "wasphive",
@@ -1894,7 +1894,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 14, 96],
-        "icon": { "x": 1824.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "waterplant",
@@ -1903,7 +1903,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [30, 143, 380],
-        "icon": { "x": 1184.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "waterplant_spawner_rough",
@@ -1911,7 +1911,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "ocean",
         "always": true,
         "counts": [3, 13, 35],
-        "icon": { "x": 1184.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "watertree_pillar",
@@ -1930,7 +1930,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 32.5, "y": 1408.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "wobster_den",
@@ -1939,7 +1939,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 23, 44],
-        "icon": { "x": 160.5, "y": 1408.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "wobster_den_spawner_shore",
@@ -1947,7 +1947,7 @@ export const PREFABS: WorldPrefab[] = [
         "group": "ocean",
         "always": true,
         "counts": [15, 26, 39],
-        "icon": { "x": 160.5, "y": 1408.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "worm_spawner",
@@ -1963,7 +1963,7 @@ export const PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 8, 8],
-        "icon": { "x": 1568.5, "y": 240.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1696.5, "y": 240.5, "w": 63, "h": 63, "priority": 5 }
     },
     { "id": "wormlight_plant", "name": "Mysterious Plant", "group": "plants", "unreachable": true, "unique": true }
 ];
@@ -2434,16 +2434,20 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "id": "ancient_altar_broken_spawner",
         "name": "Broken Ancient Pseudoscience Station (spawner)",
         "group": "markers",
+        "defaultShown": true,
         "always": true,
-        "counts": [1, 4, 10]
+        "counts": [1, 4, 10],
+        "icon": { "x": 1184.5, "y": 1280.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "ancient_altar_spawner",
         "name": "Ancient Pseudoscience Station (spawner)",
         "group": "markers",
+        "defaultShown": true,
         "always": true,
         "unique": true,
-        "counts": [1, 1, 1]
+        "counts": [1, 1, 1],
+        "icon": { "x": 1184.5, "y": 1280.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "archive_ambient_sfx",
@@ -2477,7 +2481,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 2, 6],
-        "icon": { "x": 1888.5, "y": 48.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 240.5, "w": 63, "h": 63 }
     },
     {
         "id": "archive_lockbox_dispencer",
@@ -2497,7 +2501,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [14, 34, 53],
-        "icon": { "x": 1824.5, "y": 224.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 224.5, "w": 63, "h": 63 }
     },
     {
         "id": "archive_orchestrina_main",
@@ -2508,7 +2512,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1952.5, "y": 224.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "archive_orchestrina_small",
@@ -2526,7 +2530,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [13, 28, 46],
-        "icon": { "x": 288.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "archive_portal",
@@ -2537,7 +2541,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 32.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "archive_rune_statue",
@@ -2573,7 +2577,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 3, 3],
-        "icon": { "x": 160.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "archive_switch_base",
@@ -2607,7 +2611,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [14, 52, 96],
-        "icon": { "x": 288.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "atrium_overgrowth",
@@ -2616,7 +2620,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "counts": [0, 6, 20],
-        "icon": { "x": 416.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "atrium_rubble",
@@ -2625,7 +2629,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [10, 21, 32],
-        "icon": { "x": 544.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "atrium_statue",
@@ -2635,7 +2639,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [2, 16, 39],
-        "icon": { "x": 672.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "atrium_statue_facing",
@@ -2645,7 +2649,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 4, 4],
-        "icon": { "x": 672.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 384.5, "w": 63, "h": 63 }
     },
     { "id": "axe", "name": "Axe", "group": "set-piece loot", "counts": [0, 1, 3] },
     {
@@ -2654,7 +2658,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "set-piece loot",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 800.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 384.5, "w": 63, "h": 63 }
     },
     { "id": "bat", "name": "Batilisk", "group": "mobs & dens", "unique": true, "counts": [0, 0, 1] },
     { "id": "batbat", "name": "Bat Bat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -2665,7 +2669,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 21, 45],
-        "icon": { "x": 992.5, "y": 44.5, "w": 63, "h": 63 }
+        "icon": { "x": 1120.5, "y": 44.5, "w": 63, "h": 63 }
     },
     { "id": "batwing", "name": "Batilisk Wing", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "beardhair", "name": "Beard Hair", "group": "set-piece loot", "counts": [0, 0, 5] },
@@ -2676,7 +2680,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1120.5, "y": 44.5, "w": 63, "h": 63 }
+        "icon": { "x": 1248.5, "y": 44.5, "w": 63, "h": 63 }
     },
     { "id": "beefalohat", "name": "Beefalo Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "beefalowool", "name": "Beefalo Wool", "group": "set-piece loot", "unreachable": true, "unique": true },
@@ -2687,7 +2691,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "set-piece loot",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 1568.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "berrybush",
@@ -2697,7 +2701,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 4, 18],
         "swapOption": "regular berries",
-        "icon": { "x": 1824.5, "y": 384.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 384.5, "w": 63, "h": 63 }
     },
     {
         "id": "berrybush_juicy",
@@ -2707,7 +2711,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 0, 8],
         "swapOption": "juicy berries",
-        "icon": { "x": 32.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "birdtrap",
@@ -2716,7 +2720,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 160.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "bishop_nightmare", "name": "Damaged Bishop", "group": "clockwork", "always": true, "counts": [2, 2, 2] },
     {
@@ -2753,7 +2757,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [2, 29, 92],
-        "icon": { "x": 1056.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "cave_exit",
@@ -2762,7 +2766,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [10, 10, 10],
-        "icon": { "x": 1440.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "cave_fern", "name": "Fern", "group": "plants", "always": true, "counts": [713, 1116, 1594] },
     {
@@ -2779,7 +2783,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [5, 13, 21],
-        "icon": { "x": 1312.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "cave_vent_mite_spawner",
@@ -2795,7 +2799,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [48, 107, 282],
-        "icon": { "x": 1568.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "cavein_boulder",
@@ -2848,8 +2852,10 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "id": "chessjunk_spawner",
         "name": "Chess Junk (spawner)",
         "group": "clockwork",
+        "defaultShown": true,
         "always": true,
-        "counts": [25, 59, 100]
+        "counts": [25, 59, 100],
+        "icon": { "x": 32.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "cookbook", "name": "Cookbook", "group": "set-piece loot", "counts": [0, 0, 2] },
     { "id": "cookingrecipecard", "name": "{item} Recipe Card", "group": "set-piece loot", "counts": [0, 0, 4] },
@@ -2859,7 +2865,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 1952.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "cutgrass", "name": "Cut Grass", "group": "items", "counts": [0, 0, 15] },
     { "id": "cutstone", "name": "Cut Stone", "group": "set-piece loot", "counts": [0, 0, 16] },
@@ -2877,7 +2883,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [59, 104, 169],
-        "icon": { "x": 1952.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "dustmothden",
@@ -2887,7 +2893,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 3, 7],
-        "icon": { "x": 416.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "evergreen",
@@ -2897,7 +2903,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [157, 322, 717],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_normal",
@@ -2906,7 +2912,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "counts": [0, 0, 5],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_short",
@@ -2916,7 +2922,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "evergreen_tall",
@@ -2925,7 +2931,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "evergreen",
         "defaultShown": true,
         "counts": [0, 0, 4],
-        "icon": { "x": 544.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 800.5, "y": 640.5, "w": 63, "h": 63, "priority": -1 }
     },
     { "id": "farm_plow_item", "name": "Garden Digamajig", "group": "set-piece loot", "counts": [0, 0, 4] },
     { "id": "featherhat", "name": "Feather Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -2938,7 +2944,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 32.5, "y": 236.5, "w": 63, "h": 63, "priority": 1 }
+        "icon": { "x": 160.5, "y": 236.5, "w": 63, "h": 63, "priority": 1 }
     },
     { "id": "firestaff", "name": "Fire Staff", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
@@ -2964,7 +2970,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [209, 376, 614],
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_double",
@@ -2974,7 +2980,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [63, 137, 255],
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_double_withered",
@@ -2984,7 +2990,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 12, 49],
-        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_triple",
@@ -2994,7 +3000,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [54, 111, 221],
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_triple_withered",
@@ -3004,7 +3010,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 12, 45],
-        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 512.5, "w": 63, "h": 63 }
     },
     {
         "id": "flower_cave_withered",
@@ -3014,7 +3020,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 25, 83],
-        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "flower_evil", "name": "Evil Flower", "group": "plants", "counts": [0, 0, 10] },
     { "id": "footballhat", "name": "Football Helmet", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -3028,7 +3034,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "counts": [231, 473, 795],
         "swapOption": "regular grass",
-        "icon": { "x": 928.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "gravestone",
@@ -3036,7 +3042,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 6, 26],
-        "icon": { "x": 1056.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "green_mushroom", "name": "Green Mushroom", "group": "plants", "always": true, "counts": [22, 75, 180] },
     {
@@ -3046,7 +3052,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 5, 7],
-        "icon": { "x": 1184.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 640.5, "w": 63, "h": 63 }
     },
     {
         "id": "grotto_pool_small",
@@ -3055,7 +3061,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [13, 21, 29],
-        "icon": { "x": 1312.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "guano", "name": "Guano", "group": "items", "always": true, "counts": [6, 31, 92] },
     { "id": "gunpowder", "name": "Gunpowder", "group": "set-piece loot", "counts": [0, 0, 2] },
@@ -3069,7 +3075,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1696.5, "y": 640.5, "w": 63, "h": 63 }
+        "icon": { "x": 1952.5, "y": 640.5, "w": 63, "h": 63 }
     },
     { "id": "houndstooth", "name": "Hound's Tooth", "group": "set-piece loot", "unreachable": true, "unique": true },
     {
@@ -3080,7 +3086,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 1824.5, "y": 640.5, "w": 63, "h": 63, "priority": 7 }
+        "icon": { "x": 32.5, "y": 768.5, "w": 63, "h": 63, "priority": 7 }
     },
     { "id": "icehound", "name": "Ice Hound", "group": "mobs & dens", "counts": [0, 0, 5] },
     { "id": "icestaff", "name": "Ice Staff", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -3091,7 +3097,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "counts": [0, 23, 76],
-        "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "knight_nightmare_spawner",
@@ -3108,7 +3114,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [109, 244, 509],
-        "icon": { "x": 416.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "lightflier_flower",
@@ -3117,7 +3123,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [15, 65, 120],
-        "icon": { "x": 672.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "log", "name": "Log", "group": "items", "counts": [0, 0, 12] },
     {
@@ -3126,7 +3132,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "statues",
         "defaultShown": true,
         "counts": [0, 0, 4],
-        "icon": { "x": 672.5, "y": 768.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "marsh_bush",
@@ -3134,7 +3140,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "defaultShown": true,
         "counts": [0, 96, 412],
-        "icon": { "x": 928.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1184.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "marsh_tree",
@@ -3142,7 +3148,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "counts": [0, 11, 57],
-        "icon": { "x": 1056.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 1312.5, "y": 768.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "meatrack",
@@ -3150,24 +3156,28 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 416.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 236.5, "w": 63, "h": 63 }
     },
     { "id": "minerhat", "name": "Miner Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
         "id": "minotaur_spawner",
         "name": "Ancient Guardian (spawner)",
         "group": "bosses & spawners",
+        "defaultShown": true,
         "always": true,
         "unique": true,
-        "counts": [1, 1, 1]
+        "counts": [1, 1, 1],
+        "icon": { "x": 992.5, "y": 48.5, "w": 63, "h": 63, "priority": 15, "overFog": true }
     },
     { "id": "molehat", "name": "Moggles", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
         "id": "monkeybarrel_spawner",
         "name": "Splumonkey Pod (spawner)",
         "group": "mobs & dens",
+        "defaultShown": true,
         "always": true,
-        "counts": [3, 22, 79]
+        "counts": [3, 22, 79],
+        "icon": { "x": 1824.5, "y": 768.5, "w": 63, "h": 63 }
     },
     {
         "id": "moonglass_stalactite1",
@@ -3199,7 +3209,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 800.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "mushgnome_spawner",
@@ -3215,7 +3225,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [62, 394, 842],
-        "icon": { "x": 288.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "mushtree_moon",
@@ -3224,7 +3234,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [78, 302, 495],
-        "icon": { "x": 672.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "mushtree_small",
@@ -3233,7 +3243,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [152, 349, 792],
-        "icon": { "x": 416.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "mushtree_tall",
@@ -3242,7 +3252,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [131, 503, 1157],
-        "icon": { "x": 160.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "mushtree_tall_stump",
@@ -3250,7 +3260,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "trees",
         "defaultShown": true,
         "counts": [0, 0, 3],
-        "icon": { "x": 544.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "nightmarelight",
@@ -3259,7 +3269,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [12, 29, 70],
-        "icon": { "x": 800.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
     },
     { "id": "nightstick", "name": "Morning Star", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "nightsword", "name": "Dark Sword", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -3348,7 +3358,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [15, 36, 56],
-        "icon": { "x": 1952.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "panflute", "name": "Pan Flute", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "pickaxe", "name": "Pickaxe", "group": "set-piece loot", "counts": [0, 1, 3] },
@@ -3390,7 +3400,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "pond",
         "defaultShown": true,
         "counts": [0, 4, 13],
-        "icon": { "x": 416.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 800.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "pond_cave",
@@ -3399,7 +3409,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [14, 43, 95],
-        "icon": { "x": 544.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 928.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "pond_mos",
@@ -3408,7 +3418,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "pond",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 672.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "poop", "name": "Manure", "group": "set-piece loot", "counts": [0, 0, 8] },
     {
@@ -3418,7 +3428,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 41, 105],
-        "icon": { "x": 928.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "rabbitkinghorn_container",
@@ -3438,7 +3448,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "plants",
         "defaultShown": true,
         "counts": [0, 23, 119],
-        "icon": { "x": 1184.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     { "id": "reflectivevest", "name": "Summer Frest", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
@@ -3447,7 +3457,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1440.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1824.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "researchlab2",
@@ -3456,7 +3466,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 1568.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 1952.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "researchlab3",
@@ -3464,7 +3474,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63, "priority": 5 }
+        "icon": { "x": 32.5, "y": 1152.5, "w": 63, "h": 63, "priority": 5 }
     },
     {
         "id": "resurrectionstone",
@@ -3473,7 +3483,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [1, 2, 2],
-        "icon": { "x": 1824.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock1",
@@ -3483,7 +3493,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 27, 39],
-        "icon": { "x": 1952.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 288.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock2",
@@ -3493,7 +3503,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 288.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_flintless",
@@ -3503,7 +3513,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [11, 38, 88],
-        "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_flintless_low",
@@ -3512,7 +3522,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 37, 96],
-        "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "rock_flintless_med",
@@ -3521,7 +3531,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [8, 38, 97],
-        "icon": { "x": 160.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 544.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     { "id": "rocks", "name": "Rocks", "group": "items", "counts": [0, 5, 19] },
     { "id": "rocky", "name": "Rock Lobster", "group": "mobs & dens", "always": true, "counts": [1, 10, 43] },
@@ -3557,7 +3567,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 2, 9],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_chair",
@@ -3566,7 +3576,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 19, 36],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_chipbowl",
@@ -3574,7 +3584,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 2, 8],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_plate",
@@ -3582,7 +3592,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "counts": [0, 2, 9],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_rubble_chair",
@@ -3591,7 +3601,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [23, 44, 86],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_rubble_table",
@@ -3600,7 +3610,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 24, 56],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_rubble_vase",
@@ -3609,35 +3619,43 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 25, 55],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_statue_head_nogem_spawner",
         "name": "Ancient Head Statue (spawner, no gem)",
         "group": "statues",
+        "defaultShown": true,
         "always": true,
-        "counts": [1, 3, 12]
+        "counts": [1, 3, 12],
+        "icon": { "x": 544.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_statue_head_spawner",
         "name": "Ancient Head Statue (spawner)",
         "group": "statues",
+        "defaultShown": true,
         "always": true,
-        "counts": [4, 15, 32]
+        "counts": [4, 15, 32],
+        "icon": { "x": 544.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_statue_mage_nogem_spawner",
         "name": "Ancient Mage Statue (spawner, no gem)",
         "group": "statues",
+        "defaultShown": true,
         "always": true,
-        "counts": [4, 8, 18]
+        "counts": [4, 8, 18],
+        "icon": { "x": 544.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_statue_mage_spawner",
         "name": "Ancient Mage Statue (spawner)",
         "group": "statues",
+        "defaultShown": true,
         "always": true,
-        "counts": [8, 15, 25]
+        "counts": [8, 15, 25],
+        "icon": { "x": 544.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_table",
@@ -3646,7 +3664,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 9, 19],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "ruins_vase",
@@ -3655,7 +3673,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [5, 13, 31],
-        "icon": { "x": 1312.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "sacred_chest",
@@ -3665,7 +3683,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "unique": true,
         "counts": [1, 1, 1],
-        "icon": { "x": 928.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 1056.5, "y": 236.5, "w": 63, "h": 63 }
     },
     {
         "id": "sanityrock",
@@ -3674,7 +3692,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "counts": [0, 40, 136],
-        "icon": { "x": 1184.5, "y": 896.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 896.5, "w": 63, "h": 63 }
     },
     {
         "id": "sapling",
@@ -3684,7 +3702,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "always": true,
         "counts": [19, 270, 554],
         "swapOption": "regular twigs",
-        "icon": { "x": 800.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     { "id": "seeds", "name": "Seeds", "group": "set-piece loot", "counts": [0, 0, 4] },
     {
@@ -3735,7 +3753,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [4, 15, 33],
-        "icon": { "x": 1056.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 1184.5, "y": 236.5, "w": 63, "h": 63 }
     },
     {
         "id": "spawnpoint_master",
@@ -3761,7 +3779,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [6, 27, 63],
-        "icon": { "x": 1440.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
     },
     {
         "id": "spiderhole",
@@ -3770,7 +3788,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [9, 31, 66],
-        "icon": { "x": 1696.5, "y": 512.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 512.5, "w": 63, "h": 63 }
     },
     { "id": "spoiled_fish", "name": "Spoiled Fish", "group": "set-piece loot", "counts": [0, 0, 6] },
     {
@@ -3788,7 +3806,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [68, 216, 481],
-        "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "stalagmite_low",
@@ -3797,7 +3815,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [2, 32, 73],
-        "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "stalagmite_med",
@@ -3806,7 +3824,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [17, 67, 139],
-        "icon": { "x": 1696.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 32.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "stalagmite_tall",
@@ -3815,7 +3833,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [95, 195, 317],
-        "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "stalagmite_tall_low",
@@ -3824,7 +3842,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [59, 157, 276],
-        "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "stalagmite_tall_med",
@@ -3833,7 +3851,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [59, 165, 288],
-        "icon": { "x": 1824.5, "y": 1152.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "statuemaxwell",
@@ -3841,7 +3859,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "statues",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 32.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "stinger", "name": "Stinger", "group": "set-piece loot", "counts": [0, 0, 3] },
     { "id": "strawhat", "name": "Straw Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
@@ -3853,7 +3871,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 800.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "tent",
@@ -3862,7 +3880,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 928.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1568.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "tentacle", "name": "Tentacle", "group": "mobs & dens", "counts": [0, 58, 254] },
     {
@@ -3872,7 +3890,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [7, 10, 10],
-        "icon": { "x": 1056.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "tentacle_pillar_atrium",
@@ -3881,7 +3899,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [2, 2, 2],
-        "icon": { "x": 1056.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     { "id": "thulecite", "name": "Thulecite", "group": "items", "counts": [0, 0, 3] },
     { "id": "thulecite_pieces", "name": "Thulecite Fragments", "group": "items", "counts": [0, 10, 21] },
@@ -3892,7 +3910,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [3, 3, 3],
-        "icon": { "x": 1312.5, "y": 236.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 236.5, "w": 63, "h": 63 }
     },
     { "id": "tophat", "name": "Top Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     { "id": "torch", "name": "Torch", "group": "set-piece loot", "counts": [0, 0, 2] },
@@ -3902,7 +3920,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "set-piece loot",
         "defaultShown": true,
         "counts": [0, 0, 2],
-        "icon": { "x": 1056.5, "y": 1024.5, "w": 63, "h": 63 }
+        "icon": { "x": 1440.5, "y": 1024.5, "w": 63, "h": 63 }
     },
     {
         "id": "treasurechest",
@@ -3910,7 +3928,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "group": "structures",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1184.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 1824.5, "y": 1280.5, "w": 63, "h": 63 }
     },
     {
         "id": "tree_rock1",
@@ -3919,7 +3937,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [16, 46, 141],
-        "icon": { "x": 1568.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "tree_rock2",
@@ -3928,7 +3946,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "always": true,
         "counts": [14, 45, 122],
-        "icon": { "x": 1568.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 160.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     { "id": "trinket_1", "name": "Melty Marbles", "group": "set-piece loot", "unique": true },
     { "id": "trinket_3", "name": "Gord's Knot", "group": "set-piece loot", "unique": true },
@@ -3948,7 +3966,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "twiggy",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 288.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "twiggy_tall",
@@ -3957,7 +3975,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "variantOf": "twiggy",
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 288.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     {
         "id": "twiggytree",
@@ -3967,7 +3985,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "counts": [0, 0, 214],
         "swapOption": "twiggy trees",
-        "icon": { "x": 1696.5, "y": 1280.5, "w": 63, "h": 63, "priority": -1 }
+        "icon": { "x": 288.5, "y": 1408.5, "w": 63, "h": 63, "priority": -1 }
     },
     { "id": "twigs", "name": "Twigs", "group": "items", "counts": [0, 3, 24], "swapOption": "twiggy trees" },
     { "id": "wall_hay", "name": "Hay Wall", "group": "structures", "unreachable": true, "unique": true },
@@ -3997,7 +4015,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "unreachable": true,
         "defaultShown": true,
         "unique": true,
-        "icon": { "x": 1824.5, "y": 1280.5, "w": 63, "h": 63 }
+        "icon": { "x": 416.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     { "id": "winterhat", "name": "Winter Hat", "group": "set-piece loot", "unique": true, "counts": [0, 0, 1] },
     {
@@ -4007,7 +4025,7 @@ export const CAVE_PREFABS: WorldPrefab[] = [
         "defaultShown": true,
         "unique": true,
         "counts": [0, 0, 1],
-        "icon": { "x": 32.5, "y": 1408.5, "w": 63, "h": 63 }
+        "icon": { "x": 672.5, "y": 1408.5, "w": 63, "h": 63 }
     },
     {
         "id": "worm_spawner",

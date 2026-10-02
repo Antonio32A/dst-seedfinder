@@ -76,6 +76,11 @@ icon came from:
   icon is only what the spawner would look like: a capture of the game's map shows it draws nothing at these markers
   (`antlion_spawner`, `crabking_spawner`, `wagstaff_machinery_marker`, `seastack_spawner_rough`,
   `seastack_spawner_swell`, `waterplant_spawner_rough` and `wobster_den_spawner_shore`), only what they spawn.
+- `respawned:<prefab>`: a ruins respawner (`RuinsRespawner.WorldGen("<prefab>")` in the game scripts, found by
+  scanning them): the world replaces the spawner with `<prefab>` as it loads, so the map does draw `<prefab>`'s icon
+  there and the icon is `default_shown`. A spawner whose prefab has no icon stays an imageless dot
+  (`names.RESPAWNED_ICON_OVERRIDES` names the prefab a spawner really makes when it isn't `<prefab>`: `chessjunk`
+  picks one of `chessjunk1`..`3`).
 - `captured`: the icon the running game showed for a prefab whose constructor sets another one (`names.CAPTURED_ICONS`:
   `shell_cluster` draws `flotsam_heavy.png`, `storage_robot` draws `storage_robot_broken.png`).
 
