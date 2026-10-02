@@ -7,12 +7,12 @@ import ./blob.bend as Blob
 def water_point_incs_count() -> U32:
   1
 
-def water_point_incs_chunk(+c: U32) -> String:
+def water_point_incs_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀉𐄇𐂉𐁃𐀟𐀑𐀉𐀅𐀃𐀁"
+      ["𐄇𐂉𐁃𐀟𐀑𐀉𐀅𐀃𐀁"]
     case _:
-      ""
+      Nil{}
 
 def water_point_incs(+i: U32) -> List<&2, U32>:
   Blob.row(water_point_incs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -51,12 +51,12 @@ def dock_post_threshold() -> U32:
 def dock_prefabs_count() -> U32:
   2
 
-def dock_prefabs_chunk(+c: U32) -> String:
+def dock_prefabs_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀇𐈻𓾮𛡑𞮅𑺸𐽜𒣶𐀇𐆔𓾞𛡑𞮅𑺸𐞮𑑻"
+      ["𐈻𓾮𛡑𞮅𑺸𐽜𒣶", "𐆔𓾞𛡑𞮅𑺸𐞮𑑻"]
     case _:
-      ""
+      Nil{}
 
 def dock_prefabs(+i: U32) -> List<&2, U32>:
   Blob.row(dock_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -65,12 +65,12 @@ def dock_prefabs(+i: U32) -> List<&2, U32>:
 def endpoint_prefabs_count() -> U32:
   1
 
-def endpoint_prefabs_chunk(+c: U32) -> String:
+def endpoint_prefabs_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀇𐉡𓿨𐀀𐀀𐀀𜀀𐀀"
+      ["𐉡𓿨𐀀𐀀𐀀𜀀𐀀"]
     case _:
-      ""
+      Nil{}
 
 def endpoint_prefabs(+i: U32) -> List<&2, U32>:
   Blob.row(endpoint_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -94,12 +94,12 @@ def dock_safe_height() -> U32 & U32:
 def customization_proxies_count() -> U32:
   3
 
-def customization_proxies_chunk(+c: U32) -> String:
+def customization_proxies_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀂𐅇𐆪𐀂𐅈𐆯𐀂𐅆𐆩"
+      ["𐅇𐆪", "𐅈𐆯", "𐅆𐆩"]
     case _:
-      ""
+      Nil{}
 
 def customization_proxies(+i: U32) -> List<&2, U32>:
   Blob.row(customization_proxies_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -108,12 +108,12 @@ def customization_proxies(+i: U32) -> List<&2, U32>:
 def randomization_proxies_count() -> U32:
   1
 
-def randomization_proxies_chunk(+c: U32) -> String:
+def randomization_proxies_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀄𐉢𐄾𐃚𐆰"
+      ["𐉢𐄾𐃚𐆰"]
     case _:
-      ""
+      Nil{}
 
 def randomization_proxies(+i: U32) -> List<&2, U32>:
   Blob.row(randomization_proxies_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -122,12 +122,12 @@ def randomization_proxies(+i: U32) -> List<&2, U32>:
 def level_required_prefabs_count() -> U32:
   1
 
-def level_required_prefabs_chunk(+c: U32) -> String:
+def level_required_prefabs_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀈𐄥𐇀𐆽𐆾𐈁𐃲𐇴𐃆"
+      ["𐄥𐇀𐆽𐆾𐈁𐃲𐇴𐃆"]
     case _:
-      ""
+      Nil{}
 
 def level_required_prefabs(+i: U32) -> List<&2, U32>:
   Blob.row(level_required_prefabs_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -136,12 +136,12 @@ def level_required_prefabs(+i: U32) -> List<&2, U32>:
 def bunch_closure_results_count() -> U32:
   1
 
-def bunch_closure_results_chunk(+c: U32) -> String:
+def bunch_closure_results_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀂𐅴𐈠"
+      ["𐅴𐈠"]
     case _:
-      ""
+      Nil{}
 
 def bunch_closure_results(+i: U32) -> List<&2, U32>:
   Blob.row(bunch_closure_results_chunk((i >> 5n : U32)), (i .&. 31 : U32))

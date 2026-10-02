@@ -196,7 +196,7 @@ def nodes_loop(nodes: List<&2, U32>, st: Ca, +windows: Bool, +sites: Points.Site
 
 def world_of(sites: Points.Sites) -> TileWorld.World:
   match sites:
-    case Points.Sites{_, +world}:
+    case Points.Sites{_, _, +world}:
       world
 
 def any_crashes(nodes: List<&2, U32>, +world: TileWorld.World, +k: GenGraph.Klei) -> Bool:

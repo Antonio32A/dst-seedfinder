@@ -149,10 +149,10 @@ def counts_if(enough: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +o
     case True{}:
       place_counts(order, Walk{l, pts, True{}}, counts, data, c)
 
-def counted_walk(e: Evaluated, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +order: List<&2, U32>, +data: List<&2, PopulateNodes.Count>, +c: PopulateState.Ctx) -> Walk:
+def counted_walk(e: Evaluated, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +area: U32, +order: List<&2, U32>, +data: List<&2, PopulateNodes.Count>, +c: PopulateState.Ctx) -> Walk:
   match e:
     case Evaluated{+counts, +total, +rng}:
-      +enough = Bool.not((U32.from_nat(List.length(&2, Points.Pt, pts)) < total : U32))
+      +enough = Bool.not((area < total : U32))
       counts_if(enough, PopulateState.with_rng(l, rng), pts, order, counts, data, c)
 
 def extra_step(alive: Bool, l: PopulateState.Land, +pt: Points.Pt, +more: List<&2, Points.Pt>, +prefab: U32, +c: PopulateState.Ctx) -> Walk:
@@ -298,7 +298,7 @@ def counted_alive(alive: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>,
           +s = PopulateState.story_of(c)
           +area = U32.from_nat(List.length(&2, Points.Pt, pts))
           counted_walk(evaluate(PopulateNodes.countprefabs(s, node), (0, rng), 0, False{}, area, PopulateState.width_of(c), Nil{}, 0),
-            PopulateState.Land{g, rng, ents, events}, pts, PopulateNodes.generate_order(s, node), PopulateNodes.prefabdata(s, node), c)
+            PopulateState.Land{g, rng, ents, events}, pts, area, PopulateNodes.generate_order(s, node), PopulateNodes.prefabdata(s, node), c)
 
 def counted(on: Bool, w: Walk, +c: PopulateState.Ctx, +node: U32) -> Walk:
   match on:

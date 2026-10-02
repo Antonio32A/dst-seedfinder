@@ -199,19 +199,45 @@ def cells(d: VoronoiDiagram.Diagram, +sites: List<&2, VoronoiPolygon.SiteIn>, +w
 def no_cell() -> TileWorld.Cell:
   TileWorld.Cell{TileWorld.none(), Nil{}}
 
-def cell_for(cs: List<&2, TileWorld.Cell>, +i: U32) -> TileWorld.Cell:
+def cell_le(a: TileWorld.Cell, b: TileWorld.Cell) -> Bool:
+  match a b:
+    case TileWorld.Cell{+s, _} TileWorld.Cell{+t, _}:
+      (s <= t : U32)
+
+def starts(+cs: List<&2, TileWorld.Cell>, +i: U32) -> Bool:
   match cs:
     case Nil{}:
-      no_cell()
-    case Con{TileWorld.Cell{+src, +edges}, rest}:
-      Bool.pick(TileWorld.Cell, U32.is_eq(src, i), TileWorld.Cell{src, edges}, cell_for(rest, i))
+      False{}
+    case Con{TileWorld.Cell{+src, _}, _}:
+      U32.is_eq(src, i)
 
-def by_site(n: Nat, +cs: List<&2, TileWorld.Cell>, +i: U32) -> List<&2, TileWorld.Cell>:
+def first_cell(+cs: List<&2, TileWorld.Cell>, go: Bool) -> TileWorld.Cell:
+  match cs go:
+    case Con{+c, _} True{}:
+      c
+    case _ _:
+      no_cell()
+
+def after(+cs: List<&2, TileWorld.Cell>, go: Bool, +i: U32) -> List<&2, TileWorld.Cell>:
+  match cs go:
+    case Con{_, +rest} True{}:
+      after(rest, starts(rest, i), i)
+    case Nil{} _:
+      Nil{}
+    case Con{+c, +rest} False{}:
+      c <> rest
+
+def by_site_loop(n: Nat, +cs: List<&2, TileWorld.Cell>, +i: U32) -> List<&2, TileWorld.Cell>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      cell_for(cs, i) <> by_site(p, cs, (i + 1 : U32))
+      +go = starts(cs, i)
+      first_cell(cs, go) <> by_site_loop(p, after(cs, go, i), (i + 1 : U32))
+
+# Site i's cell for i < n: the first of the cells whose source is i, else no cell.
+def by_site(+n: U32, +cs: List<&2, TileWorld.Cell>) -> List<&2, TileWorld.Cell>:
+  by_site_loop(U32.to_nat(n), List.sort(~TileWorld.Cell, ~cell_le, cs), 0)
 
 def point_of(+p: VoronoiPolygon.P32) -> TileWorld.Point:
   match p:
@@ -253,4 +279,4 @@ def world(+w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, Vor
   +ts = sites_loop(sites, polys, nodes)
   +fill = {TileWorld.Site{TileWorld.Node{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0.0, 0.0, 0.0, 0.0, Nil{}} : TileWorld.Site}
   TileWorld.World{w, w, n, ts, TileTable.from_list(~TileWorld.Site, ts, fill), TileTable.from_list(~List<&2, U32>, GenGraph.adjacency(n, links), Nil{}), edge_list(links), cs,
-    TileTable.from_list(~TileWorld.Cell, by_site(U32.to_nat(n), cs, 0), no_cell())}
+    TileTable.from_list(~TileWorld.Cell, by_site(n, cs), no_cell())}

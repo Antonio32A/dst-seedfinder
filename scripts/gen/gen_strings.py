@@ -29,11 +29,13 @@ def main():
                     "Constant strings: id -> (luaS_hash, bytes). Tasks first (world_catalog task ids), then sorted.")
     rows = [blob.word(lua_hash(s)) + blob.text(s) for s in t["strings"]]
     m.table("strings", rows, "Row id: hash (2 units), byte count, bytes packed two per unit.")
+    m.values("hashes", [lua_hash(s) for s in t["strings"]], "Entry id: the hash of row id, for lookups without decoding.",
+             0xFFFFFFFF)
     m.const("others_base", t["others_base"])
     m.code('''
 # Lua 5.1 luaS_hash of string id.
 def hash(+id: U32) -> U32:
-  Blob.word(strings(id), 0)
+  hashes(id)
 
 # Byte length of string id.
 def length(+id: U32) -> U32:

@@ -195,21 +195,21 @@ def write_all(sss: List<&2, List<&2, Stroke>>, cells: Array<U32>) -> Array<U32>:
     case Con{+ss, rest}:
       write_all(rest, write_strokes(ss, cells))
 
-def site_tiles_list(sites: List<&2, TileWorld.Site>) -> List<&2, List<&2, U32>>:
+def site_tiles_list(sites: List<&2, TileWorld.Site>) -> List<&2, SiteTiles.Counted>:
   match sites:
     case Nil{}:
       Nil{}
     case Con{+s, rest}:
-      SiteTiles.site_tiles(s) <> site_tiles_list(rest)
+      SiteTiles.counted_site_tiles(s) <> site_tiles_list(rest)
 
-def par_tiles(+d: Nat, +sites: List<&2, TileWorld.Site>, +n: Nat) -> List<&2, List<&2, U32>>:
+def par_tiles(+d: Nat, +sites: List<&2, TileWorld.Site>, +n: Nat) -> List<&2, SiteTiles.Counted>:
   match d:
     case 0n:
       site_tiles_list(sites)
     case 1n+p:
       +half = Nat.div(n, 2n)
       a b = par_tiles(p, List.take(&2, TileWorld.Site, sites, half), half) par_tiles(p, List.drop(&2, TileWorld.Site, sites, half), Nat.sub(n, half))
-      List.append(&2, List<&2, U32>, a, b)
+      List.append(&2, SiteTiles.Counted, a, b)
 
 def fresh_cells(g: Grid.Grid) -> Array<U32>:
   match g:
@@ -227,11 +227,29 @@ def paint(w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid:
       +jobs = jobs_of(sites, lists)
       Grid.Grid{write_all(par_strokes(fork_depth(), jobs, List.length(&2, Job, jobs), width), fresh_cells(Grid.new(width, height, initial_cell()))), width, height}
 
-# The SiteTiles of every site, in site order (computed in parallel).
-def site_tiles(w: TileWorld.World) -> List<&2, List<&2, U32>>:
+# The SiteTiles of every site with its size, in site order (computed in parallel).
+def counted_site_tiles(w: TileWorld.World) -> List<&2, SiteTiles.Counted>:
   match w:
     case TileWorld.World{_, _, _, +sites, _, _, _, _, _}:
       par_tiles(fork_depth(), sites, List.length(&2, TileWorld.Site, sites))
+
+def lists_of(counted: List<&2, SiteTiles.Counted>) -> List<&2, List<&2, U32>>:
+  match counted:
+    case Nil{}:
+      Nil{}
+    case Con{SiteTiles.Counted{+tiles, _}, rest}:
+      tiles <> lists_of(rest)
+
+def sizes_of(counted: List<&2, SiteTiles.Counted>) -> List<&2, U32>:
+  match counted:
+    case Nil{}:
+      Nil{}
+    case Con{SiteTiles.Counted{_, +count}, rest}:
+      count <> sizes_of(rest)
+
+# The SiteTiles of every site, in site order (computed in parallel).
+def site_tiles(w: TileWorld.World) -> List<&2, List<&2, U32>>:
+  lists_of(counted_site_tiles(w))
 
 def convert(+w: TileWorld.World) -> Grid.Grid:
   paint(w, site_tiles(w))

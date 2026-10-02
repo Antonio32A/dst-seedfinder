@@ -181,8 +181,9 @@ def crash_checked(crashed: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, 
       areas_checked(Generate.site_areas_ok(s, k, sites), c, a, s, k, w, world, lists, sites)
 
 def tiled(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World) -> Job:
-  +lists = TileConvert.site_tiles(world)
-  +sites = Points.sites(world, lists)
+  +counted = TileConvert.counted_site_tiles(world)
+  +lists = TileConvert.lists_of(counted)
+  +sites = Points.sized_sites(world, lists, TileConvert.sizes_of(counted))
   crash_checked(Generate.custom_crashes(c, s, k, sites), c, a, s, k, w, world, lists, sites)
 
 # ConvertToTileMap's build and the GetSiteArea < 8 check; a failure retries from the RNG after ConvertToTileMap (the

@@ -1,6 +1,8 @@
 import Base
 import ../worldsim/tiles/table.bend as TileTable
 import ../gen/graph.bend as GenGraph
+import ../gen/world.bend as GenWorld
+import ../worldsim/tiles/world.bend as TileWorld
 import ../f64/repr.bend as F64Repr
 import ../gen/centi.bend as Centi
 import ../search/order.bend as SearchOrder
@@ -14,6 +16,26 @@ law gen_out_edges_insertion_order:
   {GenGraph.targets([GenGraph.Link{0, 1}, GenGraph.Link{2, 0}, GenGraph.Link{1, 2}, GenGraph.Link{0, 3}], 0) == [1, 2, 3] : List<&2, U32>}
 
 def gen_out_edges_insertion_order():
+  {==}
+
+# Every vertex's out-edge list equals boost::out_edges of it, a self loop twice and an edge past the vertex count ignored.
+def gen_adjacency_edges() -> List<&2, GenGraph.Link>:
+  [GenGraph.Link{0, 1}, GenGraph.Link{2, 0}, GenGraph.Link{1, 2}, GenGraph.Link{0, 3}, GenGraph.Link{2, 2}, GenGraph.Link{3, 5}, GenGraph.Link{1, 0}]
+
+law gen_adjacency_out_edges:
+  {GenGraph.adjacency(4, gen_adjacency_edges()) == [GenGraph.targets(gen_adjacency_edges(), 0), GenGraph.targets(gen_adjacency_edges(), 1), GenGraph.targets(gen_adjacency_edges(), 2), GenGraph.targets(gen_adjacency_edges(), 3)] : List<&2, List<&2, U32>>}
+
+def gen_adjacency_out_edges():
+  {==}
+
+def gen_cell(+src: U32, +twin: U32) -> TileWorld.Cell:
+  TileWorld.Cell{src, [TileWorld.VEdge{twin, None{}, None{}, Nil{}}]}
+
+# Each site's cell is the first cell with its source, and a site without one gets no cell.
+law gen_cells_by_site:
+  {GenWorld.by_site(4, [gen_cell(2, 7), gen_cell(0, 1), gen_cell(2, 9), gen_cell(3, 4)]) == [gen_cell(0, 1), GenWorld.no_cell(), gen_cell(2, 7), gen_cell(3, 4)] : List<&2, TileWorld.Cell>}
+
+def gen_cells_by_site():
   {==}
 
 # ApplyPoisonTag's ClearNodeLinks of vertex 2 removes both edges at it and keeps the order of the rest.

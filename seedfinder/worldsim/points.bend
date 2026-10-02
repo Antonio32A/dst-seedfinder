@@ -14,9 +14,9 @@ import ../data/tile_groups.bend as TileGroupsData
 # (SiteTiles of ConvertToTileMap's build, computed once), GetPointsForSite, ReserveSpace, GetSiteArea, GetTile, SetTile,
 # ReserveTile, IsTileReserved, GetVisualTileAtPosition and ReplaceSingleNonLandTiles.
 
-# The site point lists (packed x | y << 16, scan order) and the sites' float positions, by site index.
+# The site point lists (packed x | y << 16, scan order), their sizes and the sites' float positions, by site index.
 type Sites is Data:
-  Sites{lists: TileTable.Tree<List<&2, U32>>, world: TileWorld.World}
+  Sites{lists: TileTable.Tree<List<&2, U32>>, areas: TileTable.Tree<U32>, world: TileWorld.World}
 
 # A GetPointsForSite point: tile coordinates and the reported tile type.
 type Pt is Data:
@@ -31,17 +31,30 @@ type Picked is Type:
 type Reserved is Type:
   Reserved{grid: Grid.Grid, rng: Pcg.Rng, ok: Bool, x: U32, y: U32, n: U32}
 
+def areas_of(lists: List<&2, List<&2, U32>>) -> List<&2, U32>:
+  match lists:
+    case Nil{}:
+      Nil{}
+    case Con{+l, rest}:
+      U32.from_nat(List.length(&2, U32, l)) <> areas_of(rest)
+
+# The Sites of the world from its site point lists and their sizes.
+def sized_sites(+w: TileWorld.World, +lists: List<&2, List<&2, U32>>, +areas: List<&2, U32>) -> Sites:
+  Sites{TileTable.from_list(~List<&2, U32>, lists, Nil{}), TileTable.from_list(~U32, areas, 0), w}
+
 def sites(+w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Sites:
-  Sites{TileTable.from_list(~List<&2, U32>, lists, Nil{}), w}
+  sized_sites(w, lists, areas_of(lists))
 
 def site_list(+s: Sites, +site: U32) -> List<&2, U32>:
   match s:
-    case Sites{+lists, _}:
+    case Sites{+lists, _, _}:
       Bool.pick(List<&2, U32>, TileWorld.is_none(site), Nil{}, TileTable.at(~List<&2, U32>, lists, site))
 
 # GetSiteArea: the size of the site's point list.
 def site_area(+s: Sites, +site: U32) -> U32:
-  U32.from_nat(List.length(&2, U32, site_list(s, site)))
+  match s:
+    case Sites{_, +areas, _}:
+      Bool.pick(U32, TileWorld.is_none(site), 0, TileTable.at(~U32, areas, site))
 
 def barren() -> U32:
   TileGroupsData.tile_road()
@@ -550,8 +563,15 @@ def candidates(centre: Bool, +s: Sites, +site: U32) -> List<&2, U32>:
       site_list(s, site)
     case True{}:
       match s:
-        case Sites{_, +w}:
+        case Sites{_, _, +w}:
           centre_in(TileWorld.site(w, site), site_list(s, site))
+
+def candidate_count(centre: Bool, +s: Sites, +site: U32, +cands: List<&2, U32>) -> U32:
+  match centre:
+    case False{}:
+      site_area(s, site)
+    case True{}:
+      U32.from_nat(List.length(&2, U32, cands))
 
 def reserved_of(t: Try, rng: Pcg.Rng, +n: U32) -> Reserved:
   match t:
@@ -568,6 +588,6 @@ def reserve_shuffled(got: List<&2, U32> & Pcg.Rng, g: Grid.Grid, +ask: Ask, +gro
 # skips that) and is free (fill_mask 1/2/4 allow invalid, disconnected, reserved tiles) is reserved and painted with
 # the ground tiles (x outer, y inner; 0 keeps the tile). `n` is the site's full point count.
 def reserve_space(+windows: Bool, +s: Sites, +site: U32, +ask: Ask, +position: U32, +ground: List<&2, U32>, g: Grid.Grid, rng: Pcg.Rng) -> Reserved:
-  +cands = candidates(U32.is_eq(position, 1), s, site)
-  +count = U32.from_nat(List.length(&2, U32, cands))
-  reserve_shuffled(shuffled_list(windows, cands, count, rng), g, ask, ground, site_area(s, site))
+  +centre = U32.is_eq(position, 1)
+  +cands = candidates(centre, s, site)
+  reserve_shuffled(shuffled_list(windows, cands, candidate_count(centre, s, site, cands), rng), g, ask, ground, site_area(s, site))

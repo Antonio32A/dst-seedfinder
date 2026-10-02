@@ -110,20 +110,9 @@ def exceptions():
     return rows
 
 
-def small_table(m, name, rows, doc, shift=2):
-    """A blob table with 2^shift rows per chunk (blob.Module.table uses 32): shorter walks for the per-call lookups."""
-    rows = [list(r) for r in rows]
-    m.comment(doc)
-    m.tables[name] = rows
-    per = 1 << shift
-    m.lines += [f"def {name}_chunk(+c: U32) -> String:", "  match c:"]
-    for c in range(0, len(rows), per):
-        literal = "".join(blob.encode_row(r) for r in rows[c:c + per])
-        m.units += len(literal)
-        m.lines += [f"    case {c // per}:", f'      "{literal}"']
-    m.lines += ["    case _:", '      ""', ""]
-    m.lines += [f"def {name}(+i: U32) -> List<&2, U32>:",
-                f"  Blob.row({name}_chunk((i >> {shift}n : U32)), (i .&. {per - 1} : U32))", ""]
+def small_table(m, name, rows, doc):
+    """A blob table with 4 rows per chunk (blob.Module.table uses 32): shorter walks for the per-call lookups."""
+    m.table(name, rows, doc, shift=2)
 
 
 def units128(v):

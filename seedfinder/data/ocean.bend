@@ -7,12 +7,12 @@ import ./blob.bend as Blob
 def bunches_count() -> U32:
   7
 
-def bunches_chunk(+c: U32) -> String:
+def bunches_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀉𐆶𐆴􏿿𐀌𐀆𐀉𐀅𐀁𐃌𐀉𐇃𐇁􏿿𐀞𐀏𐀙𐀄𐀁𐃌𐀊𐈛𐈚􏿿𐀞𐀈𐀏𐀇𐀂𐃌𐃋𐀉𐇄𐇁􏿿𐀲𐀞𐀲𐀈𐀁𐃋𐀉𐆳𐃱􏿿𐀙𐇴𐇴𐀂𐀁𐀄𐀉𐈡􏿿𐀘𐀌𐀄𐀅𐀃𐀁𐃉𐀉𐆲𐆩􏿿𐀙𐏨𐏨𐀃𐀁𐀄"
+      ["𐆶𐆴􏿿𐀌𐀆𐀉𐀅𐀁𐃌", "𐇃𐇁􏿿𐀞𐀏𐀙𐀄𐀁𐃌", "𐈛𐈚􏿿𐀞𐀈𐀏𐀇𐀂𐃌𐃋", "𐇄𐇁􏿿𐀲𐀞𐀲𐀈𐀁𐃋", "𐆳𐃱􏿿𐀙𐇴𐇴𐀂𐀁𐀄", "𐈡􏿿𐀘𐀌𐀄𐀅𐀃𐀁𐃉", "𐆲𐆩􏿿𐀙𐏨𐏨𐀃𐀁𐀄"]
     case _:
-      ""
+      Nil{}
 
 def bunches(+i: U32) -> List<&2, U32>:
   Blob.row(bunches_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -21,12 +21,12 @@ def bunches(+i: U32) -> List<&2, U32>:
 def bunch_blockers_count() -> U32:
   1
 
-def bunch_blockers_chunk(+c: U32) -> String:
+def bunch_blockers_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀀"
+      [""]
     case _:
-      ""
+      Nil{}
 
 def bunch_blockers(+i: U32) -> List<&2, U32>:
   Blob.row(bunch_blockers_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -35,12 +35,12 @@ def bunch_blockers(+i: U32) -> List<&2, U32>:
 def noise_functions_count() -> U32:
   10
 
-def noise_functions_chunk(+c: U32) -> String:
+def noise_functions_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀡𐁸𐀎𐀆𓿐𐀀𐀀𐀀𐀮𓿖𖙦𖙦𖙦𐀎𓿙𙦙𙦙𙦚𐀮𓿜𜳌𜳌𜳍𐀎𓿡𙦙𙦙𙦚𐀮𓿤𜳌𜳌𜳍𐀎𐀒𐁹𐀃𐀃𓿙𙦙𙦙𙦚𐀫𓿣𓌳𓌳𓌳𐀃𓿩𙦙𙦙𙦚𐀫𐀍𐁺𐀪𐀂𓿡𙦙𙦙𙦚𐀫𓿨𐀀𐀀𐀀𐀪𐀈𐁻𐀄𐀁𓿙𙦙𙦙𙦚𐀟𐀍𐁼𐀁𐀂𓿨𐀀𐀀𐀀𐀍𓿫𓌳𓌳𓌳𐀁𐀡𐁽𐀁𐀆𓿐𐀀𐀀𐀀𐀂𓿐𚏗𐨽𗂤𐀃𓿖𖙦𖙦𖙦𐀄𓿙𙦙𙦙𙦚𐀆𓿠𐀀𐀀𐀀𐀇𓿨𐀀𐀀𐀀𐀈𐀒𐁾𐀁𐀃𓿐𐀀𐀀𐀀𐀍𓿙𙦙𙦙𙦚𐀐𓿦𖙦𖙦𖙦𐀁𐀡𐁿𐀁𐀆𓿐𐀀𐀀𐀀𐀑𓿖𖙦𖙦𖙦𐀄𓿙𙦙𙦙𙦚𐀎𓿜𜳌𜳌𜳍𐀄𓿡𙦙𙦙𙦚𐀐𓿤𜳌𜳌𜳍𐀁𐀈𒄁𐀍𐀁𓿖𖙦𖙦𖙦𐄄𐀡􏿿𐀁𐀆𓿐𐀀𐀀𐀀𐀂𓿐𚏗𐨽𗂤𐀃𓿖𖙦𖙦𖙦𐀄𓿙𙦙𙦙𙦚𐀆𓿠𐀀𐀀𐀀𐀇𓿨𐀀𐀀𐀀𐀈"
+      ["𐁸𐀎𐀆𓿐𐀀𐀀𐀀𐀮𓿖𖙦𖙦𖙦𐀎𓿙𙦙𙦙𙦚𐀮𓿜𜳌𜳌𜳍𐀎𓿡𙦙𙦙𙦚𐀮𓿤𜳌𜳌𜳍𐀎", "𐁹𐀃𐀃𓿙𙦙𙦙𙦚𐀫𓿣𓌳𓌳𓌳𐀃𓿩𙦙𙦙𙦚𐀫", "𐁺𐀪𐀂𓿡𙦙𙦙𙦚𐀫𓿨𐀀𐀀𐀀𐀪", "𐁻𐀄𐀁𓿙𙦙𙦙𙦚𐀟", "𐁼𐀁𐀂𓿨𐀀𐀀𐀀𐀍𓿫𓌳𓌳𓌳𐀁", "𐁽𐀁𐀆𓿐𐀀𐀀𐀀𐀂𓿐𚏗𐨽𗂤𐀃𓿖𖙦𖙦𖙦𐀄𓿙𙦙𙦙𙦚𐀆𓿠𐀀𐀀𐀀𐀇𓿨𐀀𐀀𐀀𐀈", "𐁾𐀁𐀃𓿐𐀀𐀀𐀀𐀍𓿙𙦙𙦙𙦚𐀐𓿦𖙦𖙦𖙦𐀁", "𐁿𐀁𐀆𓿐𐀀𐀀𐀀𐀑𓿖𖙦𖙦𖙦𐀄𓿙𙦙𙦙𙦚𐀎𓿜𜳌𜳌𜳍𐀄𓿡𙦙𙦙𙦚𐀐𓿤𜳌𜳌𜳍𐀁", "𒄁𐀍𐀁𓿖𖙦𖙦𖙦𐄄", "􏿿𐀁𐀆𓿐𐀀𐀀𐀀𐀂𓿐𚏗𐨽𗂤𐀃𓿖𖙦𖙦𖙦𐀄𓿙𙦙𙦙𙦚𐀆𓿠𐀀𐀀𐀀𐀇𓿨𐀀𐀀𐀀𐀈"]
     case _:
-      ""
+      Nil{}
 
 def noise_functions(+i: U32) -> List<&2, U32>:
   Blob.row(noise_functions_chunk((i >> 5n : U32)), (i .&. 31 : U32))
@@ -118,12 +118,12 @@ def config_init_level_medium() -> U32 & U32:
 def config_ellevels_count() -> U32:
   6
 
-def config_ellevels_chunk(+c: U32) -> String:
+def config_ellevels_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      "𐀅𐃍𓿰𐀀𐀀𐀀𐀅𐃉𓿬𜳌𜳌𜳍𐀅𐃋𓿙𙦙𙦙𙦚𐀅𐃌𐀀𐀀𐀀𐀀𐀅𐃏𐀀𐀀𐀀𐀀𐀅𐀁𐀀𐀀𐀀𐀀"
+      ["𐃍𓿰𐀀𐀀𐀀", "𐃉𓿬𜳌𜳌𜳍", "𐃋𓿙𙦙𙦙𙦚", "𐃌𐀀𐀀𐀀𐀀", "𐃏𐀀𐀀𐀀𐀀", "𐀁𐀀𐀀𐀀𐀀"]
     case _:
-      ""
+      Nil{}
 
 def config_ellevels(+i: U32) -> List<&2, U32>:
   Blob.row(config_ellevels_chunk((i >> 5n : U32)), (i .&. 31 : U32))

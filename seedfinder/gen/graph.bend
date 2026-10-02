@@ -188,16 +188,46 @@ def targets(es: List<&2, Link>, +v: U32) -> List<&2, U32>:
       +back = Bool.pick(List<&2, U32>, U32.is_eq(t, v), s <> tail, tail)
       Bool.pick(List<&2, U32>, U32.is_eq(s, v), t <> back, back)
 
-def adjacency_loop(n: Nat, +es: List<&2, Link>, +v: U32) -> List<&2, List<&2, U32>>:
+def arc_le(a: LayoutHops.Arc, b: LayoutHops.Arc) -> Bool:
+  match a b:
+    case LayoutHops.Arc{+s, _} LayoutHops.Arc{+t, _}:
+      (s <= t : U32)
+
+def starts(+arcs: List<&2, LayoutHops.Arc>, +v: U32) -> Bool:
+  match arcs:
+    case Nil{}:
+      False{}
+    case Con{LayoutHops.Arc{+s, _}, _}:
+      U32.is_eq(s, v)
+
+def leading(+arcs: List<&2, LayoutHops.Arc>, go: Bool, +v: U32) -> List<&2, U32>:
+  match arcs go:
+    case Con{LayoutHops.Arc{_, +t}, +rest} True{}:
+      t <> leading(rest, starts(rest, v), v)
+    case _ _:
+      Nil{}
+
+def after(+arcs: List<&2, LayoutHops.Arc>, go: Bool, +v: U32) -> List<&2, LayoutHops.Arc>:
+  match arcs go:
+    case Con{_, +rest} True{}:
+      after(rest, starts(rest, v), v)
+    case Nil{} _:
+      Nil{}
+    case Con{+a, +rest} False{}:
+      a <> rest
+
+def grouped(n: Nat, +arcs: List<&2, LayoutHops.Arc>, +v: U32) -> List<&2, List<&2, U32>>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      targets(es, v) <> adjacency_loop(p, es, (v + 1 : U32))
+      +go = starts(arcs, v)
+      leading(arcs, go, v) <> grouped(p, after(arcs, go, v), (v + 1 : U32))
 
-# Every vertex's out-edge targets, in vertex order.
+# Every vertex's out-edge targets, in vertex order: the targets of each vertex, from both directions of every edge
+# stably sorted by source.
 def adjacency(+count: U32, +es: List<&2, Link>) -> List<&2, List<&2, U32>>:
-  adjacency_loop(U32.to_nat(count), es, 0)
+  grouped(U32.to_nat(count), List.sort(~LayoutHops.Arc, ~arc_le, arcs_of(es)), 0)
 
 def kept(es: List<&2, Link>, +cut: TileTable.Tree<U32>) -> List<&2, Link>:
   match es:

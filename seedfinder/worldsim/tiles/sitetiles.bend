@@ -159,24 +159,44 @@ def rows_of(n: Nat, go: Bool, +poly: List<&2, TileWorld.Point>, +maxy: F32, +y: 
         case True{}:
           row_segs(poly, U32.to_f32(y)) <> rows_of(p, (U32.to_f32((y + 1 : U32)) < maxy : F32), poly, maxy, (y + 1 : U32))
 
-def scan(+poly: List<&2, TileWorld.Point>, +d: Disk, b: Box) -> List<&2, U32>:
+# Packed tiles in scan order and their count.
+type Counted is Data:
+  Counted{tiles: List<&2, U32>, count: U32}
+
+def tiles_of(c: Counted) -> List<&2, U32>:
+  match c:
+    case Counted{tiles, _}:
+      tiles
+
+def counted_reverse(xs: List<&2, U32>, acc: List<&2, U32>, +n: U32) -> Counted:
+  match xs:
+    case Nil{}:
+      Counted{acc, n}
+    case Con{+x, rest}:
+      counted_reverse(rest, x <> acc, (n + 1 : U32))
+
+def scan(+poly: List<&2, TileWorld.Point>, +d: Disk, b: Box) -> Counted:
   match b:
     case Box{+minx, +maxx, +miny, +maxy}:
       +x0 = trunc_wrap(minx)
       +y0 = trunc_wrap(miny)
       +rows = rows_of(U32.to_nat(65536), (U32.to_f32(y0) < maxy : F32), poly, maxy, y0)
-      List.reverse(&2, U32, columns(U32.to_nat(65536), (U32.to_f32(x0) < maxx : F32), rows, d, Box{minx, maxx, miny, maxy}, x0, Nil{}))
+      counted_reverse(columns(U32.to_nat(65536), (U32.to_f32(x0) < maxx : F32), rows, d, Box{minx, maxx, miny, maxy}, x0, Nil{}), Nil{}, 0)
 
 # PolygonTilesWithinRadius(poly, (cx, cy), radius), packed tiles in scan order.
-def within_radius(+poly: List<&2, TileWorld.Point>, +cx: F32, +cy: F32, +radius: F32) -> List<&2, U32>:
+def within_radius(+poly: List<&2, TileWorld.Point>, +cx: F32, +cy: F32, +radius: F32) -> Counted:
   match poly:
     case Nil{}:
-      Nil{}
+      Counted{Nil{}, 0}
     case Con{_, _}:
       scan(poly, Disk{cx, cy, radius}, bounds(poly, Box{max_float(), (0.0 - max_float() : F32), max_float(), (0.0 - max_float() : F32)}))
 
-# SiteTiles / SitePoints: the site's polygon within radius 20 of the site.
-def site_tiles(s: TileWorld.Site) -> List<&2, U32>:
+# SiteTiles / SitePoints with its size (GetSiteArea): the site's polygon within radius 20 of the site.
+def counted_site_tiles(s: TileWorld.Site) -> Counted:
   match s:
     case TileWorld.Site{_, +x, +y, _, _, +polygon}:
       within_radius(polygon, x, y, 20.0)
+
+# SiteTiles / SitePoints: the site's polygon within radius 20 of the site.
+def site_tiles(s: TileWorld.Site) -> List<&2, U32>:
+  tiles_of(counted_site_tiles(s))
