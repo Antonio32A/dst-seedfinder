@@ -5,7 +5,7 @@ import ./blob.bend as Blob
 
 # The build number of the game the data was generated from.
 def game_build() -> U32:
-  747465
+  756039
 
 # Row v: the initial KK position of vertex v (x then y, f64 bits, 4 units each): random_point() number v of a fresh minstd_rand over [0, 425]^2; island vertices continue the sequence.
 def kk_positions_count() -> U32:

@@ -26,7 +26,7 @@ describes itself: it carries every name it uses, so reading it needs no catalog 
 | 12 | u32 | status | `1` generated, `0` the world generation gave up |
 | 16 | u32 | platform | the OS of the host that generated the world: `0` unknown, `1` Windows, `2` Linux |
 | 20 | u32 | shard | the shard the world belongs to: `0` forest (`SURVIVAL_TOGETHER`), `1` caves (`DST_CAVE`) |
-| 24 | u32 | game build | the game's build number (e.g. `747465`), `0` when unknown |
+| 24 | u32 | game build | the game's build number (e.g. `756039`), `0` when unknown |
 | 28 | u32 | width | tiles along x |
 | 32 | u32 | height | tiles along z |
 | 36 | | sections | until the end of the file (§ 3) |

@@ -2,7 +2,7 @@
 
 [![forthebadge](https://forthebadge.com/badges/contains-technical-debt.svg)]()
 
-A seed finder for Don't Starve Together. Supports forest worlds on version `747465` on Windows and Linux, and cave seeds by their level table (biomes, resources and set pieces).
+A seed finder for Don't Starve Together. Supports forest and cave worlds on version `756039` on Windows and Linux.
 
 This is mostly a toy project, the majority of the code is very sloppy and not production ready.
 

@@ -34,7 +34,7 @@ const HEIGHT = 1;
 
 const world = (...extra: Uint8Array[]) => concat([
     ...header(1234, 1, 2),
-    u32(747465),
+    u32(756039),
     u32(WIDTH),
     u32(HEIGHT),
     section("TNAM", [u32(2), u32(6), ...text("GRASS"), u32(201), ...text("OCEAN_COASTAL")]),
@@ -57,7 +57,7 @@ const generated = (bytes: Uint8Array) => {
 describe("reading a world dump", () => {
     it("reads a generated world's header and tiles", () => {
         const dump = generated(world());
-        expect(dump).toMatchObject({ seed: 1234, platform: "linux", shard: "forest", gameBuild: 747465 });
+        expect(dump).toMatchObject({ seed: 1234, platform: "linux", shard: "forest", gameBuild: 756039 });
         expect([dump.width, dump.height]).toEqual([WIDTH, HEIGHT]);
         expect([...dump.tiles]).toEqual([6, 201, 6]);
         expect(dump.tileNames).toEqual(new Map([[6, "GRASS"], [201, "OCEAN_COASTAL"]]));
@@ -132,7 +132,7 @@ describe("reading a world dump", () => {
     });
 
     it("reads the caves shard from the header", () => {
-        const caves = concat([...header(1234, 1, 2, 1), u32(747465), u32(WIDTH), u32(HEIGHT)]);
+        const caves = concat([...header(1234, 1, 2, 1), u32(756039), u32(WIDTH), u32(HEIGHT)]);
         expect(generated(caves).shard).toBe("caves");
     });
 

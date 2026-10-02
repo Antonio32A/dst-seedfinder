@@ -26,6 +26,7 @@ esac
 server_log="$cluster_dir/$shard_dir/server_log.txt"
 steam_runtime="${STEAM_RUNTIME_DIR:-$HOME/.local/share/Steam/ubuntu12_32/steam-runtime}"
 runtime_libs="$steam_runtime/pinned_libs_64:$steam_runtime/usr/lib/x86_64-linux-gnu:$steam_runtime/lib/x86_64-linux-gnu"
+host_cxx_dir="$(dirname "$(/sbin/ldconfig -p | awk '/libstdc\+\+\.so\.6 \(libc6,x86-64\)/ { print $NF; exit }')")"
 
 if [[ ! -f "$dst/mods/groundtruth-worldgen/modworldgenmain.lua" ]]; then
     echo "copy $here/groundtruth-worldgen into \"$dst/mods/\" first" >&2
@@ -61,7 +62,7 @@ return {
 EOF
 
     (
-        cd "$dst/bin64" && LD_LIBRARY_PATH="$dst/bin64/lib64:$runtime_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        cd "$dst/bin64" && LD_LIBRARY_PATH="$dst/bin64/lib64:$host_cxx_dir:$runtime_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
             exec ./dontstarve_dedicated_server_nullrenderer_x64 \
             -persistent_storage_root "$storage" -conf_dir DoNotStarveTogether \
             -cluster Cluster_GTW -shard $shard_dir -offline -skip_update_server_mods \

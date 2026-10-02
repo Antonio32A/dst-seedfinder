@@ -15,7 +15,7 @@ const WORLD: GeneratedWorld = {
     seed: 1,
     platform: "linux",
     shard: "forest",
-    gameBuild: 747465,
+    gameBuild: 756039,
     width: 3,
     height: 2,
     tileNames: new Map([[1, "IMPASSABLE"], [6, "GRASS"], [7, "FOREST"], [99, "A_NEWER_TURF"]]),
