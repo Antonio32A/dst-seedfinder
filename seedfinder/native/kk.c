@@ -2,6 +2,8 @@
 // =========
 // worldsim/layout/kk.bend in IEEE doubles, same operation order (exact caches, cycle skipping, norm bound).
 // Words in: n, left, arc count, arcs (from, to), then n positions (x hi, x lo, y hi, y lo). Words out: n positions.
+// Vector lanes (AVX2 when the CPU has it, WebAssembly SIMD128) do the scalar pair's IEEE operations and every sum adds
+// the pairs in index order. Row m's mirrors (i, m) wait in c* until m's Newton steps end, then go to column m.
 
 #pragma STDC FP_CONTRACT OFF
 #pragma clang fp contract(off)
@@ -12,14 +14,8 @@
 #include <string.h>
 
 typedef struct {
-  double x, y, d;
-  u32 h;
-} KnPair;
-
-typedef struct {
-  u32 n, left, arcs, *arc;
-  KnPair* pd;
-  double *x, *y, *gx, *gy, *qx, *qy, *cl, *ck, *ckl;
+  u32 n, left, arcs, *arc, *ph;
+  double *x, *y, *px, *py, *pd, *cx, *cy, *cd, *gx, *gy, *qx, *qy, *cl, *ck, *ckl;
 } Kn;
 
 static uint64_t kn_bits(double x) { uint64_t u; memcpy(&u, &x, 8); return u; }
@@ -42,61 +38,219 @@ static double kn_norm(double dx, double dy) { return kn_hypot(kn_quiet(fabs(dx))
 static void kn_partial(Kn* k, u32 m, u32 i, double* ox, double* oy, double* od) {
   double dx = k->x[m] - k->x[i], dy = k->y[m] - k->y[i];
   double d = kn_norm(dx, dy);
-  u32 h = k->pd[KN_AT(k, m, i)].h;
+  u32 h = k->ph[KN_AT(k, m, i)];
   double r = k->cl[h] / d;
   *ox = k->ck[h] * (dx - r * dx);
   *oy = k->ck[h] * (dy - r * dy);
   *od = d;
 }
 static int kn_nonzero(double x) { return x != 0.0 && x == x; }
-static void kn_refresh(Kn* k, u32 m, u32 i) {
-  double x, y, d;
-  KnPair *a = &k->pd[KN_AT(k, m, i)], *b = &k->pd[KN_AT(k, i, m)];
-  kn_partial(k, m, i, &x, &y, &d);
-  a->x = x; a->y = y; a->d = d;
-  if (kn_nonzero(x) && kn_nonzero(y)) { b->x = -x; b->y = -y; b->d = d; return; }
+static void kn_mirror(Kn* k, u32 m, u32 i, double x, double y, double d) {
+  if (kn_nonzero(x) && kn_nonzero(y)) { k->cx[i] = -x; k->cy[i] = -y; k->cd[i] = d; return; }
   kn_partial(k, i, m, &x, &y, &d);
-  b->x = x; b->y = y; b->d = d;
+  k->cx[i] = x; k->cy[i] = y; k->cd[i] = d;
+}
+static void kn_flush(Kn* k, u32 m, u32 i, u32 end) {
+  for (; i < end; i++) { size_t at = KN_AT(k, i, m); k->px[at] = k->cx[i]; k->py[at] = k->cy[i]; k->pd[at] = k->cd[i]; }
+}
+
+static int kn_gradient_contends(Kn* k, u32 u, double x, double y, double delta) {
+  k->gx[u] = x; k->gy[u] = y;
+  double b = (fabs(x) + fabs(y)) * 0x1.0000000000008p+0;
+  u32 e = (u32)(kn_bits(b) >> 52) & 2047;
+  return !(e >= 23 && e <= 2023 && b < delta);
+}
+static void kn_pick(Kn* k, u32 u, double x, double y, u32* p, double* delta) {
+  if (!kn_gradient_contends(k, u, x, y, *delta)) return;
+  double d = kn_norm(x, y);
+  if (d > *delta) { *p = u; *delta = d; }
+}
+
+#if defined(__x86_64__)
+#define KN_W 4
+#define KN_WIDE __attribute__((target("avx2")))
+#define KN_WIDE_OK() __builtin_cpu_supports("avx2")
+#elif defined(__wasm__)
+#define KN_W 2
+#define KN_WIDE __attribute__((target("simd128")))
+#define KN_WIDE_OK() 1
+#else
+#define KN_WIDE_OK() 0
+#endif
+
+#ifdef KN_W
+typedef double KnV __attribute__((vector_size(8 * KN_W)));
+typedef int64_t KnM __attribute__((vector_size(8 * KN_W)));
+typedef u32 KnH __attribute__((vector_size(4 * KN_W)));
+typedef double Kn2 __attribute__((vector_size(16)));
+typedef double Kn4 __attribute__((vector_size(32)));
+
+KN_WIDE static inline KnV kn_v_load(const double* p) { KnV v; memcpy(&v, p, sizeof v); return v; }
+KN_WIDE static inline void kn_v_save(double* p, KnV v) { memcpy(p, &v, sizeof v); }
+KN_WIDE static inline KnV kn_v_pick(KnM m, KnV a, KnV b) { return (KnV)((m & (KnM)a) | (~m & (KnM)b)); }
+
+KN_WIDE static inline void kn_v_transpose(KnV* b) {
+#if KN_W == 4
+  KnV a0 = __builtin_shufflevector(b[0], b[1], 0, 4, 2, 6), a1 = __builtin_shufflevector(b[0], b[1], 1, 5, 3, 7);
+  KnV a2 = __builtin_shufflevector(b[2], b[3], 0, 4, 2, 6), a3 = __builtin_shufflevector(b[2], b[3], 1, 5, 3, 7);
+  b[0] = __builtin_shufflevector(a0, a2, 0, 1, 4, 5); b[1] = __builtin_shufflevector(a1, a3, 0, 1, 4, 5);
+  b[2] = __builtin_shufflevector(a0, a2, 2, 3, 6, 7); b[3] = __builtin_shufflevector(a1, a3, 2, 3, 6, 7);
+#else
+  KnV a0 = __builtin_shufflevector(b[0], b[1], 0, 2), a1 = __builtin_shufflevector(b[0], b[1], 1, 3);
+  b[0] = a0; b[1] = a1;
+#endif
+}
+
+KN_WIDE static inline void kn_v_hop_coefs(Kn* k, const u32* at, KnV* l, KnV* c, KnV* cl) {
+  KnH h;
+  memcpy(&h, at, sizeof h);
+  for (int j = 0; j < KN_W; j++) (*c)[j] = k->ck[h[j]];
+  *l = 10.0 * __builtin_convertvector(h, KnV);
+  *cl = *c * *l;
+}
+
+KN_WIDE static inline KnV kn_v_norm(KnV dx, KnV dy) {
+  KnV x = (KnV)((KnM)dx & INT64_MAX), y = (KnV)((KnM)dy & INT64_MAX);
+  x = (KnV)((KnM)x | ((KnM)(x != x) & (int64_t)0x0008000000000000));
+  KnM swap = (KnM)(x < y);
+  KnV hi = kn_v_pick(swap, y, x), lo = kn_v_pick(swap, x, y), rat = lo / hi;
+  KnV far = kn_v_pick((KnM)(hi * 2.220446049250313e-16 >= lo), hi, hi * __builtin_elementwise_sqrt(1.0 + rat * rat));
+  return kn_v_pick((KnM)(x == INFINITY) | (KnM)(y == INFINITY), (KnV){} + INFINITY, far);
+}
+
+KN_WIDE static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
+  size_t row = KN_AT(k, m, 0);
+  Kn2 s = {sums[0], sums[1]};
+  for (; i + KN_W <= end; i += KN_W) {
+    KnV dx = k->x[m] - kn_v_load(k->x + i), dy = k->y[m] - kn_v_load(k->y + i), d = kn_v_norm(dx, dy), l, c, cl;
+    kn_v_hop_coefs(k, k->ph + row + i, &l, &c, &cl);
+    KnV r = l / d, x = c * (dx - r * dx), y = c * (dy - r * dy);
+    KnM exact = (KnM)(x != 0.0) & (KnM)(x == x) & (KnM)(y != 0.0) & (KnM)(y == y);
+    kn_v_save(k->px + row + i, x); kn_v_save(k->py + row + i, y); kn_v_save(k->pd + row + i, d);
+    kn_v_save(k->cx + i, -x); kn_v_save(k->cy + i, -y); kn_v_save(k->cd + i, d);
+    if (__builtin_reduce_and(exact) == 0)
+      for (int j = 0; j < KN_W; j++)
+        if (!exact[j]) kn_mirror(k, m, i + j, x[j], y[j], d[j]);
+#if KN_W == 4
+    KnV lo = __builtin_shufflevector(x, y, 0, 4, 2, 6), hi = __builtin_shufflevector(x, y, 1, 5, 3, 7);
+    s = s + __builtin_shufflevector(lo, lo, 0, 1); s = s + __builtin_shufflevector(hi, hi, 0, 1);
+    s = s + __builtin_shufflevector(lo, lo, 2, 3); s = s + __builtin_shufflevector(hi, hi, 2, 3);
+#else
+    s = s + __builtin_shufflevector(x, y, 0, 2); s = s + __builtin_shufflevector(x, y, 1, 3);
+#endif
+  }
+  sums[0] = s[0]; sums[1] = s[1];
+  return i;
+}
+
+KN_WIDE static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
+  size_t row = KN_AT(k, p, 0);
+  Kn4 h = {hs[0], hs[1], hs[2], hs[3]};
+  for (; i + KN_W <= end; i += KN_W) {
+    KnV dx = k->x[p] - kn_v_load(k->x + i), dy = k->y[p] - kn_v_load(k->y + i), d = kn_v_load(k->pd + row + i), l, c, cl;
+    kn_v_hop_coefs(k, k->ph + row + i, &l, &c, &cl);
+    KnV d2 = d * d, inv = 1.0 / (d2 * d);
+    KnV t[4] = {c * (1.0 + (l * (dx * dx - d2)) * inv), ((cl * dx) * dy) * inv, ((cl * dy) * dx) * inv,
+      c * (1.0 + (l * (dy * dy - d2)) * inv)};
+#if KN_W == 4
+    kn_v_transpose(t);
+    for (int j = 0; j < 4; j++) h = h + t[j];
+#else
+    h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 0, 2), __builtin_shufflevector(t[2], t[3], 0, 2), 0, 1, 2, 3);
+    h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 1, 3), __builtin_shufflevector(t[2], t[3], 1, 3), 0, 1, 2, 3);
+#endif
+  }
+  hs[0] = h[0]; hs[1] = h[1]; hs[2] = h[2]; hs[3] = h[3];
+  return i;
+}
+
+KN_WIDE static u32 kn_v_pick_row_sums(Kn* k, u32* p, double* delta) {
+  u32 n = k->n, u = 0;
+  for (; u + KN_W <= n; u += KN_W) {
+    KnV sx = {0.0}, sy = {0.0};
+    u32 i = 0;
+    for (; i + KN_W <= n; i += KN_W) {
+      KnV bx[KN_W], by[KN_W];
+      for (int r = 0; r < KN_W; r++) { bx[r] = kn_v_load(k->px + KN_AT(k, u + r, i)); by[r] = kn_v_load(k->py + KN_AT(k, u + r, i)); }
+      kn_v_transpose(bx); kn_v_transpose(by);
+      for (int j = 0; j < KN_W; j++) { sx = sx + bx[j]; sy = sy + by[j]; }
+    }
+    for (; i < n; i++) {
+      KnV cx, cy;
+      for (int r = 0; r < KN_W; r++) { cx[r] = k->px[KN_AT(k, u + r, i)]; cy[r] = k->py[KN_AT(k, u + r, i)]; }
+      sx = sx + cx; sy = sy + cy;
+    }
+    KnV d = kn_v_norm(sx, sy);
+    for (int r = 0; r < KN_W; r++)
+      if (kn_gradient_contends(k, u + r, sx[r], sy[r], *delta) && d[r] > *delta) { *p = u + r; *delta = d[r]; }
+  }
+  return u;
+}
+
+KN_WIDE static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) {
+  u32 u = 0;
+  for (; u + KN_W <= k->n; u += KN_W) {
+    KnV x = kn_v_load(k->gx + u) + (kn_v_load(k->cx + u) - kn_v_load(k->qx + u));
+    KnV y = kn_v_load(k->gy + u) + (kn_v_load(k->cy + u) - kn_v_load(k->qy + u)), d = kn_v_norm(x, y);
+    for (int j = 0; j < KN_W; j++)
+      if (kn_gradient_contends(k, u + j, x[j], y[j], *delta) && d[j] > *delta) { *p = u + j; *delta = d[j]; }
+  }
+  return u;
+}
+#else
+static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) { return i; }
+static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) { return i; }
+static u32 kn_v_pick_row_sums(Kn* k, u32* p, double* delta) { return 0; }
+static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) { return 0; }
+#endif
+
+static void kn_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
+  if (KN_WIDE_OK()) i = kn_v_refresh(k, m, i, end, sums);
+  double sx = sums[0], sy = sums[1];
+  for (; i < end; i++) {
+    double x, y, d;
+    size_t at = KN_AT(k, m, i);
+    kn_partial(k, m, i, &x, &y, &d);
+    k->px[at] = x; k->py[at] = y; k->pd[at] = d;
+    kn_mirror(k, m, i, x, y, d);
+    sx = sx + x; sy = sy + y;
+  }
+  sums[0] = sx; sums[1] = sy;
+}
+
+static void kn_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
+  if (KN_WIDE_OK()) i = kn_v_hessian(k, p, i, end, hs);
+  for (; i < end; i++) {
+    double dx = k->x[p] - k->x[i], dy = k->y[p] - k->y[i];
+    double d = k->pd[KN_AT(k, p, i)];
+    u32 h = k->ph[KN_AT(k, p, i)];
+    double d2 = d * d, inv = 1.0 / (d2 * d);
+    hs[0] = hs[0] + k->ck[h] * (1.0 + (k->cl[h] * (dx * dx - d2)) * inv);
+    hs[1] = hs[1] + ((k->ckl[h] * dx) * dy) * inv;
+    hs[2] = hs[2] + ((k->ckl[h] * dy) * dx) * inv;
+    hs[3] = hs[3] + k->ck[h] * (1.0 + (k->cl[h] * (dy * dy - d2)) * inv);
+  }
 }
 
 static double kn_row(Kn* k, u32 p) {
-  double sx = 0.0, sy = 0.0;
-  for (u32 i = 0; i < k->n; i++) {
-    if (i == p) { sx = sx + 0.0; sy = sy + 0.0; continue; }
-    kn_refresh(k, p, i);
-    sx = sx + k->pd[KN_AT(k, p, i)].x; sy = sy + k->pd[KN_AT(k, p, i)].y;
-  }
-  k->gx[p] = sx; k->gy[p] = sy;
-  return kn_norm(sx, sy);
+  double s[2] = {0.0, 0.0};
+  kn_refresh(k, p, 0, p, s);
+  s[0] = s[0] + 0.0; s[1] = s[1] + 0.0;
+  kn_refresh(k, p, p + 1, k->n, s);
+  k->gx[p] = s[0]; k->gy[p] = s[1];
+  return kn_norm(s[0], s[1]);
 }
 
 static double kn_newton(Kn* k, u32 p) {
-  double h00 = 0.0, h01 = 0.0, h10 = 0.0, h11 = 0.0;
-  for (u32 i = 0; i < k->n; i++) {
-    if (i == p) continue;
-    double dx = k->x[p] - k->x[i], dy = k->y[p] - k->y[i];
-    double d = k->pd[KN_AT(k, p, i)].d;
-    u32 h = k->pd[KN_AT(k, p, i)].h;
-    double d2 = d * d, inv = 1.0 / (d2 * d);
-    h00 = h00 + k->ck[h] * (1.0 + (k->cl[h] * (dx * dx - d2)) * inv);
-    h01 = h01 + ((k->ckl[h] * dx) * dy) * inv;
-    h10 = h10 + ((k->ckl[h] * dy) * dx) * inv;
-    h11 = h11 + k->ck[h] * (1.0 + (k->cl[h] * (dy * dy - d2)) * inv);
-  }
+  double hs[4] = {0.0, 0.0, 0.0, 0.0};
+  kn_hessian(k, p, 0, p, hs);
+  kn_hessian(k, p, p + 1, k->n, hs);
+  double h00 = hs[0], h01 = hs[1], h10 = hs[2], h11 = hs[3];
   double gx = k->gx[p], gy = k->gy[p];
   double den = h00 * h11 - h10 * h01;
   k->x[p] = k->x[p] + -((gx * h11 - gy * h01) / den);
   k->y[p] = k->y[p] + -((h00 * gy - h10 * gx) / den);
   return kn_row(k, p);
-}
-
-static void kn_pick(Kn* k, u32 u, double x, double y, u32* p, double* delta) {
-  k->gx[u] = x; k->gy[u] = y;
-  double b = (fabs(x) + fabs(y)) * 0x1.0000000000008p+0;
-  u32 e = (u32)(kn_bits(b) >> 52) & 2047;
-  if (e >= 23 && e <= 2023 && b < *delta) return;
-  double d = kn_norm(x, y);
-  if (d > *delta) { *p = u; *delta = d; }
 }
 
 static int kn_cycle(double* hx, double* hy, u32 m) {
@@ -107,25 +261,29 @@ static int kn_cycle(double* hx, double* hy, u32 m) {
 
 static double kn_inner(Kn* k, u32 p) {
   double hx[102], hy[102], delta = 0.0;
+  k->cx[p] = 0.0; k->cy[p] = 0.0; k->cd[p] = 0.0;
   for (u32 m = 1;; m++) {
     delta = kn_newton(k, p);
     hx[m] = k->x[p]; hy[m] = k->y[p];
-    if (m > 100 || delta < 0.001) return delta;
+    if (m > 100 || delta < 0.001) break;
     u32 j = (u32)kn_cycle(hx, hy, m);
     if (j) {
       u32 t = j + (101 - j) % (m - j);
       k->x[p] = hx[t]; k->y[p] = hy[t];
-      return kn_row(k, p);
+      delta = kn_row(k, p);
+      break;
     }
   }
+  kn_flush(k, p, 0, k->n);
+  return delta;
 }
 
 static void kn_run(Kn* k) {
   u32 n = k->n, p = 0;
   double delta = 0.0, last = 0.0;
-  for (u32 u = 0; u < n; u++) {
+  for (u32 u = KN_WIDE_OK() ? kn_v_pick_row_sums(k, &p, &delta) : 0; u < n; u++) {
     double sx = 0.0, sy = 0.0;
-    for (u32 i = 0; i < n; i++) { sx = sx + k->pd[KN_AT(k, u, i)].x; sy = sy + k->pd[KN_AT(k, u, i)].y; }
+    for (u32 i = 0; i < n; i++) { sx = sx + k->px[KN_AT(k, u, i)]; sy = sy + k->py[KN_AT(k, u, i)]; }
     kn_pick(k, u, sx, sy, &p, &delta);
   }
   for (u32 outer = 1; outer <= 100; outer++) {
@@ -133,11 +291,9 @@ static void kn_run(Kn* k) {
     if (diff < 0.0) diff = -diff;
     last = delta;
     if (diff < 0.001) return;
-    for (u32 i = 0; i < n; i++) { k->qx[i] = k->pd[KN_AT(k, i, p)].x; k->qy[i] = k->pd[KN_AT(k, i, p)].y; }
+    for (u32 i = 0; i < n; i++) { k->qx[i] = k->px[KN_AT(k, i, p)]; k->qy[i] = k->py[KN_AT(k, i, p)]; }
     delta = kn_inner(k, p);
-    u32 old = p;
-    for (u32 u = 0; u < n; u++)
-      kn_pick(k, u, k->gx[u] + (k->pd[KN_AT(k, u, old)].x - k->qx[u]), k->gy[u] + (k->pd[KN_AT(k, u, old)].y - k->qy[u]), &p, &delta);
+    for (u32 u = KN_WIDE_OK() ? kn_v_pick_moved(k, &p, &delta) : 0; u < n; u++) kn_pick(k, u, k->gx[u] + (k->cx[u] - k->qx[u]), k->gy[u] + (k->cy[u] - k->qy[u]), &p, &delta);
   }
 }
 
@@ -159,7 +315,7 @@ static int kn_hops(Kn* k) {
       for (u32 j = start[u]; j < start[u + 1]; j++)
         if (row[adj[j]] == 0xffffffffu) { row[adj[j]] = row[u] + 1; q[tail++] = adj[j]; }
     }
-    for (u32 v = 0; v < n; v++) { k->pd[KN_AT(k, s, v)].h = row[v]; ok = ok && (s || row[v] != 0xffffffffu); }
+    for (u32 v = 0; v < n; v++) { k->ph[KN_AT(k, s, v)] = row[v]; ok = ok && (s || row[v] != 0xffffffffu); }
   }
   free(start); free(adj); free(q); free(at); free(row);
   return ok && n;
@@ -169,7 +325,8 @@ static void kn_layout(Kn* k) {
   u32 n = k->n;
   if (!kn_hops(k)) return;
   for (u32 d = 0; d < n; d++) { double h = (double)d; k->cl[d] = 10.0 * h; k->ck[d] = 1.0 / (h * h); k->ckl[d] = k->ck[d] * k->cl[d]; }
-  for (u32 m = 0; m < n; m++) for (u32 i = m + 1; i < n; i++) kn_refresh(k, m, i);
+  double unused[2] = {0.0, 0.0};
+  for (u32 m = 0; m < n; m++) { kn_refresh(k, m, m + 1, n, unused); kn_flush(k, m, m + 1, n); }
   for (u32 r = 0; r <= k->left; r++) kn_run(k);
 }
 
@@ -177,11 +334,14 @@ static void native_kk_call(IoWork* w) {
   Kn* k = (Kn*)w->data;
   u32 n = k->n;
   size_t nn = (size_t)n * n + 1;
-  k->pd = io_mem(calloc(nn, sizeof(KnPair)));
-  k->gx = io_mem(calloc(9 * (size_t)n + 1, 8));
+  k->px = io_mem(calloc(3 * nn, 8));
+  k->py = k->px + nn; k->pd = k->py + nn;
+  k->ph = io_mem(calloc(nn, 4));
+  k->gx = io_mem(calloc(12 * (size_t)n + 1, 8));
   k->gy = k->gx + n; k->qx = k->gy + n; k->qy = k->qx + n; k->cl = k->qy + n; k->ck = k->cl + n; k->ckl = k->ck + n;
+  k->cx = k->ckl + n; k->cy = k->cx + n; k->cd = k->cy + n;
   kn_layout(k);
-  free(k->pd); free(k->gx);
+  free(k->px); free(k->ph); free(k->gx);
 }
 
 static Term native_kk_pack(Env e, IoWork* w) {
