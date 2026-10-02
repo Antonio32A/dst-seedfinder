@@ -59,7 +59,8 @@ import ./maze_tags.bend as MazeTags
 #   creq a prefab need have                the required prefab table
 #   cstatus a ok                           the required prefab check
 #   cverdict a result ctr                  world, commit, areas, disconnect, required or gaveup; ctr is the stream position
-#                                          the next attempt starts from (the world's end for a world)
+#                                          the next attempt starts from (the world's end for a world); crashed:runca when
+#                                          the custom tile pass would crash the game (GenJob's check before the areas)
 
 type Tr is Data:
   Tr{seed: U32, ctr: U32, last: U32, chunks: List<&2, List<&2, String>>}
@@ -530,12 +531,15 @@ def world_lines(world: GenJob.Final, +seed: U32, +a: U32) -> List<&2, String>:
     case GenJob.Final{g, +rng, +ents, _, _, _, _}:
       world_digest(Grid.tiles_digest(g), a, Pcg.counter(seed, rng), U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
 
-def done_name(+o: GenJob.Outcome) -> String:
+def crashed_name(+last: U32) -> String:
+  Bool.pick(String, U32.is_eq(last, 4), "runca", failed_at(last))
+
+def done_name(+o: GenJob.Outcome, +last: U32) -> String:
   match o:
     case GenJob.Crashed{}:
-      "crashed"
+      "crashed:" ++ crashed_name(last)
     case GenJob.GaveUp{}:
-      "gaveup"
+      "gaveup:" ++ failed_at(last)
 
 def stopped(+c: Generate.Seed, +a: U32) -> GenJob.Job:
   GenJob.JDone{c, a, GenJob.GaveUp{}}
@@ -575,7 +579,7 @@ def enter(job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
     case GenJob.JWorld{+c, +a, world}:
       (stopped(c, a), world_lines(world, tr_seed(st), a))
     case GenJob.JDone{+c, +a, +o}:
-      (stopped(c, a), [verdict_line(a, done_name(o) ++ ":" ++ failed_at(tr_last(st)), 0)])
+      (stopped(c, a), [verdict_line(a, done_name(o, tr_last(st)), 0)])
     case GenJob.JOcean{+c, +a, landed}:
       (stopped(c, a), Nil{})
 

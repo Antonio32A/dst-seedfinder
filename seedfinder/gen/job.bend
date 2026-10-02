@@ -47,7 +47,8 @@ type Landed is Type:
 type Final is Type:
   Final{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, OceanEnts.Ent>, width: U32, pieces: List<&2, PopulateSetpiece.Piece>, roads: List<&2, List<&2, TileWorld.Point>>, min_road: U32}
 
-# Why a seed has no world: the level table raises a Lua error, or all 5 attempts failed.
+# Why a seed has no world: the game crashes (the level table raises a Lua error, or the caves' custom tile pass runs
+# RunCA on a site without a polygon), or all 5 attempts failed.
 type Outcome is Data:
   Crashed{}
   GaveUp{}
@@ -172,12 +173,20 @@ def areas_checked(ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: G
     case False{}:
       retry(Generate.carried(c, s), a, Generate.rng_after_land(c, s, k, w, world, lists, sites))
 
+def crash_checked(crashed: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+  match crashed:
+    case True{}:
+      JDone{c, a, Crashed{}}
+    case False{}:
+      areas_checked(Generate.site_areas_ok(s, k, sites), c, a, s, k, w, world, lists, sites)
+
 def tiled(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World) -> Job:
   +lists = TileConvert.site_tiles(world)
   +sites = Points.sites(world, lists)
-  areas_checked(Generate.site_areas_ok(s, k, sites), c, a, s, k, w, world, lists, sites)
+  crash_checked(Generate.custom_crashes(c, s, k, sites), c, a, s, k, w, world, lists, sites)
 
-# ConvertToTileMap's build and the GetSiteArea < 8 check; a failure retries from the RNG after ConvertToTileMap.
+# ConvertToTileMap's build and the GetSiteArea < 8 check; a failure retries from the RNG after ConvertToTileMap (the
+# caves: after their custom tile pass, which crashes the game first when Generate.custom_crashes).
 def tiles(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Job:
   +w = Generate.tile_size(size)
   tiled(c, a, s, k, w, Generate.tile_world(s, k, w, Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)))

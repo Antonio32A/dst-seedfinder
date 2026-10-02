@@ -6,6 +6,7 @@ import ../worldsim/cave/cells.bend as CaveCells
 import ../worldsim/cave/growing.bend as CaveGrowing
 import ../worldsim/cave/meta.bend as CaveMeta
 import ../worldsim/cave/shuffle.bend as CaveShuffle
+import ../worldsim/tiles/world.bend as TileWorld
 
 # Golden values of the cave engines' kernels (RunCA's automaton, the growing tree, the meta-maze walk and the C++ shuffle) on
 # explicit grids, from a native reconstruction of WorldSim's RunCA, RunMaze and GetPointsForMetaMaze that reproduces the
@@ -88,3 +89,19 @@ law meta_maze_windows:
 def meta_maze_windows():
   {==}
 
+def bare_site(polygon: List<&2, TileWorld.Point>) -> TileWorld.Site:
+  TileWorld.Site{TileWorld.Node{37, 0, 0, 0, 0, 4294967295, 4294967295, 4294967295, 4294967295, 0}, 120.0, 130.0, 120.0, 130.0, polygon}
+
+# RunCA on a site without polygon vertices segfaults the real server (caves seed 3026, attempt 1, node 37): CA_ctor keeps
+# its empty box, and CA_CollectSiteTiles writes outside the 0 x 0 map while it scans 2^32 x 2^32 tiles.
+law runca_crashes_without_polygon:
+  {CaveAutomaton.crashes(bare_site(Nil{})) == True{} : Bool}
+
+def runca_crashes_without_polygon():
+  {==}
+
+law runca_runs_with_polygon:
+  {CaveAutomaton.crashes(bare_site([TileWorld.Point{110.0, 120.0}, TileWorld.Point{130.0, 120.0}, TileWorld.Point{120.0, 140.0}])) == False{} : Bool}
+
+def runca_runs_with_polygon():
+  {==}

@@ -10,12 +10,13 @@ export interface DumpRequest {
     shard: Shard;
 }
 
-export type DumpReply = { type: "dump"; bytes: Uint8Array<ArrayBuffer> } | WorkerFailure;
+export type DumpReply = { type: "dump"; bytes: Uint8Array<ArrayBuffer> } | { type: "crashed" } | WorkerFailure;
 
 export type WorldLoad =
     | { status: "loading" }
     | { status: "ready"; world: GeneratedWorld; bytes: Uint8Array }
     | { status: "gave-up" }
+    | { status: "crashed" }
     | { status: "unsupported" }
     | { status: "failed"; error: string };
 
@@ -32,6 +33,7 @@ export async function loadWorld(seed: number, platform: Platform, shard: Shard, 
         const worker = new Worker(new URL("./world-dump.worker.ts", import.meta.url), { type: "module" });
         const reply = await workerReply<DumpRequest, DumpReply>(worker, { module, seed, platform, shard }, signal);
         if (reply.type === "failed") throw new Error(`The world generation stopped unexpectedly: ${reply.error}`);
+        if (reply.type === "crashed") return { status: "crashed" };
         const dump = parseWorldDump(reply.bytes);
         if (dump.status === "gave-up") return { status: "gave-up" };
         return { status: "ready", world: dump, bytes: reply.bytes };

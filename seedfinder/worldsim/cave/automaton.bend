@@ -240,6 +240,13 @@ def run_sized(+windows: Bool, +s: TileWorld.Site, +iterations: U32, +mode: U32, 
     case Grid.Grid{cells, +tw, +th}:
       run_in(windows, s, iterations, mode, n, Grid.Grid{cells, tw, th}, rng, CaveSites.box_of([s], CaveSites.empty_box()), tw, th)
 
+# Whether WorldSim:RunCA crashes the game on the site: a site without polygon vertices keeps CA_ctor's empty box, so its
+# map is 0 x 0 and CA_CollectSiteTiles writes outside it (the dedicated server segfaults). `run` must not be called then.
+def crashes(+s: TileWorld.Site) -> Bool:
+  match s:
+    case TileWorld.Site{_, _, _, _, _, +polygon}:
+      List.is_empty(&2, TileWorld.Point, polygon)
+
 # WorldSim:RunCA(site, iterations, seed_mode, n) on the tile and flag map `g` (`windows` selects the Windows RAND_MAX and
 # shuffle). seed_mode 0 seeds n random tile points (one shuffle of the site's tile list), 1 the centroid, 2 the site.
 def run(+windows: Bool, +s: TileWorld.Site, +iterations: U32, +mode: U32, +n: U32, g: Grid.Grid, rng: Pcg.Rng) -> Painted:

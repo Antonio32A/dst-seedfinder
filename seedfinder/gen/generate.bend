@@ -354,6 +354,18 @@ def cave_tile_grid(+w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid
 def cave_land(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> CaveCustom.Tiles:
   CaveCustom.run(s, k, windows_of(c), sites, cave_tile_grid(world, lists), rng_after_tiles(s, w))
 
+def crashes_by(caves: Bool, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
+  match caves:
+    case True{}:
+      CaveCustom.crashes(s, k, sites)
+    case False{}:
+      False{}
+
+# Whether the attempt crashes the game in the caves' custom tile pass (CaveCustom.crashes), which runs whether or not the
+# GetSiteArea check passes; the forest has no such pass.
+def custom_crashes(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
+  crashes_by(is_caves(c), s, k, sites)
+
 def start_scan(n: Nat, +s: StoryGraph.St, +i: U32) -> U32:
   match n:
     case 0n:

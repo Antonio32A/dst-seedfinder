@@ -71,6 +71,8 @@ build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # 
 
 `gen --shard caves` runs the whole caves worldgen (up to 5 attempts, retried like the forest's: CheckForValidCells, the
 site areas, DetectDisconnect and the required prefabs fail an attempt) and prints the forest's line with `shard=caves`.
+An attempt whose custom tile pass runs RunCA on a site without a polygon crashes the real server (a segfault, e.g. seed
+3026), so that seed has no world: `outcome=crashed`.
 With `--dump BITS` it stops after the first attempt's custom tile pass (stage `tiled`: story, layout, Commit, tiles,
 SeparateIslands, ForceConnectivity and the RunCA rooms) and prints `gen seed=S ... a=A outcome=tiled ctr=C nodes=N w=W
 tiles=H`; `BITS` adds the attempt's tile map (bit 1, a `tiles` record, `tile*count` runs) and story graph (bit 2, one

@@ -2,14 +2,20 @@ import { runSeedfinder } from "../../browser-search/seedfinder-instance";
 import type { DumpReply, DumpRequest } from "./load-world";
 
 const DUMP_PATH = "/world.dstw";
+const CRASHED_LINE = /^dump .*\boutcome=crashed\b/;
 
 onmessage = async ({ data: { module, seed, platform, shard } }: MessageEvent<DumpRequest>) => {
     const errors: string[] = [];
+    let crashed = false;
     const { code, error, fs } = await runSeedfinder({
         module,
         args: ["--threads", "1", "--", "world", "dump", String(seed), "--platform", platform, "--shard", shard, "-o", DUMP_PATH],
+        print: (line) => {
+            crashed ||= CRASHED_LINE.test(line);
+        },
         printErr: (line) => errors.push(line)
     });
+    if (crashed) return postMessage({ type: "crashed" } satisfies DumpReply);
     if (code !== 0 || fs === null) {
         const reply: DumpReply = { type: "failed", error: error ?? errors.at(-1) ?? `exit ${code}` };
         return postMessage(reply);

@@ -23,6 +23,7 @@ const LINK_LABELS: Record<Shard, string> = { forest: "Wormhole Connections", cav
 const NOTICES: Record<Exclude<WorldLoad["status"], "ready" | "failed">, string> = {
     loading: "Generating the world in your browser...",
     "gave-up": "This seed's world generation gave up, so there's no world to show.",
+    crashed: "This seed crashes the game's world generation, so there's no world to show.",
     unsupported: "This browser can't run the seedfinder: it needs WebAssembly threads."
 };
 

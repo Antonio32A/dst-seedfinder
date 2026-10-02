@@ -199,6 +199,17 @@ def world_of(sites: Points.Sites) -> TileWorld.World:
     case Points.Sites{_, +world}:
       world
 
+def any_crashes(nodes: List<&2, U32>, +world: TileWorld.World, +k: GenGraph.Klei) -> Bool:
+  match nodes:
+    case Nil{}:
+      False{}
+    case Con{+n, rest}:
+      CaveAutomaton.crashes(TileWorld.site(world, GenGraph.vertex_of(k, n))) || any_crashes(rest, world, k)
+
+# Whether the pass crashes the game: RunCA on a custom-tile node whose site has no polygon (CaveAutomaton.crashes).
+def crashes(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
+  any_crashes(custom_nodes(nodes_order(s), s), world_of(sites), k)
+
 # The tile map, the PCG32 stream and the items placed (in placement order) once every custom-tile node has run.
 type Tiles is Type:
   Tiles{grid: Grid.Grid, rng: Pcg.Rng, placed: List<&2, Placed>}
