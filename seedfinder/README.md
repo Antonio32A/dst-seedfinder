@@ -9,9 +9,9 @@ and cave worlds by their level table (`--shard caves`).
 - Linux x86-64.
 - Bend: the fork in the `bend/` submodule (`git submodule update --init`), installed with `scripts/install-bend.sh`
   (needs [Bun](https://bun.sh)).
-- clang 14 or newer.
+- clang 18 or newer.
 - 16 GB of RAM for the build (40 GB free for the trace build).
-- Only for the WebAssembly build: [Emscripten](https://emscripten.org) 3.1.35 or newer (`emcc` on `PATH`, or `EMCC`).
+- Only for the WebAssembly build: [Emscripten](https://emscripten.org) 3.1.45 or newer (`emcc` on `PATH`, or `EMCC`)
 
 Only to regenerate `seedfinder/data/` (it's committed, since it only changes every DST update):
 - Don't Starve Together installed through Steam (`DST_GAME` overrides the install path).
@@ -31,7 +31,7 @@ scripts/proof.sh -j 3                              # the laws (LAWS.bend, laws/)
 - If the build fails with "machine stack overflowed", retry it. Yes, this is shitty. No, I don't know what causes it.
 - The website's build copies `build/wasm/`, so build wasm first.
 
-A binary built on a new distro needs a recent glibc. To run it somewhere else, emit the C and compile it there:
+Keep in mind that these binaries may not be portable, so you may have to rebuild it on the system.
 
 ```sh
 scripts/build.sh seedfinder/main.bend build/seedfinder.c

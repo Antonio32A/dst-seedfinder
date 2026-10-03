@@ -183,8 +183,8 @@ land). The catalog's `land` flag is the same test.
 **`straight`**: Euclidean distance in IEEE double.
 
 **`walk`**: the shortest path over land tiles, between tile centres.
-- The graph has 8 neighbours per tile. An orthogonal step costs 4 and a diagonal step 4·√2. A diagonal step needs
-  both orthogonal tiles it passes to be land (no corner cutting).
+- The graph has 8 neighbours per tile. An orthogonal step costs 4 and a diagonal step 4·√2. A diagonal step between
+  two land tiles is taken whatever the two orthogonal tiles it passes are (corners may be cut).
 - **Anchor.** An instance on a land tile enters at that tile with offset 0; its position inside the tile is ignored.
   Otherwise (water, impassable, off the map), it enters at the land tile whose centre is nearest (Euclidean; ties go to
   the lowest `ty·W + tx`), with `offset = sqrt(dx·dx + dz·dz)` in double. Without any land tile it is unreachable.
@@ -373,10 +373,10 @@ hit lists the 33 required and the 8 picked optional tasks:
 {"from": "multiplayer_portal", "to": "pigking", "max": 600, "metric": "walk", "wormholes": true}
 ```
 
-On seed 1 the walk through two wormholes is 822.774, so this fails. Its witness:
+On seed 1 the walk through two wormholes is 818.087, so this fails. Its witness:
 
 ```json
-{"section": "distances", "index": 0, "ok": false, "distance": 822.774,
+{"section": "distances", "index": 0, "ok": false, "distance": 818.087,
  "from": {"prefab": "multiplayer_portal", "index": 0, "x": 46, "z": 402},
  "to": {"prefab": "pigking", "index": 0, "x": -512, "z": -120},
  "wormholes": [{"entry": {"prefab": "wormhole", "index": 2, "x": -116, "z": 656},

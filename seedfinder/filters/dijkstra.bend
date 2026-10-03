@@ -3,7 +3,7 @@ import ./walk.bend as Walk
 import ./world.bend as FilterWorld
 
 # Multi-source Dijkstra over land tiles with exact walk lengths (metric.py WalkMetric.settle and single_source):
-# 8 neighbours (diagonals only between two land tiles), wormhole jumps, and per tile the first `needed` (1 or 2)
+# 8 neighbours (diagonals cut corners), wormhole jumps, and per tile the first `needed` (1 or 2)
 # labels with distinct seeds. Candidates pop in the order (exact length, tile, seed), as Python's heap orders
 # (approx, WalkLength, tile, seed); a tile keeps at most two tentative candidates with distinct seeds (the others can
 # never become labels), so every settled label equals Python's. The first label of a tile also keeps its
@@ -690,18 +690,10 @@ def neighbour_bits(n: Nat, got: Array<U32> & U32, +i: U32, +x: U32, +y: U32, +w:
       +valid = (nx < w : U32) && (ny < h : U32)
       neighbour_bits(p, neighbour_bit(cells[at(Bool.pick(U32, valid, (ny * w + nx : U32), i), 0)], valid, bits, k), i, x, y, w, h, (k + 1 : U32))
 
-# The valid moves of a tile from its land neighbours e w s n se ne sw nw (bits 0..7): a diagonal needs both sides.
-def moves_of(+b: U32) -> U32:
-  +e = (b .&. 1 : U32)
-  +west = ((b >> 1n) .&. 1 : U32)
-  +s = ((b >> 2n) .&. 1 : U32)
-  +n = ((b >> 3n) .&. 1 : U32)
-  (e .|. (west << 1n) .|. (s << 2n) .|. (n << 3n) .|. ((((b >> 4n) .&. e .&. s) : U32) << 4n) .|. ((((b >> 5n) .&. e .&. n) : U32) << 5n)
-    .|. ((((b >> 6n) .&. west .&. s) : U32) << 6n) .|. ((((b >> 7n) .&. west .&. n) : U32) << 7n) : U32)
-
+# The valid moves of a tile are its land neighbours e w s n se ne sw nw (bits 0..7): a diagonal cuts corners.
 def masked_flags(got: Array<U32> & U32, +own: U32, +bits: U32) -> Array<U32>:
   (cells, +flags) = got
-  cells[at(own, 0)] <- (flags .|. ((Bool.to_u32(U32.is_eq((flags .&. 1 : U32), 1)) * moves_of(bits)) << 8n) : U32)
+  cells[at(own, 0)] <- (flags .|. ((Bool.to_u32(U32.is_eq((flags .&. 1 : U32), 1)) * bits) << 8n) : U32)
 
 def masked(got: Array<U32> & U32, +own: U32) -> Array<U32>:
   (cells, +bits) = got

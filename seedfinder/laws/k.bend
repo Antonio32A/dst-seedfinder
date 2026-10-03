@@ -11,7 +11,8 @@ import ../filters/anchor.bend as Anchor
 #   y2  L L L W L L
 #   y3  W W L L L W
 # Prefab 0 on (0, 0) and in the water of (2, 1); prefab 1 on (5, 2) and (2, 3); prefab 2 a link pair on (0, 2) and
-# (5, 0). Prefab 1 is 24 and 20 away, and (5, 2) 16 with the links.
+# (5, 0). Prefab 1 is 4 + 12 + 4*sqrt(2) and 4 + 2 * 4*sqrt(2) away (diagonals cut corners), and (5, 2) 16 with the
+# links.
 
 def world() -> FilterWorld.World:
   +a = FilterWorld.inst_of(2, 0, 4294966096, 0)
@@ -27,21 +28,31 @@ def seeds(points: List<&2, Anchor.Point>) -> List<&2, Walking.WSeed>:
     case Con{+p, rest}:
       Walking.WSeed{p, Walk.zero()} <> seeds(rest)
 
-def relaxed(+links: Bool, +bound: Maybe<&2, Walk.Length>) -> List<&2, Metric.Relaxed>:
-  +w = world()
+def relaxed(+w: FilterWorld.World, +links: Bool, +bound: Maybe<&2, Walk.Length>) -> List<&2, Metric.Relaxed>:
   Walking.relax(Walking.walker(w, links), seeds(Walking.anchored(w, FilterWorld.instances(w, [0]))), Walking.anchored(w, FilterWorld.instances(w, [1])), True{}, bound)
 
-def walked(+units: U32) -> Metric.Relaxed:
-  Metric.Relaxed{Metric.Walk{Walk.Length{units, 0, 0, 0}}, 0}
+def walked(+units: U32, +diagonals: U32) -> Metric.Relaxed:
+  Metric.Relaxed{Metric.Walk{Walk.Length{units, 0, 0, diagonals}}, 0}
 
 law bounded_relax_keeps_reached:
-  {(relaxed(True{}, None{}), relaxed(True{}, Some{Walk.Length{16, 0, 0, 0}})) == ([walked(16), walked(20)], [walked(16), Metric.unreached()]) : List<&2, Metric.Relaxed> & List<&2, Metric.Relaxed>}
+  {(relaxed(world(), True{}, None{}), relaxed(world(), True{}, Some{Walk.Length{4, 0, 0, 2}})) == ([walked(16, 0), walked(4, 2)], [Metric.unreached(), walked(4, 2)]) : List<&2, Metric.Relaxed> & List<&2, Metric.Relaxed>}
 
 def bounded_relax_keeps_reached():
   {==}
 
 law bounded_relax_skips_far_pairs:
-  {relaxed(False{}, Some{Walk.Length{5, 0, 0, 0}}) == [Metric.unreached(), Metric.unreached()] : List<&2, Metric.Relaxed>}
+  {relaxed(world(), False{}, Some{Walk.Length{5, 0, 0, 0}}) == [Metric.unreached(), Metric.unreached()] : List<&2, Metric.Relaxed>}
 
 def bounded_relax_skips_far_pairs():
+  {==}
+
+# A diagonal step past two water tiles: on a 2 x 2 world with land only on (0, 0) and (1, 1), prefab 0 on (0, 0) is one
+# diagonal from prefab 1 on (1, 1).
+def corner_world() -> FilterWorld.World:
+  FilterWorld.World{1, 2, 2, Nil{}, [[FilterWorld.inst_of(0, 0, 4294966896, 4294966896)], [FilterWorld.inst_of(1, 0, 0, 0)]], Nil{}, [65542, 393217]}
+
+law walk_diagonal_between_water:
+  {relaxed(corner_world(), False{}, None{}) == [walked(0, 1)] : List<&2, Metric.Relaxed>}
+
+def walk_diagonal_between_water():
   {==}
