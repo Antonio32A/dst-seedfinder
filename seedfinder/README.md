@@ -113,8 +113,8 @@ A `gen --times` stage line names the stage it leaves. `gen 1 30 --shard caves --
 each in `start` (the story) and `commit`.
 
 `world find` on the caves presets of the website (the Ancient Guardian within 75 walked tiles, the Atrium Gateway at
-spawn) decides about 11 seeds/s at `--threads 8` and 3.4 to 3.9 seeds/s at `--threads 1`; the website's wasm build, one
-thread per worker, about 2.3 to 2.7 seeds/s.
+spawn) decides about 14 to 15.5 seeds/s at `--threads 8` (about 18.5 at `--threads 16`) and 3.4 to 3.9 seeds/s at
+`--threads 1`; the website's wasm build, one thread per worker, about 2.3 to 2.7 seeds/s.
 
 ## Regenerating the data
 

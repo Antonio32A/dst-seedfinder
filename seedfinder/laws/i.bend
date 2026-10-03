@@ -7,6 +7,7 @@ import ../f64/repr.bend as F64Repr
 import ../gen/centi.bend as Centi
 import ../search/order.bend as SearchOrder
 import ../search/threads.bend as SearchThreads
+import ../search/bins.bend as SearchBins
 
 # Integration (gen/, M11) laws. Goldens from Boost's undirected adjacency_list semantics (out-edge lists in insertion
 # order) and ClearNodeLinks (every edge at a cleared vertex removed).
@@ -99,4 +100,18 @@ law gen_threads_no_quota:
   {SearchThreads.capped(64, SearchThreads.quota_cores(["max", "100000"])) == 64 : U32}
 
 def gen_threads_no_quota():
+  {==}
+
+# A round's bins: the heaviest slot first, each to the least loaded bin, and the bins laid out heaviest first in the
+# cube's order (leaf 1 to 7 of a row, then its leaf 0, then the next row).
+law search_bins_one_slot_each:
+  {SearchBins.placed_leaves([10, 300, 20, 300, 5]) == [4n, 1n, 3n, 2n, 5n] : List<&2, Nat>}
+
+def search_bins_one_slot_each():
+  {==}
+
+law search_bins_rows_in_order:
+  {SearchBins.placed_leaves([9, 8, 7, 6, 5, 4, 3, 2, 1, 50]) == [2n, 3n, 4n, 5n, 6n, 7n, 0n, 9n, 10n, 1n] : List<&2, Nat>}
+
+def search_bins_rows_in_order():
   {==}

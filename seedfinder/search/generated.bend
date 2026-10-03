@@ -10,13 +10,14 @@ import ./report.bend as SearchReport
 import ./worlds.bend as SearchWorlds
 import ./order.bend as SearchOrder
 import ./threads.bend as SearchThreads
+import ./bins.bend as SearchBins
 
 # `world find` for configs with parts B-E, on worlds generated in memory: part A picks the candidates chunk by chunk
 # (the level-table scan), and only candidates are generated, many at once, one per slot. A round:
 # - starts every KK pass the slots asked for as its own computation (GenLayout.solve: the native KK runs on the runtime's IO
 #   helper threads while the rounds go on), each sending its positions to the search's channel when done;
 # - runs the next CPU stage of every other slot in parallel (storygen, Voronoi, commit, tiles, land, ocean, the
-#   filters), on a fork tree split by the stages' estimated cost so the threads get even shares;
+#   filters), in bins packed by the stages' estimated cost, which the threads take heaviest first (search/bins.bend);
 # - takes the positions of every pass that finished (a marker sent after them ends the take, so no round waits for a
 #   pass), hands them back to their slots, harvests the decided seeds, refills the part-A scan and gives the free slots
 #   the next candidates in scan order.
@@ -37,17 +38,10 @@ type Slot is Type:
   Decided{seed: U32, verdict: SearchWorlds.Verdict}
   Held{}
 
-type Slots is Type:
-  Leaf{slot: Slot}
-  Fork{a: Slots, b: Slots}
-
 # Nat.min by one native comparison. Base's Nat.min recurses once per unit (8 bytes of a worker's 2 GB machine stack),
 # so scan positions past 2^28 overflow it.
 def lesser(+a: Nat, +b: Nat) -> Nat:
   Bool.pick(Nat, Nat.is_lt(b, a), b, a)
-
-def greater(+a: Nat, +b: Nat) -> Nat:
-  Bool.pick(Nat, Nat.is_lt(a, b), b, a)
 
 def free_slots(+n: Nat) -> List<&1, Slot>:
   match n:
@@ -56,79 +50,134 @@ def free_slots(+n: Nat) -> List<&1, Slot>:
     case 1n+p:
       Free{} <> free_slots(p)
 
-type Split is Type:
-  Split{front: List<&1, Slot>, back: List<&1, Slot>}
-
-def split_loop(n: Nat, xs: List<&1, Slot>, acc: List<&1, Slot>) -> Split:
+def empty_bins(n: Nat) -> List<&1, List<&1, Slot>>:
   match n:
     case 0n:
-      Split{List.reverse(&1, Slot, acc), xs}
+      Nil{}
     case 1n+p:
-      match xs:
-        case Nil{}:
-          Split{List.reverse(&1, Slot, acc), Nil{}}
-        case Con{x, rest}:
-          split_loop(p, rest, x <> acc)
+      Nil{} <> empty_bins(p)
 
-def leaf_of(xs: List<&1, Slot>) -> Slots:
+def pushed(bins: List<&1, List<&1, Slot>>, +bin: Nat, x: Slot) -> List<&1, List<&1, Slot>>:
+  match bins bin:
+    case Nil{} _:
+      [[x]]
+    case Con{slots, rest} 0n:
+      (x <> slots) <> rest
+    case Con{slots, rest} 1n+b:
+      slots <> pushed(rest, b, x)
+
+def reversed_bins(bins: List<&1, List<&1, Slot>>) -> List<&1, List<&1, Slot>>:
+  match bins:
+    case Nil{}:
+      Nil{}
+    case Con{slots, rest}:
+      List.reverse(&1, Slot, slots) <> reversed_bins(rest)
+
+# The slots dealt to their bins, each bin in slot order.
+def dealt(xs: List<&1, Slot>, +bins: List<&2, Nat>, acc: List<&1, List<&1, Slot>>) -> List<&1, List<&1, Slot>>:
   match xs:
     case Nil{}:
-      Leaf{Free{}}
-    case Con{x, _}:
-      Leaf{x}
+      reversed_bins(acc)
+    case Con{x, rest}:
+      dealt(rest, List.drop(&2, Nat, bins, 1n), pushed(acc, Maybe.default(&2, Nat, List.head(&2, Nat, bins), 0n), x))
 
-def total_of(costs: List<&2, U32>, +acc: U32) -> U32:
-  match costs:
+type Popped is Type:
+  Popped{slot: Slot, bins: List<&1, List<&1, Slot>>}
+
+def popped_first(slots: List<&1, Slot>, rest: List<&1, List<&1, Slot>>) -> Popped:
+  match slots:
     case Nil{}:
-      acc
-    case Con{+c, rest}:
-      total_of(rest, (acc + c : U32))
+      Popped{Free{}, Nil{} <> rest}
+    case Con{x, more}:
+      Popped{x, more <> rest}
 
-def weighed(costs: List<&2, U32>, +half: U32, +acc: U32, +k: Nat) -> Nat:
-  match costs:
+def popped_after(slots: List<&1, Slot>, got: Popped) -> Popped:
+  match got:
+    case Popped{x, bins}:
+      Popped{x, slots <> bins}
+
+# The first slot of the given bin, taken out.
+def popped(bins: List<&1, List<&1, Slot>>, +bin: Nat) -> Popped:
+  match bins bin:
+    case Nil{} _:
+      Popped{Free{}, Nil{}}
+    case Con{slots, rest} 0n:
+      popped_first(slots, rest)
+    case Con{slots, rest} 1n+b:
+      popped_after(slots, popped(rest, b))
+
+def collect(+bins: List<&2, Nat>, got: Popped, acc: List<&1, Slot>) -> List<&1, Slot>:
+  match bins got:
+    case Nil{} Popped{x, _}:
+      List.reverse(&1, Slot, x <> acc)
+    case Con{+b, +rest} Popped{x, left}:
+      collect(rest, popped(left, b), x <> acc)
+
+# The worked bins' slots back in slot order.
+def collected(+bins: List<&2, Nat>, worked: List<&1, List<&1, Slot>>) -> List<&1, Slot>:
+  match bins:
     case Nil{}:
-      k
-    case Con{+c, rest}:
-      Bool.pick(Nat, (acc >= half : U32), k, weighed(rest, half, (acc + c : U32), Nat.add(k, 1n)))
+      Nil{}
+    case Con{+b, +rest}:
+      collect(rest, popped(worked, b), Nil{})
 
-# Where to split slots of these costs: where the cost reaches half, keeping a slot on each side (0 for one slot).
-def cut(+costs: List<&2, U32>) -> Nat:
-  +n = List.length(&2, U32, costs)
-  Bool.pick(Nat, Nat.is_lt(n, 2n), 0n, lesser(greater(weighed(costs, (total_of(costs, 0) >> 1n : U32), 0, 0n), 1n), Nat.sub(n, 1n)))
+type Bins is Type:
+  Bin{slots: List<&1, Slot>}
+  Pair{a: Bins, b: Bins}
 
-def halved(xs: List<&1, Slot>, +costs: List<&2, U32>) -> Split:
-  split_loop(cut(costs), xs, Nil{})
+type Halves is Type:
+  Halves{front: List<&1, List<&1, Slot>>, back: List<&1, List<&1, Slot>>}
 
-# The tree of the slots front ++ back (costs cf and cb), each side split again by cost, down to one slot per leaf.
-def grown(+d: Nat, sp: Split, +cf: List<&2, U32>, +cb: List<&2, U32>) -> Slots:
-  match d:
+def halves(n: Nat, bins: List<&1, List<&1, Slot>>, acc: List<&1, List<&1, Slot>>) -> Halves:
+  match n:
     case 0n:
-      match sp:
-        case Split{_, back}:
-          leaf_of(back)
+      Halves{List.reverse(&1, List<&1, Slot>, acc), bins}
     case 1n+p:
-      match sp:
-        case Split{front, back}:
-          match front:
-            case Nil{}:
-              leaf_of(back)
-            case Con{x, rest}:
-              +kf = cut(cf)
-              +kb = cut(cb)
-              Fork{grown(p, halved(x <> rest, cf), List.take(&2, U32, cf, kf), List.drop(&2, U32, cf, kf)),
-                grown(p, halved(back, cb), List.take(&2, U32, cb, kb), List.drop(&2, U32, cb, kb))}
+      match bins:
+        case Nil{}:
+          Halves{List.reverse(&1, List<&1, Slot>, acc), Nil{}}
+        case Con{x, rest}:
+          halves(p, rest, x <> acc)
 
-# The slots in a tree whose two halves at every fork carry about the same estimated work.
-def tree_of(xs: List<&1, Slot>, +costs: List<&2, U32>) -> Slots:
-  +k = cut(costs)
-  grown(List.length(&2, U32, costs), halved(xs, costs), List.take(&2, U32, costs, k), List.drop(&2, U32, costs, k))
+def single(sp: Halves) -> Bins:
+  match sp:
+    case Halves{Con{slots, _}, _}:
+      Bin{slots}
+    case Halves{Nil{}, Con{slots, _}}:
+      Bin{slots}
+    case Halves{Nil{}, Nil{}}:
+      Bin{Nil{}}
 
-def flat(s: Slots) -> List<&1, Slot>:
-  match s:
-    case Leaf{slot}:
-      [slot]
-    case Fork{a, b}:
-      List.append(&1, Slot, flat(a), flat(b))
+# 2^d bins, split in two halves of `half`, in a balanced tree with one bin per leaf.
+def bin_tree(+d: Nat, +half: Nat, sp: Halves) -> Bins:
+  match d sp:
+    case 0n Halves{front, back}:
+      single(Halves{front, back})
+    case 1n+f Halves{front, back}:
+      +quarter = Nat.div(half, 2n)
+      Pair{bin_tree(f, quarter, halves(quarter, front, Nil{})), bin_tree(f, quarter, halves(quarter, back, Nil{}))}
+
+def bins_flat(t: Bins) -> List<&1, List<&1, Slot>>:
+  match t:
+    case Bin{slots}:
+      [slots]
+    case Pair{a, b}:
+      List.append(&1, List<&1, Slot>, bins_flat(a), bins_flat(b))
+
+# The bins in rows of eight, each row's tree balanced.
+def row_trees(fuel: Nat, sp: Halves) -> List<&1, Bins>:
+  match fuel sp:
+    case 0n Halves{_, _}:
+      Nil{}
+    case 1n+f Halves{row, rest}:
+      bin_tree(3n, 4n, halves(4n, row, Nil{})) <> row_trees(f, halves(8n, rest, Nil{}))
+
+def rows_flat(rows: List<&1, Bins>) -> List<&1, List<&1, Slot>>:
+  match rows:
+    case Nil{}:
+      Nil{}
+    case Con{t, rest}:
+      List.append(&1, List<&1, Slot>, bins_flat(t), rows_flat(rest))
 
 # A KK pass a slot asked for (tag: the slot's index).
 type Request is Data:
@@ -214,11 +263,11 @@ def stage_cost(+caves: Bool, +stage: U32) -> U32:
     case 6:
       100
     case 10:
-      65
+      13
     case 11:
       55
     case 12:
-      30
+      80
     case _:
       8
 
@@ -311,14 +360,38 @@ def work(slot: Slot, +config: ShardSearch.Search) -> Slot:
     case other:
       other
 
-# The CPU work of every slot, both halves of each fork in parallel.
-def worked_all(s: Slots, +config: ShardSearch.Search) -> Slots:
-  match s:
-    case Leaf{slot}:
-      Leaf{work(slot, config)}
-    case Fork{a, b}:
+def worked_bin(slots: List<&1, Slot>, +config: ShardSearch.Search) -> List<&1, Slot>:
+  match slots:
+    case Nil{}:
+      Nil{}
+    case Con{x, rest}:
+      work(x, config) <> worked_bin(rest, config)
+
+# The CPU work of every bin, both halves of each fork in parallel.
+def worked_all(t: Bins, +config: ShardSearch.Search) -> Bins:
+  match t:
+    case Bin{slots}:
+      Bin{worked_bin(slots, config)}
+    case Pair{a, b}:
       x y = worked_all(a, config) worked_all(b, config)
-      Fork{x, y}
+      Pair{x, y}
+
+# The eight rows' trees, all in parallel.
+def rows_worked(rows: List<&1, Bins>, +config: ShardSearch.Search) -> List<&1, Bins>:
+  match rows:
+    case Con{r0, Con{r1, Con{r2, Con{r3, Con{r4, Con{r5, Con{r6, Con{r7, _}}}}}}}}:
+      w0 w1 w2 w3 w4 w5 w6 w7 = worked_all(r0, config) worked_all(r1, config) worked_all(r2, config) worked_all(r3, config) worked_all(r4, config) worked_all(r5, config) worked_all(r6, config) worked_all(r7, config)
+      [w0, w1, w2, w3, w4, w5, w6, w7]
+    case other:
+      other
+
+def spread(small: Bool, todo: List<&1, Slot>, +costs: List<&2, U32>, +config: ShardSearch.Search) -> List<&1, Slot>:
+  match small:
+    case True{}:
+      worked_bin(todo, config)
+    case False{}:
+      +at = SearchBins.placed_leaves(costs)
+      collected(at, rows_flat(rows_worked(row_trees(8n, halves(8n, dealt(todo, at, empty_bins(SearchBins.leaves())), Nil{})), config)))
 
 # The slots with CPU work taken out (in order) and held, and their costs.
 type Gathered is Type:
@@ -379,7 +452,7 @@ def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slo
 def worked_slots(g: Gathered, +config: ShardSearch.Search) -> Merged:
   match g:
     case Gathered{slots, todo, +costs}:
-      merge(slots, flat(worked_all(tree_of(todo, costs), config)), 0, Nil{}, Nil{}, ShardSearch.caves(config))
+      merge(slots, spread(Nat.is_le(List.length(&2, U32, costs), 1n), todo, costs, config), 0, Nil{}, Nil{}, ShardSearch.caves(config))
 
 
 def tag_of(+n: Note) -> U32:
@@ -793,7 +866,7 @@ def filled_round(f: Filled, +back: List<&2, U32>, +b: Book, +now: Nat, +ctx: Ctx
         slots, with_filled(b, pending, busy), cpu, rush, now, ctx)
 
 def ramp_ms() -> Nat:
-  8000n
+  3000n
 
 # How many seeds may be in flight: a quarter of the slots at the start, all of them after ramp_ms(), so the first
 # seeds (and hits) come out sooner while the search fills up.
