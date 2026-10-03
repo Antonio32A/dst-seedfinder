@@ -30,6 +30,11 @@
     cursor: grabbing;
 }
 
+.map-preview {
+    display: block;
+    max-width: 100%;
+}
+
 .map-bar {
     position: relative;
     min-width: 0;
@@ -186,13 +191,13 @@ details.map-bar * {
     font-weight: 600;
 }
 
-.map-corner__turn {
+.map-corner__button {
     padding: 0 8px;
     border-width: 1px;
     line-height: 1.45;
 }
 
-.map-corner__turn[aria-pressed="true"] {
+.map-corner__button[aria-pressed="true"] {
     background: var(--accent-soft);
 }
 
@@ -489,7 +494,7 @@ details.map-bar * {
         font-size: 0.7em;
     }
 
-    .map-corner__turn {
+    .map-corner__button {
         padding: 0 6px;
     }
 }

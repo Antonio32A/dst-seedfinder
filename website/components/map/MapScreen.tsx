@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Brand from "@/components/shell/Brand";
 import { lastMapOrigin, type MapOrigin } from "@/lib/client/map-origin";
 import type { MapRoute } from "@/lib/world-map/map-route";
+import type { LinkedView } from "@/lib/world-map/view/map-view";
 import MapCorner from "./MapCorner";
 
 const WorldMap = dynamic(() => import("./WorldMap"), {
@@ -13,7 +14,7 @@ const WorldMap = dynamic(() => import("./WorldMap"), {
     loading: () => <p className="hint map-screen__notice" role="status">Loading the map...</p>
 });
 
-export default function MapScreen({ route, share }: { route: MapRoute; share?: string }) {
+export default function MapScreen({ route, share, view }: { route: MapRoute; share?: string; view?: LinkedView }) {
     const [back, setBack] = useState<MapOrigin>("/");
 
     useEffect(() => setBack(lastMapOrigin()), []);
@@ -34,7 +35,7 @@ export default function MapScreen({ route, share }: { route: MapRoute; share?: s
                             <MapCorner/>
                         </>
                 ) : (
-                        <WorldMap platform={route.platform} shard={route.shard} seed={route.seed} share={share}/>
+                        <WorldMap platform={route.platform} shard={route.shard} seed={route.seed} share={share} view={view}/>
                 )}
             </main>
     );

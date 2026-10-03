@@ -16,6 +16,17 @@ export interface MapView {
     heading: number;
 }
 
+/**
+ * A view as a link carries it, the same on every screen: the world point at the viewport's centre, the world units
+ * across the viewport's shorter side, and the camera heading.
+ */
+export interface LinkedView {
+    centerX: number;
+    centerZ: number;
+    span: number;
+    heading: number;
+}
+
 export interface Size {
     width: number;
     height: number;
@@ -61,6 +72,15 @@ export function fitView(tiles: Size, viewport: Size, heading = DEFAULT_HEADING):
         heading
     };
 }
+
+const shorterSide = (viewport: Size) => Math.min(viewport.width, viewport.height);
+
+export const linkView = ({ centerX, centerZ, scale, heading }: MapView, viewport: Size): LinkedView =>
+    ({ centerX, centerZ, span: shorterSide(viewport) / scale, heading });
+
+/** `linked` on `viewport`: the square its span covers, centred, fills the viewport's shorter side. */
+export const openLinkedView = ({ centerX, centerZ, span, heading }: LinkedView, viewport: Size): MapView =>
+    ({ centerX, centerZ, scale: shorterSide(viewport) / span, heading });
 
 /** In pixels from the viewport's top left. */
 export function worldToScreen(view: MapView, viewport: Size, point: WorldPoint): ScreenPoint {

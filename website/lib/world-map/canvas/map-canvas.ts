@@ -1,11 +1,12 @@
 import { type EntityLayer, SPAWN } from "@/lib/world-map/legend/entity-layer";
-import { iconLayer } from "@/lib/world-map/legend/icon-layer";
 import { instancesOf } from "@/lib/world-map/legend/prefab-search";
 import type { WitnessShape } from "@/lib/world-map/search/witness-overlay";
-import { createTerrainRenderer } from "@/lib/world-map/terrain/terrain-renderer";
 import {
     fitView,
+    type LinkedView,
+    linkView,
     type MapView,
+    openLinkedView,
     panBy,
     type ScreenPoint,
     type Size,
@@ -15,11 +16,8 @@ import {
 } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { readAccent } from "./accent-colour";
-import { createEntityRenderer, NO_HOVER } from "./entity-renderer";
-import { createIconRenderer } from "./icon-renderer";
-import { createLinkRenderer } from "./link-renderer";
-import { createRoadRenderer } from "./road-renderer";
-import { createSetPieceRenderer } from "./set-piece-renderer";
+import { NO_HOVER } from "./entity-renderer";
+import { createMapScene } from "./map-scene";
 import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer";
 
 const ZOOM_PER_PIXEL = 0.002;
@@ -27,7 +25,6 @@ const PIXELS_PER_LINE = 16;
 const TURN_MS = 180;
 const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
 const TYPING_TARGETS = "input:not([type=checkbox], [type=radio]), textarea, select, [contenteditable]";
-const BACKGROUND = [22, 17, 14] as const;
 const SPAWN_SCALE = 2;
 
 export interface MapCanvas {
@@ -50,32 +47,32 @@ export interface MapCanvas {
     hover: (entity: { prefab: string; x: number; z: number } | null) => void;
     /** Zooms in to at least `scale` pixels per world unit. */
     centre: (point: WorldPoint, scale?: number) => void;
+    /** The view now, as a link opens it on any screen, at the heading a turn is heading to. */
+    linkedView: () => LinkedView;
     /** Calls `listener` with the view now and after every redraw, until the returned function is called. */
     watch: (listener: (view: MapView, viewport: Size) => void) => () => void;
     witnesses: (shapes: WitnessShape[]) => void;
     dispose: () => void;
 }
 
-/** Opens on the spawn portal, or fitted to the world without one, with every prefab and set piece hidden. Throws when the browser can't draw the map or the page has no `--highlight` colour to highlight with. */
-export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer): MapCanvas {
+/**
+ * Opens on `linked`, else on the spawn portal, or fitted to the world without one, with every prefab and set piece
+ * hidden. Throws when the browser can't draw the map or the page has no `--highlight` colour to highlight with.
+ */
+export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer, linked?: LinkedView): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
-    const accent = readAccent(canvas);
-    const terrain = createTerrainRenderer(gl, world, () => redraw());
-    const roads = createRoadRenderer(gl, world.roads ?? [], () => redraw());
-    const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
-    const icons = iconLayer(layer);
-    const entities = createEntityRenderer(gl, layer, icons.iconed, accent);
-    const iconRenderer = createIconRenderer(gl, icons, entities.visibility, accent, () => redraw());
-    const links = createLinkRenderer(gl, layer);
+    const scene = createMapScene(gl, world, layer, readAccent(canvas), () => redraw());
+    const { roads, setPieces, entities, icons, links } = scene;
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
     const [spawn] = instancesOf(world, { kind: "prefab", name: SPAWN });
     const fitted = fitView(world, viewport);
-    let view: MapView = spawn === undefined
+    const opening: MapView = spawn === undefined
             ? fitted
             : { ...fitted, centerX: spawn.x, centerZ: spawn.z, scale: Math.max(fitted.scale, SPAWN_SCALE) };
+    let view = linked === undefined ? opening : openLinkedView(linked, viewport);
     let frame = 0;
     const pointers = new Map<number, ScreenPoint>();
     let turning: { from: number; to: number; start: number } | null = null;
@@ -90,16 +87,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             if (progress < 1) redraw();
             else turning = null;
         }
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        const [red, green, blue] = BACKGROUND;
-        gl.clearColor(red / 255, green / 255, blue / 255, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        terrain.draw(view, viewport);
-        roads.draw(view, viewport);
-        setPieces.draw(view, viewport);
-        entities.draw(view, viewport);
-        iconRenderer.draw(view, viewport);
-        links.draw(view, viewport);
+        scene.draw(view, viewport);
         overlay?.draw(view, viewport);
         for (const watcher of watchers) watcher(view, viewport);
     };
@@ -179,12 +167,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     addEventListener("keydown", pressed);
 
     return {
-        terrain: Promise.all([terrain.built, roads.built, iconRenderer.built]).then(() => undefined),
+        terrain: scene.built,
         turn,
         darken: (on) => {
-            terrain.darken(on);
-            roads.darken(on);
-            iconRenderer.darken(on);
+            scene.darken(on);
             redraw();
         },
         show: (shown) => {
@@ -217,7 +203,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             if (next.prefab === hovered.prefab && next.x === hovered.x && next.z === hovered.z) return;
             hovered = next;
             entities.hover(next);
-            iconRenderer.hover(next);
+            icons.hover(next);
             redraw();
         },
         centre: (point, scale = 0) => move({
@@ -226,6 +212,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             centerZ: point.z,
             scale: Math.max(view.scale, scale)
         }),
+        linkedView: () => linkView({ ...view, heading: turning?.to ?? view.heading }, viewport),
         watch: (listener) => {
             watchers.add(listener);
             listener(view, viewport);
@@ -241,12 +228,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             resized.disconnect();
             for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
             removeEventListener("keydown", pressed);
-            terrain.dispose();
-            roads.dispose();
-            setPieces.dispose();
-            entities.dispose();
-            iconRenderer.dispose();
-            links.dispose();
+            scene.dispose();
             overlay?.dispose();
         }
     };
