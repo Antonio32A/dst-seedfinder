@@ -22,6 +22,7 @@ Only to regenerate `seedfinder/data/` (it's committed, since it only changes eve
 ```sh
 scripts/build.sh                                   # -> build/seedfinder
 scripts/build.sh wasm                              # -> build/wasm/seedfinder.{wasm,mjs}
+scripts/build.sh wasm-single                       # single-threaded, for a Cloudflare Worker -> build/wasm-single/
 scripts/build.sh trace                             # debug binary with the trace stages -> build/seedfinder_trace
 scripts/bend.sh seedfinder/main.bend --check-only  # type-check only
 scripts/proof.sh -j 3                              # the laws (LAWS.bend, laws/), run before committing
@@ -30,6 +31,10 @@ scripts/proof.sh -j 3                              # the laws (LAWS.bend, laws/)
 - Use `scripts/build.sh`, not a plain `scripts/bend.sh seedfinder/main.bend -o ...`, or the compiler eats all your RAM (yum!).
 - If the build fails with "machine stack overflowed", retry it. Yes, this is shitty. No, I don't know what causes it.
 - The website's build copies `build/wasm/`, so build wasm first.
+- `wasm-single` runs on the caller's thread (no Web Workers, no SharedArrayBuffer) in growable memory: 62 to 65 MB a
+  world with its 40 MB corpus (`BUILD_CORPUS_MB`; 36 is the least that dumps every tested world). Give it its
+  precompiled `WebAssembly.Module` through the factory's `instantiateWasm`, a fresh instance per run, and no
+  `/proc/self/cmdline` (reading it takes a 16 MB buffer the memory keeps).
 
 Keep in mind that these binaries may not be portable, so you may have to rebuild it on the system.
 
