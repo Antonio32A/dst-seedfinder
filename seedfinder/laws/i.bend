@@ -8,6 +8,10 @@ import ../gen/centi.bend as Centi
 import ../search/order.bend as SearchOrder
 import ../search/threads.bend as SearchThreads
 import ../search/bins.bend as SearchBins
+import ../native/kk.bend as NativeKK
+import ../worldsim/layout/space.bend as LayoutSpace
+import ../worldsim/layout/hops.bend as LayoutHops
+import ../data/constants.bend as Constants
 
 # Integration (gen/, M11) laws. Goldens from Boost's undirected adjacency_list semantics (out-edge lists in insertion
 # order) and ClearNodeLinks (every edge at a cleared vertex removed).
@@ -114,4 +118,41 @@ law search_bins_rows_in_order:
   {SearchBins.placed_leaves([9, 8, 7, 6, 5, 4, 3, 2, 1, 50]) == [2n, 3n, 4n, 5n, 6n, 7n, 0n, 9n, 10n, 1n] : List<&2, Nat>}
 
 def search_bins_rows_in_order():
+  {==}
+
+def kk_vec(+a: U32, +b: U32, +c: U32, +d: U32) -> LayoutSpace.Vec:
+  LayoutSpace.Vec{F64Repr.F64{a, b}, F64Repr.F64{c, d}}
+
+def kk_table_words(xy: U32 & U32, uv: U32 & U32) -> List<&2, U32>:
+  (+a, +b) = xy
+  (+c, +d) = uv
+  [a, b, c, d]
+
+def kk_listed(xs: List<&1, U32>) -> List<&2, U32>:
+  match xs:
+    case Nil{}:
+      Nil{}
+    case Con{x, rest}:
+      x <> kk_listed(rest)
+
+# A KK pass's input words for the native KK: n, left, the arc count, the arcs, then the positions (the prior ones, zero
+# past the end of the prior list, the constant table's from `first` on), in an array padded with zeros to a power of two.
+law search_kk_words_prior:
+  {kk_listed(Array.to_list(~U32, NativeKK.words(2, 3, [LayoutHops.Arc{0, 1}, LayoutHops.Arc{1, 2}], 4, [kk_vec(1, 2, 3, 4)])))
+    == List.concat(&2, U32, [[3, 4, 2, 0, 1, 1, 2, 1, 2, 3, 4, 0, 0, 0, 0], kk_table_words(Constants.kk_x(2), Constants.kk_y(2)), List.replicate(U32, 13n, 0)]) : List<&2, U32>}
+
+def search_kk_words_prior():
+  {==}
+
+def kk_answer() -> Array<U32>:
+  ws = Array.new(U32, 4n, 7)
+  ws[0] <- 2
+  ws = LayoutSpace.put_vec(ws, 1, kk_vec(1, 2, 3, 4))
+  LayoutSpace.put_vec(ws, 5, kk_vec(5, 6, 7, 8))
+
+# The native KK's output words: n, then the n positions (the rest of the array is ignored).
+law search_kk_vecs:
+  {NativeKK.vecs(kk_answer()) == [kk_vec(1, 2, 3, 4), kk_vec(5, 6, 7, 8)] : List<&2, LayoutSpace.Vec>}
+
+def search_kk_vecs():
   {==}

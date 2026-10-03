@@ -1,7 +1,8 @@
 // Native KK
 // =========
 // worldsim/layout/kk.bend in IEEE doubles, same operation order (exact caches, cycle skipping, norm bound).
-// Words in: n, left, arc count, arcs (from, to), then n positions (x hi, x lo, y hi, y lo). Words out: n positions.
+// Words in (an array, consumed): n, left, arc count, arcs (from, to), then n positions (x hi, x lo, y hi, y lo). Words
+// out (a new array): n, then the n positions.
 // Vector lanes (AVX2 when the CPU has it, WebAssembly SIMD128) do the scalar pair's IEEE operations and every sum adds
 // the pairs in index order. Row m's mirrors (i, m) wait in c* until m's Newton steps end, then go to column m.
 
@@ -346,39 +347,44 @@ static void native_kk_call(IoWork* w) {
 
 static Term native_kk_pack(Env e, IoWork* w) {
   Kn* k = (Kn*)w->data;
-  Term xs = term_pak(CID_NIL, 0);
-  for (u32 v = k->n; v > 0; v--) {
-    uint64_t bx = kn_bits(k->x[v - 1]), by = kn_bits(k->y[v - 1]);
-    xs = io_node(e, CID_CON, (u32)by, xs);
-    xs = io_node(e, CID_CON, (u32)(by >> 32), xs);
-    xs = io_node(e, CID_CON, (u32)bx, xs);
-    xs = io_node(e, CID_CON, (u32)(bx >> 32), xs);
+  u32 cls = 1;
+  while ((1ull << cls) < 1 + 4ull * k->n) cls++;
+  u64 l = heap_alloc(e, buf_wcls(cls));
+  if (err_seen(e.mem)) {
+    free(k->x); free(k->arc); free(k);
+    return term_buf(0, l);
+  }
+  u32a* out = blk_ptr(e.mem, l, 0);
+  memset((void*)out, 0, 4ull << cls);
+  out[0] = k->n;
+  for (u32 v = 0; v < k->n; v++) {
+    uint64_t bx = kn_bits(k->x[v]), by = kn_bits(k->y[v]);
+    out[1 + 4 * v] = (u32)(bx >> 32); out[2 + 4 * v] = (u32)bx;
+    out[3 + 4 * v] = (u32)(by >> 32); out[4 + 4 * v] = (u32)by;
   }
   free(k->x); free(k->arc); free(k);
-  return xs;
+  return term_blk(false, cls, l);
 }
 
-static u32 kn_take(Env e, Term* xs) {
-  if (term_aux(*xs) != CID_CON) return 0;
-  Term fb[2];
-  spare_free(e, cls_fit(2), ctr_take(e, *xs, 2, fb));
-  *xs = fb[1];
-  return (u32)fb[0];
+static u32 kn_next(const u32a* in, u64 len, u64* at) {
+  return *at < len ? in[(*at)++] : 0;
 }
 
 Term native_kk_run(Env e, Term* f, IoWork* w) {
-  Term xs = f[0];
+  Term a = f[0];
+  const u32a* in = blk_ptr(e.mem, blk_loc(e.mem, a), 0);
+  u64 len = 1ull << blk_cls(a), at = 0;
   Kn* k = io_mem(calloc(1, sizeof(Kn)));
-  k->n = kn_take(e, &xs); k->left = kn_take(e, &xs); k->arcs = kn_take(e, &xs);
+  k->n = kn_next(in, len, &at); k->left = kn_next(in, len, &at); k->arcs = kn_next(in, len, &at);
   k->arc = io_mem(malloc(((size_t)k->arcs * 2 + 1) * 4));
-  for (u32 a = 0; a < 2 * k->arcs; a++) k->arc[a] = kn_take(e, &xs);
+  for (u32 i = 0; i < 2 * k->arcs; i++) k->arc[i] = kn_next(in, len, &at);
   k->x = io_mem(malloc(((size_t)k->n * 2 + 1) * 8));
   k->y = k->x + k->n;
   for (u32 v = 0; v < k->n; v++) {
-    uint64_t xh = kn_take(e, &xs), xl = kn_take(e, &xs), yh = kn_take(e, &xs), yl = kn_take(e, &xs);
+    uint64_t xh = kn_next(in, len, &at), xl = kn_next(in, len, &at), yh = kn_next(in, len, &at), yl = kn_next(in, len, &at);
     k->x[v] = kn_dbl(xh << 32 | xl); k->y[v] = kn_dbl(yh << 32 | yl);
   }
-  while (term_aux(xs) == CID_CON) kn_take(e, &xs);
+  blk_free(e, a);
   w->data = (char*)k;
   return io_work(w, native_kk_call, native_kk_pack);
 }

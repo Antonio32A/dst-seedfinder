@@ -36,12 +36,45 @@ def local(+l: Layout) -> List<&2, LayoutSpace.Vec>:
       +fuel = Nat.mul(KK.run_fuel(), U32.to_nat((left + 1 : U32)))
       positions_of(KK.advance(fuel, KK.pass_job(placed(prior, 0, LayoutSpace.new_workspace()), first, n, arcs, left)))
 
-# The pass's positions from the chosen engine: native (the C KK, on the runtime's IO helper threads) or kk.bend.
-def solve(+native: Bool, +l: Layout) -> IO(List<&2, LayoutSpace.Vec>):
+# A pass prepared for its engine by the thread that reached it: the native KK's input words, or the Layout for kk.bend.
+type Ready is Type:
+  Native{words: Array<U32>}
+  Local{layout: Layout}
+
+# A pass's answer: the native KK's output words, or kk.bend's positions.
+type Answer is Type:
+  Answered{words: Array<U32>}
+  Positioned{ps: List<&2, LayoutSpace.Vec>}
+
+def ready(+native: Bool, +l: Layout) -> Ready:
   match native:
     case True{}:
       match l:
         case Layout{+first, +n, +arcs, +left, +prior}:
-          NativeKK.pass(first, n, arcs, left, prior)
+          Native{NativeKK.words(first, n, arcs, left, prior)}
     case False{}:
-      IO.pure(List<&2, LayoutSpace.Vec>, local(l))
+      Local{l}
+
+# The pass on its engine: native (the C KK, on the runtime's IO helper threads) or kk.bend (this thread).
+def answer(r: Ready) -> IO(Answer):
+  match r:
+    case Native{ws}:
+      do IO<Answer>:
+        out : Array<U32> <- NativeKK.native_kk(ws)
+        return Answered{out}
+    case Local{+l}:
+      IO.pure(Answer, Positioned{local(l)})
+
+# The positions of vertices 0..n-1 after the pass.
+def positions(a: Answer) -> List<&2, LayoutSpace.Vec>:
+  match a:
+    case Answered{ws}:
+      NativeKK.vecs(ws)
+    case Positioned{+ps}:
+      ps
+
+# The pass's positions from the chosen engine: native (the C KK, on the runtime's IO helper threads) or kk.bend.
+def solve(+native: Bool, +l: Layout) -> IO(List<&2, LayoutSpace.Vec>):
+  do IO<List<&2, LayoutSpace.Vec>>:
+    a : Answer <- answer(ready(native, l))
+    return positions(a)
