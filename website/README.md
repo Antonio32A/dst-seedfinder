@@ -41,8 +41,8 @@ Locally these go in `.dev.vars` (`cp .dev.vars.example .dev.vars`). In productio
 
 Remote searches stay disabled until `VAST_API_KEY`, `GHCR_USER`, `GHCR_PULL_TOKEN` and `RUNNER_IMAGE` are all set.
 
-The bindings (the `DB` D1 database, the `JobRoom` and `Dispatcher` Durable Objects and the cron) are in
-`wrangler.jsonc`. Run `npm run cf-typegen` after changing it.
+The bindings (the `DB` D1 database, the `JobRoom` and `Dispatcher` Durable Objects, the `MAP_PREVIEW` service and the
+cron) are in `wrangler.jsonc`. Run `npm run cf-typegen` after changing it.
 
 ## Local development
 
@@ -68,6 +68,24 @@ npx wrangler d1 migrations apply dst-seedfinder --remote
 ```
 
 Apply new migrations (`migrations/`) with the last command whenever one is added.
+
+## Map link previews
+
+A map link unfurls (Discord, Slack, X, ...) with an image of its seed's map, or of the view in its `v` param. The pages
+point `og:image` at `/og/map/<platform>/[caves/]<seed>.png?v=<view>`, served by the preview Worker in
+[`../preview-worker`](../preview-worker): it generates the world dump with the single-threaded WebAssembly build, draws
+it on this site's `/map/preview` page in Cloudflare Browser Run, and keeps the PNG in R2 and the Cache API. The site
+binds it as `MAP_PREVIEW`, pre-warms it when a link-unfurl crawler fetches a map page, and forwards `/og/*` to it on
+hosts its route doesn't cover. Bump `MAP_PREVIEW_VERSION` (`lib/world-map/map-preview-url.ts`) when the worlds or the
+map's drawing change.
+
+It needs the single-threaded build (`../scripts/build.sh wasm-single`) and is deployed before the site, which binds it:
+
+```sh
+npx wrangler r2 bucket create dst-seedfinder-previews   # once
+cd ../preview-worker && npm ci && npm run deploy
+cd ../website && npm run build && npm run deploy
+```
 
 ## Prefab catalog
 

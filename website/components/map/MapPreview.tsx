@@ -2,9 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { renderMapPreview } from "@/lib/world-map/canvas/map-preview";
+import { MAP_PREVIEW_SIZE } from "@/lib/world-map/map-preview-url";
 import { parseMapView } from "@/lib/world-map/map-route";
-
-const PREVIEW_SIZE = { width: 1200, height: 630 };
 
 interface PreviewRequest {
     width?: number;
@@ -28,16 +27,22 @@ export default function MapPreview() {
 
     useEffect(() => {
         window.renderMapPreview = async (dump, request = {}) => {
-            const { width = PREVIEW_SIZE.width, height = PREVIEW_SIZE.height, view, type, quality } = request;
+            const { width = MAP_PREVIEW_SIZE.width, height = MAP_PREVIEW_SIZE.height, view, type, quality } = request;
             const linked = parseMapView(view);
             if (view !== undefined && linked === undefined) throw new Error(`"${view}" isn't a map view.`);
-            const image = await renderMapPreview(canvas.current!, Uint8Array.fromBase64(dump), {
+            const image = await renderMapPreview(canvas.current!, Uint8Array.from(atob(dump), (char) => char.charCodeAt(0)), {
                 size: { width, height },
                 view: linked,
                 type,
                 quality
             });
-            return new Uint8Array(await image.arrayBuffer()).toBase64();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(image);
+            });
+            return dataUrl.slice(dataUrl.indexOf(",") + 1);
         };
         return () => {
             delete window.renderMapPreview;

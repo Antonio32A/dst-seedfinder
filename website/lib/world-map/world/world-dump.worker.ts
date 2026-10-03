@@ -1,15 +1,13 @@
 import { runSeedfinder } from "../../browser-search/seedfinder-instance";
 import type { DumpReply, DumpRequest } from "./load-world";
-
-const DUMP_PATH = "/world.dstw";
-const CRASHED_LINE = /^dump .*\boutcome=crashed\b/;
+import { CRASHED_LINE, DUMP_PATH, dumpArgs } from "./world-dump";
 
 onmessage = async ({ data: { module, seed, platform, shard } }: MessageEvent<DumpRequest>) => {
     const errors: string[] = [];
     let crashed = false;
     const { code, error, fs } = await runSeedfinder({
         module,
-        args: ["--threads", "1", "--", "world", "dump", String(seed), "--platform", platform, "--shard", shard, "-o", DUMP_PATH],
+        args: ["--threads", "1", "--", ...dumpArgs(seed, platform, shard)],
         print: (line) => {
             crashed ||= CRASHED_LINE.test(line);
         },

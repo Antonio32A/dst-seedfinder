@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import ThemeToggle from "@/components/shell/ThemeToggle";
 import { LocalSearchProvider } from "@/lib/browser-search/use-local-search";
 import { THEME_INIT_SCRIPT } from "@/lib/client/theme";
+import { siteName } from "@/lib/site-metadata";
 import "./globals.css";
 
 const DESCRIPTION = "Don't Starve Together seed finding tool";
@@ -15,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
         icons: { icon: "/favicon.png" },
         openGraph: {
             type: "website",
-            siteName: `© ${new Date().getFullYear()} Antonio32A`,
+            siteName: siteName(),
             title: "DST Seedfinder",
             description: DESCRIPTION,
             images: [{ url: "/favicon.png", width: 50, height: 50 }]

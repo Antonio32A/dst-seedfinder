@@ -40,6 +40,12 @@
             ]
         }
     ],
+    "services": [
+        {
+            "binding": "MAP_PREVIEW",
+            "service": "dst-seedfinder-preview"
+        }
+    ],
     "triggers": {
         "crons": [
             "*/5 * * * *"

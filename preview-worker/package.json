@@ -1,0 +1,23 @@
+{
+    "name": "dst-seedfinder-preview-worker",
+    "version": "0.1.0",
+    "private": true,
+    "packageManager": "npm@10.9.8",
+    "type": "module",
+    "scripts": {
+        "wasm": "test -f ../build/wasm-single/seedfinder.wasm -a -f ../build/wasm-single/seedfinder.mjs || { echo 'No ../build/wasm-single yet. Build it with ../scripts/build.sh wasm-single.' >&2; exit 1; }",
+        "prebuild": "npm run wasm --silent",
+        "build": "wrangler deploy --dry-run --outdir ../build/preview-worker",
+        "predeploy": "npm run wasm --silent",
+        "deploy": "wrangler deploy",
+        "typecheck": "tsc --noEmit",
+        "cf-typegen": "wrangler types"
+    },
+    "dependencies": {
+        "@cloudflare/puppeteer": "1.4.0"
+    },
+    "devDependencies": {
+        "typescript": "7.0.2",
+        "wrangler": "4.137.0"
+    }
+}

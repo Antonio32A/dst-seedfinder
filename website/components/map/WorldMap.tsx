@@ -9,6 +9,7 @@ import { loadWorld, type WorldLoad } from "@/lib/world-map/world/load-world";
 import { type MapCanvas, mountMapCanvas } from "@/lib/world-map/canvas/map-canvas";
 import { createMapProbe, type Probe } from "@/lib/world-map/view/map-probe";
 import { mapPath, parseMapConfig } from "@/lib/world-map/map-route";
+import { mapPreviewPath } from "@/lib/world-map/map-preview-url";
 import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
 import { allPrefabs, defaultShown, mapLegend } from "@/lib/world-map/legend/prefab-visibility";
 import { defaultShownSetPieces, setPieceLegend } from "@/lib/world-map/legend/set-pieces";
@@ -89,7 +90,9 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
     const [toast, setToast] = useState<ToastMessage | null>(null);
     const dismissToast = useCallback(() => setToast(null), []);
     const copyLink = useCallback(async () => {
-        const link = new URL(mapPath(platform, seed, search, shard, map?.linkedView()), window.location.origin).href;
+        const view = map?.linkedView();
+        const link = new URL(mapPath(platform, seed, search, shard, view), window.location.origin).href;
+        void fetch(mapPreviewPath(platform, seed, shard, view), { method: "HEAD", keepalive: true }).catch(() => undefined);
         setToast({ id: Date.now(), text: (await copyText(link)) ? "Link copied." : `Couldn't copy. The link is ${link}` });
     }, [map, platform, seed, search, shard]);
 

@@ -31,7 +31,7 @@ export default function MapCorner({ seed, map, onCopyLink }: {
                 {onCopyLink && (
                         <button type="button" className="map-corner__button" title={COPY_LINK_TITLE} disabled={!map}
                                 onClick={onCopyLink}>
-                            Copy link
+                            Link
                         </button>
                 )}
                 {map !== undefined && (
