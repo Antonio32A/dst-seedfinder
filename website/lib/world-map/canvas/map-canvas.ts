@@ -7,6 +7,7 @@ import {
     fitView,
     type MapView,
     panBy,
+    type ScreenPoint,
     type Size,
     turnView,
     type WorldPoint,
@@ -76,58 +77,82 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             ? fitted
             : { ...fitted, centerX: spawn.x, centerZ: spawn.z, scale: Math.max(fitted.scale, SPAWN_SCALE) };
     let frame = 0;
-    let grab: { x: number; y: number } | null = null;
+    const pointers = new Map<number, ScreenPoint>();
     let turning: { from: number; to: number; start: number } | null = null;
     let hovered = NO_HOVER;
 
+    const render = (now: number) => {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        if (turning !== null) {
+            const progress = Math.min(1, (now - turning.start) / TURN_MS);
+            view = { ...view, heading: turning.from + (turning.to - turning.from) * (1 - (1 - progress) ** 3) };
+            if (progress < 1) redraw();
+            else turning = null;
+        }
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        const [red, green, blue] = BACKGROUND;
+        gl.clearColor(red / 255, green / 255, blue / 255, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        terrain.draw(view, viewport);
+        roads.draw(view, viewport);
+        setPieces.draw(view, viewport);
+        entities.draw(view, viewport);
+        iconRenderer.draw(view, viewport);
+        links.draw(view, viewport);
+        overlay?.draw(view, viewport);
+        for (const watcher of watchers) watcher(view, viewport);
+    };
     const redraw = () => {
-        frame ||= requestAnimationFrame((now) => {
-            frame = 0;
-            if (turning !== null) {
-                const progress = Math.min(1, (now - turning.start) / TURN_MS);
-                view = { ...view, heading: turning.from + (turning.to - turning.from) * (1 - (1 - progress) ** 3) };
-                if (progress < 1) redraw();
-                else turning = null;
-            }
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            const [red, green, blue] = BACKGROUND;
-            gl.clearColor(red / 255, green / 255, blue / 255, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            terrain.draw(view, viewport);
-            roads.draw(view, viewport);
-            setPieces.draw(view, viewport);
-            entities.draw(view, viewport);
-            iconRenderer.draw(view, viewport);
-            links.draw(view, viewport);
-            overlay?.draw(view, viewport);
-            for (const watcher of watchers) watcher(view, viewport);
-        });
+        frame ||= requestAnimationFrame(render);
     };
     const move = (next: MapView) => {
         view = next;
         redraw();
     };
 
-    const resized = new ResizeObserver(() => {
-        viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
-        canvas.width = Math.round(viewport.width * devicePixelRatio);
-        canvas.height = Math.round(viewport.height * devicePixelRatio);
-        redraw();
+    // Resizing the canvas clears it, so it's drawn again before the browser paints it, not a frame later.
+    const resized = new ResizeObserver(([entry]) => {
+        viewport = { width: entry.contentRect.width, height: entry.contentRect.height };
+        const [pixels] = entry.devicePixelContentBoxSize ?? [];
+        const width = pixels?.inlineSize ?? Math.round(viewport.width * devicePixelRatio);
+        const height = pixels?.blockSize ?? Math.round(viewport.height * devicePixelRatio);
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+        render(performance.now());
     });
-    resized.observe(canvas);
+    try {
+        resized.observe(canvas, { box: "device-pixel-content-box" });
+    } catch {
+        resized.observe(canvas);
+    }
 
+    const gesture = () => {
+        const points = [...pointers.values()];
+        const [first, second] = points;
+        return {
+            x: points.reduce((sum, { x }) => sum + x, 0) / points.length,
+            y: points.reduce((sum, { y }) => sum + y, 0) / points.length,
+            spread: second === undefined ? 0 : Math.hypot(first.x - second.x, first.y - second.y)
+        };
+    };
     const listeners: { [K in keyof HTMLElementEventMap]?: (event: HTMLElementEventMap[K]) => void } = {
         pointerdown: (event) => {
-            grab = { x: event.clientX, y: event.clientY };
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
             canvas.setPointerCapture(event.pointerId);
         },
         pointermove: (event) => {
-            if (grab === null) return;
-            move(panBy(view, event.clientX - grab.x, event.clientY - grab.y));
-            grab = { x: event.clientX, y: event.clientY };
+            if (!pointers.has(event.pointerId)) return;
+            const before = gesture();
+            pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            const after = gesture();
+            const panned = panBy(view, after.x - before.x, after.y - before.y);
+            const box = canvas.getBoundingClientRect();
+            move(before.spread === 0 || after.spread === 0 ? panned
+                    : zoomAt(panned, viewport, { x: after.x - box.left, y: after.y - box.top }, after.spread / before.spread));
         },
-        pointerup: () => (grab = null),
-        pointercancel: () => (grab = null),
+        pointerup: (event) => pointers.delete(event.pointerId),
+        pointercancel: (event) => pointers.delete(event.pointerId),
         wheel: (event) => {
             event.preventDefault();
             const box = canvas.getBoundingClientRect();

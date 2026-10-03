@@ -388,31 +388,108 @@ details.map-bar * {
 
 @media (max-width: 800px) {
     .map-screen {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto auto minmax(0, 1fr) auto;
-        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+        gap: 0 8px;
         padding: 10px;
+    }
+
+    .map-screen__header,
+    .map-side > *,
+    .map-groups,
+    .map-credit {
+        margin-bottom: 8px;
     }
 
     .map-screen__header {
         grid-area: 1 / 1;
+        align-self: start;
     }
 
     .map-side {
-        grid-area: 2 / 1;
-        width: 100%;
-        max-height: 45vh;
+        display: contents;
     }
 
-    .map-groups {
-        grid-area: 3 / 1;
+    .map-side > * {
+        justify-self: end;
+    }
+
+    .map-side > :first-child {
+        grid-area: 1 / 2;
+        align-self: start;
+    }
+
+    .map-groups,
+    .map-screen__notice {
+        grid-area: 2 / 1 / 3 / 3;
+    }
+
+    .map-credit {
+        grid-area: 2 / 1;
+    }
+
+    .map-details {
+        grid-area: 3 / 1 / 4 / 3;
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+
+    .map-side > .map__witnesses {
+        grid-area: 4 / 1 / 5 / 3;
+        max-height: 30vh;
     }
 
     .map-corner {
-        grid-area: 4 / 1;
+        grid-area: 5 / 1 / 6 / 3;
     }
 
-    .map-screen__notice {
-        grid-area: 3 / 1;
+    .map__search-box input,
+    .map__search-box input:focus {
+        box-sizing: content-box;
+        width: 14ch;
+        max-width: none;
+    }
+}
+
+@media (max-width: 684px) {
+    .map-screen__header,
+    .map-side > :first-child,
+    .map-groups,
+    .map-side > .map__witnesses {
+        padding: 4px 6px;
+        font-size: 0.7em;
+    }
+
+    .map-screen__header {
+        gap: 4px 10px;
+    }
+
+    .map__search-box input {
+        padding: 2px 6px;
+    }
+
+    .map-screen__header .logo {
+        padding: 2px 6px;
+    }
+
+    .map-screen__header .brand__site {
+        padding: 0 6px;
+    }
+
+    .map-credit {
+        grid-area: 5 / 1 / 6 / 3;
+        margin-bottom: 0;
+        padding: 1px 3px;
+        font-size: 0.5em;
+    }
+
+    .map-corner {
+        gap: 4px;
+        padding: 4px 6px;
+        font-size: 0.7em;
+    }
+
+    .map-corner__turn {
+        padding: 0 6px;
     }
 }

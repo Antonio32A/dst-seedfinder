@@ -38,6 +38,7 @@ export default function MapPointer({ probe, map, canvas, shown, searched, onPick
         const element = canvas.current;
         if (map === null || element === null) return;
         let pressed: ScreenPoint | null = null;
+        const down = new Set<number>();
         const probeAt = (client: ScreenPoint, { view, viewport }: { view: MapView; viewport: Size }) => {
             const box = element.getBoundingClientRect();
             return probe.under(view, viewport, { x: client.x - box.left, y: client.y - box.top }, ...filter.current);
@@ -60,8 +61,16 @@ export default function MapPointer({ probe, map, canvas, shown, searched, onPick
                 map.hover(null);
                 setHovered(null);
             },
-            pointerdown: (event) => (pressed = clientPoint(event)),
+            pointerdown: (event) => {
+                down.add(event.pointerId);
+                pressed = down.size === 1 ? clientPoint(event) : null;
+            },
+            pointercancel: (event) => {
+                down.delete(event.pointerId);
+                pressed = null;
+            },
             pointerup: (event) => {
+                down.delete(event.pointerId);
                 const at = clientPoint(event);
                 const click = pressed !== null && Math.hypot(at.x - pressed.x, at.y - pressed.y) <= CLICK_SLOP;
                 pressed = null;
