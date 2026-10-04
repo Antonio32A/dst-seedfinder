@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo, useRef, useState } from "react";
+import OddsTag from "@/components/criteria/OddsTag";
 import { useModal } from "@/components/ui/use-modal";
 import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { SetPieceInfo } from "@/lib/catalog/level-types";
@@ -18,6 +19,7 @@ function PieceButton({ piece, onPick }: { piece: SetPieceInfo; onPick: (pieceId:
                 <button type="button" className="picker__item" onClick={() => onPick(piece.id)}>
         <span>
           <span className="picker__item-name">{piece.name}</span>
+            <OddsTag kind="setpiece" id={piece.id}/>
             {piece.rare && <span className="tag tag--accent">rare</span>}
             {piece.alwaysPlaced && <span className="tag">in every world</span>}
         </span>

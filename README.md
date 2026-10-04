@@ -34,6 +34,11 @@ starts finding seeds on there.
 
 This runs on Cloudflare Workers, as I was lazy to properly deploy it anywhere else.
 
+There is also a `preview-worker` which is used for rendering a map for the Discord/whatever embed. It spawns
+a headless browser (CF has a nice API for this) and literally takes a screenshot of the map. The world itself is
+pregenerated and stored on Cloudflare R2. This approach is very silly, but it works well enough and better than
+rendering the world on the CPU (or even worse, having the user's browser upload a screenshot).
+
 ### runner
 
 This is the Docker image that Vast.ai pulls and runs on boot. It runs Alpine Linux with a small script which runs the

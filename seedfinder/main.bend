@@ -7,6 +7,7 @@ import ./search/report.bend as SearchReport
 import ./search/shard.bend as SearchShard
 import ./search/cave_scan.bend as CaveScan
 import ./search/cave_setpiece.bend as CaveSetpiece
+import ./search/odds.bend as SearchOdds
 import ./search/eval.bend as SearchEval
 import ./gen/run.bend as GenRun
 import ./gen/dump.bend as GenDump
@@ -23,6 +24,8 @@ import ./gen/dump.bend as GenDump
 #     decided on worlds generated in memory (or on DIR/<seed>.dstw dumps with --worlds)
 #   seedfinder world show FROM [TO] [--config filters.json] [--shard forest|caves]
 #     level table of seeds FROM..TO, one JSON line each (the config is only validated)
+#   seedfinder world odds FROM [TO] [--config filters.json] [--shard forest|caves]
+#     one line `odds {...}`: how many of the seeds FROM..TO choose each task, place each set piece and are candidates of the config (docs/config.md sections 1, 4 A)
 #   seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH
 #     parallel worldgen of seeds SEED..TO into world dumps (docs/world-dump.md): PATH is the dump of SEED, or with TO
 #     an existing folder for PATH/<seed>.dstw; one line per seed
@@ -70,6 +73,18 @@ def show_on(+args: List<&2, String>, flag: Result<&1, &1, U32 & String, U32>) ->
 def world_show(+args: List<&2, String>) -> IO(Unit):
   show_on(args, Args.shard_flag(Args.flag_value(args, "--shard")))
 
+def odds_on(+args: List<&2, String>, flag: Result<&1, &1, U32 & String, U32>) -> IO(Unit):
+  +from = Args.arg_u32(args, 1n, 0)
+  +to = Args.arg_u32(args, 2n, from)
+  do IO<Unit>:
+    +shard : U32 <- IO.pass(U32, flag)
+    loaded : Result<&1, &1, U32 & String, ConfigFile.Loaded> <- ConfigFile.load_config(Args.flag_value(args, "--config"), shard)
+    checked : ConfigFile.Loaded <- IO.pass(ConfigFile.Loaded, loaded)
+    SearchOdds.run(checked, from, to)
+
+def world_odds(+args: List<&2, String>) -> IO(Unit):
+  odds_on(args, Args.shard_flag(Args.flag_value(args, "--shard")))
+
 def gen_on(+args: List<&2, String>, +shard: U32) -> IO(Unit):
   +from = Args.arg_u32(args, 0n, 0)
   +to = Args.arg_u32(args, 1n, from)
@@ -85,7 +100,7 @@ def gen(+args: List<&2, String>) -> IO(Unit):
     gen_on(args, shard)
 
 def usage() -> IO(Unit):
-  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] [--shard forest|caves] | seedfinder setpiece show FROM [TO] [--shard forest|caves] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--shard forest|caves] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] [--shard forest|caves] | seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH | seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend] [--dump BITS] [--draws N]")
+  IO.die(Unit, 2, "usage: seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] [--shard forest|caves] | seedfinder setpiece show FROM [TO] [--shard forest|caves] | seedfinder world find [FROM [TO]] [--start-seed S] [--limit N] [--time-limit SECONDS] [--json] [--config filters.json] [--platform windows|linux] [--shard forest|caves] [--worlds DIR] [--kk native|bend] | seedfinder world show FROM [TO] [--config filters.json] [--shard forest|caves] | seedfinder world odds FROM [TO] [--config filters.json] [--shard forest|caves] | seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH | seedfinder gen SEED [TO] [--platform windows|linux] [--shard forest|caves] [--times] [--kk native|bend] [--dump BITS] [--draws N]")
 
 def trace_moved() -> IO(Unit):
   IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--input FILE] (scripts/build.sh trace)")
@@ -108,7 +123,8 @@ def world(+args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(mode, "show"), world_show(args),
     Bool.pick(IO(Unit), String.eq(mode, "find"), world_find(args),
       Bool.pick(IO(Unit), String.eq(mode, "eval"), SearchEval.run(args),
-        Bool.pick(IO(Unit), String.eq(mode, "dump"), GenDump.run(args), usage()))))
+        Bool.pick(IO(Unit), String.eq(mode, "odds"), world_odds(args),
+        Bool.pick(IO(Unit), String.eq(mode, "dump"), GenDump.run(args), usage())))))
 
 def run(+command: String, +args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(command, "setpiece"), setpiece(args),

@@ -55,6 +55,7 @@ build/seedfinder --threads 16 -- setpiece find 0 4294967295 MiscBoon:7
 build/seedfinder -- setpiece show 123456
 build/seedfinder --threads 16 -- world find --shard caves --limit 5 --config caves.json  # cave seeds by level table
 build/seedfinder -- world show 123456 --shard caves                                     # the caves level table
+build/seedfinder --threads 16 -- world odds 0 9999999 --config config.json              # how common each task and set piece is
 build/seedfinder --threads 1 -- gen 123456 --platform windows
 build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves --dump 3  # the caves up to the mazes
 build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves            # the whole caves worldgen
@@ -84,6 +85,11 @@ tiles=H`; `BITS` adds the attempt's tile map (bit 1, a `tiles` record, `tile*cou
 JSON line), bit 4 the entities of the Labyrinth and Maze passes with the stream counters around every maze engine call
 (one JSON line) and bit 8 the tile map after them (a `tiles` record); `--draws N` starts the attempt N draws into the seed's
 stream (the position of a real attempt's `generate_begin`) to check the attempts after the first.
+
+`world odds FROM [TO] [--config F] [--shard forest|caves]` generates the level tables of the seeds `FROM..TO` and prints one
+line, `odds {"seeds":N,"candidates":C,"tasks":{...},"setpieces":{...}}`: `seeds` is how many have a level table, `candidates` how
+many of them are candidates of the config (all without one), and the two objects count the seeds that choose each task or
+place each set piece at least once (names that no seed has are left out). The website sums the lines of its workers.
 
 `world eval --config F --world DUMP.dstw [--json] [--fast]` checks one config against one world dump. Both read the
 format of [docs/world-dump.md](../docs/world-dump.md) (version 3, older dumps have to be regenerated; only forest dumps can be read).

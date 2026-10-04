@@ -1,5 +1,6 @@
 "use client";
 
+import OddsTag from "@/components/criteria/OddsTag";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
@@ -37,6 +38,7 @@ function PieceHeader({ piece, name, catalog, onRemove }: {
                 <div className="rule__header">
         <span>
           <span className="rule__name">{name}</span>
+            <OddsTag kind="setpiece" id={piece?.id ?? name}/>
             {kindName && <span className="tag">{kindName}</span>}
             {piece?.rare && <span className="tag tag--accent">rare</span>}
         </span>

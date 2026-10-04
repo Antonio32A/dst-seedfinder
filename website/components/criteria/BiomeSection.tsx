@@ -1,5 +1,6 @@
 "use client";
 
+import OddsTag from "@/components/criteria/OddsTag";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { BiomeChoice } from "@/lib/criteria/search-state";
@@ -49,6 +50,7 @@ export default function BiomeSection({ catalog, biomes, onChange }: BiomeSection
                                 <li key={task.id} className="biome">
               <span className="biome__text">
                 <strong>{task.name}</strong>
+                  <OddsTag kind="task" id={task.id}/>
                   {task.description && <span className="biome__description">{task.description}</span>}
               </span>
                                     <SegmentedControl legend={task.name} hideLegend options={options} value={current}

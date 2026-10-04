@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import CriteriaEditor from "@/components/criteria/CriteriaEditor";
 import JobsList from "@/components/results/JobsList";
 import LocalSearch from "@/components/results/LocalSearch";
+import { PrefilterOddsProvider } from "@/lib/prefilter/use-prefilter-odds";
 import SearchPanel from "@/components/search/SearchPanel";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast, { type ToastMessage } from "@/components/ui/Toast";
@@ -152,7 +153,9 @@ export default function SeedFinderApp() {
                     <Intro/>
                     <ShardSwitch shard={state.shard} onChange={changeShard}/>
                     <Presets shard={state.shard} onPick={pickPreset}/>
-                    <CriteriaEditor state={state} onChange={setState}/>
+                    <PrefilterOddsProvider config={config} threads={threads} supported={browserSupported === true}>
+                        <CriteriaEditor state={state} onChange={setState}/>
+                    </PrefilterOddsProvider>
                     <SearchPanel
                             config={config}
                             issues={issues}

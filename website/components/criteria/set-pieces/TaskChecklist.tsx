@@ -1,5 +1,6 @@
 "use client";
 
+import OddsTag from "@/components/criteria/OddsTag";
 import Toggle from "@/components/ui/Toggle";
 import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { TaskInfo, TaskKind } from "@/lib/catalog/level-types";
@@ -40,6 +41,7 @@ export default function TaskChecklist({ label, catalog, tasks, selected, onChang
                                                 checked={selected.includes(task.id)}
                                                 onChange={(checked) => onChange(toggled(selected, task.id, checked))}>
                                             {task.name}
+                                            <OddsTag kind="task" id={task.id}/>
                                         </Toggle>
                                 ))}
                             </div>

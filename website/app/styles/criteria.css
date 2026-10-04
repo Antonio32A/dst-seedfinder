@@ -466,3 +466,22 @@
         justify-self: start;
     }
 }
+
+.prefilter {
+    margin-bottom: 14px;
+}
+
+.prefilter__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.prefilter__total {
+    margin: 0;
+}
+
+.tag--odds {
+    font-variant-numeric: tabular-nums;
+}

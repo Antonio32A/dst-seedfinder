@@ -6,6 +6,7 @@ import { MAX_CRITERIA } from "@/lib/config/seedfinder-config";
 import { type CriteriaGroup, emptyGroup, type SearchState } from "@/lib/criteria/search-state";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import CriteriaGroupCard from "./CriteriaGroupCard";
+import PrefilterOdds from "./PrefilterOdds";
 
 interface CriteriaEditorProps {
     state: SearchState;
@@ -29,6 +30,7 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
                             ? "A world matches if it fits any option. Everything in an option must be true."
                             : "A world must match everything you pick here."}
                 </p>
+                <PrefilterOdds/>
                 {state.groups.map((group, index) => (
                         <Fragment key={group.key}>
                             {index > 0 && (
