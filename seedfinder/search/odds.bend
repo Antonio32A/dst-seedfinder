@@ -90,24 +90,32 @@ def count_chosen(tasks: List<&2, U32>, counters: Array<U32>) -> Array<U32>:
     case Con{+task, rest}:
       count_chosen(rest, bump(counters, (task_base() + task : U32)))
 
-def count_placed(placed: List<&2, CaveChoose.Placed>, counters: Array<U32>) -> Array<U32>:
-  match placed:
+def count_added(entries: List<&2, CaveChoose.Entry>, counters: Array<U32>) -> Array<U32>:
+  match entries:
     case Nil{}:
       counters
-    case Con{CaveChoose.Placed{+key, +lo, +hi}, rest}:
-      count_placed(rest, bump_when(Bool.not(U32.is_zero((lo .|. hi : U32))), counters, (key_base() + key : U32)))
+    case Con{CaveChoose.Entry{+key, +count, _}, rest}:
+      count_added(rest, bump_when(Bool.not(U32.is_zero(count)), counters, (key_base() + key : U32)))
 
-def cave_level(crashed: Bool, picks: List<&2, U32>, placed: List<&2, CaveChoose.Placed>, counters: Array<U32>) -> Array<U32>:
+def cave_crashed(+c: CavePrefix.Chosen) -> Bool:
+  match c:
+    case CavePrefix.Chosen{_, _, CavePrefix.Masks{_, _, _, +crashed}, _}:
+      crashed
+
+def cave_picks(+c: CavePrefix.Chosen) -> List<&2, U32>:
+  match c:
+    case CavePrefix.Chosen{_, +picks, _, _}:
+      picks
+
+def cave_level(crashed: Bool, +c: CavePrefix.Chosen, counters: Array<U32>) -> Array<U32>:
   match crashed:
     case True{}:
       counters
     case False{}:
-      count_placed(placed, count_chosen(CavePrefix.chosen_ids(picks), bump(counters, 0)))
+      count_added(CaveChoose.added_entries(c), count_chosen(CavePrefix.chosen_ids(cave_picks(c)), bump(counters, 0)))
 
-def cave_world(w: CaveChoose.World, counters: Array<U32>) -> Array<U32>:
-  match w:
-    case CaveChoose.World{_, picks, placed, crashed}:
-      cave_level(crashed, picks, placed, counters)
+def cave_world(+c: CavePrefix.Chosen, counters: Array<U32>) -> Array<U32>:
+  cave_level(cave_crashed(c), c, counters)
 
 def is_caves(+levels: ShardSearch.Levels) -> Bool:
   match levels:
@@ -133,7 +141,7 @@ def local_levels(levels: ShardSearch.Levels) -> ShardSearch.Levels:
 def count_level(+caves: Bool, +seed: U32, counters: Array<U32>) -> Array<U32>:
   match caves:
     case True{}:
-      cave_world(CaveChoose.world(seed), counters)
+      cave_world(CavePrefix.chosen(seed), counters)
     case False{}:
       forest_world(LevelSummary.summary(seed), counters)
 
