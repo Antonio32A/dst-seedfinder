@@ -44,6 +44,8 @@ const INTELLIJ_LAID_OUT_NODES = [
 const indent = (continuation) => ["error", 4, {
     SwitchCase: 1,
     CallExpression: { arguments: continuation },
+    FunctionDeclaration: { parameters: continuation },
+    FunctionExpression: { parameters: continuation },
     MemberExpression: continuation,
     ignoredNodes: INTELLIJ_LAID_OUT_NODES
 }];

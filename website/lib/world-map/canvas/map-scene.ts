@@ -21,7 +21,10 @@ export interface MapScene {
     entities: EntityRenderer;
     icons: IconRenderer;
     links: LinkRenderer;
-    /** Settles once every downloaded texture is uploaded, and rejects with a readable error when the map art can't be downloaded. */
+    /**
+     * Settles once every downloaded texture is uploaded, and rejects with a readable error when the map art can't be
+     * downloaded.
+     */
     built: Promise<void>;
     /** Clears the whole canvas to the map's background and draws every layer, bottom to top. */
     draw: (view: MapView, viewport: Size) => void;
@@ -32,8 +35,8 @@ export interface MapScene {
 
 /**
  * Every layer of the world map on `gl`, from the terrain to the wormhole links, in their initial state: darkened, roads
- * shown, every prefab, set piece, turf bridge and link hidden. `onBuilt` is called as each downloaded texture arrives. `accent` is the
- * highlight colour, `[r, g, b]` in 0-255.
+ * shown, every prefab, set piece, turf bridge and link hidden. `onBuilt` is called as each downloaded texture arrives.
+ * `accent` is the highlight colour, `[r, g, b]` in 0-255.
  */
 export function createMapScene(
     gl: WebGL2RenderingContext,

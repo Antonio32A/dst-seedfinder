@@ -133,7 +133,8 @@ describe("the map probe", () => {
                 y: dot.y + pixels * Math.sin(angle)
             });
             for (const angle of [0, 1, 2.5, 4]) {
-                expect(probe.under(view, VIEWPORT, off(PICK_RADIUS - 0.5, angle), ALL_SHOWN).entity).toMatchObject({ prefab: DOT });
+                expect(probe.under(view, VIEWPORT, off(PICK_RADIUS - 0.5, angle), ALL_SHOWN).entity)
+                    .toMatchObject({ prefab: DOT });
                 expect(probe.under(view, VIEWPORT, off(PICK_RADIUS + 0.5, angle), ALL_SHOWN).entity).toBeNull();
             }
         }
@@ -142,7 +143,8 @@ describe("the map probe", () => {
     it("picks the nearest entity anywhere on the map or past its edge, like checking every one of them", () => {
         let state = 7;
         const random = () => (state = (state * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
-        const scatter = (count: number) => Array.from({ length: 2 * count }, () => Math.round((random() - 0.5) * 50000));
+        const scatter = (count: number) =>
+            Array.from({ length: 2 * count }, () => Math.round((random() - 0.5) * 50000));
         const names = ["evergreen", "pigking", "flower", DOT];
         const world = { ...GRASSLAND, prefabs: names.map((name) => prefab(name, ...scatter(300))) };
         const probe = createMapProbe(world);
@@ -197,7 +199,8 @@ describe("picking icons under the cursor", () => {
         const view = { centerX: 3, centerZ: 3, scale: 0.05, heading: 45 };
         const probe = iconWorld(prefab(low, 1000, 2000));
         for (const angle of [0, 1, 2.5, 4]) {
-            const cursor = at(view, 10, 20, (PICK_RADIUS - 0.1) * Math.cos(angle), (PICK_RADIUS - 0.1) * Math.sin(angle));
+            const reach = PICK_RADIUS - 0.1;
+            const cursor = at(view, 10, 20, reach * Math.cos(angle), reach * Math.sin(angle));
             expect(probe.under(view, VIEWPORT, cursor, shown(low)).entity).toMatchObject({ prefab: low });
         }
     });
@@ -231,7 +234,8 @@ describe("picking icons under the cursor", () => {
         const probe = iconWorld(prefab(DOT, 0, 0, 30, 0), prefab(low, 20, 0));
         const names = shown(DOT, low);
         expect(probe.under(view, VIEWPORT, at(view, 0, 0), names).entity).toMatchObject({ prefab: low });
-        expect(probe.under(view, VIEWPORT, at(view, 0.3, 0, 0, -2), shown(DOT)).entity).toMatchObject({ prefab: DOT, index: 1 });
+        expect(probe.under(view, VIEWPORT, at(view, 0.3, 0, 0, -2), shown(DOT)).entity)
+            .toMatchObject({ prefab: DOT, index: 1 });
     });
 
     it("never picks the icon of a hidden prefab, and picks it again when it's searched for", () => {

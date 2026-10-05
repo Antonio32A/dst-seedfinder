@@ -29,7 +29,9 @@ export interface ShardCatalog {
     sampleWorlds: number;
     /** Where a player starts: the spawn portal in the forest, the stairs they arrive on in the caves. */
     spawn: string;
-    /** The things that teleport the player between two places: wormholes in the forest, tentacle pillars in the caves. */
+    /**
+     * The things that teleport the player between two places: wormholes in the forest, tentacle pillars in the caves.
+     */
     links: { noun: string; plural: string; prefabs: readonly string[] };
 }
 
@@ -59,9 +61,16 @@ const CATALOGS: Record<Shard, ShardCatalog> = {
         landTiles: CAVE_LAND_TILES,
         sampleWorlds: CAVE_SAMPLE_WORLDS,
         spawn: "cave_exit",
-        links: { noun: "tentacle pillar", plural: "tentacle pillars", prefabs: ["tentacle_pillar", "tentacle_pillar_atrium"] }
+        links: {
+            noun: "tentacle pillar",
+            plural: "tentacle pillars",
+            prefabs: ["tentacle_pillar", "tentacle_pillar_atrium"]
+        }
     }
 };
 
-/** The prefabs a shard's worlds can contain, with their display names, groups and map icons, and what its world filters start from. */
+/**
+ * The prefabs a shard's worlds can contain, with their display names, groups and map icons, and what its world filters
+ * start from.
+ */
 export const shardCatalog = (shard: Shard): ShardCatalog => CATALOGS[shard];

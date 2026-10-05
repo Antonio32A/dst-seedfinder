@@ -125,7 +125,7 @@ describe("the prefabs a map shows", () => {
 describe("allPrefabs", () => {
     it("holds every prefab of the legend and nothing for an empty one", () => {
         expect([...allPrefabs(mapLegend(WORLD))].sort()).toEqual(
-                ["a_prefab_from_a_newer_game", "deciduoustree", "evergreen", "multiplayer_portal"]);
+            ["a_prefab_from_a_newer_game", "deciduoustree", "evergreen", "multiplayer_portal"]);
         expect(allPrefabs([]).size).toBe(0);
     });
 });

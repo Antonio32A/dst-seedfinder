@@ -61,7 +61,8 @@ function notablePieces(level: LevelTable, catalog: LevelCatalog) {
                 const piece = Object.hasOwn(catalog.setPieceById, id) ? catalog.setPieceById[id] : undefined;
                 return piece && !piece.alwaysPlaced ? [{ piece, count }] : [];
             })
-            .sort((a, b) => (kindOrder.get(a.piece.kind) ?? 0) - (kindOrder.get(b.piece.kind) ?? 0) || a.piece.name.localeCompare(b.piece.name));
+            .sort((a, b) => (kindOrder.get(a.piece.kind) ?? 0) - (kindOrder.get(b.piece.kind) ?? 0)
+                    || a.piece.name.localeCompare(b.piece.name));
 }
 
 function PieceList({ level, catalog }: { level: LevelTable; catalog: LevelCatalog }) {
@@ -126,13 +127,7 @@ function WorldSummary({ hit: { level, results }, id, catalog }: { hit: SearchHit
     );
 }
 
-const HitRow = memo(function HitRow({
-                                        hit,
-                                        platform,
-                                        config,
-                                        showOption,
-                                        onCopy
-                                    }: {
+const HitRow = memo(function HitRow({ hit, platform, config, showOption, onCopy }: {
     hit: SearchHit;
     platform: Platform;
     config: SeedfinderConfig;
@@ -198,7 +193,7 @@ function HitList({ hits, platform, config, showOption, onCopy }: {
     platform: Platform;
     config: SeedfinderConfig;
     showOption: boolean;
-    onCopy: JobResultsProps["onCopy"]
+    onCopy: JobResultsProps["onCopy"];
 }) {
     const [showAll, setShowAll] = useState(false);
     const visible = showAll ? hits : hits.slice(0, HITS_PREVIEW);
@@ -228,16 +223,8 @@ function HitList({ hits, platform, config, showOption, onCopy }: {
                             className="link-button"
                             onClick={() =>
                                     onCopy(
-                                            hits.map(({
-                                                          seed,
-                                                          entry,
-                                                          level,
-                                                          results
-                                                      }) => `${seed} ${JSON.stringify({
-                                                entry,
-                                                level,
-                                                results
-                                            })}`).join("\n"),
+                                            hits.map(({ seed, entry, level, results }) =>
+                                                    `${seed} ${JSON.stringify({ entry, level, results })}`).join("\n"),
                                             `${plural(hits.length, "seed")} with data`
                                     )
                             }

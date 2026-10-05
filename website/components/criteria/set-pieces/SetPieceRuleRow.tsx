@@ -29,7 +29,7 @@ function PieceHeader({ piece, name, catalog, onRemove }: {
     piece: SetPieceInfo | undefined;
     catalog: LevelCatalog;
     name: string;
-    onRemove: () => void
+    onRemove: () => void;
 }) {
     const kindName = piece && catalog.setPieceKindById[piece.kind]?.name;
     const contents = piece?.contents ?? [];
@@ -88,7 +88,7 @@ function ScopeControls({ rule, name, catalog, fixedTasks, update }: {
     catalog: LevelCatalog;
     name: string;
     fixedTasks?: TaskInfo[];
-    update: Update
+    update: Update;
 }) {
     return (
             <div className="rule__scope">
@@ -127,7 +127,8 @@ export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: S
     const max = ruleMax(rule, catalog);
     const fixedTasks =
             piece?.kind === "fixed"
-                    ? catalog.tasks.filter((task) => piece.candidateTasks?.includes(task.id) || rule.scopeTasks.includes(task.id))
+                    ? catalog.tasks.filter((task) =>
+                            piece.candidateTasks?.includes(task.id) || rule.scopeTasks.includes(task.id))
                     : undefined;
     const hint = fixedTasks ? `${piece.fixedCount ?? piece.maxCount} per world, at most 1 per biome` : `up to ${max} per world`;
 

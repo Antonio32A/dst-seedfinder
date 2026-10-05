@@ -31,7 +31,8 @@ describe("the entity renderer's visibility texture", () => {
         entities.highlight(new Set(["amulet", "pigking"]));
         const [shown, highlighted] = uploads();
         expect(shown.slice(0, 6)).toEqual([VISIBILITY_SHOWN, 255, VISIBILITY_SHOWN, 0, 0, 0]);
-        expect(highlighted.slice(0, 6)).toEqual([VISIBILITY_SHOWN, 255, VISIBILITY_HIGHLIGHTED, 0, VISIBILITY_HIGHLIGHTED, 0]);
+        expect(highlighted.slice(0, 6))
+            .toEqual([VISIBILITY_SHOWN, 255, VISIBILITY_HIGHLIGHTED, 0, VISIBILITY_HIGHLIGHTED, 0]);
     });
 
     it("shows a highlighted prefab even when it isn't shown, and keeps both across each other's updates", () => {
@@ -39,7 +40,8 @@ describe("the entity renderer's visibility texture", () => {
         entities.highlight(new Set(["pigking"]));
         entities.show(new Set(["evergreen"]));
         entities.highlight(new Set());
-        const [onlyHighlighted, both, onlyShown] = uploads().map((texels) => texels.filter((_, at) => at % 2 === 0).slice(0, 3));
+        const [onlyHighlighted, both, onlyShown] = uploads()
+            .map((texels) => texels.filter((_, at) => at % 2 === 0).slice(0, 3));
         expect(onlyHighlighted).toEqual([0, 0, VISIBILITY_HIGHLIGHTED]);
         expect(both).toEqual([VISIBILITY_SHOWN, 0, VISIBILITY_HIGHLIGHTED]);
         expect(onlyShown).toEqual([VISIBILITY_SHOWN, 0, 0]);

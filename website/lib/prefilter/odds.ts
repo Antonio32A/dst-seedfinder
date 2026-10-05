@@ -48,7 +48,9 @@ export function parseOddsLine(line: string): PrefilterOdds | null {
 
 const sumByName = (parts: Record<string, number>[]): Record<string, number> => {
     const total: Record<string, number> = {};
-    for (const part of parts) for (const [name, count] of Object.entries(part)) total[name] = (total[name] ?? 0) + count;
+    for (const part of parts) {
+        for (const [name, count] of Object.entries(part)) total[name] = (total[name] ?? 0) + count;
+    }
     return total;
 };
 

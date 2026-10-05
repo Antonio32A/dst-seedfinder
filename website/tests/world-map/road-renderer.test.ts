@@ -38,7 +38,8 @@ describe("the road renderer", () => {
         const { gl } = fakeGl();
         await createRoadRenderer(gl, [DIRT], () => undefined).built;
         const { pathnoise, roadcorner, roadedge, roadendcap } = MAP_TEXTURES.road;
-        expect(fetch.mock.calls.map(([url]) => url).sort()).toEqual([pathnoise, roadcorner, roadedge, roadendcap].sort());
+        expect(fetch.mock.calls.map(([url]) => url).sort())
+            .toEqual([pathnoise, roadcorner, roadedge, roadendcap].sort());
         expect(close).toHaveBeenCalledTimes(4);
     });
 

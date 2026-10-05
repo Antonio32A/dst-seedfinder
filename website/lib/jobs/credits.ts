@@ -60,7 +60,12 @@ export function formatCredits(credits: number): string {
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
 }
 
-export function chargeUnits(reservedUnits: number, feeCharged: boolean, searchMs: number | null, dollarsPerHour: number): number {
+export function chargeUnits(
+    reservedUnits: number,
+    feeCharged: boolean,
+    searchMs: number | null,
+    dollarsPerHour: number
+): number {
     const fee = feeCharged ? creditsToUnits(STARTING_FEE) : 0;
     if (searchMs === null) return Math.min(reservedUnits, fee);
     if (!Number.isFinite(searchMs) || searchMs < 0) return reservedUnits;

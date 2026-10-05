@@ -1,4 +1,10 @@
-import { CAVE_OPTIONAL_TASK_IDS, CAVE_PIECES, CAVE_REQUIRED_TASK_IDS, CAVE_SWAPS, type CavePieceVocab } from "./cave-vocab";
+import {
+    CAVE_OPTIONAL_TASK_IDS,
+    CAVE_PIECES,
+    CAVE_REQUIRED_TASK_IDS,
+    CAVE_SWAPS,
+    type CavePieceVocab
+} from "./cave-vocab";
 import { SET_PIECE_BY_ID, SET_PIECE_KINDS, SWAPS } from "./level";
 import type { SetPieceInfo, SwapInfo, TaskInfo } from "./level-types";
 
@@ -241,9 +247,9 @@ export const CAVE_SET_PIECES: SetPieceInfo[] = CAVE_PIECES.map(pieceInfo);
 const FIXED_DESCRIPTION =
     "Always present with a fixed count. Only the biomes they land in change.";
 
-export const CAVE_SET_PIECE_KINDS = SET_PIECE_KINDS.filter((kind) => CAVE_SET_PIECES.some((piece) => piece.kind === kind.id)).map((kind) =>
-    kind.id === "fixed" ? { ...kind, name: "Landmarks", description: FIXED_DESCRIPTION } : kind
-);
+export const CAVE_SET_PIECE_KINDS = SET_PIECE_KINDS
+    .filter((kind) => CAVE_SET_PIECES.some((piece) => piece.kind === kind.id))
+    .map((kind) => kind.id === "fixed" ? { ...kind, name: "Landmarks", description: FIXED_DESCRIPTION } : kind);
 
 export const CAVE_SWAP_INFOS: SwapInfo[] = SWAPS.flatMap((swap) => {
     const allowed = CAVE_SWAPS.find((cave) => cave.category === swap.id)?.options ?? [];

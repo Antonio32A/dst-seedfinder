@@ -2,8 +2,8 @@ import { MAP_TEXTURES } from "@/lib/catalog/world";
 import { FORGOTTEN_BRIGHTNESS } from "@/lib/world-map/terrain/terrain-renderer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import type { DumpRoad } from "@/lib/world-map/world/world-dump";
-import { buildProgram, fetchTexels, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
-import { PAVED_WEIGHT, ROAD_STRIPS, ROAD_VERTEX_FLOATS, type RoadStrip, roadMesh } from "./road-geometry";
+import { buildProgram, fetchTexels, vertexBuffer, VIEW_TRANSFORM, viewUniforms } from "./gl-program";
+import { PAVED_WEIGHT, ROAD_STRIPS, ROAD_VERTEX_FLOATS, roadMesh, type RoadStrip } from "./road-geometry";
 
 const BASE_UNIT = 0;
 const NOISE_UNIT = 1;
@@ -72,9 +72,10 @@ interface Batch {
 const kindOf = (weight: number): RoadKind => (weight === PAVED_WEIGHT ? "paved" : "dirt");
 
 /**
- * Draws the roads as the game's road shader does: each strip of the road's mesh is its own texture (edge, corner, end cap
- * or the plain centre) times a noise texture sampled by ground position, blended by the product of their alphas. The
- * paved road takes the cobble noise and any other weight the dirt path's. Nothing is drawn until the textures have downloaded.
+ * Draws the roads as the game's road shader does: each strip of the road's mesh is its own texture (edge, corner, end
+ * cap or the plain centre) times a noise texture sampled by ground position, blended by the product of their alphas.
+ * The paved road takes the cobble noise and any other weight the dirt path's. Nothing is drawn until the textures have
+ * downloaded.
  */
 export function createRoadRenderer(
     gl: WebGL2RenderingContext,
@@ -105,7 +106,10 @@ export function createRoadRenderer(
     let darkened = true;
     let disposed = false;
 
-    const names = [...new Set([...batches.map(({ strip }) => STRIP_TEXTURES[strip]), ...batches.map(({ kind }) => NOISE_TEXTURES[kind])])];
+    const names = [...new Set([
+        ...batches.map(({ strip }) => STRIP_TEXTURES[strip]),
+        ...batches.map(({ kind }) => NOISE_TEXTURES[kind])
+    ])];
     const built = Promise.all(names.map((name) => fetchTexels(MAP_TEXTURES.road[name]))).then((images) => {
         if (disposed) return images.forEach((image) => image.close());
         textures = new Map(names.map((name, index) => {

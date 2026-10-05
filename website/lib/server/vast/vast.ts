@@ -39,7 +39,7 @@ async function vastRequest(apiKey: string, method: string, path: string, body?: 
         signal: AbortSignal.timeout(VAST_TIMEOUT_MS)
     });
     const text = await response.text();
-    let parsed: { success?: unknown } | null = null;
+    let parsed: { success?: unknown } | null;
     try {
         parsed = JSON.parse(text) as { success?: unknown } | null;
     } catch {

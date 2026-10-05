@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import Brand from "@/components/shell/Brand";
-import { lastMapOrigin, type MapOrigin } from "@/lib/client/map-origin";
+import { lastMapOrigin } from "@/lib/client/map-origin";
 import type { MapRoute } from "@/lib/world-map/map-route";
 import type { LinkedView } from "@/lib/world-map/view/map-view";
 import MapCorner from "./MapCorner";
+
+const unchanging = () => () => undefined;
 
 const WorldMap = dynamic(() => import("./WorldMap"), {
     ssr: false,
@@ -15,9 +17,7 @@ const WorldMap = dynamic(() => import("./WorldMap"), {
 });
 
 export default function MapScreen({ route, share, view }: { route: MapRoute; share?: string; view?: LinkedView }) {
-    const [back, setBack] = useState<MapOrigin>("/");
-
-    useEffect(() => setBack(lastMapOrigin()), []);
+    const back = useSyncExternalStore(unchanging, lastMapOrigin, () => "/");
 
     return (
             <main className="map-screen">
@@ -35,7 +35,8 @@ export default function MapScreen({ route, share, view }: { route: MapRoute; sha
                             <MapCorner/>
                         </>
                 ) : (
-                        <WorldMap platform={route.platform} shard={route.shard} seed={route.seed} share={share} view={view}/>
+                        <WorldMap platform={route.platform} shard={route.shard} seed={route.seed} share={share}
+                                  view={view}/>
                 )}
             </main>
     );

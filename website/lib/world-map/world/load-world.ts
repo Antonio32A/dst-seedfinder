@@ -1,6 +1,6 @@
 import { canRunSeedfinder, compileSeedfinder } from "@/lib/browser-search/seedfinder-wasm";
 import type { Platform, Shard } from "@/lib/config/seedfinder-config";
-import { workerReply, type WorkerFailure } from "./worker-reply";
+import { type WorkerFailure, workerReply } from "./worker-reply";
 import { type GeneratedWorld, parseWorldDump } from "./world-dump";
 
 export interface DumpRequest {
@@ -23,7 +23,12 @@ export type WorldLoad =
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Generates the seed's world in a worker. Aborting the signal stops the worker, and the result is then meaningless. */
-export async function loadWorld(seed: number, platform: Platform, shard: Shard, signal: AbortSignal): Promise<WorldLoad> {
+export async function loadWorld(
+    seed: number,
+    platform: Platform,
+    shard: Shard,
+    signal: AbortSignal
+): Promise<WorldLoad> {
     if (!canRunSeedfinder()) return { status: "unsupported" };
     try {
         const module = await compileSeedfinder().catch((error: unknown) => {

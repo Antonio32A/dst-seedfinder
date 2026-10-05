@@ -57,7 +57,7 @@ function CountBounds({ row, update, shard }: { row: CountRow; update: Update; sh
 function NearControls({ near, counted, onChange }: {
     near: NearRow | null;
     counted: string[];
-    onChange: (near: NearRow | null) => void
+    onChange: (near: NearRow | null) => void;
 }) {
     const shard = useWorldShard();
     const overlaps = near?.prefabs.some((id) => counted.includes(id));

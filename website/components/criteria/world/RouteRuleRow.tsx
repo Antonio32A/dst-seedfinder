@@ -16,7 +16,7 @@ function StopActions({ row, index, update, onRemove }: {
     row: RouteRow;
     index: number;
     update: Update;
-    onRemove: () => void
+    onRemove: () => void;
 }) {
     const stop = row.stops[index];
     const move = (offset: number) => {

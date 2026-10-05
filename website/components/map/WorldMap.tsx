@@ -49,7 +49,10 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
     const legend = useMemo(() => mapLegend(world), [world]);
     const setPieces = useMemo(() => setPieceLegend(world), [world]);
     const probe = useMemo(() => createMapProbe(world), [world]);
-    const shared = useMemo(() => (share === undefined ? null : parseMapConfig(share, platform, shard)), [share, platform, shard]);
+    const shared = useMemo(
+            () => (share === undefined ? null : parseMapConfig(share, platform, shard)),
+            [share, platform, shard]
+    );
     const search = shared && "config" in shared ? shared.config : undefined;
     const [shownPrefabs, setShownPrefabs] = useState<ReadonlySet<string>>(() => defaultShown(search, shard));
     const [shownSetPieces, setShownSetPieces] = useState<ReadonlySet<string>>(() => defaultShownSetPieces(search));
@@ -61,7 +64,10 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
         onChange: setShownLinks
     }, [layer, shard, shownLinks]);
     const [shownRoads, setShownRoads] = useState(true);
-    const roads = useMemo(() => (world.roads?.length ? { shown: shownRoads, onChange: setShownRoads } : null), [world, shownRoads]);
+    const roads = useMemo(() => (world.roads?.length ? {
+        shown: shownRoads,
+        onChange: setShownRoads
+    } : null), [world, shownRoads]);
     const [shownBridges, setShownBridges] = useState(() => defaultShownBridges(search));
     const stray = useMemo(() => turfBridges(world).filter((bridge) => bridge.stray).length, [world]);
     const bridges = useMemo(() => (world.topology ? { shown: shownBridges, stray, onChange: setShownBridges } : null),
@@ -89,7 +95,7 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
     const openSetPiece = useCallback((index: number) => setPicked(probe.setPiece(index)), [probe]);
     const highlighted = useMemo(() => {
         const found = (world.setPieces ?? []).flatMap(({ name }, index) =>
-                (searched?.kind === "set piece" && name === searched.name ? [index] : []));
+                searched?.kind === "set piece" && name === searched.name ? [index] : []);
         return picked?.setPiece ? [...found, picked.setPiece.index] : found;
     }, [world, searched, picked]);
 
@@ -98,15 +104,22 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
     const copyLink = useCallback(async () => {
         const view = map?.linkedView();
         const link = new URL(mapPath(platform, seed, search, shard, view), window.location.origin).href;
-        void fetch(mapPreviewPath(platform, seed, shard, view), { method: "HEAD", keepalive: true }).catch(() => undefined);
-        setToast({ id: Date.now(), text: (await copyText(link)) ? "Link copied." : `Couldn't copy. The link is ${link}` });
+        void fetch(mapPreviewPath(platform, seed, shard, view), {
+            method: "HEAD",
+            keepalive: true
+        }).catch(() => undefined);
+        setToast({
+            id: Date.now(),
+            text: (await copyText(link)) ? "Link copied." : `Couldn't copy. The link is ${link}`
+        });
     }, [map, platform, seed, search, shard]);
 
     useEffect(() => {
         let mounted: MapCanvas | null = null;
         try {
             mounted = mountMapCanvas(canvas.current!, world, layer, view);
-            mounted.terrain.catch((caught: unknown) => setError(caught instanceof Error ? caught.message : String(caught)));
+            mounted.terrain.catch((caught: unknown) =>
+                    setError(caught instanceof Error ? caught.message : String(caught)));
             setMap(mounted);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught));
@@ -153,7 +166,8 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
                             onPick={setPicked}/>
                 <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} onHighlight={setPreviewed}
                              setPieces={setPieces}
-                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links} roads={roads}
+                             shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links}
+                             roads={roads}
                              bridges={bridges}
                              onSelect={select}/>
                 <MapCorner seed={seed} map={map} onCopyLink={() => void copyLink()}/>
@@ -176,20 +190,23 @@ export default function WorldMap({ platform, shard, seed, share, view }: {
     share?: string;
     view?: LinkedView;
 }) {
-    const [load, setLoad] = useState<WorldLoad>({ status: "loading" });
+    const key = `${platform}/${shard}/${seed}`;
+    const [loaded, setLoaded] = useState<{ key: string; load: WorldLoad } | null>(null);
 
     useEffect(() => {
         const controller = new AbortController();
-        setLoad({ status: "loading" });
-        void loadWorld(seed, platform, shard, controller.signal).then((result) => {
-            if (!controller.signal.aborted) setLoad(result);
+        void loadWorld(seed, platform, shard, controller.signal).then((load) => {
+            if (!controller.signal.aborted) setLoaded({ key, load });
         });
         return () => controller.abort();
-    }, [platform, shard, seed]);
+    }, [key, platform, shard, seed]);
+
+    const load: WorldLoad = loaded?.key === key ? loaded.load : { status: "loading" };
 
     if (load.status === "ready") {
         return (
-                <WorldCanvas key={share} world={load.world} bytes={load.bytes} platform={platform} shard={shard} seed={seed}
+                <WorldCanvas key={share} world={load.world} bytes={load.bytes} platform={platform} shard={shard}
+                             seed={seed}
                              share={share} view={view}/>
         );
     }

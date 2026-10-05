@@ -1,6 +1,6 @@
 import { type EntityLayer, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
-import { buildProgram, unitColour, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
+import { buildProgram, unitColour, vertexBuffer, VIEW_TRANSFORM, viewUniforms } from "./gl-program";
 
 const HALF_WIDTH = 0.625;
 const FEATHER = 1;

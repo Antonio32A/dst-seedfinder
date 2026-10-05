@@ -2,7 +2,13 @@
 
 import { type KeyboardEvent, useId, useMemo, useState } from "react";
 import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
-import { instancesOf, type MapMatch, type MapTarget, searchPrefabs, stepInstance } from "@/lib/world-map/legend/prefab-search";
+import {
+    instancesOf,
+    type MapMatch,
+    type MapTarget,
+    searchPrefabs,
+    stepInstance
+} from "@/lib/world-map/legend/prefab-search";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { formatCount } from "./format";
 
@@ -75,7 +81,9 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
                                 {suggestions.map((match, index) => (
                                         <li key={`${match.kind} ${match.name}`} id={`${listId}-${index}`} role="option"
                                             aria-selected={index === active}
-                                            ref={index === active ? (element) => element?.scrollIntoView(NEAREST) : undefined}
+                                            ref={index === active
+                                                    ? (element) => element?.scrollIntoView(NEAREST)
+                                                    : undefined}
                                             onPointerDown={(event) => event.preventDefault()}
                                             onClick={() => choose(match)}>
                                             {match.kind === "set piece"

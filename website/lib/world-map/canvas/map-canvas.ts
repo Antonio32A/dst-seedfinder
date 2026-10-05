@@ -43,7 +43,10 @@ export interface MapCanvas {
     /** Shows or hides the roads, drawn over the terrain. They start shown. */
     showRoads: (on: boolean) => void;
     highlightSetPieces: (indices: readonly number[]) => void;
-    /** Outlines every instance of `prefabs` in the site's highlight orange, showing them even when they're not in {@link show}. */
+    /**
+     * Outlines every instance of `prefabs` in the site's highlight orange, showing them even when they're not in
+     * {@link show}.
+     */
     highlight: (prefabs: ReadonlySet<string>) => void;
     /** Outlines the entity of `prefab` at world `(x, z)`, on top of {@link highlight}, or none for `null`. */
     hover: (entity: { prefab: string; x: number; z: number } | null) => void;
@@ -61,7 +64,12 @@ export interface MapCanvas {
  * Opens on `linked`, else on the spawn portal, or fitted to the world without one, with every prefab and set piece
  * hidden. Throws when the browser can't draw the map or the page has no `--highlight` colour to highlight with.
  */
-export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld, layer: EntityLayer, linked?: LinkedView): MapCanvas {
+export function mountMapCanvas(
+    canvas: HTMLCanvasElement,
+    world: GeneratedWorld,
+    layer: EntityLayer,
+    linked?: LinkedView
+): MapCanvas {
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const scene = createMapScene(gl, world, layer, readAccent(canvas), () => redraw());
@@ -72,8 +80,8 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     const [spawn] = instancesOf(world, { kind: "prefab", name: SPAWN });
     const fitted = fitView(world, viewport);
     const opening: MapView = spawn === undefined
-            ? fitted
-            : { ...fitted, centerX: spawn.x, centerZ: spawn.z, scale: Math.max(fitted.scale, SPAWN_SCALE) };
+        ? fitted
+        : { ...fitted, centerX: spawn.x, centerZ: spawn.z, scale: Math.max(fitted.scale, SPAWN_SCALE) };
     let view = linked === undefined ? opening : openLinkedView(linked, viewport);
     let frame = 0;
     const pointers = new Map<number, ScreenPoint>();
@@ -139,7 +147,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             const panned = panBy(view, after.x - before.x, after.y - before.y);
             const box = canvas.getBoundingClientRect();
             move(before.spread === 0 || after.spread === 0 ? panned
-                    : zoomAt(panned, viewport, { x: after.x - box.left, y: after.y - box.top }, after.spread / before.spread));
+                : zoomAt(panned, viewport, {
+                    x: after.x - box.left,
+                    y: after.y - box.top
+                }, after.spread / before.spread));
         },
         pointerup: (event) => pointers.delete(event.pointerId),
         pointercancel: (event) => pointers.delete(event.pointerId),
@@ -153,7 +164,9 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
             }, Math.exp(-pixels * ZOOM_PER_PIXEL)));
         }
     };
-    for (const [type, listener] of Object.entries(listeners)) canvas.addEventListener(type, listener as EventListener, { passive: false });
+    for (const [type, listener] of Object.entries(listeners)) {
+        canvas.addEventListener(type, listener as EventListener, { passive: false });
+    }
 
     const turn = (steps: number) => {
         const to = turnView({ ...view, heading: turning?.to ?? view.heading }, steps).heading;
@@ -232,7 +245,9 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
         dispose: () => {
             cancelAnimationFrame(frame);
             resized.disconnect();
-            for (const [type, listener] of Object.entries(listeners)) canvas.removeEventListener(type, listener as EventListener);
+            for (const [type, listener] of Object.entries(listeners)) {
+                canvas.removeEventListener(type, listener as EventListener);
+            }
             removeEventListener("keydown", pressed);
             scene.dispose();
             overlay?.dispose();

@@ -48,7 +48,10 @@ export function showPrefabs(shown: ReadonlySet<string>, prefabs: readonly string
     return next;
 }
 
-/** Every prefab the game's map draws an icon for in a freshly generated world, and every prefab the world rules of `search` name, in any of its options. */
+/**
+ * Every prefab the game's map draws an icon for in a freshly generated world, and every prefab the world rules of
+ * `search` name, in any of its options.
+ */
 export function defaultShown(search?: SeedfinderConfig, shard: Shard = "forest"): Set<string> {
     const named = (search?.criteria ?? []).flatMap(({ counts = [], distances = [], routes = [] }) => [
         ...counts.flatMap(({ prefab, near }) => [prefab, near?.prefab]),

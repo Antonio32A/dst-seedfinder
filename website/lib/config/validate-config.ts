@@ -179,12 +179,16 @@ const prefabSwapsOf =
     (shard: Shard): Parse =>
         (value, path) => {
             const swaps = Object.entries(recordAt(value, path));
-            const bad = swaps.find(([category, variant]) => !SWAP_OPTIONS[shard].get(category)?.includes(variant as string));
+            const bad = swaps.find(([category, variant]) =>
+                !SWAP_OPTIONS[shard].get(category)?.includes(variant as string));
             if (bad) fail(`unknown prefab swap ${quoted(bad[0])}: ${quoted(bad[1])} in ${path}`);
             return Object.fromEntries(swaps);
         };
 
-const metricFieldsOf = (shard: Shard): Fields => ({ metric: optional(choiceOf(METRICS)), [LINKS_KEY[shard]]: optional(flag) });
+const metricFieldsOf = (shard: Shard): Fields => ({
+    metric: optional(choiceOf(METRICS)),
+    [LINKS_KEY[shard]]: optional(flag)
+});
 
 const routeShapeOf = (shard: Shard) => {
     const prefabSet = prefabSetOf(shard);
@@ -263,7 +267,7 @@ const criteriaOf = (catalog: LevelCatalog): Parse => {
     return (value, path) => {
         const entries = criteriaList(value, path);
         const allPassive = entries.length > 0 && entries.every((entry) => (entry as {
-            passive?: boolean
+            passive?: boolean;
         }).passive === true);
         return allPassive ? fail("every criteria entry is passive (at least one must not be)") : entries;
     };

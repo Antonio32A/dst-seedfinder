@@ -22,4 +22,5 @@ export function turfBridges(world: Pick<GeneratedWorld, "topology">): TurfBridge
         }).sort((a, b) => b.length - a.length);
 }
 
-export const defaultShownBridges = (search?: SeedfinderConfig) => (search?.criteria ?? []).some(({ bridges = [] }) => bridges.length > 0);
+export const defaultShownBridges = (search?: SeedfinderConfig) =>
+    (search?.criteria ?? []).some(({ bridges = [] }) => bridges.length > 0);

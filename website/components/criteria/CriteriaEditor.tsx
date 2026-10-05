@@ -48,10 +48,12 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
                                     onRemove={() =>
                                             setGroups((groups) => {
                                                 const kept = withoutKey(groups, group.key);
-                                                return kept.some((item) => !item.passive) ? kept : kept.map((item, at) => (at === 0 ? {
-                                                    ...item,
-                                                    passive: false
-                                                } : item));
+                                                return kept.some((item) => !item.passive)
+                                                        ? kept
+                                                        : kept.map((item, at) => (at === 0 ? {
+                                                            ...item,
+                                                            passive: false
+                                                        } : item));
                                             })
                                     }
                             />

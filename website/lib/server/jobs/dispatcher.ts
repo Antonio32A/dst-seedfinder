@@ -49,7 +49,7 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
 
     async waiting(): Promise<number> {
         return this.ctx.storage.sql.exec<{
-            count: number
+            count: number;
         }>("SELECT COUNT(*) AS count FROM entries WHERE holding = 0").one().count;
     }
 
@@ -88,7 +88,7 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
         const maxInstances = Number(this.env.MAX_INSTANCES) || DEFAULT_MAX_INSTANCES;
         const sql = this.ctx.storage.sql;
         const holding = sql.exec<{
-            count: number
+            count: number;
         }>("SELECT COUNT(*) AS count FROM entries WHERE holding = 1").one().count;
         sql.exec(
             "UPDATE entries SET holding = 1 WHERE seq IN (SELECT seq FROM entries WHERE holding = 0 ORDER BY seq LIMIT ?)",
@@ -96,7 +96,8 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
         );
         const moved = [...this.admissions()].filter(([jobId, admission]) => {
             const previous = before.get(jobId);
-            return jobId !== callerId && (previous?.granted !== admission.granted || previous?.position !== admission.position);
+            return jobId !== callerId &&
+                (previous?.granted !== admission.granted || previous?.position !== admission.position);
         });
         const replies = await Promise.all(
             moved.map(([jobId, admission]) =>

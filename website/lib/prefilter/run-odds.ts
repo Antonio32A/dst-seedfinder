@@ -16,10 +16,14 @@ class Cancelled extends Error {
 export const isCancelled = (error: unknown) => error instanceof Cancelled;
 
 /**
- * Generates the level tables of the first `sampleSize` seeds of the config's shard on `threads` workers. `onProgress` gets the share of
- * the sample that is done, and the promise rejects with `isCancelled` errors once `cancel` is called.
+ * Generates the level tables of the first `sampleSize` seeds of the config's shard on `threads` workers. `onProgress`
+ * gets the share of the sample that is done, and the promise rejects with `isCancelled` errors once `cancel` is called.
  */
-export function runPrefilterOdds(config: SeedfinderConfig, threads: number, onProgress: (done: number) => void): OddsRunHandle {
+export function runPrefilterOdds(
+    config: SeedfinderConfig,
+    threads: number,
+    onProgress: (done: number) => void
+): OddsRunHandle {
     const workers: Worker[] = [];
     let cancel = () => {
     };

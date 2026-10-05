@@ -17,7 +17,8 @@ interface BridgeRuleRowProps {
 
 export default function BridgeRuleRow({ row, index, onChange, onRemove }: BridgeRuleRowProps) {
     const update = (patch: Partial<BridgeRow>) => onChange({ ...row, ...patch });
-    const capped = (on: boolean) => update({ max: on ? Math.max(row.min, DEFAULT_MAX_TILES * WORLD_UNITS_PER_TILE) : null });
+    const capped = (on: boolean) =>
+            update({ max: on ? Math.max(row.min, DEFAULT_MAX_TILES * WORLD_UNITS_PER_TILE) : null });
 
     return (
             <RuleFrame title={`Turf bridge ${index + 1}`} onRemove={onRemove}>

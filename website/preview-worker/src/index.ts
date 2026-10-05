@@ -24,7 +24,8 @@ const failure = (status: number, reason: string, cacheControl = "no-store", retr
     }
 });
 
-const fnv1a = (text: string) => [...text].reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
+const fnv1a = (text: string) =>
+    [...text].reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
 
 function outcomeResponse(outcome: RenderOutcome): Response {
     switch (outcome.status) {

@@ -1,4 +1,10 @@
-import { DEFAULT_SHARD, type Platform, PLATFORMS, type SeedfinderConfig, type Shard } from "@/lib/config/seedfinder-config";
+import {
+    DEFAULT_SHARD,
+    type Platform,
+    PLATFORMS,
+    type SeedfinderConfig,
+    type Shard
+} from "@/lib/config/seedfinder-config";
 import { validateConfig } from "@/lib/config/validate-config";
 import { decodeShareParam, encodeShareParam } from "@/lib/criteria/search-state";
 import { clamp } from "@/lib/criteria/state-helpers";
@@ -30,7 +36,10 @@ export function mapPath(
     return `/map/${platform}/${shard === "caves" ? "caves/" : ""}${seed}${query && `?${query}`}`;
 }
 
-/** Whole world units and a heading in `[0, 360)` on its 45 degree steps, so every view a link can open has one spelling. */
+/**
+ * Whole world units and a heading in `[0, 360)` on its 45 degree steps, so every view a link can open has one
+ * spelling.
+ */
 const roundedView = ({ centerX, centerZ, span, heading }: LinkedView): LinkedView => ({
     centerX: clamp(centerX, -MAX_CENTRE, MAX_CENTRE),
     centerZ: clamp(centerZ, -MAX_CENTRE, MAX_CENTRE),

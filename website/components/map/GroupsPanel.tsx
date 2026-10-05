@@ -105,7 +105,19 @@ function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: Gro
 }
 
 export default function GroupsPanel(props: GroupsPanelProps) {
-    const { legend, shown, onChange, onHighlight, setPieces, shownSetPieces, onSetPiecesChange, links, roads, bridges, onSelect } = props;
+    const {
+        legend,
+        shown,
+        onChange,
+        onHighlight,
+        setPieces,
+        shownSetPieces,
+        onSetPiecesChange,
+        links,
+        roads,
+        bridges,
+        onSelect
+    } = props;
     return (
             <details className="map-bar map-groups">
                 <summary>Filters</summary>
@@ -129,12 +141,14 @@ export default function GroupsPanel(props: GroupsPanelProps) {
                             </ToggleRow>
                     )}
                     {roads && (
-                            <ToggleRow shown={roads.shown} colour={ROAD_SWATCH} onChange={roads.onChange}>Roads</ToggleRow>
+                            <ToggleRow shown={roads.shown} colour={ROAD_SWATCH}
+                                       onChange={roads.onChange}>Roads</ToggleRow>
                     )}
                     {bridges && (
                             <ToggleRow shown={bridges.shown} colour={BRIDGE_COLOUR} onChange={bridges.onChange}>
                                 Turf Bridges{" "}
-                                <span className="map__count" title="Bridges that cross the map to a room left far from its neighbours">
+                                <span className="map__count"
+                                      title="Bridges that cross the map to a room left far from its neighbours">
                                     {formatCount(bridges.stray)} long
                                 </span>
                             </ToggleRow>

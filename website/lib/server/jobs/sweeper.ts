@@ -18,7 +18,8 @@ const machineOf = (row: SweptRow) => (row.machine === null ? null : (JSON.parse(
 function deadlineOf(row: SweptRow): number | null {
     const machine = machineOf(row);
     if (row.status !== "running" || row.started_at === null || machine === null) return null;
-    return row.started_at + timeLimitSeconds(unitsToCredits(row.max_cost), machine.dollarsPerHour) * 1000 + DEADLINE_GRACE_MS;
+    const limitMs = timeLimitSeconds(unitsToCredits(row.max_cost), machine.dollarsPerHour) * 1000;
+    return row.started_at + limitMs + DEADLINE_GRACE_MS;
 }
 
 async function destroyStrays(env: Cloudflare.Env): Promise<void> {
@@ -77,7 +78,8 @@ async function superviseActiveJobs(env: Cloudflare.Env): Promise<void> {
         results.filter(({ id }) => !stopped.has(id)).map(({ id }) => id),
         snapshotAt
     );
-    const stale = results.filter((row) => !stuck.includes(row) && snapshotAt > (deadlineOf(row) ?? row.updated_at + QUIET_MS));
+    const stale = results.filter((row) =>
+        !stuck.includes(row) && snapshotAt > (deadlineOf(row) ?? row.updated_at + QUIET_MS));
     await Promise.allSettled(
         stale.map(async (row) => {
             const alive = await jobRoomStub(env, row.id)

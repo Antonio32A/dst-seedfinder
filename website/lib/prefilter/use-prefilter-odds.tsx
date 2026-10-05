@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { Shard, SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useEffectEvent, useMemo, useState } from "react";
+import type { SeedfinderConfig, Shard } from "@/lib/config/seedfinder-config";
 import { formatShare, type PrefilterOdds } from "./odds";
 import { isCancelled, runPrefilterOdds } from "./run-odds";
 
@@ -42,24 +42,15 @@ export function PrefilterOddsProvider({ config, threads, supported, children }: 
     const [latest, setLatest] = useState<PrefilterOdds | null>(null);
     const [byShard, setByShard] = useState<Partial<Record<Shard, PrefilterOdds>>>({});
     const configKey = JSON.stringify(config);
-    const configRef = useRef(config);
-    configRef.current = config;
-    const threadsRef = useRef(threads);
-    threadsRef.current = threads;
 
-    useEffect(() => {
-        if (!enabled) return;
-        let cancel = () => {
-        };
-        const timer = window.setTimeout(() => {
-            const handle = runPrefilterOdds(configRef.current, threadsRef.current, setProgress);
-            cancel = handle.cancel;
-            setStatus("running");
-            setProgress(0);
-            handle.result.then(
+    const startRun = useEffectEvent(() => {
+        const handle = runPrefilterOdds(config, threads, setProgress);
+        setStatus("running");
+        setProgress(0);
+        handle.result.then(
                 (odds) => {
                     setLatest(odds);
-                    setByShard((current) => ({ ...current, [configRef.current.shard ?? "forest"]: odds }));
+                    setByShard((current) => ({ ...current, [config.shard ?? "forest"]: odds }));
                     setError(null);
                     setStatus("ready");
                 },
@@ -68,7 +59,16 @@ export function PrefilterOddsProvider({ config, threads, supported, children }: 
                     setError(caught instanceof Error ? caught.message : String(caught));
                     setStatus("failed");
                 }
-            );
+        );
+        return handle.cancel;
+    });
+
+    useEffect(() => {
+        if (!enabled) return;
+        let cancel = () => {
+        };
+        const timer = window.setTimeout(() => {
+            cancel = startRun();
         }, latest === null ? 0 : RECALCULATE_DELAY_MS);
         return () => {
             window.clearTimeout(timer);

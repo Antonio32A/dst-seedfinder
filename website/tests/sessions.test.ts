@@ -46,7 +46,7 @@ describe("the session cookie", () => {
     it("is stored only as its SHA-256 hash", async () => {
         const { profile, session } = await signIn();
         const { results } = await db().prepare("SELECT id FROM sessions WHERE user_id = ?").bind(profile.id).all<{
-            id: string
+            id: string;
         }>();
         expect(results).toEqual([{ id: sha256Hex(session) }]);
     });
@@ -88,7 +88,7 @@ describe("logout", () => {
         expect(await meId(session)).toBeNull();
         expect((await api("/api/jobs", { session })).status).toBe(401);
         const row = await db().prepare("SELECT COUNT(*) AS count FROM sessions WHERE user_id = ?").bind(profile.id).first<{
-            count: number
+            count: number;
         }>();
         expect(row?.count).toBe(0);
     });

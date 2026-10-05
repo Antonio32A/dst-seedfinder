@@ -1,7 +1,7 @@
 "use client";
 
 import SegmentedControl from "@/components/ui/SegmentedControl";
-import { SHARD_LABELS, type Shard, SHARDS } from "@/lib/config/seedfinder-config";
+import { type Shard, SHARD_LABELS, SHARDS } from "@/lib/config/seedfinder-config";
 
 const HINT = "The world type you wish to generate. Forest is the main world, and caves are well... caves!";
 

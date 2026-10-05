@@ -28,7 +28,13 @@ const RUNNER_ENDPOINTS = ENDPOINTS.filter(({ access }) => access === "runner").m
     key: endpointKey(endpoint)
 }));
 
-function runner(method: string, jobId: string, authorization?: string, headers: Record<string, string> = {}, body?: BodyInit): Promise<Response> {
+function runner(
+    method: string,
+    jobId: string,
+    authorization?: string,
+    headers: Record<string, string> = {},
+    body?: BodyInit
+): Promise<Response> {
     const credentials: Record<string, string> = authorization === undefined ? {} : { Authorization: authorization };
     return api(`/api/runner/${jobId}`, { method, body, headers: { "X-Offset": "0", ...headers, ...credentials } });
 }

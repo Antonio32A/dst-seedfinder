@@ -29,7 +29,10 @@ function runDump(seed: number, platform: Platform, shard: Shard): Promise<Genera
         };
         createSeedfinder({
             arguments: ["--", ...dumpArgs(seed, platform, shard)],
-            instantiateWasm: (imports: WebAssembly.Imports, receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void) => {
+            instantiateWasm: (
+                imports: WebAssembly.Imports,
+                receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
+            ) => {
                 WebAssembly.instantiate(seedfinder, imports).then((instance) => receive(instance, seedfinder), reject);
                 return {};
             },

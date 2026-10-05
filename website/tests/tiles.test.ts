@@ -10,7 +10,9 @@ describe("the tile table", () => {
     it("gives every tile a minimap colour", () => {
         for (const tile of Object.values(TILES)) {
             expect(tile.color).toHaveLength(3);
-            for (const channel of tile.color) expect(Number.isInteger(channel) && channel >= 0 && channel <= 255).toBe(true);
+            for (const channel of tile.color) {
+                expect(Number.isInteger(channel) && channel >= 0 && channel <= 255).toBe(true);
+            }
         }
     });
 

@@ -10,7 +10,7 @@ export interface PrefabFamily {
 
 export type PickerEntry = { prefab: WorldPrefab; family?: undefined } | {
     family: PrefabFamily;
-    members: WorldPrefab[]
+    members: WorldPrefab[];
 };
 
 export interface PickerGroup {
@@ -80,7 +80,8 @@ const pickerGroupsOf = (shard: Shard): PickerGroup[] => {
 
 function setsOf(shard: Shard): ShardSets {
     const pickerGroups = pickerGroupsOf(shard);
-    const families = pickerGroups.flatMap((group) => group.entries.flatMap((entry) => (entry.family ? [entry.family] : [])));
+    const families = pickerGroups
+        .flatMap((group) => group.entries.flatMap((entry) => (entry.family ? [entry.family] : [])));
     const wholeGroups = pickerGroups.filter((group) => group.pickable && group.ids.length > 1).map((group) => ({
         label: `${group.name} (all ${group.ids.length})`,
         ids: group.ids
@@ -100,7 +101,10 @@ export function setChips(ids: string[], shard: Shard = "forest"): SetChip[] {
         if (free) family.ids.forEach((id) => chosen.delete(id));
         return free ? [...chips, family] : chips;
     }, []);
-    return [...collapsed, ...ids.filter((id) => chosen.has(id)).map((id) => ({ label: prefabName(id, shard), ids: [id] }))];
+    return [...collapsed, ...ids.filter((id) => chosen.has(id)).map((id) => ({
+        label: prefabName(id, shard),
+        ids: [id]
+    }))];
 }
 
 export function setLabel(ids: string[], shard: Shard = "forest"): string {

@@ -48,6 +48,7 @@ export function drawOrder(icons: IconLayer, heading: number): Float32Array {
     });
     const order = Uint32Array.from(priorities.keys()).sort((a, b) => keys[a] - keys[b]);
     const sorted = new Float32Array(instances.length);
-    order.forEach((from, at) => sorted.set(instances.subarray(ICON_STRIDE * from, ICON_STRIDE * (from + 1)), ICON_STRIDE * at));
+    order.forEach((from, at) =>
+        sorted.set(instances.subarray(ICON_STRIDE * from, ICON_STRIDE * (from + 1)), ICON_STRIDE * at));
     return sorted;
 }

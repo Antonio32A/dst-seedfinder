@@ -1,6 +1,6 @@
 import { compileSeedfinder } from "@/lib/browser-search/seedfinder-wasm";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
-import { workerReply, type WorkerFailure } from "@/lib/world-map/world/worker-reply";
+import { type WorkerFailure, workerReply } from "@/lib/world-map/world/worker-reply";
 import type { WorldEval } from "./world-eval";
 
 export interface EvalRequest {
@@ -17,7 +17,11 @@ export type EvalLoad =
     | { status: "failed"; error: string };
 
 /** Runs `world eval` in a worker. Aborting the signal stops the worker, and the result is then meaningless. */
-export async function evaluateWorld(bytes: Uint8Array, config: SeedfinderConfig, signal: AbortSignal): Promise<EvalLoad> {
+export async function evaluateWorld(
+    bytes: Uint8Array,
+    config: SeedfinderConfig,
+    signal: AbortSignal
+): Promise<EvalLoad> {
     try {
         const module = await compileSeedfinder();
         signal.throwIfAborted();

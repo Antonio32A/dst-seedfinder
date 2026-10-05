@@ -35,7 +35,8 @@ export default function ResourceSection({ catalog, swaps, onChange }: ResourceSe
                                             title: option.description
                                         }))]}
                                         value={swaps[swap.id] ?? ANY}
-                                        onChange={(value) => onChange(withEntry(swaps, swap.id, value === ANY ? undefined : value))}
+                                        onChange={(value) =>
+                                                onChange(withEntry(swaps, swap.id, value === ANY ? undefined : value))}
                                 />
                                 {swap.description && <p className="hint">{swap.description}</p>}
                             </div>

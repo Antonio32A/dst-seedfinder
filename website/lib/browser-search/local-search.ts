@@ -27,7 +27,7 @@ export interface LocalRun {
 export type WorkerMessage = { type: "line"; line: string; stderr: boolean } | {
     type: "exit";
     code: number;
-    error: string | null
+    error: string | null;
 };
 
 export interface LocalSearchRequest {

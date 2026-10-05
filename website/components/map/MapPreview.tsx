@@ -30,7 +30,8 @@ export default function MapPreview() {
             const { width = MAP_PREVIEW_SIZE.width, height = MAP_PREVIEW_SIZE.height, view, type, quality } = request;
             const linked = parseMapView(view);
             if (view !== undefined && linked === undefined) throw new Error(`"${view}" isn't a map view.`);
-            const image = await renderMapPreview(canvas.current!, Uint8Array.from(atob(dump), (char) => char.charCodeAt(0)), {
+            const bytes = Uint8Array.from(atob(dump), (char) => char.charCodeAt(0));
+            const image = await renderMapPreview(canvas.current!, bytes, {
                 size: { width, height },
                 view: linked,
                 type,

@@ -73,7 +73,11 @@ const SECTION_PARTS: SectionParts = {
     bridges: ({ from, to, stray = "from" }) =>
         from && to ? {
             ...NOTHING,
-            lines: [...outline(from, BRIDGE_WIDTH_TILES), ...outline(to, BRIDGE_WIDTH_TILES), { from: point(from), to: point(to), jump: false }],
+            lines: [...outline(from, BRIDGE_WIDTH_TILES), ...outline(to, BRIDGE_WIDTH_TILES), {
+                from: point(from),
+                to: point(to),
+                jump: false
+            }],
             focus: point(stray === "from" ? from : to)
         } : NOTHING,
     routes: ({ legs }) => joined(legs.map(({ from, to, wormholes }) => travel(from, to, wormholes)))
@@ -82,13 +86,20 @@ const SECTION_PARTS: SectionParts = {
 const middle = (values: number[]) => (Math.min(...values) + Math.max(...values)) / 2;
 
 export function witnessShape(witness: Witness): WitnessShape {
-    const { instances: listed, lines, focus } = (SECTION_PARTS[witness.section] as (witness: Witness) => Parts)(witness);
+    const {
+        instances: listed,
+        lines,
+        focus
+    } = (SECTION_PARTS[witness.section] as (witness: Witness) => Parts)(witness);
     const instances = [...new Map(listed.map((instance) => [`${instance.prefab}#${instance.index}`, instance])).values()];
     const points = [...instances, ...lines.flatMap(({ from, to }) => [from, to])];
     return {
         marks: instances.map(({ prefab, x, z }) => ({ prefab, at: { x, z }, ok: witness.ok })),
         segments: lines.map((line) => ({ ...line, ok: witness.ok })),
-        focus: focus ?? (points.length === 0 ? null : { x: middle(points.map(({ x }) => x)), z: middle(points.map(({ z }) => z)) })
+        focus: focus ?? (points.length === 0 ? null : {
+            x: middle(points.map(({ x }) => x)),
+            z: middle(points.map(({ z }) => z))
+        })
     };
 }
 

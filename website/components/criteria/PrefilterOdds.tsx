@@ -11,7 +11,8 @@ export default function PrefilterOdds() {
     return (
             <div className="prefilter">
                 <div className="prefilter__row">
-                    <button type="button" disabled={!supported || running || latest !== null} title={supported ? undefined : UNSUPPORTED}
+                    <button type="button" disabled={!supported || running || latest !== null}
+                            title={supported ? undefined : UNSUPPORTED}
                             onClick={calculate}>
                         {running && latest === null ? `Calculating... ${Math.round(progress * 100)}%` : "Calculate prefilter odds"}
                     </button>

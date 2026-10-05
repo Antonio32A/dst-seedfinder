@@ -131,7 +131,9 @@ const finite: Parser<number> = (value) => (typeof value === "number" && Number.i
 const integerUpTo =
     (max: number): Parser<number> =>
         (value) =>
-            Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max ? (value as number) : undefined;
+            Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max
+                ? (value as number)
+                : undefined;
 
 const uint32 = integerUpTo(SEED_SPACE - 1);
 const seedCount = integerUpTo(SEED_SPACE);
@@ -161,12 +163,16 @@ function parseFields(fields: Record<string, unknown>, parsers: Record<string, Pa
     return Object.entries(parsers).map(([key, parse]) => [key, parse(fields[key])]);
 }
 
-function shape<R extends object, O extends object = object>(required: Parsers<R>, optional?: Parsers<O>): Parser<R & Partial<O>> {
+function shape<R extends object, O extends object = object>(
+    required: Parsers<R>,
+    optional?: Parsers<O>
+): Parser<R & Partial<O>> {
     return (value) => {
         if (!isRecord(value)) return undefined;
         const needed = parseFields(value, required as Record<string, Parser<unknown>>);
         if (needed.some(([, parsed]) => parsed === undefined)) return undefined;
-        const extra = parseFields(value, (optional ?? {}) as Record<string, Parser<unknown>>).filter(([, parsed]) => parsed !== undefined);
+        const extra = parseFields(value, (optional ?? {}) as Record<string, Parser<unknown>>)
+            .filter(([, parsed]) => parsed !== undefined);
         return Object.fromEntries([...needed, ...extra]) as R & Partial<O>;
     };
 }
@@ -230,7 +236,11 @@ const SWAP_CATEGORIES: SwapCategory[] = ["grass", "twigs", "berries"];
 
 const prefabSwaps: Parser<LevelTable["prefab_swaps"]> = (value) => {
     const fields = asRecord(value);
-    return Object.fromEntries(SWAP_CATEGORIES.map((category) => [category, text(fields[category])]).filter(([, option]) => option !== undefined));
+    return Object.fromEntries(
+        SWAP_CATEGORIES
+            .map((category) => [category, text(fields[category])])
+            .filter(([, option]) => option !== undefined)
+    );
 };
 
 const EMPTY_LEVEL: LevelTable = { prefab_swaps: {}, tasks: [] };

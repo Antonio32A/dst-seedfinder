@@ -17,7 +17,8 @@ export default function TileSetField({ label, names, onChange }: TileSetFieldPro
     const shard = useWorldShard();
     const [showAll, setShowAll] = useState(false);
     const full = names.length >= MAX_TILE_NAMES;
-    const shown = shardCatalog(shard).landTiles.filter((tile) => showAll || tile.inDefaultWorlds || names.includes(tile.name));
+    const shown = shardCatalog(shard).landTiles
+            .filter((tile) => showAll || tile.inDefaultWorlds || names.includes(tile.name));
 
     return (
             <fieldset className="seg tile-set">

@@ -49,10 +49,17 @@ const TARGET_HINTS: Record<SearchTarget, string> = {
     browser: "Runs on your computer in the browser, but slightly slower and stops if you close the tab."
 };
 
-function blockingProblem(issues: Issue[], credits: number | undefined, maxCost: number, startSeed: number | null): string | undefined {
+function blockingProblem(
+        issues: Issue[],
+        credits: number | undefined,
+        maxCost: number,
+        startSeed: number | null
+): string | undefined {
     if (issues.some((issue) => issue.severity === "error")) return "Fix the errors above first.";
     if (startSeed === null) return START_SEED_PROBLEM;
-    return credits !== undefined && creditsToUnits(credits) < creditsToUnits(maxCost) ? notEnoughCredits(maxCost, credits) : undefined;
+    return credits !== undefined && creditsToUnits(credits) < creditsToUnits(maxCost)
+            ? notEnoughCredits(maxCost, credits)
+            : undefined;
 }
 
 interface CloudActionProps {
@@ -173,7 +180,9 @@ export default function SearchPanel({
     const startSeedText = startSeedDraft.trim() || String(DEFAULT_START_SEED);
     const startSeed = /^\d+$/.test(startSeedText) && Number(startSeedText) < SEED_SPACE ? Number(startSeedText) : null;
     const atLimit = !inBrowser && account.atLimit;
-    const problem = atLimit ? undefined : blockingProblem(issues, inBrowser ? undefined : user?.credits, maxCost, startSeed);
+    const problem = atLimit
+            ? undefined
+            : blockingProblem(issues, inBrowser ? undefined : user?.credits, maxCost, startSeed);
 
     const checkedRequest = () => {
         const checked = validateJobRequest({ config, wanted, maxCost, startSeed });

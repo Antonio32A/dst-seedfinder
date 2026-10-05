@@ -98,8 +98,9 @@ export interface IconRenderer {
 }
 
 /**
- * Draws the game's minimap icons as billboards of constant world size: lowest priority and top of the view first, sampled
- * from the sheet's own mip levels. Highlighted and hovered icons are drawn again on top, outlined in `accent` (`[r, g, b]` in 0-255).
+ * Draws the game's minimap icons as billboards of constant world size: lowest priority and top of the view first,
+ * sampled from the sheet's own mip levels. Highlighted and hovered icons are drawn again on top, outlined in `accent`
+ * (`[r, g, b]` in 0-255).
  */
 export function createIconRenderer(
     gl: WebGL2RenderingContext,
@@ -147,7 +148,9 @@ export function createIconRenderer(
         gl.bindTexture(gl.TEXTURE_2D, sheet);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        for (const parameter of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.CLAMP_TO_EDGE);
+        for (const parameter of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) {
+            gl.texParameteri(gl.TEXTURE_2D, parameter, gl.CLAMP_TO_EDGE);
+        }
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, levels.length - 1);
         levels.forEach((level, mip) => {
             gl.texImage2D(gl.TEXTURE_2D, mip, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, level);
@@ -176,7 +179,8 @@ export function createIconRenderer(
             }
             gl.uniform3f(hoveredUniform, hovered.prefab, hovered.x, hovered.z);
             gl.enable(gl.BLEND);
-            // The sheet is premultiplied and blended by SRC_ALPHA too, so edges multiply by alpha twice, as in the game.
+            // The sheet is premultiplied and blended by SRC_ALPHA too, so edges multiply by alpha twice, as in the
+            // game.
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
             for (const lifted of [0, 1]) {
                 gl.uniform1f(liftedUniform, lifted);

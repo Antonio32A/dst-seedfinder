@@ -19,7 +19,7 @@ import { useLocalSearch } from "@/lib/browser-search/use-local-search";
 import { copyText } from "@/lib/client/clipboard";
 import { rememberMapOrigin } from "@/lib/client/map-origin";
 import { useAccount } from "@/lib/client/use-account";
-import { SHARD_LABELS, type Shard } from "@/lib/config/seedfinder-config";
+import { type Shard, SHARD_LABELS } from "@/lib/config/seedfinder-config";
 import {
     decodeShareParam,
     DEFAULT_WANTED,
@@ -106,7 +106,7 @@ export default function SeedFinderApp() {
         const shared = url.searchParams.get("c");
         const stored = readStored();
         const initial = (shared ? decodeShareParam(shared) : null) ?? stored?.config;
-        if (initial) setState(fromSeedfinderConfig(initial));
+        if (initial) setState(fromSeedfinderConfig(initial)); // eslint-disable-line react-hooks/set-state-in-effect
         if (hasCustomSettings(initial)) notify(`Search loaded. ${SETTINGS_DROPPED_NOTICE}`);
         const logicalCores = Math.max(1, navigator.hardwareConcurrency || 1);
         const supported = canRunSeedfinder();

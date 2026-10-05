@@ -10,8 +10,8 @@ import {
     DEFAULT_PLATFORM,
     DEFAULT_SHARD,
     type Platform,
-    SHARD_LABELS,
     type Shard,
+    SHARD_LABELS,
     SHARDS
 } from "@/lib/config/seedfinder-config";
 import { pickedMapPath } from "@/lib/world-map/map-route";

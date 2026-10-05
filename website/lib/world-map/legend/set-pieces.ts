@@ -20,7 +20,10 @@ export const setPieceCounts = (world: Pick<GeneratedWorld, "setPieces">) =>
 
 const CAVE_TASK_NAMES: ReadonlyMap<string, string> = new Map(CAVE_TASKS.map((task) => [task.id, task.name]));
 
-/** What the legend calls a set piece: the layout's name, except the caves' mazes (named after their task) and the Labyrinth. */
+/**
+ * What the legend calls a set piece: the layout's name, except the caves' mazes (named after their task) and the
+ * Labyrinth.
+ */
 export function setPieceName(name: string, shard: Shard = "forest"): string {
     if (shard !== "caves") return name;
     if (name === "Labyrinth") return "The Labyrinth (maze)";

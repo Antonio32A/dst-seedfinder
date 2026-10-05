@@ -45,15 +45,17 @@ export interface JobView {
     error: string | null;
 }
 
-/** Sent as `data: <JSON>\n\n`. `queuePosition` and `attempt` are 1-based, and `end` closes the stream. */
-export type JobEvent =
-    | {
+interface JobStatusEvent {
     type: "status";
     status: JobStatus;
     queuePosition: number | null;
     machine: Machine | null;
-    attempt: number | null
+    attempt: number | null;
 }
+
+/** Sent as `data: <JSON>\n\n`. `queuePosition` and `attempt` are 1-based, and `end` closes the stream. */
+export type JobEvent =
+    | JobStatusEvent
     | { type: "progress"; progress: JobProgress }
     | { type: "hit"; hit: SearchHit }
     | { type: "end"; job: JobView };

@@ -37,7 +37,10 @@ export function runSeedfinder({ module, args, files = {}, print, printErr }: See
         });
         factory.then((seedfinder) => seedfinder({
             arguments: args,
-            instantiateWasm: (imports: WebAssembly.Imports, receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void) => {
+            instantiateWasm: (
+                imports: WebAssembly.Imports,
+                receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
+            ) => {
                 WebAssembly.instantiate(module, imports).then(
                     (instance) => receive(instance, module),
                     (error: unknown) => exit(-1, error)

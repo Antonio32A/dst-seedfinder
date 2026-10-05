@@ -14,7 +14,10 @@ const STRAIGHT = new Int32Array([0, 0, 1000, 0]);
 const BENT = new Int32Array([0, 0, 1000, 0, 1000, 1000]);
 
 const vertices = (strip: Float32Array) =>
-    Array.from({ length: strip.length / ROAD_VERTEX_FLOATS }, (_, at) => [...strip.subarray(ROAD_VERTEX_FLOATS * at, ROAD_VERTEX_FLOATS * (at + 1))]);
+    Array.from(
+        { length: strip.length / ROAD_VERTEX_FLOATS },
+        (_, at) => [...strip.subarray(ROAD_VERTEX_FLOATS * at, ROAD_VERTEX_FLOATS * (at + 1))]
+    );
 
 describe("the road shapes", () => {
     it("give the paved road a centre strip with narrow edges, at the middle of the game's ranges", () => {

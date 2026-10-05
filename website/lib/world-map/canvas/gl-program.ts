@@ -55,8 +55,14 @@ export function vertexBuffer(
     return buffer;
 }
 
-/** A setter of the {@link VIEW_TRANSFORM} uniforms of `program`, looked up once; the program must be in use when it's called. */
-export function viewUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): (view: MapView, viewport: Size) => void {
+/**
+ * A setter of the {@link VIEW_TRANSFORM} uniforms of `program`, looked up once; the program must be in use when it's
+ * called.
+ */
+export function viewUniforms(
+    gl: WebGL2RenderingContext,
+    program: WebGLProgram
+): (view: MapView, viewport: Size) => void {
     const origin = gl.getUniformLocation(program, "origin");
     const alongX = gl.getUniformLocation(program, "alongX");
     const alongZ = gl.getUniformLocation(program, "alongZ");
@@ -73,7 +79,12 @@ export function viewUniforms(gl: WebGL2RenderingContext, program: WebGLProgram):
 }
 
 /** Sets the {@link VIEW_TRANSFORM} uniforms of `program`, which must be in use. */
-export function setViewUniforms(gl: WebGL2RenderingContext, program: WebGLProgram, view: MapView, viewport: Size): void {
+export function setViewUniforms(
+    gl: WebGL2RenderingContext,
+    program: WebGLProgram,
+    view: MapView,
+    viewport: Size
+): void {
     viewUniforms(gl, program)(view, viewport);
 }
 
@@ -85,7 +96,10 @@ async function download(url: string): Promise<Blob> {
     return response.blob();
 }
 
-/** Downloads `url` as raw texels: no colour conversion and no alpha premultiplication, whatever the file holds is uploaded. */
+/**
+ * Downloads `url` as raw texels: no colour conversion and no alpha premultiplication, whatever the file holds is
+ * uploaded.
+ */
 export async function fetchTexels(url: string): Promise<ImageBitmap> {
     return createImageBitmap(await download(url), RAW_TEXELS);
 }
@@ -100,5 +114,10 @@ export interface TexelRegion {
 /** Downloads `url` once and cuts `regions` out of it as raw texels, like {@link fetchTexels}. */
 export async function fetchTexelRegions(url: string, regions: readonly TexelRegion[]): Promise<ImageBitmap[]> {
     const image = await download(url);
-    return Promise.all(regions.map(({ x, y, width, height }) => createImageBitmap(image, x, y, width, height, RAW_TEXELS)));
+    return Promise.all(regions.map(({
+                                        x,
+                                        y,
+                                        width,
+                                        height
+                                    }) => createImageBitmap(image, x, y, width, height, RAW_TEXELS)));
 }

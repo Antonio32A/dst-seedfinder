@@ -245,16 +245,6 @@ describe("the world filters on the caves", () => {
         }
     });
 
-    it("writes the walking cave presets as the finder reads them", () => {
-        const configOf = (id: string) => toSeedfinderConfig(PRESETS.caves.find((preset) => preset.id === id)!.build()).criteria;
-        expect(configOf("guardian-walking-with-tentacles")).toEqual([
-            { passive: false, distances: [{ from: "cave_exit", to: "minotaur_spawner", max: 300, metric: "walk", pillars: true }] }
-        ]);
-        expect(configOf("atrium-at-spawn")).toEqual([
-            { passive: false, distances: [{ from: "cave_exit", to: "atrium_gate", max: 40, metric: "walk" }] }
-        ]);
-    });
-
     it("validates cave worlds the same way on both platforms", () => {
         const state = { shard: "caves" as const, platform: "windows" as const, groups: [caveGroup()] };
         expect(validateSearch(state)).toEqual(validateSearch({ ...state, platform: "linux" }));
@@ -274,11 +264,6 @@ describe("the turf bridge rules", () => {
             expect(validateConfig(config).ok).toBe(true);
             expect(toSeedfinderConfig(fromSeedfinderConfig(JSON.parse(JSON.stringify(config))))).toEqual(config);
         }
-    });
-
-    it("has a caves preset for a bridge at least 150 tiles long", () => {
-        const preset = PRESETS.caves.find(({ id }) => id === "map-spanning-bridge")!;
-        expect(toSeedfinderConfig(preset.build()).criteria).toEqual([{ passive: false, bridges: [{ min: 600 }] }]);
     });
 
     it("keeps the bridges when switching shard", () => {

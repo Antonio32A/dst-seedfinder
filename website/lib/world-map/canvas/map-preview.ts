@@ -17,8 +17,8 @@ export interface PreviewImage {
 
 /**
  * Draws the world of `dump` once into `canvas`, resized to the image's size, with what the map shows by default (the
- * icons the game's map draws and the roads), and encodes it. Throws when the dump has no world or the browser can't draw
- * the map.
+ * icons the game's map draws and the roads), and encodes it. Throws when the dump has no world or the browser can't
+ * draw the map.
  */
 export async function renderMapPreview(
     canvas: HTMLCanvasElement,
@@ -38,9 +38,9 @@ export async function renderMapPreview(
         await scene.built;
         scene.draw(view === undefined ? fitView(world, size) : openLinkedView(view, size), size);
         return await new Promise<Blob>((resolve, reject) => canvas.toBlob(
-                (image) => (image === null ? reject(new Error("The map preview couldn't be encoded.")) : resolve(image)),
-                type,
-                quality
+            (image) => (image === null ? reject(new Error("The map preview couldn't be encoded.")) : resolve(image)),
+            type,
+            quality
         ));
     } finally {
         scene.dispose();

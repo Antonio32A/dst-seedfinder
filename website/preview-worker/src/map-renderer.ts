@@ -59,7 +59,10 @@ async function renderPreview(env: Env, preview: MapPreviewRequest): Promise<Rend
 async function worldDump(env: Env, { seed, platform, shard, dumpKey }: MapPreviewRequest): Promise<GeneratedDump> {
     const stored = await env.PREVIEWS.get(dumpKey);
     if (stored !== null) {
-        return stored.customMetadata?.outcome === "crashed" ? { status: "crashed" } : { status: "dumped", bytes: await stored.bytes() };
+        return stored.customMetadata?.outcome === "crashed" ? { status: "crashed" } : {
+            status: "dumped",
+            bytes: await stored.bytes()
+        };
     }
     const started = Date.now();
     const generated = await generateDump(seed, platform, shard);

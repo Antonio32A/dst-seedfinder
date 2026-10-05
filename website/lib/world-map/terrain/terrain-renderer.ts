@@ -1,5 +1,11 @@
 import { MAP_TEXTURES, type MapTile, TILES } from "@/lib/catalog/world";
-import { buildProgram, fetchTexels, setViewUniforms, vertexBuffer, VIEW_TRANSFORM } from "@/lib/world-map/canvas/gl-program";
+import {
+    buildProgram,
+    fetchTexels,
+    setViewUniforms,
+    vertexBuffer,
+    VIEW_TRANSFORM
+} from "@/lib/world-map/canvas/gl-program";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { landLayers } from "./land-layers";
@@ -141,7 +147,9 @@ async function loadTexture(gl: WebGL2RenderingContext, url: string, filter: GLen
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + NOISE_UNIT);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, parameter, filter);
+    for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) {
+        gl.texParameteri(gl.TEXTURE_2D, parameter, filter);
+    }
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, image);
     image.close();
     return texture;
@@ -151,8 +159,12 @@ function smoothTexture(gl: WebGL2RenderingContext, unit: number): WebGLTexture {
     const texture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.LINEAR);
-    for (const parameter of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.CLAMP_TO_EDGE);
+    for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) {
+        gl.texParameteri(gl.TEXTURE_2D, parameter, gl.LINEAR);
+    }
+    for (const parameter of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) {
+        gl.texParameteri(gl.TEXTURE_2D, parameter, gl.CLAMP_TO_EDGE);
+    }
     return texture;
 }
 
@@ -192,8 +204,9 @@ function drawOcean(
 }
 
 /**
- * Renders the terrain once, like the game's map screen: the ocean (in the forest only), then every land layer's own tiles, then every
- * layer's edges. Each frame adds it onto the background. It draws nothing until the art has downloaded.
+ * Renders the terrain once, like the game's map screen: the ocean (in the forest only), then every land layer's own
+ * tiles, then every layer's edges. Each frame adds it onto the background. It draws nothing until the art has
+ * downloaded.
  */
 export function createTerrainRenderer(
     gl: WebGL2RenderingContext,
@@ -218,8 +231,11 @@ export function createTerrainRenderer(
     let disposed = false;
 
     const urls = [...new Set([...world.tileNames.keys()].flatMap((tile) => noiseOf(tile) ?? []))];
-    const loads = [loadTexture(gl, MAP_TEXTURES.mapEdge, gl.NEAREST), loadTexture(gl, MAP_TEXTURES.minimapPaper, gl.LINEAR),
-        ...urls.map((url) => loadTexture(gl, url, gl.NEAREST))];
+    const loads = [
+        loadTexture(gl, MAP_TEXTURES.mapEdge, gl.NEAREST),
+        loadTexture(gl, MAP_TEXTURES.minimapPaper, gl.LINEAR),
+        ...urls.map((url) => loadTexture(gl, url, gl.NEAREST))
+    ];
     const built = Promise.all(loads).then(([mapEdge, paper, ...noises]) => {
         if (disposed) return;
         terrain = smoothTexture(gl, TERRAIN_UNIT);
@@ -261,7 +277,13 @@ export function createTerrainRenderer(
         let first = 0;
         for (const { tile, quads } of draws) {
             gl.bindTexture(gl.TEXTURE_2D, noises[urls.indexOf(noiseOf(tile)!)]);
-            gl.vertexAttribIPointer(quadLocation, QUAD_COMPONENTS, gl.UNSIGNED_SHORT, 0, first * Uint16Array.BYTES_PER_ELEMENT);
+            gl.vertexAttribIPointer(
+                quadLocation,
+                QUAD_COMPONENTS,
+                gl.UNSIGNED_SHORT,
+                0,
+                first * Uint16Array.BYTES_PER_ELEMENT
+            );
             gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, quads.length / QUAD_COMPONENTS);
             first += quads.length;
         }

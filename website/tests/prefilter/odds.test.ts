@@ -13,7 +13,9 @@ const line = (body: object) => `odds ${JSON.stringify(body)}`;
 
 describe("parseOddsLine", () => {
     it("reads the seedfinder's odds line", () => {
-        const odds = parseOddsLine(line({ seeds: 10, candidates: 4, tasks: { Badlands: 5 }, setpieces: { MooseNest: 7 } }));
+        const odds = parseOddsLine(
+            line({ seeds: 10, candidates: 4, tasks: { Badlands: 5 }, setpieces: { MooseNest: 7 } })
+        );
         expect(odds).toEqual({ seeds: 10, candidates: 4, tasks: { Badlands: 5 }, setpieces: { MooseNest: 7 } });
     });
 

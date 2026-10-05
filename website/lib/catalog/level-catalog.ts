@@ -29,7 +29,9 @@ function catalogOf(
         ...parts,
         taskById: Object.fromEntries(parts.tasks.map((task) => [task.id, task])),
         setPieceById: Object.fromEntries(parts.setPieces.map((piece) => [piece.id, piece])),
-        setPieceKindById: Object.fromEntries(parts.setPieceKinds.map((kind) => [kind.id, kind])) as Record<SetPieceKind, SetPieceKindInfo>,
+        setPieceKindById: Object.fromEntries(
+            parts.setPieceKinds.map((kind) => [kind.id, kind])
+        ) as Record<SetPieceKind, SetPieceKindInfo>,
         optionalTasks,
         optionalTaskIds: optionalTasks.map((task) => task.id)
     };

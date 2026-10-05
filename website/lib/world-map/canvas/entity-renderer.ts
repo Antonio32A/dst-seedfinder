@@ -1,6 +1,6 @@
 import { type EntityLayer, MAP_GROUPS } from "@/lib/world-map/legend/entity-layer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
-import { buildProgram, unitColour, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
+import { buildProgram, unitColour, vertexBuffer, VIEW_TRANSFORM, viewUniforms } from "./gl-program";
 
 const MIN_DOT_RADIUS = 2.5;
 const MAX_DOT_RADIUS = 8;
@@ -23,8 +23,9 @@ export interface HoveredEntity {
 export const NO_HOVER: HoveredEntity = { prefab: -1, x: 0, z: 0 };
 
 /**
- * GLSL for the visibility texture: per prefab, red is hidden (0), {@link VISIBILITY_SHOWN} or {@link VISIBILITY_HIGHLIGHTED},
- * green whether it has an icon. `hovered` is the hovered entity's prefab index then world `x, z`; a negative prefab for none.
+ * GLSL for the visibility texture: per prefab, red is hidden (0), {@link VISIBILITY_SHOWN} or
+ * {@link VISIBILITY_HIGHLIGHTED}, green whether it has an icon. `hovered` is the hovered entity's prefab index then
+ * world `x, z`; a negative prefab for none.
  */
 export const VISIBILITY_TRANSFORM = `${VIEW_TRANSFORM}
 uniform sampler2D shown;
@@ -102,7 +103,8 @@ export interface EntityRenderer {
 
 /**
  * Which prefabs show or are highlighted is a texture the shaders look each dot's prefab up in, so a toggle uploads a
- * few bytes per prefab. Prefabs `iconed` marks draw no dot: the icon renderer draws them. `accent` is `[r, g, b]` in 0-255.
+ * few bytes per prefab. Prefabs `iconed` marks draw no dot: the icon renderer draws them. `accent` is `[r, g, b]` in
+ * 0-255.
  */
 export function createEntityRenderer(
     gl: WebGL2RenderingContext,
@@ -128,7 +130,9 @@ export function createEntityRenderer(
     const visibility = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + VISIBILITY_UNIT);
     gl.bindTexture(gl.TEXTURE_2D, visibility);
-    for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, parameter, gl.NEAREST);
+    for (const parameter of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) {
+        gl.texParameteri(gl.TEXTURE_2D, parameter, gl.NEAREST);
+    }
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, VISIBILITY_ROW, visibilityRows, 0, gl.RG, gl.UNSIGNED_BYTE, null);
     gl.uniform1i(gl.getUniformLocation(dotProgram, "shown"), VISIBILITY_UNIT);
 

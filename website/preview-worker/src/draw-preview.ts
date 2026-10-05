@@ -12,7 +12,10 @@ export async function drawPreview(env: Env, dump: Uint8Array, view: string | und
     try {
         const page = await browser.newPage();
         try {
-            const loaded = await page.goto(new URL("/map/preview", env.PREVIEW_ORIGIN).href, { waitUntil: "domcontentloaded", timeout: PAGE_TIMEOUT_MS });
+            const loaded = await page.goto(new URL("/map/preview", env.PREVIEW_ORIGIN).href, {
+                waitUntil: "domcontentloaded",
+                timeout: PAGE_TIMEOUT_MS
+            });
             if (loaded !== null && !loaded.ok()) throw new Error(`The preview page answered ${loaded.status()}.`);
             await page.waitForFunction(() => typeof (globalThis as PreviewPage).renderMapPreview === "function", { timeout: PAGE_TIMEOUT_MS });
             const image = await page.evaluate(

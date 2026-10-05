@@ -12,6 +12,16 @@ export interface Account {
     logOut: () => Promise<void>;
 }
 
+/** The signed-in user and their jobs, or null when the request failed for another reason than being signed out. */
+async function fetchAccount(): Promise<{ user: SessionUser | null; jobs: JobView[] } | null> {
+    try {
+        const user = await fetchMe();
+        return { user, jobs: user ? await fetchJobs() : [] };
+    } catch (error) {
+        return error instanceof ApiError && error.status === 401 ? { user: null, jobs: [] } : null;
+    }
+}
+
 /** Unchanged jobs keep their identity so memoised results don't re-render. */
 export function useAccount(): Account {
     const [user, setUser] = useState<SessionUser | null>(null);
@@ -19,23 +29,17 @@ export function useAccount(): Account {
     const [jobs, setJobs] = useState<JobView[]>([]);
     const latestRefresh = useRef(0);
 
-    const refresh = useCallback(async () => {
+    const refresh = useCallback(() => {
         const current = ++latestRefresh.current;
-        const isLatest = () => current === latestRefresh.current;
-        try {
-            const me = await fetchMe();
-            const fresh = me ? await fetchJobs() : [];
-            if (!isLatest()) return;
-            setUser(me);
-            setJobs((shown) => fresh.map((job) => shown.find((old) => old.id === job.id && old.updatedAt === job.updatedAt) ?? job));
-        } catch (error) {
-            if (isLatest() && error instanceof ApiError && error.status === 401) {
-                setUser(null);
-                setJobs([]);
+        return fetchAccount().then((account) => {
+            if (current !== latestRefresh.current) return;
+            if (account) {
+                setUser(account.user);
+                setJobs((shown) => account.jobs.map((job) =>
+                    shown.find((old) => old.id === job.id && old.updatedAt === job.updatedAt) ?? job));
             }
-        } finally {
-            if (isLatest()) setLoading(false);
-        }
+            setLoading(false);
+        });
     }, []);
 
     const logOut = useCallback(async () => {

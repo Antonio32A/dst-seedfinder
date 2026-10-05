@@ -21,7 +21,8 @@ const routeEndpoints = sourceFiles(APP)
     .flatMap((file) => {
         const source = readFileSync(join(APP, file), "utf8");
         const declared = [...source.matchAll(DECLARED_METHOD)].map((match) => match[1]);
-        const listed = [...source.matchAll(EXPORT_LIST)].flatMap((list) => [...list[1].matchAll(LISTED_METHOD)].map((match) => match[1]));
+        const listed = [...source.matchAll(EXPORT_LIST)]
+            .flatMap((list) => [...list[1].matchAll(LISTED_METHOD)].map((match) => match[1]));
         const exported = new Set([...declared, ...listed]);
         const served = new Set([...exported, "OPTIONS", ...(exported.has("GET") ? ["HEAD"] : [])]);
         return [...served].map((method) => endpointKey({ method, route: `/${dirname(file)}` }));
@@ -44,7 +45,8 @@ describe("API coverage", () => {
     });
 
     it("has no server actions, which would be endpoints outside the table", () => {
-        const actions = SERVER_CODE.flatMap((folder) => sourceFiles(join(WEBSITE, folder)).map((file) => join(folder, file)))
+        const actions = SERVER_CODE
+            .flatMap((folder) => sourceFiles(join(WEBSITE, folder)).map((file) => join(folder, file)))
             .filter((file) => /["']use server["']/.test(readFileSync(join(WEBSITE, file), "utf8")));
         expect(actions).toEqual([]);
     });

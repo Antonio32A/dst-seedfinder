@@ -55,6 +55,16 @@ export async function upsertUser(db: D1Database, profile: DiscordProfile, ip: st
          last_ip = COALESCE(excluded.last_ip, users.last_ip),
          last_login_at = excluded.last_login_at`
         )
-        .bind(profile.id, profile.username, profile.global_name, profile.avatar, DAILY_CREDIT_UNITS, utcDay(), ip, now, now)
+        .bind(
+            profile.id,
+            profile.username,
+            profile.global_name,
+            profile.avatar,
+            DAILY_CREDIT_UNITS,
+            utcDay(),
+            ip,
+            now,
+            now
+        )
         .run();
 }

@@ -59,9 +59,12 @@ export default function CriteriaGroupCard({
                             </p>
                         </div>
                 )}
-                <BiomeSection catalog={catalog} biomes={group.biomes} onChange={(biomes) => onChange({ ...group, biomes })}/>
-                <ResourceSection catalog={catalog} swaps={group.swaps} onChange={(swaps) => onChange({ ...group, swaps })}/>
-                <SetPieceSection catalog={catalog} rules={group.rules} onChange={(rules) => onChange({ ...group, rules })}/>
+                <BiomeSection catalog={catalog} biomes={group.biomes}
+                              onChange={(biomes) => onChange({ ...group, biomes })}/>
+                <ResourceSection catalog={catalog} swaps={group.swaps}
+                                 onChange={(swaps) => onChange({ ...group, swaps })}/>
+                <SetPieceSection catalog={catalog} rules={group.rules}
+                                 onChange={(rules) => onChange({ ...group, rules })}/>
                 <WorldSection shard={catalog.shard} rows={group} onChange={(rows) => onChange({ ...group, ...rows })}/>
             </section>
     );

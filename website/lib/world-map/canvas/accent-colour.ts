@@ -1,7 +1,10 @@
 const ACCENT_VARIABLE = "--highlight";
 const HEX_DIGITS = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
-/** The site's highlight orange as `[r, g, b]` in 0-255, as `element` resolves it. Throws when the variable is missing or isn't a hex colour. */
+/**
+ * The site's highlight orange as `[r, g, b]` in 0-255, as `element` resolves it. Throws when the variable is missing or
+ * isn't a hex colour.
+ */
 export function readAccent(element: Element): [number, number, number] {
     const value = getComputedStyle(element).getPropertyValue(ACCENT_VARIABLE).trim();
     const digits = HEX_DIGITS.exec(value)?.[1];

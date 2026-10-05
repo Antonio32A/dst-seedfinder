@@ -48,7 +48,7 @@ function Checkbox({ checked, mixed = false, disabled, onChange }: {
     checked: boolean;
     mixed?: boolean;
     disabled: boolean;
-    onChange: (on: boolean) => void
+    onChange: (on: boolean) => void;
 }) {
     return (
             <input
@@ -91,7 +91,7 @@ function FamilyOption({ family, members, draft, open, shard }: {
     members: WorldPrefab[];
     draft: Draft;
     open: boolean;
-    shard: Shard
+    shard: Shard;
 }) {
     const [expanded, setExpanded] = useState<boolean>();
     const free = members.filter((member) => !draft.blocked(member.id)).map((member) => member.id);
@@ -136,18 +136,30 @@ function GroupToggle({ ids, draft }: { ids: string[]; draft: Draft }) {
     );
 }
 
-function visibleEntries(entries: PickerEntry[], needle: string, groupName: string, listed: (prefab: WorldPrefab) => boolean, shard: Shard): PickerEntry[] {
+function visibleEntries(
+        entries: PickerEntry[],
+        needle: string,
+        groupName: string,
+        listed: (prefab: WorldPrefab) => boolean,
+        shard: Shard
+): PickerEntry[] {
     return entries.flatMap((entry) => {
         const members = entry.family ? entry.members : [entry.prefab];
         const label = entry.family ? entry.family.label : prefabName(entry.prefab.id, shard);
         const reachable = members.filter(listed);
-        if (reachable.length === 0 || !matches(needle, groupName, label, ...members.flatMap((member) => [member.name, member.id]))) return [];
+        const names = members.flatMap((member) => [member.name, member.id]);
+        if (reachable.length === 0 || !matches(needle, groupName, label, ...names)) return [];
         if (!entry.family || reachable.length === entry.members.length) return [entry];
         return reachable.length > 1 ? [{ ...entry, members: reachable }] : [{ prefab: reachable[0] }];
     });
 }
 
-function EntryList({ entries, draft, open, shard }: { entries: PickerEntry[]; draft: Draft; open: boolean; shard: Shard }) {
+function EntryList({ entries, draft, open, shard }: {
+    entries: PickerEntry[];
+    draft: Draft;
+    open: boolean;
+    shard: Shard;
+}) {
     return (
             <ul className="picker__items">
                 {entries.map((entry) =>
@@ -192,14 +204,17 @@ export default function PrefabPicker({
             addable: group.pickable ? group.ids.filter((id) => showAll || !byId.get(id)?.unreachable) : []
         })).filter(({ entries }) => entries.length > 0);
     }, [needle, showAll, selected, shard, byId]);
-    const anchors = anchorPrefabs(shard).filter((prefab) => matches(needle, prefabName(prefab.id, shard), prefab.name, prefab.id));
+    const anchors = anchorPrefabs(shard)
+            .filter((prefab) => matches(needle, prefabName(prefab.id, shard), prefab.name, prefab.id));
 
     const draft: Draft = {
         ids,
         full: ids.length >= MAX_PREFAB_IDS,
         blocked,
         toggle: (changed, on) =>
-                setIds((current) => (on ? [...new Set([...current, ...changed])].slice(0, MAX_PREFAB_IDS) : current.filter((id) => !changed.includes(id))))
+                setIds((current) => (on
+                        ? [...new Set([...current, ...changed])].slice(0, MAX_PREFAB_IDS)
+                        : current.filter((id) => !changed.includes(id))))
     };
 
     return (

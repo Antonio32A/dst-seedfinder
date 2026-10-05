@@ -107,7 +107,8 @@ describe("a witness on the map", () => {
         const corners = (segments: typeof shape.segments) => segments.map(({ from }) => [from.x, from.z]);
         expect(corners(shape.segments.slice(0, 4))).toEqual([[-674, -364], [-662, -364], [-662, -352], [-674, -352]]);
         expect(corners(shape.segments.slice(4, 8))).toEqual([[332, 364], [344, 364], [344, 376], [332, 376]]);
-        expect(shape.segments[8]).toEqual({ from: { x: -668, z: -358 }, to: { x: 338, z: 370 }, ok: true, jump: false });
+        expect(shape.segments[8])
+            .toEqual({ from: { x: -668, z: -358 }, to: { x: 338, z: 370 }, ok: true, jump: false });
         expect(shape.marks).toEqual([]);
         expect(shape.focus).toEqual({ x: 338, z: 370 });
         expect(witnessShape({ section: "bridges", index: 0, ok: true, length: 1241.781, from, to }).focus).toEqual({ x: -668, z: -358 });

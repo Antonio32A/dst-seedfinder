@@ -11,7 +11,7 @@ const label = (jobId: string) => `dst-seedfinder:${jobId}`;
 
 async function credits(userId: string): Promise<number> {
     return (await db().prepare("SELECT credit_units FROM users WHERE id = ?").bind(userId).first<{
-        credit_units: number
+        credit_units: number;
     }>())?.credit_units ?? 0;
 }
 
@@ -66,7 +66,9 @@ describe("the cron sweep", () => {
             http.get(`${VAST_API}/v1/instances`, ({ request }) => {
                 const filter = new URL(request.url).searchParams.get("select_filters");
                 const wanted = filter === null ? null : (JSON.parse(filter) as { label: { eq: string } }).label.eq;
-                return HttpResponse.json({ instances: instances.filter((instance) => wanted === null || instance.label === wanted) });
+                return HttpResponse.json({
+                    instances: instances.filter((instance) => wanted === null || instance.label === wanted)
+                });
             }),
             http.delete(`${VAST_API}/v0/instances/:id/`, ({ params }) => {
                 destroyed.push(String(params.id));

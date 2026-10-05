@@ -161,7 +161,8 @@ function rulesToSetPieces(rules: PieceRule[], catalog: LevelCatalog): SetPieceRu
         const clamped = effectiveRule(rule, catalog);
         const tasks = ruleScope(rule, catalog);
         const scopeKey = tasks.join("\n");
-        const existing = entries.find((entry) => entry.scopeKey === scopeKey && !Object.hasOwn(entry.rule.required, rule.pieceId));
+        const existing = entries.find((entry) =>
+            entry.scopeKey === scopeKey && !Object.hasOwn(entry.rule.required, rule.pieceId));
         const target = existing ?? { scopeKey, rule: { ...(tasks.length > 0 ? { tasks } : {}), required: {} } };
         target.rule.required[rule.pieceId] = REQUIREMENT[rule.mode](clamped);
         if (!existing) entries.push(target);
@@ -232,11 +233,19 @@ function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGr
     return {
         key: newKey(),
         passive: record.passive === true,
-        biomes: Object.fromEntries([...biomeEntries(tasks.required, "include"), ...biomeEntries(tasks.excluded, "exclude")]),
+        biomes: Object.fromEntries([
+            ...biomeEntries(tasks.required, "include"),
+            ...biomeEntries(tasks.excluded, "exclude")
+        ]),
         swaps: Object.fromEntries(
-            catalog.swaps.filter((swap) => swap.options.some((option) => option.id === swaps[swap.id])).map((swap) => [swap.id, swaps[swap.id]])
+            catalog.swaps
+                .filter((swap) => swap.options.some((option) => option.id === swaps[swap.id]))
+                .map((swap) => [swap.id, swaps[swap.id]])
         ),
-        rules: asArray(record.setpieces).slice(0, MAX_RULES_PER_SECTION).flatMap((entry) => entryToRules(entry, catalog)).slice(0, MAX_RULES_PER_SECTION),
+        rules: asArray(record.setpieces)
+            .slice(0, MAX_RULES_PER_SECTION)
+            .flatMap((entry) => entryToRules(entry, catalog))
+            .slice(0, MAX_RULES_PER_SECTION),
         ...worldRowsOf(record, catalog.shard)
     };
 }
@@ -245,7 +254,9 @@ export function fromSeedfinderConfig(config: unknown): SearchState {
     const record = asRecord(config);
     const shard = SHARDS.find((candidate) => candidate === record.shard) ?? DEFAULT_SHARD;
     const catalog = levelCatalogOf(shard);
-    const groups = asArray(record.criteria).slice(0, MAX_CRITERIA).map((criterion) => criterionToGroup(criterion, catalog));
+    const groups = asArray(record.criteria)
+        .slice(0, MAX_CRITERIA)
+        .map((criterion) => criterionToGroup(criterion, catalog));
     return {
         shard,
         platform: PLATFORMS.find((platform) => platform === record.platform) ?? DEFAULT_PLATFORM,
@@ -273,10 +284,13 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
     let dropped = 0;
     const groups = state.groups.map((group): CriteriaGroup => {
         const swaps = Object.fromEntries(
-            Object.entries(group.swaps).filter(([category, variant]) => to.swaps.some((swap) => swap.id === category && swap.options.some((option) => option.id === variant)))
+            Object.entries(group.swaps).filter(([category, variant]) => to.swaps.some((swap) =>
+                swap.id === category && swap.options.some((option) => option.id === variant)))
         );
         const rules = group.rules.filter((rule) => Object.hasOwn(to.setPieceById, rule.pieceId));
-        const biomes = Object.fromEntries(Object.entries(group.biomes).filter(([id]) => to.optionalTaskIds.includes(id)));
+        const biomes = Object.fromEntries(
+            Object.entries(group.biomes).filter(([id]) => to.optionalTaskIds.includes(id))
+        );
         dropped += Object.keys(group.swaps).length - Object.keys(swaps).length;
         dropped += group.rules.length - rules.length;
         dropped += Object.keys(group.biomes).length - Object.keys(biomes).length;
@@ -296,7 +310,8 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
     return { state: { ...state, shard, groups }, dropped };
 }
 
-const levelTableChoices = (group: CriteriaGroup) => Object.keys(group.biomes).length + Object.keys(group.swaps).length + group.rules.length;
+const levelTableChoices = (group: CriteriaGroup) =>
+    Object.keys(group.biomes).length + Object.keys(group.swaps).length + group.rules.length;
 
 export function isEmptyGroup(group: CriteriaGroup): boolean {
     return levelTableChoices(group) + worldRowCount(group) === 0;
@@ -317,7 +332,8 @@ const tooManyBiomes =
 const ruleIssues =
     (check: (rule: PieceRule, name: string, catalog: LevelCatalog) => Issue | undefined): GroupCheck =>
         (group, catalog) =>
-            group.rules.flatMap((rule) => check(rule, catalog.setPieceById[rule.pieceId]?.name ?? rule.pieceId, catalog) ?? []);
+            group.rules.flatMap((rule) =>
+                check(rule, catalog.setPieceById[rule.pieceId]?.name ?? rule.pieceId, catalog) ?? []);
 
 const GROUP_CHECKS: GroupCheck[] = [
     tooManyBiomes("include", "Must have"),
@@ -344,7 +360,10 @@ const GROUP_CHECKS: GroupCheck[] = [
             if (rule.mode !== "none") leastPerPiece.set(rule.pieceId, Math.max(leastPerPiece.get(rule.pieceId) ?? 0, effectiveRule(rule, catalog).min));
         }
         return Object.entries(KIND_TOTALS).flatMap(([kind, { most, noun }]): Issue[] => {
-            const needed = [...leastPerPiece].reduce((sum, [pieceId, least]) => sum + (catalog.setPieceById[pieceId]?.kind === kind ? least : 0), 0);
+            const needed = [...leastPerPiece].reduce(
+                (sum, [pieceId, least]) => sum + (catalog.setPieceById[pieceId]?.kind === kind ? least : 0),
+                0
+            );
             return needed > most ? [{
                 severity: "error",
                 message: `the set pieces ask for at least ${needed} ${noun} in total, but a world has at most ${most}.`

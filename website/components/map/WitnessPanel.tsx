@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import type { Criterion } from "@/lib/config/seedfinder-config";
+import type { Criterion, SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { describeWitness } from "@/lib/jobs/witness-text";
 import { type EvalLoad, evaluateWorld } from "@/lib/world-map/search/evaluate-world";
 import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
@@ -61,17 +61,18 @@ function WitnessChecks({ evaluation, criterion, world, map }: WitnessChecksProps
 
 export default function WitnessPanel({ shared, world, bytes, map }: WitnessPanelProps) {
     const config = "config" in shared ? shared.config : null;
-    const [load, setLoad] = useState<EvalLoad>({ status: "loading" });
+    const [loaded, setLoaded] = useState<{ config: SeedfinderConfig; bytes: Uint8Array; load: EvalLoad } | null>(null);
 
     useEffect(() => {
         if (config === null) return;
         const controller = new AbortController();
-        setLoad({ status: "loading" });
-        void evaluateWorld(bytes, config, controller.signal).then((result) => {
-            if (!controller.signal.aborted) setLoad(result);
+        void evaluateWorld(bytes, config, controller.signal).then((load) => {
+            if (!controller.signal.aborted) setLoaded({ config, bytes, load });
         });
         return () => controller.abort();
     }, [config, bytes]);
+
+    const load: EvalLoad = loaded?.config === config && loaded.bytes === bytes ? loaded.load : { status: "loading" };
 
     const error = "error" in shared
             ? `The search in this link can't be read: ${shared.error}`

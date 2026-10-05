@@ -33,7 +33,9 @@ export type DistanceMode = "within" | "atLeast" | "between";
 
 export interface Travel {
     metric: Metric;
-    /** Whether the rule may use the shard's teleporter links: wormholes in the forest, tentacle pillars in the caves. */
+    /**
+     * Whether the rule may use the shard's teleporter links: wormholes in the forest, tentacle pillars in the caves.
+     */
     links: boolean;
 }
 
@@ -127,7 +129,11 @@ const DEFAULT_TRAVEL: Travel = { metric: DEFAULT_METRIC, links: DEFAULT_LINKS };
 
 const spawnOf = (shard: Shard) => shardCatalog(shard).spawn;
 
-export const newNear = (shard: Shard): NearRow => ({ ...DEFAULT_TRAVEL, prefabs: [spawnOf(shard)], within: tiles(100) });
+export const newNear = (shard: Shard): NearRow => ({
+    ...DEFAULT_TRAVEL,
+    prefabs: [spawnOf(shard)],
+    within: tiles(100)
+});
 
 export const newRouteStop = (prefabs: string[] = []): RouteStop => ({ key: newKey(), prefabs });
 
@@ -212,7 +218,10 @@ const tileRule = (row: TileRow, _shard: Shard): TileRule[] => (filled(row.from, 
     max: row.max
 }] : []);
 
-const bridgeRule = ({ min, max }: BridgeRow): BridgeRule => ({ ...(min > 0 ? { min } : {}), ...(max === null ? {} : { max }) });
+const bridgeRule = ({
+                        min,
+                        max
+                    }: BridgeRow): BridgeRule => ({ ...(min > 0 ? { min } : {}), ...(max === null ? {} : { max }) });
 
 const routeRule = (row: RouteRow, shard: Shard): RouteRule[] => {
     const end = routeEnd(row);
@@ -246,7 +255,8 @@ const namesIn = (value: unknown, known: (name: string) => boolean, cap: number):
     return [...new Set(names.filter(known))].slice(0, cap);
 };
 
-const prefabIds = (value: unknown, shard: Shard) => namesIn(value, (id) => shardCatalog(shard).byId.has(id), MAX_PREFAB_IDS);
+const prefabIds = (value: unknown, shard: Shard) =>
+    namesIn(value, (id) => shardCatalog(shard).byId.has(id), MAX_PREFAB_IDS);
 const tileNames = (value: unknown) => namesIn(value, (name) => LAND_TILE_NAMES.has(name), MAX_TILE_NAMES);
 
 const numberIn = (value: unknown, max: number, integer: boolean): number | undefined =>
@@ -428,20 +438,29 @@ const carriedSet = (ids: string[], from: Shard, to: Shard): { ids: string[]; los
  * One row on the other shard: the prefabs it has there, or nothing when one of its sets ends up empty (the row is then
  * counted as one lost pick). A row keeps its tiles and travel options.
  */
-function carryRow<T>(row: T, sets: string[][], from: Shard, to: Shard, rebuild: (carried: string[][]) => T): { row?: T; lost: number } {
+function carryRow<T>(row: T, sets: string[][], from: Shard, to: Shard, rebuild: (carried: string[][]) => T): {
+    row?: T;
+    lost: number;
+} {
     const carried = sets.map((ids) => carriedSet(ids, from, to));
     const survives = carried.every(({ ids }) => ids.length > 0);
-    return survives ? { row: rebuild(carried.map(({ ids }) => ids)), lost: carried.reduce((sum, { lost }) => sum + lost, 0) } : { lost: 1 };
+    return survives ? {
+        row: rebuild(carried.map(({ ids }) => ids)),
+        lost: carried.reduce((sum, { lost }) => sum + lost, 0)
+    } : { lost: 1 };
 }
 
 const carry = <T>(rows: T[], one: (row: T) => { row?: T; lost: number }): Carried<T> => {
     const results = rows.map(one);
-    return { rows: results.flatMap(({ row }) => (row ? [row] : [])), dropped: results.reduce((sum, { lost }) => sum + lost, 0) };
+    return {
+        rows: results.flatMap(({ row }) => (row ? [row] : [])),
+        dropped: results.reduce((sum, { lost }) => sum + lost, 0)
+    };
 };
 
 /**
- * The world rows on the other shard: every prefab that exists there stays (the spawn becomes the other shard's spawn), a
- * rule whose prefabs don't exist there is dropped. `dropped` counts the picks and rules lost.
+ * The world rows on the other shard: every prefab that exists there stays (the spawn becomes the other shard's spawn),
+ * a rule whose prefabs don't exist there is dropped. `dropped` counts the picks and rules lost.
  */
 export function worldRowsFor(rows: WorldRows, from: Shard, to: Shard): { rows: WorldRows; dropped: number } {
     if (from === to) return { rows, dropped: 0 };
@@ -453,9 +472,14 @@ export function worldRowsFor(rows: WorldRows, from: Shard, to: Shard): { rows: W
             near: near ? { ...near, prefabs: nearPrefabs } : null
         }));
     });
-    const distances = carry(rows.distances, (row) => carryRow(row, [row.from, row.to], from, to, ([a, b]) => ({ ...row, from: a, to: b })));
+    const distances = carry(rows.distances, (row) => carryRow(row, [row.from, row.to], from, to, ([a, b]) => ({
+        ...row,
+        from: a,
+        to: b
+    })));
     const routes = carry(rows.routes, (row) => {
-        const required = carryRow(row, [row.from, ...row.stops.map((stop) => stop.prefabs)], from, to, ([start, ...stops]) => ({
+        const prefabSets = [row.from, ...row.stops.map((stop) => stop.prefabs)];
+        const required = carryRow(row, prefabSets, from, to, ([start, ...stops]) => ({
             ...row,
             from: start,
             stops: row.stops.map((stop, index) => ({ ...stop, prefabs: stops[index] }))
@@ -464,7 +488,13 @@ export function worldRowsFor(rows: WorldRows, from: Shard, to: Shard): { rows: W
         return required.row ? { row: { ...required.row, to: end.ids }, lost: required.lost + end.lost } : required;
     });
     return {
-        rows: { counts: counts.rows, distances: distances.rows, tiles: rows.tiles, bridges: rows.bridges, routes: routes.rows },
+        rows: {
+            counts: counts.rows,
+            distances: distances.rows,
+            tiles: rows.tiles,
+            bridges: rows.bridges,
+            routes: routes.rows
+        },
         dropped: counts.dropped + distances.dropped + routes.dropped
     };
 }

@@ -13,7 +13,9 @@ const DISCORD_API = "https://discord.com/api";
 export const VAST_API = "https://console.vast.ai/api";
 const POLL_MS = 50;
 
-type StringVar = { [K in keyof Cloudflare.Env]-?: NonNullable<Cloudflare.Env[K]> extends string ? K : never }[keyof Cloudflare.Env];
+type StringVar = {
+    [K in keyof Cloudflare.Env]-?: NonNullable<Cloudflare.Env[K]> extends string ? K : never
+}[keyof Cloudflare.Env];
 
 export const SECRETS: Record<StringVar | "RUNNER_REPOSITORY", string> = {
     DISCORD_CLIENT_ID: "test-client-id",
@@ -90,7 +92,10 @@ export const network = setupServer(
     http.delete(`${VAST_API}/v0/instances/:id/`, () => HttpResponse.json({ success: true }))
 );
 
-/** Runs the built worker with migrated D1 and the mocked network for this test file; unmocked requests fail the test. */
+/**
+ * Runs the built worker with migrated D1 and the mocked network for this test file; unmocked requests fail the
+ * test.
+ */
 export function useWorker(): void {
     let interceptedFetch: typeof fetch;
     beforeAll(async () => {
@@ -105,7 +110,10 @@ export function useWorker(): void {
         globalThis.fetch = (input, init) => interceptedFetch(new Request(input, init));
         harness = createTestHarness({
             root: fileURLToPath(new URL("..", import.meta.url)),
-            workers: [{ configPath: "./dist/server/wrangler.json", secrets: SECRETS }]
+            workers: [
+                { configPath: "./dist/server/wrangler.json", secrets: SECRETS },
+                { configPath: "./tests/fixtures/preview-stub/wrangler.jsonc" }
+            ]
         });
         await harness.listen();
         await worker().applyD1Migrations("DB");
@@ -141,7 +149,10 @@ export interface Call {
     headers?: Record<string, string>;
 }
 
-/** Requests `path` as `ORIGIN` without following redirects; `site` is `Sec-Fetch-Site`, and a non-raw `body` goes as JSON. */
+/**
+ * Requests `path` as `ORIGIN` without following redirects; `site` is `Sec-Fetch-Site`, and a non-raw `body` goes as
+ * JSON.
+ */
 export function api(path: string, { session, method = "GET", site, body, headers = {} }: Call = {}): Promise<Response> {
     const raw = typeof body === "string" || body instanceof ReadableStream || body instanceof Uint8Array;
     const optional = {
@@ -227,7 +238,11 @@ export interface SignedIn {
 }
 
 /** Logs in through the OAuth flow against the mocked Discord, from a browser holding `previousSession` if given. */
-export async function signIn(profile: DiscordProfile = newProfile(), returnTo?: string, previousSession?: string): Promise<SignedIn> {
+export async function signIn(
+    profile: DiscordProfile = newProfile(),
+    returnTo?: string,
+    previousSession?: string
+): Promise<SignedIn> {
     const { state, redirectUri, stateCookie } = await beginLogin(returnTo);
     const response = await callback({ code: discordCode(profile, redirectUri), state }, stateCookie, previousSession);
     const session = cookieValue(response, "session") ?? "";
@@ -246,7 +261,10 @@ export function randomToken(): string {
 }
 
 /** Polls `check` until it returns something other than `null`, `undefined` or `false`. */
-export async function until<T>(check: () => Promise<T | null | undefined | false> | T | null | undefined | false, timeoutMs = 15_000): Promise<T> {
+export async function until<T>(
+    check: () => Promise<T | null | undefined | false> | T | null | undefined | false,
+    timeoutMs = 15_000
+): Promise<T> {
     const deadline = Date.now() + timeoutMs;
     for (; ;) {
         const value = await check();
@@ -303,7 +321,18 @@ export async function seedJob(userId: string, fields: SeededJob = {}): Promise<s
                                machine, finished_at)
              VALUES (?, ?, ?, '{"version":1,"platform":"windows"}', 1, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .bind(id, userId, row.status, row.max_cost, row.cost, now, row.updated_at, row.started_at, row.machine, row.finished_at)
+        .bind(
+            id,
+            userId,
+            row.status,
+            row.max_cost,
+            row.cost,
+            now,
+            row.updated_at,
+            row.started_at,
+            row.machine,
+            row.finished_at
+        )
         .run();
     return id;
 }

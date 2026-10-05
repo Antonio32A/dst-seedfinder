@@ -7,7 +7,11 @@ export interface OddsRun {
     config: string;
 }
 
-export type OddsMessage = { type: "line"; line: string; stderr: boolean } | { type: "exit"; code: number; error: string | null };
+export type OddsMessage = { type: "line"; line: string; stderr: boolean } | {
+    type: "exit";
+    code: number;
+    error: string | null;
+};
 
 const post = (message: OddsMessage) => postMessage(message);
 

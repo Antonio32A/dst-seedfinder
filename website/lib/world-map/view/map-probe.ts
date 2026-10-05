@@ -141,7 +141,12 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
         }
     };
 
-    const probeOf = (point: WorldPoint, found: number | null, shown: MapShown, searched: MapTarget | null | undefined): Probe => {
+    const probeOf = (
+        point: WorldPoint,
+        found: number | null,
+        shown: MapShown,
+        searched: MapTarget | null | undefined
+    ): Probe => {
         if (found === null) {
             const isShown = shownIn(searched);
             let piece: number | null = null;
@@ -190,15 +195,22 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
     const icons = world.prefabs.map(({ name }) => {
         const icon = shardCatalog(world.shard).byId.get(name)?.icon;
         if (icon === undefined) return null;
-        return { halfWidth: icon.w / 2 / ICON_WORLD_UNIT_PIXELS, halfHeight: icon.h / 2 / ICON_WORLD_UNIT_PIXELS, priority: icon.priority ?? 0 };
+        return {
+            halfWidth: icon.w / 2 / ICON_WORLD_UNIT_PIXELS,
+            halfHeight: icon.h / 2 / ICON_WORLD_UNIT_PIXELS,
+            priority: icon.priority ?? 0
+        };
     });
-    const largestIconHalfExtent = Math.max(0, ...icons.map((icon) => (icon === null ? 0 : Math.max(icon.halfWidth, icon.halfHeight))));
+    const largestIconHalfExtent = Math.max(
+        0,
+        ...icons.map((icon) => (icon === null ? 0 : Math.max(icon.halfWidth, icon.halfHeight)))
+    );
 
     const covers = (prefab: number, dx: number, dy: number, scale: number) => {
         const icon = icons[prefab];
         if (icon === null) return dx * dx + dy * dy <= PICK_RADIUS * PICK_RADIUS;
         return Math.abs(dx) <= Math.max(icon.halfWidth * scale, PICK_RADIUS)
-                && Math.abs(dy) <= Math.max(icon.halfHeight * scale, PICK_RADIUS);
+            && Math.abs(dy) <= Math.max(icon.halfHeight * scale, PICK_RADIUS);
     };
 
     const drawnAbove = (a: Pick, b: Pick) => {

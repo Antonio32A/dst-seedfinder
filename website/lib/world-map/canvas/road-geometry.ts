@@ -57,9 +57,9 @@ const catmullRom = (p0: number, p1: number, p2: number, p3: number, t: number) =
     0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t ** 3);
 
 /**
- * The Catmull-Rom spline through a road's control points (interleaved `xk, zk`, world units times 100), the first and last
- * point repeated as its padding, with the game's subdivisions per segment. Interleaved `x, z` in world units; empty
- * for fewer than two points.
+ * The Catmull-Rom spline through a road's control points (interleaved `xk, zk`, world units times 100), the first and
+ * last point repeated as its padding, with the game's subdivisions per segment. Interleaved `x, z` in world units;
+ * empty for fewer than two points.
  */
 export function roadCurve(points: Int32Array): Float32Array {
     const count = points.length / 2;
@@ -72,7 +72,10 @@ export function roadCurve(points: Int32Array): Float32Array {
         const segment = Math.min(Math.floor(step / steps), count - 2);
         for (let axis = 0; axis < 2; axis++) {
             curve[2 * step + axis] = catmullRom(
-                control(segment - 1, axis), control(segment, axis), control(segment + 1, axis), control(segment + 2, axis),
+                control(segment - 1, axis),
+                control(segment, axis),
+                control(segment + 1, axis),
+                control(segment + 2, axis),
                 (step - segment * steps) / steps
             );
         }
@@ -89,7 +92,12 @@ function quads(rows: Row[], uA: number, uB: number): number[] {
     const vertices: number[] = [];
     for (let at = 1; at < rows.length; at++) {
         const [previous, next] = [rows[at - 1], rows[at]];
-        const corners = [[previous.a, uA, previous.v], [previous.b, uB, previous.v], [next.a, uA, next.v], [next.b, uB, next.v]] as const;
+        const corners = [
+            [previous.a, uA, previous.v],
+            [previous.b, uB, previous.v],
+            [next.a, uA, next.v],
+            [next.b, uB, next.v]
+        ] as const;
         for (const corner of [0, 1, 2, 2, 1, 3]) {
             const [[x, z], u, v] = corners[corner];
             vertices.push(x, z, u, v);
@@ -105,7 +113,10 @@ const ribbon = (frames: Frames, from: number, to: number, uFrom: number, uTo: nu
         v: frames.along[step] / (EDGE_WIDTHS_PER_REPEAT * edge)
     })), uFrom, uTo);
 
-/** Two rows across the road at curve point `step`: on the road's end line, then `edge` further out along `forward` (1 or -1). */
+/**
+ * Two rows across the road at curve point `step`: on the road's end line, then `edge` further out along `forward`
+ * (1 or -1).
+ */
 const cap = (frames: Frames, step: number, forward: number, from: number, to: number, edge: number): Row[] => [
     { a: offset(frames, step, from), b: offset(frames, step, to), v: 0 },
     { a: offset(frames, step, from, forward, edge), b: offset(frames, step, to, forward, edge), v: 1 }
@@ -127,7 +138,12 @@ export function roadMesh(points: Int32Array, weight: number): RoadMesh {
         const [dx, dz] = [curve[2 * after] - curve[2 * before], curve[2 * after + 1] - curve[2 * before + 1]];
         const length = Math.hypot(dx, dz) || 1;
         normals.set([-dz / length, dx / length], 2 * step);
-        if (step > 0) along[step] = along[step - 1] + Math.hypot(curve[2 * step] - curve[2 * step - 2], curve[2 * step + 1] - curve[2 * step - 1]);
+        if (step > 0) {
+            along[step] = along[step - 1] + Math.hypot(
+                curve[2 * step] - curve[2 * step - 2],
+                curve[2 * step + 1] - curve[2 * step - 1]
+            );
+        }
     }
     const frames: Frames = { curve, normals, along };
     const shape = roadShape(weight);
@@ -139,7 +155,8 @@ export function roadMesh(points: Int32Array, weight: number): RoadMesh {
     return {
         corners: build(endsAt.flatMap(([step, forward]) => [-1, 1].map((side) =>
             quads(cap(frames, step, forward, side * inner, side * outer, shape.edge), 0, 1)))),
-        ends: build(endsAt.map(([step, forward]) => quads(cap(frames, step, forward, -inner, inner, shape.edge), 0, 1))),
+        ends: build(endsAt.map(([step, forward]) =>
+            quads(cap(frames, step, forward, -inner, inner, shape.edge), 0, 1))),
         edges: build([ribbon(frames, -outer, -inner, 0, 1, shape), ribbon(frames, inner, outer, 1, 0, shape)]),
         center: build(shape.width > 0 ? [ribbon(frames, -inner, inner, 0, 1, shape)] : [])
     };

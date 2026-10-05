@@ -32,7 +32,10 @@ export const SHARDS = ["forest", "caves"] as const;
 export type Shard = (typeof SHARDS)[number];
 export const DEFAULT_SHARD: Shard = "forest";
 export const SHARD_LABELS: Record<Shard, string> = { forest: "Forest", caves: "Caves" };
-/** The key of the flag that lets a distance use the shard's teleporter links: the forest's wormholes, the caves' tentacle pillars. */
+/**
+ * The key of the flag that lets a distance use the shard's teleporter links: the forest's wormholes, the caves'
+ * tentacle pillars.
+ */
 export const LINKS_KEY = { forest: "wormholes", caves: "pillars" } as const satisfies Record<Shard, string>;
 
 export const PLATFORMS = ["windows", "linux"] as const;
@@ -57,7 +60,10 @@ export interface SetPieceRule {
     required?: Record<string, SetPieceBound>;
 }
 
-/** A rule's travel options: its metric and whether it may use the links, as `wormholes` in the forest and `pillars` in the caves. */
+/**
+ * A rule's travel options: its metric and whether it may use the links, as `wormholes` in the forest and `pillars`
+ * in the caves.
+ */
 export interface TravelFields {
     metric?: Metric;
     wormholes?: boolean;

@@ -1,6 +1,6 @@
 import type { TurfBridge } from "@/lib/world-map/legend/turf-bridges";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
-import { buildProgram, unitColour, vertexBuffer, viewUniforms, VIEW_TRANSFORM } from "./gl-program";
+import { buildProgram, unitColour, vertexBuffer, VIEW_TRANSFORM, viewUniforms } from "./gl-program";
 
 export const BRIDGE_COLOUR = [255, 95, 120] as const;
 const EDGE_COLOUR = [0.08, 0.08, 0.08];
@@ -99,7 +99,17 @@ export function createBridgeRenderer(gl: WebGL2RenderingContext, bridges: readon
     gl.bindVertexArray(lineVertices);
     const lineBuffers = [
         vertexBuffer(gl, lineProgram, "corner", new Float32Array([0, -1, 1, -1, 0, 1, 1, 1]), 2),
-        vertexBuffer(gl, lineProgram, "ends", Float32Array.from(lines.flatMap(({ from, to }) => [from.xk, from.zk, to.xk, to.zk]), (centi) => centi / 100), 4, 1),
+        vertexBuffer(
+            gl,
+            lineProgram,
+            "ends",
+            Float32Array.from(
+                lines.flatMap(({ from, to }) => [from.xk, from.zk, to.xk, to.zk]),
+                (centi) => centi / 100
+            ),
+            4,
+            1
+        ),
         vertexBuffer(gl, lineProgram, "stray", Float32Array.from(lines, ({ stray }) => Number(stray)), 1, 1)
     ];
 

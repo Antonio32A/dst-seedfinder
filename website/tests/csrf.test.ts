@@ -18,7 +18,7 @@ async function signedInUser(session: string): Promise<unknown> {
 
 async function jobCount(userId: string): Promise<number> {
     const row = await db().prepare("SELECT COUNT(*) AS count FROM jobs WHERE user_id = ?").bind(userId).first<{
-        count: number
+        count: number;
     }>();
     return row?.count ?? 0;
 }

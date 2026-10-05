@@ -131,7 +131,10 @@ export const RUNNER_POST_STATUSES = new Set<JobStatus>(["running"]);
 
 /** Constant time, so token checks don't leak timing. */
 function sameHex(given: string, expected: string): boolean {
-    const difference = Array.from(expected).reduce((bits, char, index) => bits | (char.charCodeAt(0) ^ given.charCodeAt(index)), 0);
+    const difference = Array.from(expected).reduce(
+        (bits, char, index) => bits | (char.charCodeAt(0) ^ given.charCodeAt(index)),
+        0
+    );
     return given.length === expected.length && difference === 0;
 }
 
@@ -259,7 +262,12 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     }
 
     /** `POST /api/runner/<id>`. The chunk with `X-Exit` ends the search. */
-    async runnerOutput(authorization: string | null, offsetHeader: string | null, exitHeader: string | null, body: Uint8Array): Promise<Response> {
+    async runnerOutput(
+        authorization: string | null,
+        offsetHeader: string | null,
+        exitHeader: string | null,
+        body: Uint8Array
+    ): Promise<Response> {
         const refusal = await this.refuseRunner(authorization, RUNNER_POST_STATUSES);
         if (refusal !== null) return refusal;
         const offset = Number(offsetHeader ?? Number.NaN);
@@ -352,7 +360,9 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         const now = Date.now();
         const giveUpAt = (state.startingSince ?? now) + STARTING_LIMIT_MS;
         const booting = state.instanceId !== null && now < (state.bootDeadline ?? 0);
-        if (now >= giveUpAt || (!booting && state.attempt >= OFFER_ATTEMPTS)) return this.record(this.bootFailure(), now);
+        if (now >= giveUpAt || (!booting && state.attempt >= OFFER_ATTEMPTS)) {
+            return this.record(this.bootFailure(), now);
+        }
         if (booting) return this.ctx.storage.setAlarm(Math.min(state.bootDeadline as number, giveUpAt));
         this.abandonInstance();
         await this.ctx.storage.setAlarm(now + VAST_RETRY_MS);
@@ -366,7 +376,8 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         await this.clearStrays();
         const tried = new Set((this.state as RoomState).triedAsks);
         const offers = await searchOffers(this.env.VAST_API_KEY ?? "").then(
-            (response) => pickOffers(response).filter((offer) => offer.dollarsPerHour <= MAX_DOLLARS_PER_HOUR && !tried.has(offer.askId)),
+            (response) => pickOffers(response).filter((offer) =>
+                offer.dollarsPerHour <= MAX_DOLLARS_PER_HOUR && !tried.has(offer.askId)),
             () => null
         );
         if (offers === null || this.state?.status !== "starting") return;
@@ -512,7 +523,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
 
     private readonly lineEffects: {
         [K in OutputLine["kind"]]: (line: Extract<OutputLine, {
-            kind: K
+            kind: K;
         }>) => JobEvent | null
     } = {
         progress: ({ progress }) => {
@@ -523,7 +534,8 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
             }];
             const [oldest] = this.speedSamples;
             const since = oldest.at < now ? oldest : { at: (this.state as RoomState).startedAt ?? now, scanned: 0 };
-            const seedsPerSecond = progress.seedsPerSecond ?? Math.round(((progress.scanned - since.scanned) * 1000) / Math.max(now - since.at, 1000));
+            const seedsPerSecond = progress.seedsPerSecond ??
+                Math.round(((progress.scanned - since.scanned) * 1000) / Math.max(now - since.at, 1000));
             this.save({ progress: { ...progress, seedsPerSecond } });
             return null;
         },
@@ -623,7 +635,12 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     private settlement(state: RoomState, ending: Ending): JobSettlement {
         const job = this.spec;
         const searchMs = state.startedAt === null ? null : ending.endedAt - state.startedAt;
-        const costUnits = chargeUnits(job.maxCostUnits, ending.fee && state.rented, searchMs, state.machine?.dollarsPerHour ?? MAX_DOLLARS_PER_HOUR);
+        const costUnits = chargeUnits(
+            job.maxCostUnits,
+            ending.fee && state.rented,
+            searchMs,
+            state.machine?.dollarsPerHour ?? MAX_DOLLARS_PER_HOUR
+        );
         const results: Record<ResultKind, () => string | null> = {
             search: () => JSON.stringify(jobObject(job.platform, this.storedHits(), state.summary, {
                 startSeed: job.startSeed,

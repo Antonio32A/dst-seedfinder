@@ -180,7 +180,12 @@ const SECTIONS: Record<string, (reader: Reader, world: GeneratedWorld) => void> 
         }));
     },
     GRPH: (reader, world) => {
-        const nodes = repeat(reader, () => ({ id: reader.string(), type: reader.u32(), xk: reader.i32(), zk: reader.i32() }));
+        const nodes = repeat(reader, () => ({
+            id: reader.string(),
+            type: reader.u32(),
+            xk: reader.i32(),
+            zk: reader.i32()
+        }));
         world.topology = { nodes, edges: reader.copy(Uint32Array, 2 * reader.u32()) };
     }
 };
