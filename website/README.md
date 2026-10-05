@@ -73,7 +73,7 @@ Apply new migrations (`migrations/`) with the last command whenever one is added
 
 A map link unfurls (Discord, Slack, X, ...) with an image of its seed's map, or of the view in its `v` param. The pages
 point `og:image` at `/og/map/<platform>/[caves/]<seed>.png?v=<view>`, served by the preview Worker in
-[`../preview-worker`](../preview-worker): it generates the world dump with the single-threaded WebAssembly build, draws
+[`preview-worker`](preview-worker): it generates the world dump with the single-threaded WebAssembly build, draws
 it on this site's `/map/preview` page in Cloudflare Browser Run, and keeps the PNG in R2 and the Cache API. The site
 binds it as `MAP_PREVIEW`, pre-warms it when a link-unfurl crawler fetches a map page, and forwards `/og/*` to it on
 hosts its route doesn't cover. Bump `MAP_PREVIEW_VERSION` (`lib/world-map/map-preview-url.ts`) when the worlds or the
@@ -83,8 +83,8 @@ It needs the single-threaded build (`../scripts/build.sh wasm-single`) and is de
 
 ```sh
 npx wrangler r2 bucket create dst-seedfinder-previews   # once
-cd ../preview-worker && npm ci && npm run deploy
-cd ../website && npm run build && npm run deploy
+cd preview-worker && npm ci && npm run deploy
+cd .. && npm run build && npm run deploy
 ```
 
 ## Prefab catalog

@@ -12,15 +12,22 @@
     },
     "devDependencies": {
         "@cloudflare/vite-plugin": "1.58.0",
+        "@eslint/js": "10.0.1",
+        "@stylistic/eslint-plugin": "5.10.0",
         "@tailwindcss/postcss": "4.3.3",
         "@types/node": "26.6.2",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
         "@vitejs/plugin-react": "6.1.1",
         "@vitejs/plugin-rsc": "0.5.35",
+        "eslint": "10.12.0",
+        "eslint-plugin-react-hooks": "7.1.1",
+        "globals": "17.13.0",
         "msw": "2.15.0",
         "tailwindcss": "4.3.3",
         "typescript": "7.0.2",
+        "typescript-6": "file:eslint/typescript-6",
+        "typescript-eslint": "8.71.1",
         "vite": "8.3.0",
         "vitest": "5.0.2",
         "wrangler": "4.137.0"
@@ -36,6 +43,14 @@
         "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",
         "preview": "npm run build && npm run start --",
         "test": "vinext build && vitest run",
-        "cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts"
+        "cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts",
+        "lint": "eslint",
+        "lint:fix": "eslint --fix"
+    },
+    "overrides": {
+        "typescript": "$typescript",
+        "typescript-6": {
+            "typescript": "6.0.3"
+        }
     }
 }

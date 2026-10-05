@@ -1,0 +1,8 @@
+{
+    "name": "typescript-6",
+    "private": true,
+    "main": "node_modules/typescript/lib/typescript.js",
+    "dependencies": {
+        "typescript": "6.0.3"
+    }
+}

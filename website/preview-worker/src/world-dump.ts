@@ -1,5 +1,5 @@
-import createSeedfinder from "../../build/wasm-single/seedfinder.mjs";
-import seedfinder from "../../build/wasm-single/seedfinder.wasm";
+import createSeedfinder from "../../../build/wasm-single/seedfinder.mjs";
+import seedfinder from "../../../build/wasm-single/seedfinder.wasm";
 import type { Platform, Shard } from "@/lib/config/seedfinder-config";
 import { CRASHED_LINE, DUMP_PATH, dumpArgs } from "@/lib/world-map/world/world-dump";
 
