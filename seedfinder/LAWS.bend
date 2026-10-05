@@ -134,7 +134,7 @@ def config_rejects_integer_past_u32():
   {==}
 
 law config_caps_entries:
-  {Config.config_of("{\"criteria\": [{}, {}, {}, {}, {}, {}, {}, {}, {}]}") == Fail{(2, "config: criteria has 9 entries (at most 8)")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"criteria\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]}") == Fail{(2, "config: criteria has 26 entries (at most 25)")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_caps_entries():
   {==}

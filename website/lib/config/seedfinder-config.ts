@@ -6,7 +6,7 @@ export const MAX_UINT32 = 4_294_967_295;
 export const MAX_DISTANCE = 1_000_000;
 export const WORLD_UNITS_PER_TILE = 4;
 
-export const MAX_CRITERIA = 8;
+export const MAX_CRITERIA = 25;
 export const MAX_RULES_PER_SECTION = 16;
 export const MAX_PREFAB_IDS = 16;
 export const MAX_SET_PIECES_PER_RULE = 16;

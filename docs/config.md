@@ -254,7 +254,7 @@ The finder rejects a config over any cap with a config error.
 
 | What | Cap |
 |---|---|
-| `criteria` entries (alternatives) | 8 |
+| `criteria` entries (alternatives) | 25 |
 | rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per entry | 16 |
 | prefab ids per prefab set (`prefab`, `from`, `to`, `near.prefab`, each `visit` stop) | 16 |
 | set piece names per `setpieces[].required` | 16 |

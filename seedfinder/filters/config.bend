@@ -359,7 +359,7 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
     settings : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "settings"), "settings")
     defaults : Unit <- default_settings(settings)
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "criteria"), "criteria")
-    listed : List<&2, Json.Json> <- Parse.capped(items, 8, "entries", "criteria")
+    listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "criteria")
     +entries : List<&2, Entry> <- entry_list(listed, 0)
     active : Unit <- some_active(entries)
     return config_from(windows, entries)
