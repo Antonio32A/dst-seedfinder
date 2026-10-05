@@ -101,13 +101,13 @@ def cave_later(+text: String) -> Result<&1, &1, U32 & String, List<&2, Rules.Lat
   later_of(CaveConfig.config_of(text))
 
 law cave_config_counts_cave_prefabs:
-  {cave_later("{\"criteria\": [{\"counts\": [{\"prefab\": \"cave_exit\", \"min\": 3}]}]}") == Done{[Rules.Later{[Rules.Count{[370], Some{3}, None{}, None{}}], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+  {cave_later("{\"criteria\": [{\"counts\": [{\"prefab\": \"cave_exit\", \"min\": 3}]}]}") == Done{[Rules.Later{[Rules.Count{[370], Some{3}, None{}, None{}}], [], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_counts_cave_prefabs():
   {==}
 
 law cave_config_pillars_replace_wormholes:
-  {cave_later("{\"criteria\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": [\"tentacle_pillar\", \"tentacle_pillar_atrium\"], \"pillars\": true}]}]}") == Done{[Rules.Later{[], [Rules.Distance{[370], [454, 455], None{}, None{}, Rules.Metric{False{}, True{}, True{}}}], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+  {cave_later("{\"criteria\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": [\"tentacle_pillar\", \"tentacle_pillar_atrium\"], \"pillars\": true}]}]}") == Done{[Rules.Later{[], [Rules.Distance{[370], [454, 455], None{}, None{}, Rules.Metric{False{}, True{}, True{}}}], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_pillars_replace_wormholes():
   {==}

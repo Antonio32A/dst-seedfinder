@@ -34,11 +34,26 @@ type Piece is Data:
 type Road is Data:
   Road{weight: U32, points: List<&2, Position>}
 
+# A savedata topology node (the GRPH section): its id, its NODE_TYPE and its position in hundredths of world units
+# (int32 bits, multiples of 100).
+type Node is Data:
+  Node{id: String, kind: U32, xk: U32, zk: U32}
+
+# A topology edge between two nodes, as their positions in the node list, AddLink's first argument first.
+type Edge is Data:
+  Edge{n1: U32, n2: U32}
+
+# The savedata topology without the edges ApplyPoisonTag cleared: nodes in ascending id order, edges in ascending (n1, n2)
+# order.
+type Graph is Data:
+  Graph{nodes: List<&2, Node>, edges: List<&2, Edge>}
+
 # A world dump (docs/world-dump.md) as the file lays it out: a generated world (tiles packed two u16 per word, the
-# first in the low half; its shard, 0 forest or 1 caves; its set pieces when it has a SETP section and its roads when it
-# has a ROAD section), or the seed, platform and shard of one whose generation gave up.
+# first in the low half; its shard, 0 forest or 1 caves; its set pieces when it has a SETP section, its roads when it
+# has a ROAD section and its topology when it has a GRPH section), or the seed, platform and shard of one whose
+# generation gave up.
 type Dump is Data:
-  Generated{seed: U32, platform: U32, shard: U32, build: U32, width: U32, height: U32, tile_names: List<&2, TileName>, tiles: List<&2, U32>, prefabs: List<&2, Prefab>, links: List<&2, Link>, pillars: List<&2, Pillar>, pieces: Maybe<&2, List<&2, Piece>>, roads: Maybe<&2, List<&2, Road>>}
+  Generated{seed: U32, platform: U32, shard: U32, build: U32, width: U32, height: U32, tile_names: List<&2, TileName>, tiles: List<&2, U32>, prefabs: List<&2, Prefab>, links: List<&2, Link>, pillars: List<&2, Pillar>, pieces: Maybe<&2, List<&2, Piece>>, roads: Maybe<&2, List<&2, Road>>, graph: Maybe<&2, Graph>}
   GaveUp{seed: U32, platform: U32, shard: U32}
 
 def magic() -> U32:
@@ -143,6 +158,24 @@ def road_of(words: List<&2, U32>) -> Road & List<&2, U32>:
     case _:
       (Road{0, Nil{}}, Nil{})
 
+def node_with(got: String & List<&2, U32>) -> Node & List<&2, U32>:
+  (id, rest) = got
+  match rest:
+    case Con{+kind, Con{+xk, Con{+zk, +more}}}:
+      (Node{id, kind, xk, zk}, more)
+    case _:
+      (Node{id, 0, 0, 0}, Nil{})
+
+def node_of(words: List<&2, U32>) -> Node & List<&2, U32>:
+  node_with(string_of(words))
+
+def edges_of(n: Nat, words: List<&2, U32>) -> List<&2, Edge>:
+  match n words:
+    case 1n+p Con{+n1, Con{+n2, rest}}:
+      Edge{n1, n2} <> edges_of(p, rest)
+    case _ _:
+      Nil{}
+
 def entries(~A: Data, ~entry: List<&2, U32> -> A & List<&2, U32>, n: Nat, got: A & List<&2, U32>) -> List<&2, A>:
   match n:
     case 0n:
@@ -158,22 +191,47 @@ def counted(~A: Data, ~entry: List<&2, U32> -> A & List<&2, U32>, words: List<&2
     case Nil{}:
       Nil{}
 
+def graph_nodes(n: Nat, words: List<&2, U32>, got: Node & List<&2, U32>, acc: List<&2, Node>) -> List<&2, Node> & List<&2, U32>:
+  match n:
+    case 0n:
+      (List.reverse(&2, Node, acc), words)
+    case 1n+p:
+      (node, +rest) = got
+      graph_nodes(p, rest, node_of(rest), node <> acc)
+
+def graph_after(got: List<&2, Node> & List<&2, U32>) -> Graph:
+  (nodes, words) = got
+  match words:
+    case Con{+count, +rest}:
+      Graph{nodes, edges_of(U32.to_nat(count), rest)}
+    case Nil{}:
+      Graph{nodes, Nil{}}
+
+def graph_of(words: List<&2, U32>) -> Graph:
+  match words:
+    case Con{+count, +rest}:
+      graph_after(graph_nodes(U32.to_nat(count), rest, node_of(rest), Nil{}))
+    case Nil{}:
+      Graph{Nil{}, Nil{}}
+
 def with_section(tag: U32, payload: List<&2, U32>, d: Dump) -> Dump:
   match tag d:
-    case 1296125524 Generated{+seed, +platform, +shard, +build, +width, +height, _, +tiles, +prefabs, +links, +pillars, +pieces, +roads}:
-      Generated{seed, platform, shard, build, width, height, counted(~TileName, ~tile_name_of, payload), tiles, prefabs, links, pillars, pieces, roads}
-    case 1162627412 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, _, +prefabs, +links, +pillars, +pieces, +roads}:
-      Generated{seed, platform, shard, build, width, height, tile_names, payload, prefabs, links, pillars, pieces, roads}
-    case 1398033989 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, _, +links, +pillars, +pieces, +roads}:
-      Generated{seed, platform, shard, build, width, height, tile_names, tiles, counted(~Prefab, ~prefab_of, payload), links, pillars, pieces, roads}
-    case 1297239895 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, _, +pillars, +pieces, +roads}:
-      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, counted(~Link, ~link_of, payload), pillars, pieces, roads}
-    case 1280067920 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, _, +pieces, +roads}:
-      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, counted(~Pillar, ~pillar_of, payload), pieces, roads}
-    case 1347700051 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, _, +roads}:
-      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, Some{counted(~Piece, ~piece_of, payload)}, roads}
-    case 1145130834 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, _}:
-      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, pieces, Some{counted(~Road, ~road_of, payload)}}
+    case 1296125524 Generated{+seed, +platform, +shard, +build, +width, +height, _, +tiles, +prefabs, +links, +pillars, +pieces, +roads, +graph}:
+      Generated{seed, platform, shard, build, width, height, counted(~TileName, ~tile_name_of, payload), tiles, prefabs, links, pillars, pieces, roads, graph}
+    case 1162627412 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, _, +prefabs, +links, +pillars, +pieces, +roads, +graph}:
+      Generated{seed, platform, shard, build, width, height, tile_names, payload, prefabs, links, pillars, pieces, roads, graph}
+    case 1398033989 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, _, +links, +pillars, +pieces, +roads, +graph}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, counted(~Prefab, ~prefab_of, payload), links, pillars, pieces, roads, graph}
+    case 1297239895 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, _, +pillars, +pieces, +roads, +graph}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, counted(~Link, ~link_of, payload), pillars, pieces, roads, graph}
+    case 1280067920 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, _, +pieces, +roads, +graph}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, counted(~Pillar, ~pillar_of, payload), pieces, roads, graph}
+    case 1347700051 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, _, +roads, +graph}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, Some{counted(~Piece, ~piece_of, payload)}, roads, graph}
+    case 1145130834 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, _, +graph}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, pieces, Some{counted(~Road, ~road_of, payload)}, graph}
+    case 1213223495 Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, +roads, _}:
+      Generated{seed, platform, shard, build, width, height, tile_names, tiles, prefabs, links, pillars, pieces, roads, Some{graph_of(payload)}}
     case _ other:
       other
 
@@ -188,7 +246,7 @@ def sections(fuel: Nat, words: List<&2, U32>, d: Dump) -> Dump:
 def versioned(words: List<&2, U32>) -> Result<&1, &1, U32 & String, Dump>:
   match words:
     case Con{_, Con{3, Con{+seed, Con{1, Con{+platform, Con{+shard, Con{+build, Con{+width, Con{+height, +rest}}}}}}}}}:
-      Done{sections(List.length(&2, U32, rest), rest, Generated{seed, platform, shard, build, width, height, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, None{}, None{}})}
+      Done{sections(List.length(&2, U32, rest), rest, Generated{seed, platform, shard, build, width, height, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, None{}, None{}, None{}})}
     case Con{_, Con{3, Con{+seed, Con{0, Con{+platform, Con{+shard, _}}}}}}:
       Done{GaveUp{seed, platform, shard}}
     case Con{_, Con{+version, _}}:
@@ -324,6 +382,31 @@ def optional_roads(+roads: Maybe<&2, List<&2, Road>>) -> List<&2, U32>:
     case Some{+found}:
       roads_section(found)
 
+def node_bytes(n: Node) -> List<&2, U32>:
+  match n:
+    case Node{+id, +kind, +xk, +zk}:
+      List.append(&2, U32, string_field(id), bytes_of([kind, xk, zk]))
+
+def edge_words(edges: List<&2, Edge>) -> List<&2, U32>:
+  match edges:
+    case Nil{}:
+      Nil{}
+    case Con{Edge{+n1, +n2}, rest}:
+      n1 <> n2 <> edge_words(rest)
+
+# The GRPH section of this topology, in its order.
+def graph_section(+g: Graph) -> List<&2, U32>:
+  match g:
+    case Graph{+nodes, +edges}:
+      section(1213223495, List.append(&2, U32, counted_bytes(~Node, ~node_bytes, nodes), bytes_of(U32.from_nat(List.length(&2, Edge, edges)) <> edge_words(edges))))
+
+def optional_graph(+graph: Maybe<&2, Graph>) -> List<&2, U32>:
+  match graph:
+    case None{}:
+      Nil{}
+    case Some{+found}:
+      graph_section(found)
+
 def optional_set_pieces(+pieces: Maybe<&2, List<&2, Piece>>) -> List<&2, U32>:
   match pieces:
     case None{}:
@@ -332,19 +415,21 @@ def optional_set_pieces(+pieces: Maybe<&2, List<&2, Piece>>) -> List<&2, U32>:
       set_pieces_section(found)
 
 # A world dump's file bytes: the header, then a generated world's TNAM, TILE, ENTS and WORM sections and, in the caves
-# shard, its PILL section, and, when it has set pieces, its SETP section and, when it has roads, its ROAD section.
+# shard, its PILL section, and, when it has set pieces, its SETP section, when it has roads, its ROAD section and, when
+# it has a topology, its GRPH section.
 def bytes(d: Dump) -> List<&2, U32>:
   match d:
     case GaveUp{+seed, +platform, +shard}:
       bytes_of([magic(), 3, seed, 0, platform, shard])
-    case Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, +roads}:
+    case Generated{+seed, +platform, +shard, +build, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, +pieces, +roads, +graph}:
       List.concat(&2, U32, [bytes_of([magic(), 3, seed, 1, platform, shard, build, width, height]), tile_names_section(tile_names), tiles_section(tiles),
-        entities_section(prefabs), links_section(links), optional_pillars(shard, pillars), optional_set_pieces(pieces), optional_roads(roads)])
+        entities_section(prefabs), links_section(links), optional_pillars(shard, pillars), optional_set_pieces(pieces), optional_roads(roads),
+        optional_graph(graph)])
 
 # The prefabs of a dump (none when its world generation gave up).
 def prefabs(+d: Dump) -> List<&2, Prefab>:
   match d:
-    case Generated{_, _, _, _, _, _, _, _, +found, _, _, _, _}:
+    case Generated{_, _, _, _, _, _, _, _, +found, _, _, _, _, _}:
       found
     case GaveUp{_, _, _}:
       Nil{}
@@ -352,7 +437,7 @@ def prefabs(+d: Dump) -> List<&2, Prefab>:
 # The set pieces of a dump (none when it has no SETP section).
 def set_pieces(+d: Dump) -> Maybe<&2, List<&2, Piece>>:
   match d:
-    case Generated{_, _, _, _, _, _, _, _, _, _, _, +found, _}:
+    case Generated{_, _, _, _, _, _, _, _, _, _, _, +found, _, _}:
       found
     case GaveUp{_, _, _}:
       None{}
@@ -360,7 +445,15 @@ def set_pieces(+d: Dump) -> Maybe<&2, List<&2, Piece>>:
 # The roads of a dump (none when it has no ROAD section).
 def roads(+d: Dump) -> Maybe<&2, List<&2, Road>>:
   match d:
-    case Generated{_, _, _, _, _, _, _, _, _, _, _, _, +found}:
+    case Generated{_, _, _, _, _, _, _, _, _, _, _, _, +found, _}:
+      found
+    case GaveUp{_, _, _}:
+      None{}
+
+# The topology of a dump (none when it has no GRPH section).
+def graph(+d: Dump) -> Maybe<&2, Graph>:
+  match d:
+    case Generated{_, _, _, _, _, _, _, _, _, _, _, _, _, +found}:
       found
     case GaveUp{_, _, _}:
       None{}

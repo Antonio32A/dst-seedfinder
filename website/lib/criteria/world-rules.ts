@@ -1,6 +1,7 @@
 import { fixedCount, sampleCounts, setLabel } from "@/lib/catalog/prefab-sets";
 import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import {
+    type BridgeRule,
     type CountRule,
     type Criterion,
     DEFAULT_LINKS,
@@ -66,6 +67,12 @@ export interface TileRow {
     max: number;
 }
 
+export interface BridgeRow {
+    key: string;
+    min: number;
+    max: number | null;
+}
+
 export interface RouteStop {
     key: string;
     prefabs: string[];
@@ -85,6 +92,7 @@ export interface WorldRows {
     counts: CountRow[];
     distances: DistanceRow[];
     tiles: TileRow[];
+    bridges: BridgeRow[];
     routes: RouteRow[];
 }
 
@@ -135,6 +143,7 @@ export const NEW_WORLD_ROW: { [S in WorldSection]: (shard: Shard) => WorldRows[S
         max: tiles(100)
     }),
     tiles: () => ({ key: newKey(), from: [], to: [], max: 3 }),
+    bridges: () => ({ key: newKey(), min: tiles(60), max: null }),
     routes: (shard) => ({
         ...DEFAULT_TRAVEL,
         key: newKey(),
@@ -148,7 +157,7 @@ export const NEW_WORLD_ROW: { [S in WorldSection]: (shard: Shard) => WorldRows[S
 };
 
 export const worldRowCount = (rows: WorldRows): number =>
-    rows.counts.length + rows.distances.length + rows.tiles.length + rows.routes.length;
+    rows.counts.length + rows.distances.length + rows.tiles.length + rows.bridges.length + rows.routes.length;
 
 const asSet = (ids: string[]): PrefabSet => (ids.length === 1 ? ids[0] : ids);
 
@@ -203,6 +212,8 @@ const tileRule = (row: TileRow, _shard: Shard): TileRule[] => (filled(row.from, 
     max: row.max
 }] : []);
 
+const bridgeRule = ({ min, max }: BridgeRow): BridgeRule => ({ ...(min > 0 ? { min } : {}), ...(max === null ? {} : { max }) });
+
 const routeRule = (row: RouteRow, shard: Shard): RouteRule[] => {
     const end = routeEnd(row);
     if (!filled(row.from, ...row.stops.map((stop) => stop.prefabs)) || row.stops.length === 0) return [];
@@ -218,11 +229,12 @@ const routeRule = (row: RouteRow, shard: Shard): RouteRule[] => {
     ];
 };
 
-export function worldSections(rows: WorldRows, shard: Shard): Pick<Criterion, "counts" | "distances" | "tiles" | "routes"> {
+export function worldSections(rows: WorldRows, shard: Shard): Pick<Criterion, "counts" | "distances" | "tiles" | "bridges" | "routes"> {
     return {
         counts: nonEmpty(rows.counts.flatMap((row) => countRule(row, shard))),
         distances: nonEmpty(rows.distances.flatMap((row) => distanceRule(row, shard))),
         tiles: nonEmpty(rows.tiles.flatMap((row) => tileRule(row, shard))),
+        bridges: nonEmpty(rows.bridges.map(bridgeRule)),
         routes: nonEmpty(rows.routes.flatMap((row) => routeRule(row, shard)))
     };
 }
@@ -306,6 +318,12 @@ function tileRowOf(value: unknown, _shard: Shard): TileRow[] {
     return filled(from, to) && max !== undefined ? [{ key: newKey(), from, to, max }] : [];
 }
 
+function bridgeRowOf(value: unknown): BridgeRow[] {
+    const record = asRecord(value);
+    const [min, max] = [distanceOf(record.min), distanceOf(record.max)];
+    return [{ key: newKey(), min: min ?? 0, max: max ?? null }];
+}
+
 function routeRowOf(value: unknown, shard: Shard): RouteRow[] {
     const record = asRecord(value);
     const from = prefabIds(record.from, shard);
@@ -326,6 +344,7 @@ export function worldRowsOf(criterion: Record<string, unknown>, shard: Shard): W
         counts: rowsOf(criterion.counts, shard, countRowOf),
         distances: rowsOf(criterion.distances, shard, distanceRowOf),
         tiles: rowsOf(criterion.tiles, shard, tileRowOf),
+        bridges: rowsOf(criterion.bridges, shard, bridgeRowOf),
         routes: rowsOf(criterion.routes, shard, routeRowOf)
     };
 }
@@ -358,6 +377,10 @@ const DISTANCE_CHECKS: RowCheck<DistanceRow>[] = [
 
 const TILE_CHECKS: RowCheck<TileRow>[] = [(row, label) => (filled(row.from, row.to) ? undefined : error(`${label} needs turf on both sides.`))];
 
+const BRIDGE_CHECKS: RowCheck<BridgeRow>[] = [
+    (row, label) => (row.max !== null && row.min > row.max ? error(`${label}: minimum is above maximum.`) : undefined)
+];
+
 const ROUTE_CHECKS: RowCheck<RouteRow>[] = [
     (row, label) => (row.from.length === 0 ? error(`${label} needs a start.`) : undefined),
     (row, label) => (row.stops.some((stop) => stop.prefabs.length === 0) ? error(`${label} has an empty stop.`) : undefined),
@@ -379,6 +402,7 @@ export function worldIssues(rows: WorldRows, shard: Shard): WorldIssue[] {
         ...checkRows(rows.counts, "count", COUNT_CHECKS, shard),
         ...checkRows(rows.distances, "distance", DISTANCE_CHECKS, shard),
         ...checkRows(rows.tiles, "turf rule", TILE_CHECKS, shard),
+        ...checkRows(rows.bridges, "turf bridge", BRIDGE_CHECKS, shard),
         ...checkRows(rows.routes, "route", ROUTE_CHECKS, shard)
     ];
 }
@@ -440,7 +464,7 @@ export function worldRowsFor(rows: WorldRows, from: Shard, to: Shard): { rows: W
         return required.row ? { row: { ...required.row, to: end.ids }, lost: required.lost + end.lost } : required;
     });
     return {
-        rows: { counts: counts.rows, distances: distances.rows, tiles: rows.tiles, routes: routes.rows },
+        rows: { counts: counts.rows, distances: distances.rows, tiles: rows.tiles, bridges: rows.bridges, routes: routes.rows },
         dropped: counts.dropped + distances.dropped + routes.dropped
     };
 }

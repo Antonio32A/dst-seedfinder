@@ -159,10 +159,10 @@ def packed_loop(n: Nat, got: Grid.Grid & U32, +c: U32, +hold: U32, +acc: List<&2
 def packed(g: Grid.Grid, +n: U32) -> List<&2, U32>:
   packed_loop(U32.to_nat(n), Grid.get(g, (n - 1 : U32)), (n - 1 : U32), 0, Nil{})
 
-def world_of_groups(gr: Grouped, +seed: U32, +w: U32, +tiles: List<&2, U32>) -> FilterWorld.World:
+def world_of_groups(gr: Grouped, +seed: U32, +w: U32, +tiles: List<&2, U32>, +graph: FilterDump.Graph) -> FilterWorld.World:
   match gr:
     case Grouped{+groups, +wormholes}:
-      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, FilterWorld.links_of(links(wormholes), groups, GenTagsData.vocab_wormhole()), tiles}
+      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, FilterWorld.links_of(links(wormholes), groups, GenTagsData.vocab_wormhole()), tiles, Some{graph}}
 
 def grouped(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) -> Grouped:
   (_, a) = got
@@ -171,9 +171,9 @@ def grouped(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) ->
 # The filters' world of a generated world (the seed's world attempt on the platform).
 def world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
   match final:
-    case GenJob.Final{g, _, +ents, +w, _, _, _}:
+    case GenJob.Final{g, _, +ents, +w, _, _, _, +graph}:
       +tiles = packed(g, (w * w : U32))
-      world_of_groups(grouped(buckets(ents, (lookup(), Array.new(List<&2, OceanEnts.Ent>, bucket_depth(), Nil{}))), windows), seed, w, tiles)
+      world_of_groups(grouped(buckets(ents, (lookup(), Array.new(List<&2, OceanEnts.Ent>, bucket_depth(), Nil{}))), windows), seed, w, tiles, graph)
 
 def sid_bucket_add(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +sid: U32, +e: OceanEnts.Ent) -> Array<List<&2, OceanEnts.Ent>>:
   (a, +old) = got
@@ -371,12 +371,12 @@ def named_of(slots: Nat, a: Array<List<&2, OceanEnts.Ent>>) -> List<&2, Named>:
   +found = named_loop(slots, Array.swap(List<&2, OceanEnts.Ent>, a, 0, Nil{}), 0, Nil{})
   List.sort(~Named, ~named_le, with_pocket(with_pocket(found, GenTagsData.vocab_shadow_container()), GenTagsData.vocab_rabbitkinghorn_container()))
 
-def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>, +roads: List<&2, FilterDump.Road>) -> FilterDump.Dump:
+def dump_of(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>, +roads: List<&2, FilterDump.Road>, +graph: FilterDump.Graph) -> FilterDump.Dump:
   (a, +wormholes) = got
   +named = named_of(U32.to_nat(sid_slots()), a)
   FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), 0, Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
-    prefabs_of(named, windows), links(wormholes), [], Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}, Some{roads}}
+    prefabs_of(named, windows), links(wormholes), [], Some{pieces_of(pieces, groups_of(tagged_of(named, 0)), 1, w, windows)}, Some{roads}, Some{graph}}
 
 # A tentacle pillar with a teleporter: its prefab's position in ENTS, its index in the prefab, its id and its target.
 type Pil is Data:
@@ -436,32 +436,32 @@ def pieces_section(pieces: List<&2, PopulateSetpiece.Piece>, groups: List<&2, Gr
     case Con{+p, +rest}:
       Some{pieces_of(p <> rest, groups, 1, w, windows)}
 
-def cave_dump_of(a: Array<List<&2, OceanEnts.Ent>>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>) -> FilterDump.Dump:
+def cave_dump_of(a: Array<List<&2, OceanEnts.Ent>>, +seed: U32, +windows: Bool, +w: U32, +tiles: List<&2, U32>, +pieces: List<&2, PopulateSetpiece.Piece>, +graph: FilterDump.Graph) -> FilterDump.Dump:
   +named = named_of(U32.to_nat(U32.pow(2, GenTagsData.cave_sid_depth())), a)
   +pillars = pillars_named(named, 0)
   FilterDump.Generated{seed, Bool.pick(U32, windows, 1, 2), 1, Constants.game_build(), w, w,
     List.sort(~FilterDump.TileName, ~tile_name_le, tile_names_of(SearchVocab.tiles(), GenTagsData.vocab_tile_ids())), tiles,
-    prefabs_of(named, windows), [], pillar_links(pillars, pillars), pieces_section(pieces, groups_of(tagged_of(named, 0)), w, windows), Some{[]}}
+    prefabs_of(named, windows), [], pillar_links(pillars, pillars), pieces_section(pieces, groups_of(tagged_of(named, 0)), w, windows), Some{[]}, Some{graph}}
 
 def wormhole_sid() -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, GenTagsData.vocab_prefab_sids(), U32.to_nat(GenTagsData.vocab_wormhole())), 0)
 
 # The world dump (docs/world-dump.md) of a generated world (the seed's world attempt on the platform): every
-# savedata.ents entry whatever its prefab, and the pocket dimension containers, per prefab in name order, and the
-# placed layouts with their members.
+# savedata.ents entry whatever its prefab, and the pocket dimension containers, per prefab in name order, the
+# placed layouts with their members, the roads and the topology.
 def dump(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match final:
-    case GenJob.Final{g, _, +ents, +w, +pieces, +roads, +min_road}:
+    case GenJob.Final{g, _, +ents, +w, +pieces, +roads, +min_road, +graph}:
       +tiles = packed(g, (w * w : U32))
       dump_of(Array.get(List<&2, OceanEnts.Ent>, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.sid_depth(), Nil{})), wormhole_sid()),
-        seed, windows, w, tiles, pieces, roads_of(roads, min_road, w))
+        seed, windows, w, tiles, pieces, roads_of(roads, min_road, w), graph)
 
 # The world dump of a generated caves world: every savedata.ents entry, the tentacle pillar links, the recorded layouts
-# and mazes as set pieces (none when the job did not record them) and no roads.
+# and mazes as set pieces (none when the job did not record them), no roads and the topology.
 def dump_caves(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match final:
-    case GenJob.Final{g, _, +ents, +w, +pieces, _, _}:
-      cave_dump_of(sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), seed, windows, w, packed(g, (w * w : U32)), pieces)
+    case GenJob.Final{g, _, +ents, +w, +pieces, _, _, +graph}:
+      cave_dump_of(sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), seed, windows, w, packed(g, (w * w : U32)), pieces, graph)
 
 def cave_slot(+sid: U32) -> Bool:
   (sid < U32.pow(2, GenTagsData.cave_sid_depth()) : U32)
@@ -512,8 +512,8 @@ def cave_links(pillars: List<&2, FilterDump.Pillar>, +groups: List<&2, List<&2, 
 # The filters' world of a generated caves world, equal to what FilterWorld.of_bytes_in reads from its dump_caves.
 def cave_world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
   match final:
-    case GenJob.Final{g, _, +ents, +w, _, _, _}:
+    case GenJob.Final{g, _, +ents, +w, _, _, _, +graph}:
       +sids = List.append(&2, U32, GenTagsData.vocab_prefab_sids(), GenTagsData.cave_vocab_prefab_sids())
       +groups = groups_by_sid(sids, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), windows)
       +pils = List.append(&2, Pil, pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar()), pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar_atrium()))
-      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, cave_links(pillar_links(pils, pils), groups), packed(g, (w * w : U32))}
+      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, cave_links(pillar_links(pils, pils), groups), packed(g, (w * w : U32)), Some{graph}}

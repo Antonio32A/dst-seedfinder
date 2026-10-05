@@ -25,7 +25,7 @@ def no_ends() -> Straight.Ends:
 
 def straight_links(+world: FilterWorld.World, +wormholes: Bool) -> List<&2, FilterWorld.Link>:
   match world:
-    case FilterWorld.World{_, _, _, _, _, +links, _}:
+    case FilterWorld.World{_, _, _, _, _, +links, _, _}:
       Bool.pick(List<&2, FilterWorld.Link>, wormholes, links, Nil{})
 
 def space_of(walk: Bool, +world: FilterWorld.World, +wormholes: Bool) -> Space:

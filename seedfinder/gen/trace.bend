@@ -21,6 +21,7 @@ import ../populate/trace.bend as PopulateTrace
 import ./graph.bend as GenGraph
 import ./generate.bend as Generate
 import ./job.bend as GenJob
+import ../filters/dump.bend as FilterDump
 
 # The `gen` trace stage: forest_map.Generate from the seed alone, every attempt, through the job state machine
 # (gen/job.bend) with M10's ocean between attempts. On entering each job stage it prints the oracle's records of what
@@ -279,21 +280,21 @@ def land_lines(+st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei,
   PopulateTrace.land_lines(land_events(Generate.land(Generate.land_context(c, s, k, sites, w, True{}), grid_only(Generate.tile_grid(Generate.windows_of(c), world, lists)), w)),
     PopulateTrace.Out{seed_of(st), U32.show(a), w, w, s, 0, 0, 0, 0, 0, 0})
 
-def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +tiles: Grid.Hash) -> GenJob.Landed & List<&2, String>:
+def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph, +tiles: Grid.Hash) -> GenJob.Landed & List<&2, String>:
   (g, +flags) = got
   +line = Canon.record("landed", [Canon.number("a", a), Canon.number("ctr", Pcg.counter(seed_of(st), rng)),
     Canon.number("n", U32.from_nat(List.length(&2, Entities.Ent, ents))), Canon.field("tiles", hash_text(tiles)), Canon.field("flags", hash_text(flags)),
     Canon.number("topo", GenJob.topology_count(s))])
-  (GenJob.Landed{g, rng, ents, s, w, Nil{}, roads}, [line])
+  (GenJob.Landed{g, rng, ents, s, w, Nil{}, roads, graph}, [line])
 
-def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>) -> GenJob.Landed & List<&2, String>:
+def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph) -> GenJob.Landed & List<&2, String>:
   (g, +tiles) = got
-  landed_flags(Grid.flags_digest(g, StoryGraph.rng_of(s)), st, a, rng, ents, s, w, roads, tiles)
+  landed_flags(Grid.flags_digest(g, StoryGraph.rng_of(s)), st, a, rng, ents, s, w, roads, graph, tiles)
 
 def landed_lines(landed: GenJob.Landed, +st: Tr, +a: U32) -> GenJob.Landed & List<&2, String>:
   match landed:
-    case GenJob.Landed{g, +rng, +ents, +s, +w, _, +roads}:
-      landed_tiles(Grid.tiles_digest(g), st, a, rng, ents, s, w, roads)
+    case GenJob.Landed{g, +rng, +ents, +s, +w, _, +roads, +graph}:
+      landed_tiles(Grid.tiles_digest(g), st, a, rng, ents, s, w, roads, graph)
 
 def ocean_entered(got: GenJob.Landed & List<&2, String>, +c: Generate.Seed, +a: U32) -> GenJob.Job & List<&2, String>:
   (landed, +lines) = got
@@ -334,8 +335,8 @@ def entered(job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
       (GenJob.JTiled{c, a, s, k, w, grid, rng, placed, sites}, outcome_line(a, "tiled"))
     case GenJob.JMazed{+c, +a, +s, +k, +w, land, +sites}:
       (GenJob.JMazed{c, a, s, k, w, land, sites}, Nil{})
-    case GenJob.JPost{+c, +a, +s, +w, land}:
-      (GenJob.JPost{c, a, s, w, land}, Nil{})
+    case GenJob.JPost{+c, +a, +s, +w, land, +graph}:
+      (GenJob.JPost{c, a, s, w, land, graph}, Nil{})
 
 def start_counter(+stage: U32, +seed: U32, +ctr: U32, +rng: Pcg.Rng) -> U32:
   Bool.pick(U32, U32.is_zero(stage), Pcg.counter(seed, rng), ctr)

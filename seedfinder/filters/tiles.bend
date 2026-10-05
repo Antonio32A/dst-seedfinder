@@ -148,7 +148,7 @@ def walk_of(s: Setup) -> Walk:
 # tile owning the BFS region and the goal reached first.
 def nearest(+world: FilterWorld.World, +from: List<&2, U32>, +to: List<&2, U32>) -> Maybe<&2, Found>:
   match world:
-    case FilterWorld.World{_, +w, +h, +tile_ids, _, _, +tiles}:
+    case FilterWorld.World{_, +w, +h, +tile_ids, _, _, +tiles, _}:
       +depth = Anchor.depth_of((w * h : U32))
       setup = mark_all(tiles, Setup{[0 : U32^(Nat.add(depth, 3n))], [0 : U32^(Nat.add(depth, 1n))], 0}, 0, (w * h : U32), ids_of(tile_ids, from), ids_of(tile_ids, to))
       result_of(bfs(U32.to_nat((w * h + 2 : U32)), walk_of(setup), w, h))

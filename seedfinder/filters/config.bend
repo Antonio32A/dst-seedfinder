@@ -19,7 +19,7 @@ type Criteria is Data:
 
 # A compiled config: the platform the worlds are generated on (windows unless "linux"), the part A criteria of the
 # entries, their parts B-E (in the same order), the first "not supported by this binary yet" message when an entry
-# has a counts, distances, tiles or routes key, and the part A criteria that make a seed a candidate (those of the
+# has a counts, distances, tiles, bridges or routes key, and the part A criteria that make a seed a candidate (those of the
 # entries that are not passive; anything when there are no entries).
 type Config is Data:
   Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, Rules.Later>, unsupported: Maybe<&2, String>, scanned: List<&2, Criteria>}
@@ -44,7 +44,7 @@ def or_anything(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
 def is_member(names: List<&2, String>, +name: String) -> Bool:
   Parse.is_member(names, name)
 
-# The parts B-E of an entry without counts, distances, tiles or routes rules.
+# The parts B-E of an entry without counts, distances, tiles, bridges or routes rules.
 def no_later() -> Rules.Later:
   Rules.nothing_later()
 
@@ -188,7 +188,7 @@ def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&
         rules_of(rest, (index + 1 : U32), path, more)
 
 def later_parts() -> List<&2, String>:
-  ["counts", "distances", "tiles", "routes"]
+  ["counts", "distances", "tiles", "bridges", "routes"]
 
 def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +path: String) -> Maybe<&2, String>:
   match sections:
@@ -200,13 +200,13 @@ def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +path:
         first_later(fields, rest, path))
 
 # One parsed criteria entry: its part A, its parts B-E, the message for a finder without worlds when it has a
-# counts, distances, tiles or routes key, and whether it is passive (only decided on candidates of other entries).
+# counts, distances, tiles, bridges or routes key, and whether it is passive (only decided on candidates of other entries).
 type Entry is Data:
   Entry{level: Criteria, later: Rules.Later, unsupported: Maybe<&2, String>, passive: Bool}
 
 def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
   do Result<&1, &1, U32 & String, Entry>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "routes"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "bridges", "routes"], path)
     +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
     listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
@@ -364,7 +364,7 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
     active : Unit <- some_active(entries)
     return config_from(windows, entries)
 
-# A config for a finder that only knows part A: the message when some entry has a counts/distances/tiles/routes key.
+# A config for a finder that only knows part A: the message when some entry has a counts/distances/tiles/bridges/routes key.
 def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
   match config:
     case Config{_, _, _, None{}, _}:

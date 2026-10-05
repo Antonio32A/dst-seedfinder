@@ -2,7 +2,7 @@ import struct
 import unittest
 
 from world import Instance
-from world_dump import dump_of, pillars_payload, roads_payload
+from world_dump import dump_of, graph_payload, pillars_payload, roads_payload
 
 
 def words(payload):
@@ -31,6 +31,42 @@ class Pillars(unittest.TestCase):
         atrium = [Instance("tentacle_pillar_atrium", 0, 0.0, 0.0)]
         links = [(pillar[0], pillar[1]), (atrium[0], atrium[0])]
         self.assertEqual(words(pillars_payload(links, entities)), (2, 1, 0, 1, 1, 2, 0, 2, 0))
+
+
+class Graph(unittest.TestCase):
+    def test_nodes_go_in_id_order_and_edges_are_renumbered_sorted_and_keep_their_direction(self):
+        topology = {
+            "ids": ["T:1:B", "T:0:A", "T:BG_2:Blank"],
+            "nodes": [{"type": 5, "x": -3, "y": 4, "tags": []}, {"type": 0, "x": 10, "y": -20, "tags": {}},
+                      {"type": 1, "x": 0, "y": 0, "tags": None}],
+            "edges": [{"n1": 3, "n2": 1}, {"n1": 1, "n2": 2}],
+        }
+        self.assertEqual(
+            graph_payload(topology),
+            struct.pack("<I", 3)
+            + struct.pack("<I", 5) + b"T:0:A\0\0\0" + struct.pack("<3i", 0, 1000, -2000)
+            + struct.pack("<I", 5) + b"T:1:B\0\0\0" + struct.pack("<3i", 5, -300, 400)
+            + struct.pack("<I", 12) + b"T:BG_2:Blank" + struct.pack("<3i", 1, 0, 0)
+            + struct.pack("<5I", 2, 1, 0, 2, 1),
+        )
+
+    def test_edges_of_force_disconnected_nodes_are_left_out(self):
+        topology = {
+            "ids": ["a", "b", "c"],
+            "nodes": [{"type": 0, "x": 0, "y": 0, "tags": []}, {"type": 0, "x": 0, "y": 0, "tags": ["ForceDisconnected"]},
+                      {"type": 0, "x": 0, "y": 0, "tags": []}],
+            "edges": [{"n1": 1, "n2": 2}, {"n1": 3, "n2": 1}, {"n1": 2, "n2": 3}],
+        }
+        self.assertEqual(words(graph_payload(topology))[-3:], (1, 2, 0))
+
+    def test_the_ocean_layout_squares_are_left_out(self):
+        topology = {
+            "ids": ["a", "StaticLayoutIsland:MonkeyIsland"],
+            "nodes": [{"type": 5, "x": 1, "y": 2, "tags": []},
+                      {"type": 0, "x": 3, "y": 4, "tags": ["not_mainland"], "neighbours": [], "validedges": []}],
+            "edges": [],
+        }
+        self.assertEqual(words(graph_payload(topology)), (1, 1, 97, 5, 100, 200, 0))
 
 
 class Header(unittest.TestCase):

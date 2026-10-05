@@ -758,7 +758,7 @@ def started(got: Array<U32> & U32, starts: List<&2, Start>, +ctx: Ctx) -> Array<
 # bound, the labels past it may stay unsettled.
 def run(+world: FilterWorld.World, +depth: Nat, +jumps: List<&2, Jump>, starts: List<&2, Start>, targets: List<&2, U32>, +needed: U32, +bound: Maybe<&2, Walk.Length>) -> Array<U32>:
   match world:
-    case FilterWorld.World{_, +w, +h, _, _, _, +tiles}:
+    case FilterWorld.World{_, +w, +h, _, _, _, +tiles, _}:
       masked_cells = all_masks(U32.to_nat((w * h : U32)), land_cells(tiles, [0 : U32^(Nat.add(depth, 4n))], 0), 0, w, h)
       started(flag_targets(targets, (flag_jumps(jumps, masked_cells), 0)), starts, Ctx{w, needed, jumps, bound})
 

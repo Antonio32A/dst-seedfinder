@@ -126,6 +126,9 @@ def definitions(catalog):
         "distanceRule": closed({"from": ref("prefabs"), "to": ref("prefabs"), "min": ref("distance"),
                                 "max": ref("distance"), **metric_fields()}, ("from", "to")),
         "tileRule": closed({"from": ref("tiles"), "to": ref("tiles"), "max": ref("uint32")}, ("from", "to", "max")),
+        "bridgeRule": closed({"min": ref("distance"), "max": ref("distance")},
+                             description="The longest turf bridge (a room's turf line along a link to a room left far "
+                                         "away), in world units."),
         "routeRule": closed({"from": ref("prefabs"),
                              "visit": {"type": "array", "minItems": 1, "maxItems": CAPS["stops"],
                                        "items": ref("prefabs")},
@@ -136,7 +139,7 @@ def definitions(catalog):
                                      "description": "Only decided on candidates of the entries that aren't passive."},
                          "tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"), "setpieces": rules("setPieceRule"),
                          "counts": rules("countRule"), "distances": rules("distanceRule"), "tiles": rules("tileRule"),
-                         "routes": rules("routeRule")},
+                         "bridges": rules("bridgeRule"), "routes": rules("routeRule")},
                         description="All sections and all rules must hold (AND)."),
     }
 
@@ -179,7 +182,7 @@ def cave_definitions():
                              "tasks": ref("caveTasks"), "prefab_swaps": ref("cavePrefabSwaps"),
                              "setpieces": rules("caveSetPieceRule"), "counts": rules("caveCountRule"),
                              "distances": rules("caveDistanceRule"), "tiles": rules("tileRule"),
-                             "routes": rules("caveRouteRule")},
+                             "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
                             description="All sections and all rules must hold (AND). Counts, distances and routes "
                                         "use the caves' prefabs, and `pillars` lets a distance use the tentacle "
                                         "pillar links."),
@@ -200,8 +203,8 @@ def schema(catalog):
                                            "caves. The caves shard's criteria use its own tasks and set pieces.",
                             "enum": list(SHARDS), "default": DEFAULT_SHARD},
                   "platform": {"description": "The OS hosting the world. The level table (tasks, prefab_swaps, "
-                                              "setpieces) is the same on both; counts, distances, tiles and routes "
-                                              "are evaluated on this platform's world.",
+                                              "setpieces) is the same on both; counts, distances, tiles, bridges "
+                                              "and routes are evaluated on this platform's world.",
                                "enum": list(PLATFORMS), "default": DEFAULT_PLATFORM},
                   "settings": {"description": "Reserved: only default settings.", "type": "object",
                                "additionalProperties": {"const": "default"}},

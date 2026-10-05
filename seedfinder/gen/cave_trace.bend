@@ -40,6 +40,7 @@ import ./maze_env.bend as MazeEnv
 import ./maze_labyrinth.bend as MazeLabyrinth
 import ./maze_meta.bend as MazeMeta
 import ./maze_tags.bend as MazeTags
+import ../filters/dump.bend as FilterDump
 
 # The `cavegen` trace stage: one attempt of the caves' forest_map.Generate through the job state machine, from the start of
 # the seed's stream or (input: a stream position) from the position of a later attempt, printing one record per stage
@@ -339,29 +340,30 @@ def disconnect_branch(exceeds: Bool, l: PopulateState.Land, +cx: PopulateState.C
     case False{}:
       land_summary(PopulateVoronoi.populate(cx, l), rc, Cn{0, 0, PopulateState.width_of(cx)}, disc, "populate")
 
-def populated_job(got: PopulateState.Land & List<&2, String>, +ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32) -> GenJob.Job & List<&2, String>:
+def populated_job(got: PopulateState.Land & List<&2, String>, +ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (land, +lines) = got
-  (GenJob.cave_populated((land, ok), c, a, s, w), lines)
+  (GenJob.cave_populated((land, ok), c, a, s, w, graph), lines)
 
-def detected_lines(got: Grid.Grid & U32, +cx: PopulateState.Ctx, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +rc: Rc, +c: Generate.Seed, +w: U32) -> GenJob.Job & List<&2, String>:
+def detected_lines(got: Grid.Grid & U32, +cx: PopulateState.Ctx, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (g, +count) = got
   +exceeds = TileDisconnect.exceeds(count, PopulateState.width_of(cx), PopulateState.height_of(cx))
   populated_job(disconnect_branch(exceeds, PopulateState.Land{g, rng, ents, events}, cx, rc,
     Canon.record("cdisconnect", [Canon.number("a", attempt_of(rc)), Canon.number("count", count), Canon.number("exceeds", Bool.to_u32(exceeds))])),
-    Bool.not(exceeds), c, attempt_of(rc), rc_story(rc), w)
+    Bool.not(exceeds), c, attempt_of(rc), rc_story(rc), w, graph)
 
-def replaced_lines(l: PopulateState.Land, +cx: PopulateState.Ctx, +sx: U32, +sy: U32, +rc: Rc, +c: Generate.Seed, +w: U32) -> GenJob.Job & List<&2, String>:
+def replaced_lines(l: PopulateState.Land, +cx: PopulateState.Ctx, +sx: U32, +sy: U32, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      detected_lines(TileDisconnect.detect(g, sx, sy), cx, rng, ents, events, rc, c, w)
+      detected_lines(TileDisconnect.detect(g, sx, sy), cx, rng, ents, events, rc, c, w, graph)
 
-def populate_start(start: U32 & U32, +cx: PopulateState.Ctx, land: PopulateState.Land, +rc: Rc, +c: Generate.Seed, +w: U32) -> GenJob.Job & List<&2, String>:
+def populate_start(start: U32 & U32, +cx: PopulateState.Ctx, land: PopulateState.Land, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (+sx, +sy) = start
-  replaced_lines(PopulateState.digest(PopulateLand.replaced(PopulateGround.convert_ground(cx, land)), cx, 1), cx, sx, sy, rc, c, w)
+  replaced_lines(PopulateState.digest(PopulateLand.replaced(PopulateGround.convert_ground(cx, land)), cx, 1), cx, sx, sy, rc, c, w, graph)
 
 # ConvertGround to PopulateVoronoi with the events recorded, and DetectDisconnect between them.
 def populate_lines(+c: Generate.Seed, +k: GenGraph.Klei, +sites: Points.Sites, +w: U32, land: PopulateState.Land, +rc: Rc) -> GenJob.Job & List<&2, String>:
-  populate_start(Generate.cave_start(rc_story(rc), k, sites), Generate.land_context(c, rc_story(rc), k, sites, w, True{}), land, rc, c, w)
+  populate_start(Generate.cave_start(rc_story(rc), k, sites), Generate.land_context(c, rc_story(rc), k, sites, w, True{}), land, rc, c, w,
+    GenJob.sites_graph(rc_story(rc), k, sites))
 
 type Ps is Type:
   Ps{sea: OceanState.Sea, lines: List<&2, String>}
@@ -414,28 +416,28 @@ def req_loop(reqs: List<&2, OceanPost.Req>, +ents: List<&2, OceanEnts.Ent>, +rc:
       Canon.record("creq", [Canon.number("a", attempt_of(rc)), Canon.field("prefab", Canon.quoted(Strings.name(prefab))), Canon.number("need", count), Canon.number("have", have)])
         <> req_loop(rest, ents, rc, (missing + Bool.to_u32((have < count : U32)) : U32))
 
-def required_step(got: OceanState.Sea & List<&2, OceanEnts.Ent>, +cx: OceanState.Ctx, +rc: Rc, +lines: List<&2, String>, +c: Generate.Seed, +w: U32) -> GenJob.Job & List<&2, String>:
+def required_step(got: OceanState.Sea & List<&2, OceanEnts.Ent>, +cx: OceanState.Ctx, +rc: Rc, +lines: List<&2, String>, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (sea, +ents) = got
-  (GenJob.cave_posted(Finish.checked(OceanPost.required(CaveRequired.required(rc_story(rc)), cx, sea), cx), c, attempt_of(rc), rc_story(rc), w),
+  (GenJob.cave_posted(Finish.checked(OceanPost.required(CaveRequired.required(rc_story(rc)), cx, sea), cx), c, attempt_of(rc), rc_story(rc), w, graph),
     List.append(&2, String, List.reverse(&2, String, lines), req_loop(CaveRequired.required(rc_story(rc)), ents, rc, 0)))
 
-def post_final(ps: Ps, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32) -> GenJob.Job & List<&2, String>:
+def post_final(ps: Ps, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match ps:
     case Ps{sea, +lines}:
-      required_step(OceanState.ents_of(sea), cx, rc, lines, c, w)
+      required_step(OceanState.ents_of(sea), cx, rc, lines, c, w, graph)
 
-def post_chain(ps: Ps, shard: Finish.Shard, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32) -> GenJob.Job & List<&2, String>:
+def post_chain(ps: Ps, shard: Finish.Shard, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match shard:
     case Finish.Shard{+wormhole, +dispenser, +temporary}:
       post_final(counted(archived(counted(bunched(counted(filtered(counted(post_populated(counted(ps, rc, "atrium"), cx, wormhole), rc, "post_populate"), cx), rc, "filter"), cx), rc, "bunches"),
-        dispenser, temporary), rc, "archive"), cx, rc, c, w)
+        dispenser, temporary), rc, "archive"), cx, rc, c, w, graph)
 
 # GlobalPostPopulate to the required prefab check on the caves' land, and the job that follows.
-def post_lines(+c: Generate.Seed, +w: U32, land: PopulateState.Land, +rc: Rc) -> GenJob.Job & List<&2, String>:
+def post_lines(+c: Generate.Seed, +w: U32, land: PopulateState.Land, +rc: Rc, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match land:
     case PopulateState.Land{g, +rng, +ents, _}:
-      post_chain(Ps{GenJob.atriumed(OceanState.ents_of(GenJob.sea_of(GenJob.Landed{g, rng, ents, rc_story(rc), w, Nil{}, Nil{}}))), Nil{}},
-        GenJob.cave_shard(), OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, False{}}, rc, c, w)
+      post_chain(Ps{GenJob.atriumed(OceanState.ents_of(GenJob.sea_of(GenJob.Landed{g, rng, ents, rc_story(rc), w, Nil{}, Nil{}, graph}))), Nil{}},
+        GenJob.cave_shard(), OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, False{}}, rc, c, w, graph)
 
 def ca_mazes(t: CaTr, +rc: Rc, +e: MazeEnv.Env) -> List<&2, String>:
   match t:
@@ -528,7 +530,7 @@ def world_digest(got: Grid.Grid & Grid.Hash, +a: U32, +ctr: U32, +n: U32) -> Lis
 
 def world_lines(world: GenJob.Final, +seed: U32, +a: U32) -> List<&2, String>:
   match world:
-    case GenJob.Final{g, +rng, +ents, _, _, _, _}:
+    case GenJob.Final{g, +rng, +ents, _, _, _, _, _}:
       world_digest(Grid.tiles_digest(g), a, Pcg.counter(seed, rng), U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
 
 def crashed_name(+last: U32) -> String:
@@ -574,8 +576,8 @@ def enter(job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
       tiled_job(tiled_lines(grid, st, c, a, s, k, w, rng, sites), c, a, s, k, w, rng, placed, sites)
     case GenJob.JMazed{+c, +a, +s, +k, +w, land, +sites}:
       mazed_lines(land, st, c, a, s, k, w, sites)
-    case GenJob.JPost{+c, +a, +s, +w, land}:
-      post_lines(c, w, land, rc_of(st, a, s))
+    case GenJob.JPost{+c, +a, +s, +w, land, +graph}:
+      post_lines(c, w, land, rc_of(st, a, s), graph)
     case GenJob.JWorld{+c, +a, world}:
       (stopped(c, a), world_lines(world, tr_seed(st), a))
     case GenJob.JDone{+c, +a, +o}:

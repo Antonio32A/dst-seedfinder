@@ -18,7 +18,7 @@
    "default": "forest"
   },
   "platform": {
-   "description": "The OS hosting the world. The level table (tasks, prefab_swaps, setpieces) is the same on both; counts, distances, tiles and routes are evaluated on this platform's world.",
+   "description": "The OS hosting the world. The level table (tasks, prefab_swaps, setpieces) is the same on both; counts, distances, tiles, bridges and routes are evaluated on this platform's world.",
    "enum": [
     "windows",
     "linux"
@@ -826,6 +826,19 @@
     "max"
    ]
   },
+  "bridgeRule": {
+   "description": "The longest turf bridge (a room's turf line along a link to a room left far away), in world units.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "min": {
+     "$ref": "#/$defs/distance"
+    },
+    "max": {
+     "$ref": "#/$defs/distance"
+    }
+   }
+  },
   "routeRule": {
    "type": "object",
    "additionalProperties": false,
@@ -910,6 +923,13 @@
      "maxItems": 16,
      "items": {
       "$ref": "#/$defs/tileRule"
+     }
+    },
+    "bridges": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/bridgeRule"
      }
     },
     "routes": {
@@ -1547,6 +1567,13 @@
      "maxItems": 16,
      "items": {
       "$ref": "#/$defs/tileRule"
+     }
+    },
+    "bridges": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/bridgeRule"
      }
     },
     "routes": {

@@ -12,7 +12,8 @@ import ../filters/par.bend as Par
 # `world find --worlds DIR` for configs with parts B-E: the scan of search.py over pre-generated worlds. Part A
 # selects candidates chunk by chunk; each candidate's DIR/<seed>.dstw decides it (a missing dump counts as a world
 # that gave up, i.e. no match, and is reported on stderr). A seed matches when an entry's part A and all its parts
-# B-E hold; the first such entry is the hit's entry and its B-E witnesses are the results.
+# B-E hold; the first such entry is the hit's entry and its B-E witnesses are the results. A dump without the topology
+# (no GRPH section) counts as missing too when an entry has a bridges rule.
 
 # The per-run constants: start seed, seeds in the scan, hit limit, time limit, output mode, config and folder.
 type Ctx is Data:
@@ -61,10 +62,13 @@ def first_entry(flags: List<&2, Bool>, laters: List<&2, Rules.Later>, found: Boo
 def platform_matches(+windows: Bool, +platform: U32) -> Bool:
   U32.is_zero(platform) || Bool.xor(windows, U32.is_eq(platform, 2))
 
+def usable(+config: ShardSearch.Search, +platform: U32, +world: FilterWorld.World) -> Bool:
+  platform_matches(ShardSearch.windows(config), platform) && (FilterWorld.has_graph(world) || Bool.not(Rules.needs_graph(ShardSearch.laters(config))))
+
 def world_verdict(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: ShardSearch.Search, +seed: U32) -> Verdict:
   match loaded:
     case Done{FilterWorld.Generated{+world, +platform}}:
-      Bool.pick(Verdict, platform_matches(ShardSearch.windows(config), platform),
+      Bool.pick(Verdict, usable(config, platform, world),
         first_entry(ShardSearch.entry_flags(ShardSearch.entries(config), seed), ShardSearch.laters(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
     case Done{FilterWorld.GaveUp{_}}:
       Miss{}
@@ -259,7 +263,8 @@ def json_of(+ctx: Ctx) -> Bool:
 
 def missing_note(+missing: U32, +dir: String) -> IO(Unit):
   Bool.pick(IO(Unit), U32.is_zero(missing), IO.pure(Unit, Unit{}),
-    IO.print_err("search: " ++ U32.show(missing) ++ " candidates have no usable world dump in " ++ dir ++ " (counted as no match)"))
+    IO.print_err("search: " ++ U32.show(missing) ++ " candidates have no usable world dump in " ++ dir
+      ++ " (missing, unreadable, of the other platform, or without the topology a bridges rule needs; counted as no match)"))
 
 def platform_name(+windows: Bool) -> String:
   Bool.pick(String, windows, "windows", "linux")

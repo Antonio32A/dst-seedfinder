@@ -134,12 +134,12 @@ def distance(+world: FilterWorld.World, rule: Rules.Distance) -> Check:
 
 def world_size(+world: FilterWorld.World) -> U32:
   match world:
-    case FilterWorld.World{_, +w, _, _, _, _, _}:
+    case FilterWorld.World{_, +w, _, _, _, _, _, _}:
       w
 
 def world_height(+world: FilterWorld.World) -> U32:
   match world:
-    case FilterWorld.World{_, _, +h, _, _, _, _}:
+    case FilterWorld.World{_, _, +h, _, _, _, _, _}:
       h
 
 def tiles_found(found: Maybe<&2, FilterTiles.Found>, +world: FilterWorld.World, +max: U32) -> Check:

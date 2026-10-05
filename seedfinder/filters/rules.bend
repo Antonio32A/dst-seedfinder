@@ -26,19 +26,30 @@ type Tiles is Data:
 type Route is Data:
   Route{from: List<&2, U32>, visit: List<&2, List<&2, U32>>, to: Maybe<&2, List<&2, U32>>, max: F64Repr.F64, fixed: Bool, metric: Metric}
 
-# The counts, distances, tiles and routes rules of one criteria entry.
+type Bridge is Data:
+  Bridge{min: Maybe<&2, F64Repr.F64>, max: Maybe<&2, F64Repr.F64>}
+
+# The counts, distances, tiles, bridges and routes rules of one criteria entry.
 type Later is Data:
-  Later{counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, routes: List<&2, Route>}
+  Later{counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, bridges: List<&2, Bridge>, routes: List<&2, Route>}
 
 def nothing_later() -> Later:
-  Later{Nil{}, Nil{}, Nil{}, Nil{}}
+  Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
 
-# True when the entry has at least one rule in counts, distances, tiles or routes.
+# True when the entry has at least one rule in counts, distances, tiles, bridges or routes.
 def has_rules(+later: Later) -> Bool:
   match later:
-    case Later{+counts, +distances, +tiles, +routes}:
+    case Later{+counts, +distances, +tiles, +bridges, +routes}:
       Bool.not(List.is_empty(&2, Count, counts) && List.is_empty(&2, Distance, distances) && List.is_empty(&2, Tiles, tiles)
-        && List.is_empty(&2, Route, routes))
+        && List.is_empty(&2, Bridge, bridges) && List.is_empty(&2, Route, routes))
+
+# True when some entry has a bridges rule (which needs the world's topology).
+def needs_graph(laters: List<&2, Later>) -> Bool:
+  match laters:
+    case Nil{}:
+      False{}
+    case Con{Later{_, _, _, +bridges, _}, rest}:
+      Bool.not(List.is_empty(&2, Bridge, bridges)) || needs_graph(rest)
 
 def listed_as_set(json: Json.Json, +kind: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
   match json:
@@ -194,6 +205,13 @@ def tiles_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Til
     max : U32 <- Parse.integer(raw_max, path ++ ".max")
     return Tiles{from, to, max}
 
+def bridge_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Bridge>:
+  do Result<&1, &1, U32 & String, Bridge>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["min", "max"], path)
+    min : Maybe<&2, F64Repr.F64> <- Parse.optional_distance(Parse.field(fields, "min"), path ++ ".min")
+    max : Maybe<&2, F64Repr.F64> <- Parse.optional_distance(Parse.field(fields, "max"), path ++ ".max")
+    return Bridge{min, max}
+
 def stop_sets(stops: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) -> Result<&1, &1, U32 & String, List<&2, List<&2, U32>>>:
   match stops:
     case Nil{}:
@@ -335,6 +353,16 @@ def tiles_rules_of(items: List<&2, Json.Json>, +path: String, +i: U32, +caves: B
         others : List<&2, Tiles> <- tiles_rules_of(rest, path, (i + 1 : U32), caves)
         return rule <> others
 
+def bridges_of(items: List<&2, Json.Json>, +path: String, +i: U32) -> Result<&1, &1, U32 & String, List<&2, Bridge>>:
+  match items:
+    case Nil{}:
+      Done{Nil{}}
+    case Con{item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, Bridge>>:
+        rule : Bridge <- bridge_of(item, Parse.indexed(path, i))
+        others : List<&2, Bridge> <- bridges_of(rest, path, (i + 1 : U32))
+        return rule <> others
+
 def routes_of(items: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) -> Result<&1, &1, U32 & String, List<&2, Route>>:
   match items:
     case Nil{}:
@@ -345,7 +373,7 @@ def routes_of(items: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) 
         others : List<&2, Route> <- routes_of(rest, path, (i + 1 : U32), caves)
         return rule <> others
 
-# Parses the counts, distances, tiles and routes sections of an entry's fields, in that order.
+# Parses the counts, distances, tiles, bridges and routes sections of an entry's fields, in that order.
 def later_of(+fields: List<&2, Json.Json>, +path: String, +caves: Bool) -> Result<&1, &1, U32 & String, Later>:
   do Result<&1, &1, U32 & String, Later>:
     count_items : List<&2, Json.Json> <- section_items(fields, path, "counts")
@@ -354,6 +382,8 @@ def later_of(+fields: List<&2, Json.Json>, +path: String, +caves: Bool) -> Resul
     distances : List<&2, Distance> <- distances_of(distance_items, path ++ ".distances", 0, caves)
     tile_items : List<&2, Json.Json> <- section_items(fields, path, "tiles")
     tiles : List<&2, Tiles> <- tiles_rules_of(tile_items, path ++ ".tiles", 0, caves)
+    bridge_items : List<&2, Json.Json> <- section_items(fields, path, "bridges")
+    bridges : List<&2, Bridge> <- bridges_of(bridge_items, path ++ ".bridges", 0)
     route_items : List<&2, Json.Json> <- section_items(fields, path, "routes")
     routes : List<&2, Route> <- routes_of(route_items, path ++ ".routes", 0, caves)
-    return Later{counts, distances, tiles, routes}
+    return Later{counts, distances, tiles, bridges, routes}

@@ -159,7 +159,7 @@ type Entry is Data:
 
 def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
   do Result<&1, &1, U32 & String, Entry>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "routes"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "bridges", "routes"], path)
     +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
     listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")

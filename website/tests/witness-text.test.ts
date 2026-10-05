@@ -34,4 +34,20 @@ describe("a witness described", () => {
         expect(describeWitness(distance)).toBe("Distance rule 1: cave_exit -> atrium_gate: 12 units (3 tiles), 1 tentacle pillar jump");
         expect(route.section === "routes" && route.legs[0].wormholes).toEqual([jump]);
     });
+
+    it("names a turf bridge's rooms by room and task, and says when there's none", () => {
+        const [bridge, none] = parseWitnesses([
+            {
+                section: "bridges", index: 0, ok: true, length: 1241.781,
+                from: { node: "CentipedeCaveTask:BG_89:BGVentsRoom", type: 2, x: -668, z: -358 },
+                to: { node: "CentipedeCaveTask:8:VentsRoom", type: 0, x: 338, z: 370 },
+                stray: "from"
+            },
+            { section: "bridges", index: 1, ok: false, length: null }
+        ]);
+        expect(bridge).toMatchObject({ stray: "from", from: { type: 2, x: -668 } });
+        expect(describeWitness(bridge))
+            .toBe("Turf bridge rule 1: BGVentsRoom (CentipedeCaveTask) -> VentsRoom (CentipedeCaveTask): 1,241.8 units (310.4 tiles)");
+        expect(describeWitness(none)).toBe("Turf bridge rule 2: no bridge");
+    });
 });

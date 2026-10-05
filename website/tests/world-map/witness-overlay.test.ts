@@ -100,6 +100,23 @@ describe("a witness on the map", () => {
         expect(shape.focus).toEqual({ x: -516, z: -154 });
     });
 
+    it("draws a turf bridge between its rooms, outlining both, and centres on the room left behind", () => {
+        const from = { node: "CentipedeCaveTask:BG_89:BGVentsRoom", type: 2, x: -668, z: -358 };
+        const to = { node: "CentipedeCaveTask:8:VentsRoom", type: 0, x: 338, z: 370 };
+        const shape = witnessShape({ section: "bridges", index: 0, ok: true, length: 1241.781, from, to, stray: "to" });
+        const corners = (segments: typeof shape.segments) => segments.map(({ from }) => [from.x, from.z]);
+        expect(corners(shape.segments.slice(0, 4))).toEqual([[-674, -364], [-662, -364], [-662, -352], [-674, -352]]);
+        expect(corners(shape.segments.slice(4, 8))).toEqual([[332, 364], [344, 364], [344, 376], [332, 376]]);
+        expect(shape.segments[8]).toEqual({ from: { x: -668, z: -358 }, to: { x: 338, z: 370 }, ok: true, jump: false });
+        expect(shape.marks).toEqual([]);
+        expect(shape.focus).toEqual({ x: 338, z: 370 });
+        expect(witnessShape({ section: "bridges", index: 0, ok: true, length: 1241.781, from, to }).focus).toEqual({ x: -668, z: -358 });
+    });
+
+    it("draws nothing for a world without a turf bridge", () => {
+        expect(witnessShape({ section: "bridges", index: 0, ok: false, length: null })).toEqual({ marks: [], segments: [], focus: null });
+    });
+
     it("draws nothing for a distance without a pair", () => {
         const shape = witnessShape({ section: "distances", index: 2, ok: true, distance: null, wormholes: [] });
         expect(shape).toEqual({ marks: [], segments: [], focus: null });

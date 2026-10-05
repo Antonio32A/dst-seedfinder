@@ -1,8 +1,8 @@
 # World dump format (`.dstw`, format 3)
 
 A `.dstw` file holds one generated world of one shard (the forest or the caves): its tile map, every entity the world
-generation saved, the wormhole links (forest) or tentacle pillar links (caves) and, when the seedfinder generated it,
-the set pieces the world generation placed. `seedfinder world
+generation saved, the wormhole links (forest) or tentacle pillar links (caves), its roads, its node graph (topology)
+and, when the seedfinder generated it, the set pieces the world generation placed. `seedfinder world
 eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world dump` writes it for the worlds the
 seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on the real dedicated server. The file
 describes itself: it carries every name it uses, so reading it needs no catalog or game data.
@@ -21,7 +21,7 @@ describes itself: it carries every name it uses, so reading it needs no catalog 
 | Offset | Type | Field | Value |
 |---|---|---|---|
 | 0 | 4 bytes | magic | `DSTW` (`44 53 54 57`) |
-| 4 | u32 | version | `2` |
+| 4 | u32 | version | `3` |
 | 8 | u32 | seed | the world seed |
 | 12 | u32 | status | `1` generated, `0` the world generation gave up |
 | 16 | u32 | platform | the OS of the host that generated the world: `0` unknown, `1` Windows, `2` Linux |
@@ -41,9 +41,8 @@ them). A reader that handles one shard only rejects a dump of the other shard.
 
 A section is a 4-byte ASCII tag, a `u32` payload length `L` in bytes (a multiple of 4), then the payload. The next
 section starts right after it, `8 + L` bytes after the tag. A generated world has `TNAM`, `TILE`, `ENTS` and `WORM`
-exactly once, in this order; a world of the caves shard then has `PILL` once; and it may then have `SETP` and `ROAD`
-once each, in this order. A reader finds them by tag
-and skips any tag it does not know.
+exactly once, in this order; a world of the caves shard then has `PILL` once; and it may then have `SETP`, `ROAD` and
+`GRPH` once each, in this order. A reader finds them by tag and skips any tag it does not know.
 
 ### `TNAM`: tile names
 
@@ -166,16 +165,42 @@ says nothing about roads and is read as having none.
 
 Roads the world generation dropped for having fewer points than its `math.random(3, 5)` minimum are not listed.
 
+### `GRPH`: topology
+
+The world's node graph: the nodes of the savedata's `map.topology` (every room, background, blank, cove, blocker and
+link node of the story) and the graph edges between them that the world generation's tile stages see. Both writers
+write this section. A file without it (from an earlier version) says nothing about the topology; a reader that needs
+it (a `bridges` rule, [config.md](config.md) § 4 F) treats the world as unusable.
+
+- `u32` node count `n`, then `n` nodes in ascending id order (byte by byte):
+  - its id (a string): the `map.topology.ids` entry, e.g. `CentipedeCaveTask:BG_89:BGVentsRoom`, `START`,
+  - `u32` type: its `NODE_TYPE` (`0` Default, `1` Blank, `2` Background, `3` Random, `4` Blocker, `5` Room,
+    `6` BGRoom, `7` SeparatedRoom),
+  - `i32 xk`, `i32 zk`: its site's position, the savedata node's `x` and `y` times 100 (so multiples of 100). The
+    savedata rounds the site down to a whole world unit: `x = floor((p - size / 2) × 4)` in double, with `p` the
+    site's float tile coordinate (`Node:SaveEncode`).
+- `u32` edge count `m`, then `m` edges, each a `u32 n1` and a `u32 n2`: the positions of its two nodes in the node
+  list, from 0. An edge keeps its direction (`n1` is the savedata edge's `n1`, its `node1`, whose turf the edge's
+  site line paints), and the edges are in ascending `(n1, n2)` order.
+
+The nodes leave out the squares the ocean stage appends to `map.topology` for its island layouts (`ocean_gen.lua`'s
+`AddSquareTopology`, e.g. `StaticLayoutIsland:MonkeyIsland`): they are not part of the world generation's graph and
+have no edges.
+
+The edges are the savedata's `map.topology.edges` without those of a node tagged `ForceDisconnected` (the ruins mazes,
+the moon island's and blockers' blanks, `LOOP_BLANK_SUB` nodes, ...): `ApplyPoisonTag` unlinks those in the game's
+WorldSim, so they draw nothing, while the savedata keeps them.
+
 ## 4. What is in it
 
 Only what the world generation saved for the dump's shard: the savedata's map tiles, every `savedata.ents` entry
-(whatever its prefab), the teleporter targets of the wormholes (forest) or the tentacle pillars (caves) and the roads
-(the caves have none), and for worlds the seedfinder generated, where the world generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
+(whatever its prefab), the teleporter targets of the wormholes (forest) or the tentacle pillars (caves), the roads
+(the caves have none) and the topology's nodes and edges, and for worlds the seedfinder generated, where the world generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
 has none.
 
 It does not hold anything the running game makes later: entities that prefabs spawn once the world loads (e.g. a
-spawner's children), or what a server adds on its first start. The node graph and the entities'
-own save data (other than position) are not included either.
+spawner's children), or what a server adds on its first start. The entities' own save data (other than position) and
+the topology's polygons, centroids, areas, colours and tags are not included either.
 
 ## 5. Extending it
 

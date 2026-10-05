@@ -1,5 +1,5 @@
 import { type Criterion, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
-import type { Witness, WitnessInstance, WitnessTile, WormholeJump } from "@/lib/jobs/job-result";
+import type { Witness, WitnessInstance, WormholeJump } from "@/lib/jobs/job-result";
 import type { WorldPoint } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 
@@ -29,6 +29,7 @@ type Line = Omit<WitnessSegment, "ok">;
 interface Parts {
     instances: WitnessInstance[];
     lines: Line[];
+    focus?: WorldPoint;
 }
 
 type SectionParts = { [S in Witness["section"]]: (witness: Extract<Witness, { section: S }>) => Parts };
@@ -42,12 +43,11 @@ function travel(from: WitnessInstance, to: WitnessInstance, wormholes: WormholeJ
 }
 
 const CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+const BRIDGE_WIDTH_TILES = 3;
 
-const outline = ({ x, z }: WitnessTile): Line[] => {
-    const corners = CORNERS.map(([dx, dz]) => ({
-        x: x + dx * WORLD_UNITS_PER_TILE / 2,
-        z: z + dz * WORLD_UNITS_PER_TILE / 2
-    }));
+const outline = ({ x, z }: WorldPoint, tiles = 1): Line[] => {
+    const half = tiles * WORLD_UNITS_PER_TILE / 2;
+    const corners = CORNERS.map(([dx, dz]) => ({ x: x + dx * half, z: z + dz * half }));
     return corners.map((from, corner) => ({ from, to: corners[(corner + 1) % corners.length], jump: false }));
 };
 
@@ -70,19 +70,25 @@ const SECTION_PARTS: SectionParts = {
             lines: [...outline(from), ...outline(to), { from: point(from), to: point(to), jump: false }]
         } : NOTHING,
     distances: ({ from, to, wormholes }) => (from && to ? travel(from, to, wormholes) : NOTHING),
+    bridges: ({ from, to, stray = "from" }) =>
+        from && to ? {
+            ...NOTHING,
+            lines: [...outline(from, BRIDGE_WIDTH_TILES), ...outline(to, BRIDGE_WIDTH_TILES), { from: point(from), to: point(to), jump: false }],
+            focus: point(stray === "from" ? from : to)
+        } : NOTHING,
     routes: ({ legs }) => joined(legs.map(({ from, to, wormholes }) => travel(from, to, wormholes)))
 };
 
 const middle = (values: number[]) => (Math.min(...values) + Math.max(...values)) / 2;
 
 export function witnessShape(witness: Witness): WitnessShape {
-    const { instances: listed, lines } = (SECTION_PARTS[witness.section] as (witness: Witness) => Parts)(witness);
+    const { instances: listed, lines, focus } = (SECTION_PARTS[witness.section] as (witness: Witness) => Parts)(witness);
     const instances = [...new Map(listed.map((instance) => [`${instance.prefab}#${instance.index}`, instance])).values()];
     const points = [...instances, ...lines.flatMap(({ from, to }) => [from, to])];
     return {
         marks: instances.map(({ prefab, x, z }) => ({ prefab, at: { x, z }, ok: witness.ok })),
         segments: lines.map((line) => ({ ...line, ok: witness.ok })),
-        focus: points.length === 0 ? null : { x: middle(points.map(({ x }) => x)), z: middle(points.map(({ z }) => z)) }
+        focus: focus ?? (points.length === 0 ? null : { x: middle(points.map(({ x }) => x)), z: middle(points.map(({ z }) => z)) })
     };
 }
 

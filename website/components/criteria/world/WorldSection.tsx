@@ -9,6 +9,7 @@ import {
     type WorldRows,
     type WorldSection as Section
 } from "@/lib/criteria/world-rules";
+import BridgeRuleRow from "./BridgeRuleRow";
 import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
 import RouteRuleRow from "./RouteRuleRow";
@@ -28,6 +29,7 @@ const ROWS: RowComponents = {
     counts: CountRuleRow,
     distances: DistanceRuleRow,
     tiles: TileRuleRow,
+    bridges: BridgeRuleRow,
     routes: RouteRuleRow
 };
 
@@ -35,6 +37,7 @@ const SECTIONS: { id: Section; title: string; add: string }[] = [
     { id: "counts", title: "Counts", add: "Add count" },
     { id: "distances", title: "Distances", add: "Add distance" },
     { id: "tiles", title: "Turf", add: "Add turf rule" },
+    { id: "bridges", title: "Turf bridges", add: "Add turf bridge" },
     { id: "routes", title: "Routes", add: "Add route" }
 ];
 

@@ -109,6 +109,7 @@ export function emptyGroup(passive = false): CriteriaGroup {
         counts: [],
         distances: [],
         tiles: [],
+        bridges: [],
         routes: []
     };
 }

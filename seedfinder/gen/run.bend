@@ -78,7 +78,7 @@ def world_fields(got: Grid.Grid & Grid.Hash, +seed: U32, +rng: Pcg.Rng, +n: U32)
 
 def final_fields(world: GenJob.Final, +seed: U32) -> List<&2, String>:
   match world:
-    case GenJob.Final{g, +rng, +ents, _, _, _, _}:
+    case GenJob.Final{g, +rng, +ents, _, _, _, _, _}:
       world_fields(Grid.tiles_digest(g), seed, rng, U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
 
 def outcome_fields(job: GenJob.Job, +seed: U32) -> List<&2, String>:

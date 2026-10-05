@@ -10,7 +10,9 @@ A world's shard is the "shard" field of its JSON (forest when it has none), and 
 
 Every entity is written, whatever its prefab. Coordinates must have at most 2 decimals (the dump mod's printf): the
 tool checks that each one is printed as k / 100. Road points are multiples of 0.1 and are rounded to hundredths; roads the
-game dropped (null entries) are skipped.
+game dropped (null entries) are skipped. The topology (GRPH) leaves out the edges of ForceDisconnected nodes, which
+ApplyPoisonTag unlinks in the game's WorldSim but not in the savedata, and the unlinked squares the ocean stage appends
+for its island layouts (AddSquareTopology's nodes, the ones with `validedges`).
 """
 import json
 import struct
@@ -75,6 +77,25 @@ def roads_payload(roads):
     return payload
 
 
+def tags_of(node):
+    tags = node.get("tags") or []
+    return list(tags.values()) if isinstance(tags, dict) else tags
+
+
+def graph_payload(topology):
+    ids, nodes = topology["ids"], topology["nodes"]
+    order = sorted((i for i, node in enumerate(nodes) if "validedges" not in node), key=lambda i: ids[i].encode())
+    rank = {old: new for new, old in enumerate(order)}
+    cut = {i for i, node in enumerate(nodes) if "ForceDisconnected" in tags_of(node)}
+    edges = sorted((rank[edge["n1"] - 1], rank[edge["n2"] - 1]) for edge in topology["edges"]
+                   if edge["n1"] - 1 not in cut and edge["n2"] - 1 not in cut)
+    payload = u32s(len(order))
+    for i in order:
+        node = nodes[i]
+        payload += string(ids[i]) + u32s(node.get("type", 0)) + struct.pack("<2i", node["x"] * 100, node["y"] * 100)
+    return payload + u32s(len(edges), *(index for edge in edges for index in edge))
+
+
 def pillars_payload(links, entities):
     positions = {prefab: position for position, prefab in enumerate(placed_prefabs(entities))}
     return u32s(len(links), *(word for entry, leave in links
@@ -104,7 +125,8 @@ def dump_of(data, platform):
             + section(b"ENTS", entities_payload(entities))
             + section(b"WORM", u32s(len(links), *(index for entry, leave in links for index in (entry.index, leave.index))))
             + pillars
-            + section(b"ROAD", roads_payload(data.get("roads") or [])))
+            + section(b"ROAD", roads_payload(data.get("roads") or []))
+            + (section(b"GRPH", graph_payload(data["topology"])) if "topology" in data else b""))
 
 
 def convert(source, target, platform):

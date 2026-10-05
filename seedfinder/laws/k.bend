@@ -19,7 +19,7 @@ def world() -> FilterWorld.World:
   +b = FilterWorld.inst_of(2, 1, 800, 4294966496)
   FilterWorld.World{1, 6, 4, Nil{}, [[FilterWorld.inst_of(0, 0, 4294966096, 4294966496), FilterWorld.inst_of(0, 1, 4294966896, 4294966896)],
     [FilterWorld.inst_of(1, 0, 800, 0), FilterWorld.inst_of(1, 1, 4294966946, 420)], [a, b]], [FilterWorld.Link{a, b}, FilterWorld.Link{b, a}],
-    [393222, 393222, 393222, 65542, 65537, 393217, 393222, 65542, 393222, 65537, 393222, 65542]}
+    [393222, 393222, 393222, 65542, 65537, 393217, 393222, 65542, 393222, 65537, 393222, 65542], None{}}
 
 def seeds(points: List<&2, Anchor.Point>) -> List<&2, Walking.WSeed>:
   match points:
@@ -49,7 +49,7 @@ def bounded_relax_skips_far_pairs():
 # A diagonal step past two water tiles: on a 2 x 2 world with land only on (0, 0) and (1, 1), prefab 0 on (0, 0) is one
 # diagonal from prefab 1 on (1, 1).
 def corner_world() -> FilterWorld.World:
-  FilterWorld.World{1, 2, 2, Nil{}, [[FilterWorld.inst_of(0, 0, 4294966896, 4294966896)], [FilterWorld.inst_of(1, 0, 0, 0)]], Nil{}, [65542, 393217]}
+  FilterWorld.World{1, 2, 2, Nil{}, [[FilterWorld.inst_of(0, 0, 4294966896, 4294966896)], [FilterWorld.inst_of(1, 0, 0, 0)]], Nil{}, [65542, 393217], None{}}
 
 law walk_diagonal_between_water:
   {relaxed(corner_world(), False{}, None{}) == [walked(0, 1)] : List<&2, Metric.Relaxed>}

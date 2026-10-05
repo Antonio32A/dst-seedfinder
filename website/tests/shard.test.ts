@@ -260,3 +260,49 @@ describe("the world filters on the caves", () => {
         expect(validateSearch(state)).toEqual(validateSearch({ ...state, platform: "linux" }));
     });
 });
+
+describe("the turf bridge rules", () => {
+    const bridgeGroup = () => ({
+        ...emptyGroup(),
+        bridges: [{ key: "b", min: 240, max: null }, { key: "c", min: 0, max: 400 }, { key: "d", min: 100, max: 300 }]
+    });
+
+    it("writes a bridge's bounds as the finder reads them, leaving out a zero minimum and no maximum", () => {
+        for (const shard of ["forest", "caves"] as const) {
+            const config = toSeedfinderConfig({ shard, platform: "windows", groups: [bridgeGroup()] });
+            expect(config.criteria?.[0].bridges).toEqual([{ min: 240 }, { max: 400 }, { min: 100, max: 300 }]);
+            expect(validateConfig(config).ok).toBe(true);
+            expect(toSeedfinderConfig(fromSeedfinderConfig(JSON.parse(JSON.stringify(config))))).toEqual(config);
+        }
+    });
+
+    it("has a caves preset for a bridge at least 150 tiles long", () => {
+        const preset = PRESETS.caves.find(({ id }) => id === "map-spanning-bridge")!;
+        expect(toSeedfinderConfig(preset.build()).criteria).toEqual([{ passive: false, bridges: [{ min: 600 }] }]);
+    });
+
+    it("keeps the bridges when switching shard", () => {
+        const moved = switchShard({ shard: "caves", platform: "windows", groups: [bridgeGroup()] }, "forest");
+        expect(moved.state.groups[0].bridges).toEqual(bridgeGroup().bridges);
+        expect(moved.dropped).toBe(0);
+    });
+
+    it("rejects a bad bound like the finder", () => {
+        expect(validateConfig({ shard: "caves", criteria: [{ bridges: [{ min: -1 }] }] })).toEqual({
+            ok: false,
+            error: "config: criteria[0].bridges[0].min must be a number in 0..1000000"
+        });
+        expect(validateConfig({ criteria: [{ bridges: [{ max: 10, metric: "walk" }] }] })).toEqual({
+            ok: false,
+            error: "config: unknown key \"metric\" in criteria[0].bridges[0]"
+        });
+    });
+
+    it("says a bridge whose minimum is above its maximum can't match", () => {
+        const group = { ...emptyGroup(), bridges: [{ key: "b", min: 500, max: 400 }] };
+        expect(validateSearch({ shard: "caves", platform: "windows", groups: [group] })).toContainEqual({
+            severity: "error",
+            message: "Turf bridge 1: minimum is above maximum."
+        });
+    });
+});

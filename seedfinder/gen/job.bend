@@ -19,6 +19,7 @@ import ../ocean/ocean.bend as Ocean
 import ../post/atrium.bend as Atrium
 import ../post/finish.bend as Finish
 import ../populate/land.bend as PopulateLand
+import ../filters/dump.bend as FilterDump
 import ./graph.bend as GenGraph
 import ./generate.bend as Generate
 import ./layout.bend as GenLayout
@@ -27,6 +28,7 @@ import ./cave_maze.bend as CaveMaze
 import ./maze_pieces.bend as MazePieces
 import ./cave_names.bend as CaveNames
 import ./cave_required.bend as CaveRequired
+import ./topology.bend as Topology
 
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
 # rounds: `step` does one bounded stage transition; at a KK pass the job waits for a layout engine (gen/layout.bend):
@@ -35,17 +37,17 @@ import ./cave_required.bend as CaveRequired
 # attempt is the world.
 
 # What the ocean stage starts from at land_done (M10's Ocean.run input): the tile grid, the RNG, the land entities (newest
-# first), the finished story (required prefabs, topology), the map size, the land's placed layouts (when recorded) and
-# GetRoads' polylines (tile world units).
+# first), the finished story (required prefabs, topology), the map size, the land's placed layouts (when recorded),
+# GetRoads' polylines (tile world units) and the savedata topology (gen/topology.bend).
 type Landed is Type:
-  Landed{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, story: StoryGraph.St, width: U32, pieces: List<&2, PopulateSetpiece.Piece>, roads: List<&2, List<&2, TileWorld.Point>>}
+  Landed{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, story: StoryGraph.St, width: U32, pieces: List<&2, PopulateSetpiece.Piece>, roads: List<&2, List<&2, TileWorld.Point>>, graph: FilterDump.Graph}
 
 # The attempt that is the world: its encoded tile map, the RNG after Generate's last draw, savedata.ents (newest
 # first; per prefab in savedata order), the map size and, for a job started to record them, the layouts it placed
-# (in placement order; each entity's `piece` numbers them from 1), GetRoads' polylines and the shortest road the game
-# keeps (its math.random(3, 5) draw).
+# (in placement order; each entity's `piece` numbers them from 1), GetRoads' polylines, the shortest road the game
+# keeps (its math.random(3, 5) draw) and the savedata topology.
 type Final is Type:
-  Final{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, OceanEnts.Ent>, width: U32, pieces: List<&2, PopulateSetpiece.Piece>, roads: List<&2, List<&2, TileWorld.Point>>, min_road: U32}
+  Final{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, OceanEnts.Ent>, width: U32, pieces: List<&2, PopulateSetpiece.Piece>, roads: List<&2, List<&2, TileWorld.Point>>, min_road: U32, graph: FilterDump.Graph}
 
 # Why a seed has no world: the game crashes (the level table raises a Lua error, or the caves' custom tile pass runs
 # RunCA on a site without a polygon), or all 5 attempts failed.
@@ -61,7 +63,7 @@ type Outcome is Data:
 # population next. 6 JOcean: land_done, the ocean stage next. 7 JWorld: the attempt is the world. 8 JDone: no world.
 # The caves: 10 JTiled: after the custom tile pass (the tile map right before the mazes run). 11 JMazed: after the mazes,
 # with the entities so far. 12 JPost: after the land population (ConvertGround to PopulateVoronoi, DetectDisconnect passed),
-# the post-populate steps and the required prefab check next.
+# with the savedata topology, the post-populate steps and the required prefab check next.
 type Job is Type:
   JStart{c: Generate.Seed, a: U32, rng: Pcg.Rng}
   JFirst{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei}
@@ -72,7 +74,7 @@ type Job is Type:
   JOcean{c: Generate.Seed, a: U32, landed: Landed}
   JTiled{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, grid: Grid.Grid, rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, sites: Points.Sites}
   JMazed{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, land: PopulateState.Land, sites: Points.Sites}
-  JPost{c: Generate.Seed, a: U32, s: StoryGraph.St, w: U32, land: PopulateState.Land}
+  JPost{c: Generate.Seed, a: U32, s: StoryGraph.St, w: U32, land: PopulateState.Land, graph: FilterDump.Graph}
   JWorld{c: Generate.Seed, a: U32, world: Final}
   JDone{c: Generate.Seed, a: U32, outcome: Outcome}
 
@@ -192,18 +194,18 @@ def tiles(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +siz
   +w = Generate.tile_size(size)
   tiled(c, a, s, k, w, Generate.tile_world(s, k, w, Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)))
 
-def landed_of(l: PopulateState.Land, +roads: List<&2, List<&2, TileWorld.Point>>, +s: StoryGraph.St, +w: U32) -> Landed:
+def landed_of(l: PopulateState.Land, +roads: List<&2, List<&2, TileWorld.Point>>, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> Landed:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      Landed{g, rng, ents, s, w, PopulateState.pieces(events), roads}
+      Landed{g, rng, ents, s, w, PopulateState.pieces(events), roads, graph}
 
-def grounded(got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>, +ctx: PopulateState.Ctx, +s: StoryGraph.St, +w: U32) -> Landed:
+def grounded(got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>, +ctx: PopulateState.Ctx, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> Landed:
   (g, +roads) = got
-  landed_of(Generate.land(ctx, g, w), roads, s, w)
+  landed_of(Generate.land(ctx, g, w), roads, s, w, graph)
 
 def land_forest(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   +ctx = Generate.land_context(c, s, k, sites, w, False{})
-  JOcean{c, a, grounded(Generate.tile_grid(Generate.windows_of(c), world, lists), ctx, s, w)}
+  JOcean{c, a, grounded(Generate.tile_grid(Generate.windows_of(c), world, lists), ctx, s, w, Topology.graph(s, k, world))}
 
 def tiled_by(done: CaveCustom.Tiles, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
   match done:
@@ -244,36 +246,36 @@ def ocean_ents(+ents: List<&2, Entities.Ent>, +pieces: List<&2, PopulateSetpiece
 
 def sea_of(landed: Landed) -> OceanState.Sea:
   match landed:
-    case Landed{g, +rng, +ents, +s, _, +pieces, _}:
+    case Landed{g, +rng, +ents, +s, _, +pieces, _, _}:
       OceanState.Sea{g, Grid.new(0, 0, 0), rng, ocean_ents(ents, pieces), topology_count(s), piece_events(pieces, Nil{})}
 
-def drawn(got: U32 & Pcg.Rng, +c: Generate.Seed, +a: U32, g: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +w: U32, +pieces: List<&2, PopulateSetpiece.Piece>, +roads: List<&2, List<&2, TileWorld.Point>>) -> Job:
+def drawn(got: U32 & Pcg.Rng, +c: Generate.Seed, +a: U32, g: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +w: U32, +pieces: List<&2, PopulateSetpiece.Piece>, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph) -> Job:
   (+min_road, +rng) = got
-  JWorld{c, a, Final{g, rng, ents, w, pieces, roads, min_road}}
+  JWorld{c, a, Final{g, rng, ents, w, pieces, roads, min_road, graph}}
 
 # The required prefab check's verdict: the world (after the road length draw, math.random(3, 5)), or the next attempt
 # from the RNG after the ocean stage.
-def verdict(ok: Bool, +c: Generate.Seed, +a: U32, sea: OceanState.Sea, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>) -> Job:
+def verdict(ok: Bool, +c: Generate.Seed, +a: U32, sea: OceanState.Sea, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph) -> Job:
   match ok:
     case True{}:
       match sea:
         case OceanState.Sea{g, _, +rng, +ents, _, +events}:
-          drawn(MathRandom.random_range(rng, 3, 5), c, a, g, ents, w, OceanState.pieces(events), roads)
+          drawn(MathRandom.random_range(rng, 3, 5), c, a, g, ents, w, OceanState.pieces(events), roads, graph)
     case False{}:
       match sea:
         case OceanState.Sea{_, _, +rng, _, _, _}:
           retry(c, a, rng)
 
-def oceaned(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>) -> Job:
+def oceaned(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph) -> Job:
   (sea, +ok) = got
-  verdict(ok, c, a, sea, w, roads)
+  verdict(ok, c, a, sea, w, roads, graph)
 
 # The ocean stage from land_done to the required prefab check (no node-id map, no tracing).
 def ocean(+c: Generate.Seed, +a: U32, landed: Landed) -> Job:
   match landed:
-    case Landed{g, +rng, +ents, +s, +w, +pieces, +roads}:
+    case Landed{g, +rng, +ents, +s, +w, +pieces, +roads, +graph}:
       +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
-      oceaned(Ocean.run(ctx, OceanRequired.required(s), sea_of(Landed{g, rng, ents, s, w, pieces, roads})), c, a, w, roads)
+      oceaned(Ocean.run(ctx, OceanRequired.required(s), sea_of(Landed{g, rng, ents, s, w, pieces, roads, graph})), c, a, w, roads, graph)
 
 def maze_landed(m: CaveMaze.Mazed, +cave: List<&2, Entities.Ent>, +w: U32) -> PopulateState.Land:
   match m:
@@ -293,17 +295,22 @@ def cave_failed(land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryG
     case PopulateState.Land{_, +rng, _, _}:
       retry(Generate.carried(c, s), a, rng)
 
-def cave_populated(got: PopulateState.Land & Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32) -> Job:
+def cave_populated(got: PopulateState.Land & Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> Job:
   (land, +ok) = got
   match ok:
     case True{}:
-      JPost{c, a, s, w, land}
+      JPost{c, a, s, w, land, graph}
     case False{}:
       cave_failed(land, c, a, s)
 
+def sites_graph(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> FilterDump.Graph:
+  match sites:
+    case Points.Sites{_, _, +world}:
+      Topology.graph(s, k, world)
+
 def cave_land_of(start: U32 & U32, land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
   (+sx, +sy) = start
-  cave_populated(PopulateLand.land_caves(Generate.land_context(c, s, k, sites, w, False{}), sx, sy, land), c, a, s, w)
+  cave_populated(PopulateLand.land_caves(Generate.land_context(c, s, k, sites, w, False{}), sx, sy, land), c, a, s, w, sites_graph(s, k, sites))
 
 # ConvertGround to PopulateVoronoi; a failed DetectDisconnect retries from the RNG then.
 def populate_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, land: PopulateState.Land, +sites: Points.Sites) -> Job:
@@ -320,31 +327,31 @@ def cave_pieces(recording: Bool, +events: List<&2, PopulateState.Ev>) -> List<&2
 def cave_shard() -> Finish.Shard:
   Finish.Shard{CaveNames.wormhole(), CaveNames.dispenser(), CaveNames.temporary()}
 
-def cave_verdict(ok: Bool, sea: OceanState.Sea, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32) -> Job:
+def cave_verdict(ok: Bool, sea: OceanState.Sea, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> Job:
   match ok:
     case True{}:
       match sea:
         case OceanState.Sea{g, _, +rng, +ents, _, +events}:
-          JWorld{c, a, Final{g, rng, ents, w, OceanState.pieces(events), Nil{}, 0}}
+          JWorld{c, a, Final{g, rng, ents, w, OceanState.pieces(events), Nil{}, 0, graph}}
     case False{}:
       match sea:
         case OceanState.Sea{_, _, +rng, _, _, _}:
           retry(Generate.carried(c, s), a, rng)
 
-def cave_posted(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32) -> Job:
+def cave_posted(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> Job:
   (sea, +ok) = got
-  cave_verdict(ok, sea, c, a, s, w)
+  cave_verdict(ok, sea, c, a, s, w, graph)
 
 def atriumed(got: OceanState.Sea & List<&2, OceanEnts.Ent>) -> OceanState.Sea:
   (s, +ents) = got
   OceanState.with_ents(s, Atrium.paired(ents, CaveNames.atrium()))
 
 # GlobalPostPopulate to the required prefab check on the caves' land (no roads: the world has no road length draw).
-def post_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, land: PopulateState.Land) -> Job:
+def post_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, land: PopulateState.Land, +graph: FilterDump.Graph) -> Job:
   match land:
     case PopulateState.Land{g, +rng, +ents, +events}:
       +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
-      cave_posted(Finish.run(ctx, cave_shard(), CaveRequired.required(s), atriumed(OceanState.ents_of(sea_of(Landed{g, rng, ents, s, w, cave_pieces(Generate.pieces_of(c), events), Nil{}})))), c, a, s, w)
+      cave_posted(Finish.run(ctx, cave_shard(), CaveRequired.required(s), atriumed(OceanState.ents_of(sea_of(Landed{g, rng, ents, s, w, cave_pieces(Generate.pieces_of(c), events), Nil{}, graph})))), c, a, s, w, graph)
 
 # One stage transition. JFirst and JSecond wait (see layout), JWorld and JDone stay as they are.
 def step(job: Job) -> Job:
@@ -363,8 +370,8 @@ def step(job: Job) -> Job:
       mazes(c, a, s, k, w, grid, rng, placed, sites)
     case JMazed{+c, +a, +s, +k, +w, land, +sites}:
       populate_caves(c, a, s, k, w, land, sites)
-    case JPost{+c, +a, +s, +w, land}:
-      post_caves(c, a, s, w, land)
+    case JPost{+c, +a, +s, +w, land, +graph}:
+      post_caves(c, a, s, w, land, graph)
     case other:
       other
 
@@ -422,8 +429,8 @@ def stage(job: Job) -> Job & Where:
       (JTiled{c, a, s, k, w, grid, rng, placed, sites}, Where{10, a})
     case JMazed{+c, +a, +s, +k, +w, land, +sites}:
       (JMazed{c, a, s, k, w, land, sites}, Where{11, a})
-    case JPost{+c, +a, +s, +w, land}:
-      (JPost{c, a, s, w, land}, Where{12, a})
+    case JPost{+c, +a, +s, +w, land, +graph}:
+      (JPost{c, a, s, w, land, graph}, Where{12, a})
 
 # Whether the job is decided (a world, or no world).
 def settled(+stage: U32) -> Bool:

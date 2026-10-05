@@ -1,4 +1,4 @@
-import type { DistancesWitness, Witness, WitnessInstance, WitnessSection } from "./job-result";
+import type { DistancesWitness, Witness, WitnessInstance, WitnessRoom, WitnessSection } from "./job-result";
 
 const UNITS_PER_TILE = 4;
 
@@ -9,6 +9,7 @@ const WITNESS_LABELS: Record<WitnessSection, string> = {
     counts: "Count",
     distances: "Distance",
     tiles: "Tiles",
+    bridges: "Turf bridge",
     routes: "Route"
 };
 
@@ -19,6 +20,12 @@ const distance = (units: number) => `${DISTANCE.format(units)} units (${DISTANCE
 
 const chain = (instances: (WitnessInstance | undefined)[]) =>
     instances.map((instance) => instance?.prefab ?? "?").join(" -> ");
+
+/** A topology node id like `CentipedeCaveTask:BG_89:BGVentsRoom` as its room and task. */
+const roomName = (room: WitnessRoom | undefined) => {
+    const [task, ...rest] = room?.node.split(":") ?? ["?"];
+    return rest.length > 0 ? `${rest.at(-1)} (${task})` : task;
+};
 
 const jumps = (witness: DistancesWitness) => {
     const noun = witness.wormholes[0]?.entry.prefab.startsWith("tentacle_pillar") ? "tentacle pillar jump" : "wormhole jump";
@@ -35,6 +42,8 @@ const WITNESS_FIGURES: WitnessFigures = {
         witness.distance === null
             ? "no pair"
             : `${chain([witness.from, witness.to])}: ${distance(witness.distance)}${jumps(witness)}`,
+    bridges: (witness) =>
+        witness.length === null ? "no bridge" : `${roomName(witness.from)} -> ${roomName(witness.to)}: ${distance(witness.length)}`,
     routes: (witness) => `${chain(witness.stops)}: ${distance(witness.length)}`
 };
 

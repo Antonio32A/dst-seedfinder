@@ -23,7 +23,7 @@ game scripts and the finder's caps (§ 6). Never edit it by hand.
 | `criteria` | list of entries, ≤ 8 | `[]` | Alternatives (**OR**). A seed matches when any entry holds and it is a candidate of an entry that isn't passive (see below). Missing or `[]` matches every seed. |
 
 An **entry** is an object with the optional sections `tasks`, `prefab_swaps`, `setpieces`, `counts`, `distances`,
-`tiles`, `routes`, and the optional flag `passive` (`true` or `false`, default `false`). An entry holds when **all**
+`tiles`, `bridges`, `routes`, and the optional flag `passive` (`true` or `false`, default `false`). An entry holds when **all**
 its sections hold and, within a section, all its rules hold (**AND**). `{}` holds for every seed.
 
 **Passive entries.** A seed is a **candidate** when the level table (part A) of some entry that isn't passive holds.
@@ -49,7 +49,7 @@ the way `--platform` overrides `platform`. An unknown shard is an error, in the 
 generation (`forest_map.Generate`) on: the tile map and every entity position. The level table is the same on both.
 So:
 - part A (`tasks`, `prefab_swaps`, `setpieces`) ignores `platform`: its results are identical on both platforms;
-- parts B–E (`counts`, `distances`, `tiles`, `routes`) are evaluated on that platform's world, and their verdicts and
+- parts B–F (`counts`, `distances`, `tiles`, `routes`, `bridges`) are evaluated on that platform's world, and their verdicts and
   witnesses hold only for worlds generated on that OS. The caves' Linux worlds are checked against the real game
   (301 worlds); its Windows worlds are generated the same way but not checked yet.
 
@@ -61,7 +61,8 @@ General rules:
 - The JSON is strict. Unknown keys anywhere, repeated keys in one object, `null` values, and `NaN`/`Infinity` are
   errors. "Optional" means the key is absent, never `null`.
 - The verdict doesn't depend on evaluation order.
-- All data comes from world generation: the level table and the worldgen savedata (`savedata.ents`, `map.tiles`). Mobs
+- All data comes from world generation: the level table and the worldgen savedata (`savedata.ents`, `map.tiles`,
+  `map.topology`). Mobs
   and bosses that game systems spawn later (hounds, Deerclops, Klaus, ...) aren't in it. Their spawners are.
 
 ## 2. Value types
@@ -170,6 +171,30 @@ It holds iff `min ≤ D(from, to) ≤ max`. With no pair, `D = ∞`, so `max` fa
 - Instances are consistent: consecutive legs share the instance, unlike modbase's `tsp`, which takes each leg's nearest
   pair independently. Only `pk+1 = p0` may repeat an instance.
 
+### F. `bridges` (≤ 16 rules)
+
+`{"min"?: distance, "max"?: distance}`
+
+A **turf bridge** is a thin path of one room's turf that follows a link between two rooms. The world generation draws
+one along every link of the room graph whose ends aren't blank (`ForceConnectivity`): a 3-tile-wide line of the first
+room's ground from its centre to the other room's centre, painted over impassable tiles only. Linked rooms normally
+sit next to each other (less than 45 tiles apart), so the line stays inside land and nobody sees it. Rarely, the room
+layout gets stuck and leaves a room far from the rooms it links to: its turf becomes an island on the other side of the
+map, joined to its neighbour by a long, thin bridge of that turf. The caves of Windows seed 3232625793 have a 310-tile
+vent path across the map that way (§ 9).
+
+- **Length.** The bridges are the topology's links `(n1, n2)` ([world-dump.md](world-dump.md) `GRPH`: the savedata's
+  `map.topology` without the links of `ForceDisconnected` rooms) where `n1` is neither Blank nor SeparatedRoom and
+  `n2` isn't Blank. A bridge's length is the straight distance (double) between its rooms' savedata positions
+  (`map.topology.nodes[].x`, `y`: the room's centre, rounded down to a whole world unit). `L` is the longest one.
+- The rule holds iff `min ≤ L ≤ max`. Without any bridge, `L` is null: `min` fails and `max` holds.
+- **Typical values.** A normal world's `L` is 60–90 units (15–22 tiles). About 1 world in 1500 has a room left more
+  than 60 tiles away, and about 1 in 10000 one more than 100 tiles away (caves; the forest uses the same layout and
+  bridges, but its odds aren't measured). So a `min` rule makes the search generate a world for every candidate, and
+  hits are rare.
+- A world dump without a `GRPH` section can't decide a bridges rule: `world find --worlds` counts it as a missing
+  dump, and `world eval` stops with an error.
+
 ## 5. Distance between two instances
 
 An instance is `(prefab, index)`: the index-th entry of `savedata.ents[prefab]`, at `(x, z)`.
@@ -230,7 +255,7 @@ The finder rejects a config over any cap with a config error.
 | What | Cap |
 |---|---|
 | `criteria` entries (alternatives) | 8 |
-| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `routes`), per entry | 16 |
+| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per entry | 16 |
 | prefab ids per prefab set (`prefab`, `from`, `to`, `near.prefab`, each `visit` stop) | 16 |
 | set piece names per `setpieces[].required` | 16 |
 | task ids per task list (`tasks.required`, `tasks.excluded`, `setpieces[].tasks`) | 25 |
@@ -310,7 +335,7 @@ done {"scanned": C, "last_scanned": L, "next_seed": X, "hits": H, "stopped": "li
 - `level`: the level table, exactly as `seedfinder world show` prints it:
   `{"prefab_swaps": {"grass": .., "twigs": .., "berries": ..}, "tasks": [{"task", "set_pieces", "random_set_pieces"}, ...]}`.
   Tasks are in chosen order, and pieces in placement order.
-- `results`: one witness per rule of that entry's `counts`, `tiles`, `distances` and `routes`, in that order. So it's
+- `results`: one witness per rule of that entry's `counts`, `tiles`, `distances`, `bridges` and `routes`, in that order. So it's
   `[]` when the entry has only level-table sections. Level-table facts are in `level`.
 - Consumers ignore unknown fields.
 - `scanned`: the first C seeds of the scan order are decided. `last_scanned` is the C-th one (`null` if C = 0), and
@@ -325,6 +350,7 @@ hit). Instances are `{"prefab", "index", "x", "z"}`, and distances are world uni
 | counts | `count`. With `near`, also `total` (instances of `prefab`) and `instances`: every counted instance plus `near` (its nearest near-instance) and `distance`. |
 | tiles | `distance` (steps), `from_tile`, `to_tile` as `{"tx", "ty", "x", "z"}` (x/z of the tile centre) |
 | distances | `distance`, `from`, `to`, `wormholes: [{"entry", "exit"}]` (jumps in path order; `pillars` in the caves). With `D = ∞` (possible with only `min`), it's just `"distance": null`. |
+| bridges | `length` (`L`), `from` and `to`: the bridge's rooms as `{"node", "type", "x", "z"}` (the topology node's id, its `NODE_TYPE` and its savedata position in whole world units; `from` is the room whose turf the bridge is made of), and `stray`: `"from"` or `"to"`, the room left behind (the one whose nearest other non-Blank linked room is farther away; `"from"` on a tie). With `L` null, it's just `"length": null`. On a tie in `L`, the first link in `GRPH` order. |
 | routes | `length`, `stops` (instances in visiting order, `from` first), `legs: [{"from", "to", "distance", "wormholes"}]` (`pillars` in the caves) |
 
 On ties, the witness instances are any optimal choice. Only the values are normative.
@@ -400,6 +426,23 @@ On cave seed 1 the shortest way is 387.113 units, through the two Atrium pillars
  "to": {"prefab": "atrium_gate", "index": 0, "x": -166, "z": 742},
  "pillars": [{"entry": {"prefab": "tentacle_pillar_atrium", "index": 1, "x": 388, "z": 288},
               "exit": {"prefab": "tentacle_pillar_atrium", "index": 0, "x": -142, "z": 552}}]}
+```
+
+**A map-spanning turf bridge, caves** (`"shard": "caves"`, `"platform": "windows"`). "A bridge at least 250 tiles
+long" is a `bridges` rule with a `min` of 1000 units:
+
+```json
+{"shard": "caves", "platform": "windows", "criteria": [{"bridges": [{"min": 1000}]}]}
+```
+
+Cave seed 3232625793 matches: the vents background room `BG_89` was left in the far corner, 1241.781 units (310 tiles)
+from the vents room it links to, and its turf runs back to it. Its witness:
+
+```json
+{"section": "bridges", "index": 0, "ok": true, "length": 1241.781,
+ "from": {"node": "CentipedeCaveTask:BG_89:BGVentsRoom", "type": 2, "x": -668, "z": -358},
+ "to": {"node": "CentipedeCaveTask:8:VentsRoom", "type": 0, "x": 338, "z": 370},
+ "stray": "from"}
 ```
 
 **A clockwork group** (a `counts` rule): the UI's "Clockwork" group becomes the id list.

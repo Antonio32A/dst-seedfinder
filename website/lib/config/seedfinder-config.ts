@@ -89,6 +89,11 @@ export interface TileRule {
     max: number;
 }
 
+export interface BridgeRule {
+    min?: number;
+    max?: number;
+}
+
 export interface RouteRule extends TravelFields {
     from: PrefabSet;
     visit: PrefabSet[];
@@ -105,6 +110,7 @@ export interface Criterion {
     counts?: CountRule[];
     distances?: DistanceRule[];
     tiles?: TileRule[];
+    bridges?: BridgeRule[];
     routes?: RouteRule[];
 }
 

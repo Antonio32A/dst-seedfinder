@@ -24,6 +24,14 @@ export interface WitnessTile {
     z: number;
 }
 
+/** A room of the world's topology: its node id, its `NODE_TYPE` and its centre in world units. */
+export interface WitnessRoom {
+    node: string;
+    type: number;
+    x: number;
+    z: number;
+}
+
 /** A jump through a teleporter link: a wormhole in the forest, a tentacle pillar in the caves. */
 export interface WormholeJump {
     entry: WitnessInstance;
@@ -64,6 +72,16 @@ export interface DistancesWitness extends WitnessBase {
     wormholes: WormholeJump[];
 }
 
+export interface BridgesWitness extends WitnessBase {
+    section: "bridges";
+    length: number | null;
+    /** The room whose turf the bridge is made of. */
+    from?: WitnessRoom;
+    to?: WitnessRoom;
+    /** The end left far from the rest of the map. */
+    stray?: "from" | "to";
+}
+
 export interface RoutesWitness extends WitnessBase {
     section: "routes";
     length: number;
@@ -71,7 +89,7 @@ export interface RoutesWitness extends WitnessBase {
     legs: RouteLeg[];
 }
 
-export type Witness = CountsWitness | TilesWitness | DistancesWitness | RoutesWitness;
+export type Witness = CountsWitness | TilesWitness | DistancesWitness | BridgesWitness | RoutesWitness;
 
 export type WitnessSection = Witness["section"];
 
@@ -162,6 +180,7 @@ const countedInstance = shape<WitnessInstance, Omit<CountedInstance, keyof Witne
 const jump = shape<WormholeJump>({ entry: instance, exit: instance });
 const jumps = listOf(jump);
 const tile = shape<WitnessTile>({ tx: uint32, ty: uint32, x: finite, z: finite });
+const room = shape<WitnessRoom>({ node: text, type: uint32, x: finite, z: finite });
 const witnessBase = { index: withDefault(uint32, 0), ok: withDefault(boolean, true) };
 
 const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> = {
@@ -170,6 +189,11 @@ const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> 
     distances: shape({ ...witnessBase, distance: nullable(finite), wormholes: jumps }, {
         from: instance,
         to: instance
+    }),
+    bridges: shape({ ...witnessBase, length: nullable(finite) }, {
+        from: room,
+        to: room,
+        stray: oneOf<"from" | "to">(["from", "to"])
     }),
     routes: shape({
         ...witnessBase,

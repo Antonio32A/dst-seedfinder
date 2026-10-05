@@ -242,6 +242,7 @@ const worldSectionsOf = (shard: Shard): Fields => {
             })
         ),
         tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
+        bridges: rules(objectOf({ min: optional(distance), max: optional(distance) })),
         routes: rules(routeOf(shard))
     };
 };
