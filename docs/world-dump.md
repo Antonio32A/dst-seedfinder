@@ -4,8 +4,10 @@ A `.dstw` file holds one generated world of one shard (the forest or the caves):
 generation saved, the wormhole links (forest) or tentacle pillar links (caves), its roads, its node graph (topology)
 and, when the seedfinder generated it, the set pieces the world generation placed. `seedfinder world
 eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world dump` writes it for the worlds the
-seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on the real dedicated server. The file
-describes itself: it carries every name it uses, so reading it needs no catalog or game data.
+seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on the real dedicated server.
+`scripts/groundtruth/dstw.py` reads it, as a Python library (`World`, `read_dstw`) and from the command line (`info`,
+`diff`, `graph`, `ents`). The file describes itself: it carries every name it uses, so reading it needs no catalog or
+game data.
 
 ## 1. Conventions
 
