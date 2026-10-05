@@ -38,6 +38,8 @@ export interface MapCanvas {
     showSetPieces: (layouts: ReadonlySet<string>) => void;
     /** Shows or hides the wormhole connection lines, drawn over the icons. They start shown. */
     showLinks: (on: boolean) => void;
+    /** Shows or hides the turf bridges, drawn over the roads. They start hidden. */
+    showBridges: (on: boolean) => void;
     /** Shows or hides the roads, drawn over the terrain. They start shown. */
     showRoads: (on: boolean) => void;
     highlightSetPieces: (indices: readonly number[]) => void;
@@ -63,7 +65,7 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const scene = createMapScene(gl, world, layer, readAccent(canvas), () => redraw());
-    const { roads, setPieces, entities, icons, links } = scene;
+    const { roads, bridges, setPieces, entities, icons, links } = scene;
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
@@ -183,6 +185,10 @@ export function mountMapCanvas(canvas: HTMLCanvasElement, world: GeneratedWorld,
         },
         showLinks: (on) => {
             links.show(on);
+            redraw();
+        },
+        showBridges: (on) => {
+            bridges.show(on);
             redraw();
         },
         showRoads: (on) => {

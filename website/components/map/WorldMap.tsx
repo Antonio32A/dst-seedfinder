@@ -13,6 +13,7 @@ import { mapPreviewPath } from "@/lib/world-map/map-preview-url";
 import type { MapTarget } from "@/lib/world-map/legend/prefab-search";
 import { allPrefabs, defaultShown, mapLegend } from "@/lib/world-map/legend/prefab-visibility";
 import { defaultShownSetPieces, setPieceLegend } from "@/lib/world-map/legend/set-pieces";
+import { defaultShownBridges, turfBridges } from "@/lib/world-map/legend/turf-bridges";
 import type { LinkedView } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import GroupsPanel from "./GroupsPanel";
@@ -61,12 +62,17 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
     }, [layer, shard, shownLinks]);
     const [shownRoads, setShownRoads] = useState(true);
     const roads = useMemo(() => (world.roads?.length ? { shown: shownRoads, onChange: setShownRoads } : null), [world, shownRoads]);
+    const [shownBridges, setShownBridges] = useState(() => defaultShownBridges(search));
+    const stray = useMemo(() => turfBridges(world).filter((bridge) => bridge.stray).length, [world]);
+    const bridges = useMemo(() => (world.topology ? { shown: shownBridges, stray, onChange: setShownBridges } : null),
+            [world, shownBridges, stray]);
     const select = useCallback((selection: "all" | "none" | "reset") => {
         setShownPrefabs(selection === "all" ? allPrefabs(legend) : selection === "none" ? new Set() : defaultShown(search, shard));
         setShownSetPieces(selection === "all" ? (setPieces ? allPrefabs([setPieces]) : new Set<string>())
                 : selection === "none" ? new Set() : defaultShownSetPieces(search));
         setShownLinks(selection === "all");
         setShownRoads(selection !== "none");
+        setShownBridges(selection === "all" || (selection === "reset" && defaultShownBridges(search)));
     }, [legend, setPieces, search, shard]);
     const [searched, setSearched] = useState<MapTarget | null>(null);
     const [previewed, setPreviewed] = useState<readonly string[]>([]);
@@ -132,6 +138,10 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
     }, [map, shownRoads]);
 
     useEffect(() => {
+        map?.showBridges(shownBridges);
+    }, [map, shownBridges]);
+
+    useEffect(() => {
         map?.highlightSetPieces(highlighted);
     }, [map, highlighted]);
 
@@ -144,6 +154,7 @@ function WorldCanvas({ world: generated, bytes, platform, shard, seed, share, vi
                 <GroupsPanel legend={legend} shown={shownPrefabs} onChange={setShownPrefabs} onHighlight={setPreviewed}
                              setPieces={setPieces}
                              shownSetPieces={shownSetPieces} onSetPiecesChange={setShownSetPieces} links={links} roads={roads}
+                             bridges={bridges}
                              onSelect={select}/>
                 <MapCorner seed={seed} map={map} onCopyLink={() => void copyLink()}/>
                 <Toast message={toast} onDismiss={dismissToast}/>

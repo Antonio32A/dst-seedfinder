@@ -1,8 +1,10 @@
 import type { EntityLayer } from "@/lib/world-map/legend/entity-layer";
 import { iconLayer } from "@/lib/world-map/legend/icon-layer";
+import { turfBridges } from "@/lib/world-map/legend/turf-bridges";
 import { createTerrainRenderer, type TerrainRenderer } from "@/lib/world-map/terrain/terrain-renderer";
 import type { MapView, Size } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
+import { type BridgeRenderer, createBridgeRenderer } from "./bridge-renderer";
 import { createEntityRenderer, type EntityRenderer } from "./entity-renderer";
 import { createIconRenderer, type IconRenderer } from "./icon-renderer";
 import { createLinkRenderer, type LinkRenderer } from "./link-renderer";
@@ -14,6 +16,7 @@ const BACKGROUND = [22, 17, 14] as const;
 export interface MapScene {
     terrain: TerrainRenderer;
     roads: RoadRenderer;
+    bridges: BridgeRenderer;
     setPieces: SetPieceRenderer;
     entities: EntityRenderer;
     icons: IconRenderer;
@@ -29,7 +32,7 @@ export interface MapScene {
 
 /**
  * Every layer of the world map on `gl`, from the terrain to the wormhole links, in their initial state: darkened, roads
- * shown, every prefab, set piece and link hidden. `onBuilt` is called as each downloaded texture arrives. `accent` is the
+ * shown, every prefab, set piece, turf bridge and link hidden. `onBuilt` is called as each downloaded texture arrives. `accent` is the
  * highlight colour, `[r, g, b]` in 0-255.
  */
 export function createMapScene(
@@ -41,17 +44,19 @@ export function createMapScene(
 ): MapScene {
     const terrain = createTerrainRenderer(gl, world, onBuilt);
     const roads = createRoadRenderer(gl, world.roads ?? [], onBuilt);
+    const bridges = createBridgeRenderer(gl, turfBridges(world));
     const setPieces = createSetPieceRenderer(gl, world.setPieces ?? []);
     const icons = iconLayer(layer);
     const entities = createEntityRenderer(gl, layer, icons.iconed, accent);
     const iconRenderer = createIconRenderer(gl, icons, entities.visibility, accent, onBuilt);
     const links = createLinkRenderer(gl, layer);
-    const layers = [terrain, roads, setPieces, entities, iconRenderer, links];
+    const layers = [terrain, roads, bridges, setPieces, entities, iconRenderer, links];
     const fogged = [terrain, roads, iconRenderer];
 
     return {
         terrain,
         roads,
+        bridges,
         setPieces,
         entities,
         icons: iconRenderer,

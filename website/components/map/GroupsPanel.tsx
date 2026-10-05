@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { BRIDGE_COLOUR } from "@/lib/world-map/canvas/bridge-renderer";
 import { groupState, type LegendGroup, showPrefabs } from "@/lib/world-map/legend/prefab-visibility";
 import { formatCount } from "./format";
 
@@ -28,7 +29,30 @@ interface GroupsPanelProps {
     links: { label: string; shown: boolean; colour: readonly number[]; onChange: (shown: boolean) => void } | null;
     /** The road toggle, `null` for a world without roads. */
     roads: { shown: boolean; onChange: (shown: boolean) => void } | null;
+    /** The turf bridge toggle and how many cross the map, `null` for a world without a topology. */
+    bridges: { shown: boolean; stray: number; onChange: (shown: boolean) => void } | null;
     onSelect: (selection: "all" | "none" | "reset") => void;
+}
+
+interface ToggleRowProps {
+    shown: boolean;
+    colour: readonly number[];
+    onChange: (shown: boolean) => void;
+    children: ReactNode;
+}
+
+function ToggleRow({ shown, colour, onChange, children }: ToggleRowProps) {
+    return (
+            <li>
+                <div className="map-group">
+                    <label className="map-group__toggle">
+                        <input type="checkbox" checked={shown} onChange={(event) => onChange(event.target.checked)}/>
+                        <span className="map__swatch" style={{ background: `rgb(${colour.join()})` }}/>
+                        <span>{children}</span>
+                    </label>
+                </div>
+            </li>
+    );
 }
 
 function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: GroupRowProps) {
@@ -81,7 +105,7 @@ function GroupRow({ entry, shown, onChange, outlined = false, onHighlight }: Gro
 }
 
 export default function GroupsPanel(props: GroupsPanelProps) {
-    const { legend, shown, onChange, onHighlight, setPieces, shownSetPieces, onSetPiecesChange, links, roads, onSelect } = props;
+    const { legend, shown, onChange, onHighlight, setPieces, shownSetPieces, onSetPiecesChange, links, roads, bridges, onSelect } = props;
     return (
             <details className="map-bar map-groups">
                 <summary>Filters</summary>
@@ -100,28 +124,20 @@ export default function GroupsPanel(props: GroupsPanelProps) {
                             <GroupRow entry={setPieces} shown={shownSetPieces} onChange={onSetPiecesChange} outlined/>
                     )}
                     {links && (
-                            <li>
-                                <div className="map-group">
-                                    <label className="map-group__toggle">
-                                        <input type="checkbox" checked={links.shown}
-                                               onChange={(event) => links.onChange(event.target.checked)}/>
-                                        <span className="map__swatch" style={{ background: `rgb(${links.colour.join()})` }}/>
-                                        <span>{links.label}</span>
-                                    </label>
-                                </div>
-                            </li>
+                            <ToggleRow shown={links.shown} colour={links.colour} onChange={links.onChange}>
+                                {links.label}
+                            </ToggleRow>
                     )}
                     {roads && (
-                            <li>
-                                <div className="map-group">
-                                    <label className="map-group__toggle">
-                                        <input type="checkbox" checked={roads.shown}
-                                               onChange={(event) => roads.onChange(event.target.checked)}/>
-                                        <span className="map__swatch" style={{ background: `rgb(${ROAD_SWATCH.join()})` }}/>
-                                        <span>Roads</span>
-                                    </label>
-                                </div>
-                            </li>
+                            <ToggleRow shown={roads.shown} colour={ROAD_SWATCH} onChange={roads.onChange}>Roads</ToggleRow>
+                    )}
+                    {bridges && (
+                            <ToggleRow shown={bridges.shown} colour={BRIDGE_COLOUR} onChange={bridges.onChange}>
+                                Turf Bridges{" "}
+                                <span className="map__count" title="Bridges that cross the map to a room left far from its neighbours">
+                                    {formatCount(bridges.stray)} long
+                                </span>
+                            </ToggleRow>
                     )}
                 </ul>
             </details>

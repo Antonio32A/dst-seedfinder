@@ -52,6 +52,24 @@ export interface DumpRoad {
     points: Int32Array;
 }
 
+/** A room of the world's topology (`map.topology.nodes`). */
+export interface DumpNode {
+    /** E.g. `CentipedeCaveTask:BG_89:BGVentsRoom`. */
+    id: string;
+    /** Its `NODE_TYPE`: 1 is Blank, 7 SeparatedRoom. */
+    type: number;
+    /** Its centre, in world units times 100. */
+    xk: number;
+    zk: number;
+}
+
+export interface DumpTopology {
+    /** In ascending id order. */
+    nodes: DumpNode[];
+    /** Interleaved `n1, n2` node indices per edge; `n1` is the room whose turf the edge's bridge is made of. */
+    edges: Uint32Array;
+}
+
 export interface GeneratedWorld extends DumpHeader {
     status: "generated";
     gameBuild: number;
@@ -69,6 +87,8 @@ export interface GeneratedWorld extends DumpHeader {
     setPieces?: DumpSetPiece[];
     /** Absent without a ROAD section. */
     roads?: DumpRoad[];
+    /** Absent without a GRPH section. */
+    topology?: DumpTopology;
 }
 
 export interface GaveUpWorld extends DumpHeader {
@@ -158,6 +178,10 @@ const SECTIONS: Record<string, (reader: Reader, world: GeneratedWorld) => void> 
             weight: reader.u32(),
             points: reader.copy(Int32Array, 2 * reader.u32())
         }));
+    },
+    GRPH: (reader, world) => {
+        const nodes = repeat(reader, () => ({ id: reader.string(), type: reader.u32(), xk: reader.i32(), zk: reader.i32() }));
+        world.topology = { nodes, edges: reader.copy(Uint32Array, 2 * reader.u32()) };
     }
 };
 
