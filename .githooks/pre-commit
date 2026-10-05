@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)/website"
+mapfile -d '' staged < <(git diff --cached --name-only --diff-filter=ACMR --relative -z -- \
+    '*.js' '*.mjs' '*.cjs' '*.ts' '*.mts' '*.cts' '*.tsx')
+(( ${#staged[@]} )) || exit 0
+
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [[ "$(node --version 2>/dev/null)" != "v$(<.nvmrc)."* && -s "$NVM_DIR/nvm.sh" ]]; then
+    source "$NVM_DIR/nvm.sh" --no-use
+    nvm use --silent
+fi
+
+exec ./node_modules/.bin/eslint --no-warn-ignored "${staged[@]}"

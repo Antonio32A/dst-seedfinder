@@ -3,13 +3,17 @@ import stylistic from "@stylistic/eslint-plugin";
 import { defineConfig, globalIgnores } from "eslint/config";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
-import { registerHooks } from "node:module";
+import { createRequire, registerHooks } from "node:module";
 
 const TYPESCRIPT_6_CONSUMER = /\/node_modules\/(@typescript-eslint\/[^/]+|typescript-eslint|ts-api-utils)\//;
+const TYPESCRIPT_IMPORT = /^typescript(\/|$)/;
+const typescript6 = createRequire(createRequire(import.meta.url).resolve("typescript-6"));
 
 registerHooks({
     resolve: (specifier, context, nextResolve) => nextResolve(
-        specifier === "typescript" && TYPESCRIPT_6_CONSUMER.test(context.parentURL ?? "") ? "typescript-6" : specifier,
+        TYPESCRIPT_6_CONSUMER.test(context.parentURL ?? "") && TYPESCRIPT_IMPORT.test(specifier)
+            ? typescript6.resolve(specifier)
+            : specifier,
         context
     )
 });
