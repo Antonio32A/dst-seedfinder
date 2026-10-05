@@ -80,7 +80,18 @@ export default defineConfig([
             reportUnusedDisableDirectives: "error"
         },
         rules: {
+            "array-callback-return": "error",
+            eqeqeq: ["error", "smart"],
+            "logical-assignment-operators": "error",
+            "no-else-return": ["error", { allowElseIf: false }],
             "no-empty": ["error", { allowEmptyCatch: true }],
+            "no-implicit-coercion": "error",
+            "no-lonely-if": "error",
+            "no-param-reassign": "error",
+            "no-return-assign": "error",
+            "no-unneeded-ternary": "error",
+            "object-shorthand": "error",
+            "prefer-template": "error",
             "@typescript-eslint/no-unused-vars": [
                 "error",
                 { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true }
@@ -142,8 +153,19 @@ export default defineConfig([
     },
     {
         files: ["**/*.{ts,mts,cts,tsx}"],
+        languageOptions: {
+            parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }
+        },
         rules: {
-            "@stylistic/comma-dangle": ["error", "never"]
+            "@stylistic/comma-dangle": ["error", "never"],
+            "@typescript-eslint/await-thenable": "error",
+            "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports" }],
+            "@typescript-eslint/no-explicit-any": "error",
+            "@typescript-eslint/no-floating-promises": "error",
+            "@typescript-eslint/no-misused-promises": "error",
+            "@typescript-eslint/no-unnecessary-condition": "error",
+            "@typescript-eslint/only-throw-error": "error",
+            "@typescript-eslint/switch-exhaustiveness-check": "error"
         }
     },
     {

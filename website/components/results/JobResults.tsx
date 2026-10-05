@@ -58,7 +58,7 @@ function notablePieces(level: LevelTable, catalog: LevelCatalog) {
     }
     return [...counts]
             .flatMap(([id, count]) => {
-                const piece = Object.hasOwn(catalog.setPieceById, id) ? catalog.setPieceById[id] : undefined;
+                const piece = catalog.setPieceById.get(id);
                 return piece && !piece.alwaysPlaced ? [{ piece, count }] : [];
             })
             .sort((a, b) => (kindOrder.get(a.piece.kind) ?? 0) - (kindOrder.get(b.piece.kind) ?? 0)
@@ -95,9 +95,10 @@ function WitnessList({ results }: { results: Witness[] }) {
 }
 
 function WorldSummary({ hit: { level, results }, id, catalog }: { hit: SearchHit; id: string; catalog: LevelCatalog }) {
-    const biomes = level.tasks.flatMap((task) =>
-            Object.hasOwn(catalog.taskById, task.task) && catalog.taskById[task.task].kind === "optional" ? [catalog.taskById[task.task].name] : []
-    );
+    const biomes = level.tasks.flatMap((task) => {
+        const info = catalog.taskById.get(task.task);
+        return info?.kind === "optional" ? [info.name] : [];
+    });
     const swaps = catalog.swaps.flatMap((swap) => {
         const chosen = level.prefab_swaps[swap.id];
         const option = swap.options.find((candidate) => candidate.id === chosen)?.name ?? chosen;

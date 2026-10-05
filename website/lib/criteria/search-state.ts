@@ -119,7 +119,7 @@ export function defaultState(): SearchState {
 }
 
 export function newRule(pieceId: string, catalog: LevelCatalog): PieceRule {
-    const fixed = catalog.setPieceById[pieceId]?.kind === "fixed";
+    const fixed = catalog.setPieceById.get(pieceId)?.kind === "fixed";
     return {
         key: newKey(),
         pieceId,
@@ -132,7 +132,7 @@ export function newRule(pieceId: string, catalog: LevelCatalog): PieceRule {
 }
 
 export function ruleMax(rule: PieceRule, catalog: LevelCatalog): number {
-    const piece = catalog.setPieceById[rule.pieceId];
+    const piece = catalog.setPieceById.get(rule.pieceId);
     if (!piece) return 0;
     const scope = ruleScope(rule, catalog);
     const onePerBiome = piece.kind === "fixed" && scope.length > 0 ? scope.filter((id) => piece.candidateTasks?.includes(id)).length : Infinity;
@@ -213,11 +213,12 @@ function countFromRequirement(requirement: unknown): Pick<PieceRule, "mode" | "m
 
 function entryToRules(entry: unknown, catalog: LevelCatalog): PieceRule[] {
     const record = asRecord(entry);
-    const scopeTasks = asStrings(record.tasks).filter((id) => Object.hasOwn(catalog.taskById, id));
+    const scopeTasks = asStrings(record.tasks).filter((id) => catalog.taskById.has(id));
     return Object.entries(asRecord(record.required)).flatMap(([pieceId, requirement]) => {
         const count = countFromRequirement(requirement);
-        if (!Object.hasOwn(catalog.setPieceById, pieceId) || !count) return [];
-        const scopeMode: ScopeMode = scopeTasks.length > 0 || catalog.setPieceById[pieceId].kind === "fixed" ? "only" : "anywhere";
+        const piece = catalog.setPieceById.get(pieceId);
+        if (!piece || !count) return [];
+        const scopeMode: ScopeMode = scopeTasks.length > 0 || piece.kind === "fixed" ? "only" : "anywhere";
         return [{ key: newKey(), pieceId, ...count, scopeMode, scopeTasks }];
     });
 }
@@ -279,7 +280,7 @@ export function upgradeConfig(config: unknown): unknown {
  * the old shard are dropped. `dropped` counts what was lost.
  */
 export function switchShard(state: SearchState, shard: Shard): { state: SearchState; dropped: number } {
-    if (state.shard === shard) return { state: state, dropped: 0 };
+    if (state.shard === shard) return { state, dropped: 0 };
     const to = levelCatalogOf(shard);
     let dropped = 0;
     const groups = state.groups.map((group): CriteriaGroup => {
@@ -287,7 +288,7 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
             Object.entries(group.swaps).filter(([category, variant]) => to.swaps.some((swap) =>
                 swap.id === category && swap.options.some((option) => option.id === variant)))
         );
-        const rules = group.rules.filter((rule) => Object.hasOwn(to.setPieceById, rule.pieceId));
+        const rules = group.rules.filter((rule) => to.setPieceById.has(rule.pieceId));
         const biomes = Object.fromEntries(
             Object.entries(group.biomes).filter(([id]) => to.optionalTaskIds.includes(id))
         );
@@ -302,7 +303,7 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
             biomes,
             rules: rules.map((rule) => ({
                 ...rule,
-                scopeTasks: rule.scopeTasks.filter((id) => Object.hasOwn(to.taskById, id))
+                scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id))
             })),
             ...world.rows
         };
@@ -333,14 +334,14 @@ const ruleIssues =
     (check: (rule: PieceRule, name: string, catalog: LevelCatalog) => Issue | undefined): GroupCheck =>
         (group, catalog) =>
             group.rules.flatMap((rule) =>
-                check(rule, catalog.setPieceById[rule.pieceId]?.name ?? rule.pieceId, catalog) ?? []);
+                check(rule, catalog.setPieceById.get(rule.pieceId)?.name ?? rule.pieceId, catalog) ?? []);
 
 const GROUP_CHECKS: GroupCheck[] = [
     tooManyBiomes("include", "Must have"),
     tooManyBiomes("exclude", "Must not have"),
     ruleIssues((rule, name, catalog) => {
         const unscoped = ruleScope(rule, catalog).length === 0;
-        if (unscoped && catalog.setPieceById[rule.pieceId]?.kind === "fixed")
+        if (unscoped && catalog.setPieceById.get(rule.pieceId)?.kind === "fixed")
             return {
                 severity: "warning",
                 message: `every world has the same number of ${name}. Pick the biomes you want it in.`
@@ -350,7 +351,7 @@ const GROUP_CHECKS: GroupCheck[] = [
             : undefined;
     }),
     ruleIssues((rule, name, catalog) =>
-        catalog.setPieceById[rule.pieceId]?.alwaysPlaced && rule.mode === "none" && ruleScope(rule, catalog).length === 0
+        catalog.setPieceById.get(rule.pieceId)?.alwaysPlaced && rule.mode === "none" && ruleScope(rule, catalog).length === 0
             ? { severity: "error", message: `${name} is in every world, so "None" can never match.` }
             : undefined
     ),
@@ -361,7 +362,7 @@ const GROUP_CHECKS: GroupCheck[] = [
         }
         return Object.entries(KIND_TOTALS).flatMap(([kind, { most, noun }]): Issue[] => {
             const needed = [...leastPerPiece].reduce(
-                (sum, [pieceId, least]) => sum + (catalog.setPieceById[pieceId]?.kind === kind ? least : 0),
+                (sum, [pieceId, least]) => sum + (catalog.setPieceById.get(pieceId)?.kind === kind ? least : 0),
                 0
             );
             return needed > most ? [{

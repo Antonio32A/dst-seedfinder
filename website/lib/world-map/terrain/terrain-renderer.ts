@@ -294,7 +294,9 @@ export function createTerrainRenderer(
         gl.deleteVertexArray(landVertices);
         gl.deleteProgram(land);
         onBuilt();
-    }).finally(() => loads.forEach((load) => load.then((texture) => gl.deleteTexture(texture), () => undefined)));
+    }).finally(() => {
+        for (const load of loads) load.then((texture) => gl.deleteTexture(texture), () => undefined);
+    });
 
     return {
         built,

@@ -27,7 +27,8 @@ export function parseMapPreviewUrl(url: URL): MapPreviewRequest | { error: strin
     const match = PREVIEW_PATH.exec(url.pathname);
     if (match === null) return { error: "There's no map preview here." };
 
-    const [, platform, caves, seed] = match;
+    const [, platform, , seed] = match;
+    const caves = match.at(2);
     const route = parseMapRoute(platform, seed, caves === undefined ? "forest" : "caves");
     if ("error" in route) return route;
 

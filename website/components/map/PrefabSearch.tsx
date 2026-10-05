@@ -46,7 +46,7 @@ export default function PrefabSearch({ world, map, onChange }: PrefabSearchProps
         map?.centre(instances[next], FOCUS_SCALE);
     };
 
-    const keys: Record<string, () => void> = {
+    const keys: Partial<Record<string, () => void>> = {
         ArrowDown: () => setActive((active + 1) % suggestions.length),
         ArrowUp: () => setActive((active - 1 + suggestions.length) % suggestions.length),
         Enter: () => choose(suggestions[active] ?? null),

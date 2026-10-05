@@ -199,7 +199,7 @@ export function parseWorldDump(bytes: Uint8Array): WorldDump {
     const seed = reader.u32();
     const generated = reader.u32() === 1;
     const platform = DUMP_PLATFORMS[reader.u32()] ?? "unknown";
-    const shard = DUMP_SHARDS[reader.u32()];
+    const shard = DUMP_SHARDS.at(reader.u32());
     if (shard === undefined) throw new Error("This world dump is of an unknown shard.");
     if (!generated) return { status: "gave-up", seed, platform, shard };
     const gameBuild = reader.u32();

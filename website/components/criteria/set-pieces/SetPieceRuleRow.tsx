@@ -31,7 +31,7 @@ function PieceHeader({ piece, name, catalog, onRemove }: {
     name: string;
     onRemove: () => void;
 }) {
-    const kindName = piece && catalog.setPieceKindById[piece.kind]?.name;
+    const kindName = piece && catalog.setPieceKindById[piece.kind].name;
     const contents = piece?.contents ?? [];
     return (
             <>
@@ -122,7 +122,7 @@ interface SetPieceRuleRowProps {
 }
 
 export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: SetPieceRuleRowProps) {
-    const piece = catalog.setPieceById[rule.pieceId];
+    const piece = catalog.setPieceById.get(rule.pieceId);
     const name = piece?.name ?? rule.pieceId;
     const max = ruleMax(rule, catalog);
     const fixedTasks =
@@ -130,7 +130,7 @@ export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: S
                     ? catalog.tasks.filter((task) =>
                             piece.candidateTasks?.includes(task.id) || rule.scopeTasks.includes(task.id))
                     : undefined;
-    const hint = fixedTasks ? `${piece.fixedCount ?? piece.maxCount} per world, at most 1 per biome` : `up to ${max} per world`;
+    const hint = piece?.kind === "fixed" ? `${piece.fixedCount ?? piece.maxCount} per world, at most 1 per biome` : `up to ${max} per world`;
 
     const update: Update = (patch) => onChange({ ...rule, ...patch });
 

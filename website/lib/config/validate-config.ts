@@ -135,7 +135,7 @@ function nameSetOf(check: (name: string, path: string) => void, cap: number, nou
 
 const taskListOf = (catalog: LevelCatalog) =>
     namesOf(
-        (task, path) => Object.hasOwn(catalog.taskById, task) || fail(`unknown task ${quoted(task)} in ${path}`),
+        (task, path) => catalog.taskById.has(task) || fail(`unknown task ${quoted(task)} in ${path}`),
         MAX_TASKS_PER_LIST,
         "tasks"
     );
@@ -165,7 +165,7 @@ const setPieceBoundsOf =
         (value, path) => {
             const pieces = Object.entries(recordAt(value, path));
             if (pieces.length > MAX_SET_PIECES_PER_RULE) fail(`${path} has ${pieces.length} set pieces (at most ${MAX_SET_PIECES_PER_RULE})`);
-            const unknown = pieces.find(([name]) => !Object.hasOwn(catalog.setPieceById, name));
+            const unknown = pieces.find(([name]) => !catalog.setPieceById.has(name));
             if (unknown) fail(`unknown set piece ${quoted(unknown[0])} in ${path}`);
             return Object.fromEntries(
                 pieces.map(([name, bound]) => {
@@ -216,7 +216,10 @@ const routeOf = (shard: Shard): Parse => {
                 stopOf.set(prefab, index);
             })
         );
-        const endpoint = [...idsOf(parsed.from), ...idsOf(parsed.to)].filter((prefab) => stopOf.has(prefab)).sort()[0];
+        const endpoint = [...idsOf(parsed.from), ...idsOf(parsed.to)]
+            .filter((prefab) => stopOf.has(prefab))
+            .sort()
+            .at(0);
         if (endpoint !== undefined) fail(`${path}: ${quoted(endpoint)} is both a visit stop and the route's from/to`);
         return parsed;
     };

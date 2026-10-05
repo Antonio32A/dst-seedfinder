@@ -116,7 +116,7 @@ export function createMapProbe(world: GeneratedWorld): MapProbe {
         const row = Math.fround(Math.fround(z + half + half * world.height) / WORLD_UNITS_PER_TILE);
         if (!(column >= 0 && column < world.width && row >= 0 && row < world.height)) return null;
         const name = world.tileNames.get(world.tiles[Math.trunc(row) * world.width + Math.trunc(column)]) ?? "";
-        return { name, displayName: TILES[name]?.displayName ?? name };
+        return { name, displayName: Object.hasOwn(TILES, name) ? TILES[name].displayName : name };
     };
 
     const pieces = world.setPieces ?? [];

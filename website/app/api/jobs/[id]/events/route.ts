@@ -10,9 +10,11 @@ const SESSION_CHECK_MS = 60_000;
 
 function whileSignedIn(events: ReadableStream<Uint8Array>, token: string): ReadableStream<Uint8Array> {
     const reader = events.getReader();
-    const timer = setInterval(async () => {
-        const signedIn = await sessionUserId(token).then((userId) => userId !== null, () => true);
-        if (!signedIn) await reader.cancel().catch(() => undefined);
+    const timer = setInterval(() => {
+        void sessionUserId(token)
+            .then((userId) => userId !== null, () => true)
+            .then((signedIn) => (signedIn ? undefined : reader.cancel()))
+            .catch(() => undefined);
     }, Number(env.EVENTS_SESSION_CHECK_MS) || SESSION_CHECK_MS);
     return new ReadableStream<Uint8Array>({
         async pull(controller) {

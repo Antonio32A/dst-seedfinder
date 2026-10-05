@@ -11,8 +11,8 @@ export interface LevelCatalog {
     swaps: SwapInfo[];
     setPieceKinds: SetPieceKindInfo[];
     setPieces: SetPieceInfo[];
-    taskById: Record<string, TaskInfo>;
-    setPieceById: Record<string, SetPieceInfo>;
+    taskById: ReadonlyMap<string, TaskInfo>;
+    setPieceById: ReadonlyMap<string, SetPieceInfo>;
     setPieceKindById: Record<SetPieceKind, SetPieceKindInfo>;
     optionalTasks: TaskInfo[];
     optionalTaskIds: string[];
@@ -27,8 +27,8 @@ function catalogOf(
     return {
         shard,
         ...parts,
-        taskById: Object.fromEntries(parts.tasks.map((task) => [task.id, task])),
-        setPieceById: Object.fromEntries(parts.setPieces.map((piece) => [piece.id, piece])),
+        taskById: new Map(parts.tasks.map((task) => [task.id, task])),
+        setPieceById: new Map(parts.setPieces.map((piece) => [piece.id, piece])),
         setPieceKindById: Object.fromEntries(
             parts.setPieceKinds.map((kind) => [kind.id, kind])
         ) as Record<SetPieceKind, SetPieceKindInfo>,

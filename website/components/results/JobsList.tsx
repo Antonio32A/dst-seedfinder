@@ -11,7 +11,7 @@ import { parseJobResult } from "@/lib/jobs/job-result";
 import JobResults, { type JobResultsProps } from "./JobResults";
 import LiveSearch from "./LiveSearch";
 
-const STATUS_LABELS: Record<JobStatus, string> = {
+const STATUS_LABELS: Partial<Record<JobStatus, string>> = {
     queued: "Queued",
     starting: "Starting...",
     running: "Searching...",

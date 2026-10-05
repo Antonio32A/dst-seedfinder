@@ -14,7 +14,8 @@ export function prewarmMapPreview(request: Request, env: Cloudflare.Env, ctx: Ex
     const page = MAP_PAGE.exec(url.pathname);
     if (page === null) return;
 
-    const [, platform, shard, seed] = page;
+    const [, platform, , seed] = page;
+    const shard = page.at(2);
     const route = parseMapRoute(platform, seed, (shard ?? "forest") as Shard);
     if ("error" in route) return;
 

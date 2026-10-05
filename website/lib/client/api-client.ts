@@ -23,7 +23,7 @@ export class ApiError extends Error {
     }
 }
 
-const FRIENDLY_ERRORS: Record<number, string> = {
+const FRIENDLY_ERRORS: Partial<Record<number, string>> = {
     401: "You've been logged out. Log in again to search.",
     402: "Not enough credits for this max cost. Credits refill at 00:00 UTC.",
     409: `You already have ${MAX_ACTIVE_SEARCHES} searches going.`,

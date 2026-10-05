@@ -4,7 +4,7 @@ import { CRASHED_LINE, DUMP_PATH, dumpArgs } from "./world-dump";
 
 onmessage = async ({ data: { module, seed, platform, shard } }: MessageEvent<DumpRequest>) => {
     const errors: string[] = [];
-    let crashed = false;
+    let crashed = false as boolean;
     const { code, error, fs } = await runSeedfinder({
         module,
         args: ["--threads", "1", "--", ...dumpArgs(seed, platform, shard)],

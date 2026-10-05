@@ -97,7 +97,7 @@ export class Dispatcher extends DurableObject<Cloudflare.Env> {
         const moved = [...this.admissions()].filter(([jobId, admission]) => {
             const previous = before.get(jobId);
             return jobId !== callerId &&
-                (previous?.granted !== admission.granted || previous?.position !== admission.position);
+                (previous?.granted !== admission.granted || previous.position !== admission.position);
         });
         const replies = await Promise.all(
             moved.map(([jobId, admission]) =>

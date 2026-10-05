@@ -23,7 +23,7 @@ import { createWitnessRenderer, type WitnessRenderer } from "./witness-renderer"
 const ZOOM_PER_PIXEL = 0.002;
 const PIXELS_PER_LINE = 16;
 const TURN_MS = 180;
-const TURN_KEYS: Record<string, number> = { q: -1, e: 1 };
+const TURN_KEYS: Partial<Record<string, number>> = { q: -1, e: 1 };
 const TYPING_TARGETS = "input:not([type=checkbox], [type=radio]), textarea, select, [contenteditable]";
 const SPAWN_SCALE = 2;
 
@@ -77,7 +77,7 @@ export function mountMapCanvas(
     const watchers = new Set<(view: MapView, viewport: Size) => void>();
     let overlay: WitnessRenderer | null = null;
     let viewport: Size = { width: canvas.clientWidth, height: canvas.clientHeight };
-    const [spawn] = instancesOf(world, { kind: "prefab", name: SPAWN });
+    const spawn = instancesOf(world, { kind: "prefab", name: SPAWN }).at(0);
     const fitted = fitView(world, viewport);
     const opening: MapView = spawn === undefined
         ? fitted
@@ -112,7 +112,7 @@ export function mountMapCanvas(
     // Resizing the canvas clears it, so it's drawn again before the browser paints it, not a frame later.
     const resized = new ResizeObserver(([entry]) => {
         viewport = { width: entry.contentRect.width, height: entry.contentRect.height };
-        const [pixels] = entry.devicePixelContentBoxSize ?? [];
+        const pixels = (entry.devicePixelContentBoxSize as readonly ResizeObserverSize[] | undefined)?.at(0);
         const width = pixels?.inlineSize ?? Math.round(viewport.width * devicePixelRatio);
         const height = pixels?.blockSize ?? Math.round(viewport.height * devicePixelRatio);
         if (canvas.width !== width) canvas.width = width;
@@ -127,7 +127,8 @@ export function mountMapCanvas(
 
     const gesture = () => {
         const points = [...pointers.values()];
-        const [first, second] = points;
+        const [first] = points;
+        const second = points.at(1);
         return {
             x: points.reduce((sum, { x }) => sum + x, 0) / points.length,
             y: points.reduce((sum, { y }) => sum + y, 0) / points.length,

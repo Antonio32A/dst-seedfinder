@@ -7,7 +7,7 @@ const WORLD_PATH = "/world.dstw";
 
 onmessage = async ({ data: { module, bytes, config } }: MessageEvent<EvalRequest>) => {
     const errors: string[] = [];
-    let evaluation: WorldEval | null = null;
+    let evaluation = null as WorldEval | null;
     const { code, error } = await runSeedfinder({
         module,
         args: ["--threads", "1", "--", "world", "eval", "--config", CONFIG_PATH, "--world", WORLD_PATH, "--json"],
