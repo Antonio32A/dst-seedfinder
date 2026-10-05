@@ -31,9 +31,9 @@ scripts/proof.sh -j 3                              # the laws (LAWS.bend, laws/)
 - Use `scripts/build.sh`, not a plain `scripts/bend.sh seedfinder/main.bend -o ...`, or the compiler eats all your RAM (yum!).
 - If the build fails with "machine stack overflowed", retry it. Yes, this is shitty. No, I don't know what causes it.
 - The website's build copies `build/wasm/`, so build wasm first.
-- `wasm-single` runs on the caller's thread (no Web Workers, no SharedArrayBuffer) in growable memory: 62 to 65 MB a
-  world with its 40 MB corpus (`BUILD_CORPUS_MB`; 36 is the least that dumps every tested world). Give it its
-  precompiled `WebAssembly.Module` through the factory's `instantiateWasm`, a fresh instance per run, and no
+- `wasm-single` runs on the caller's thread (no Web Workers, no SharedArrayBuffer) in growable memory: 102 to 105 MB a
+  world with its 80 MB corpus (`BUILD_CORPUS_MB`; 76 is the least that dumps every tested world, though only the
+  windows forest of seed 59233 needs over 36). Give it its precompiled `WebAssembly.Module` through the factory's `instantiateWasm`, a fresh instance per run, and no
   `/proc/self/cmdline` (reading it takes a 16 MB buffer the memory keeps).
 
 Keep in mind that these binaries may not be portable, so you may have to rebuild it on the system.

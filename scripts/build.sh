@@ -6,7 +6,7 @@
 #                 BUILD_MIN_FREE_GB of free RAM)
 #   wasm          seedfinder/main.bend  -> build/wasm/seedfinder.{wasm,mjs} (emcc on PATH, or EMCC)
 #   wasm-single   seedfinder/main.bend  -> build/wasm-single/seedfinder.{wasm,mjs}, single-threaded with a
-#                 BUILD_CORPUS_MB (40) corpus in growable memory, for a host without threads (a Cloudflare Worker)
+#                 BUILD_CORPUS_MB (80) corpus in growable memory, for a host without threads (a Cloudflare Worker)
 #   ENTRY [OUT]   any program
 # The compiler's JavaScriptCore heap is capped (BUILD_RAM) because JSC sizes it from physical RAM, and on a big machine
 # the build then outgrows its `ulimit -v` (BUILD_VLIMIT). BUILD_TIMEOUT bounds the build.
@@ -41,7 +41,7 @@ wasm-single)
     entry="$root/seedfinder/main.bend"
     out="$root/build/wasm-single/seedfinder.wasm"
     flags=(--single-thread)
-    export EMCC_CFLAGS="${EMCC_CFLAGS:-} -DBEND_CORPUS_MB=${BUILD_CORPUS_MB:-40}"
+    export EMCC_CFLAGS="${EMCC_CFLAGS:-} -DBEND_CORPUS_MB=${BUILD_CORPUS_MB:-80}"
     ;;
 *)
     entry="$1"
