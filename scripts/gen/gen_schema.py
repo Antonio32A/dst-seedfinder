@@ -119,7 +119,11 @@ def definitions(catalog):
         "setPieceRule": closed({
             "tasks": ref("taskList"),
             "required": {"type": "object", "maxProperties": CAPS["set pieces"], "propertyNames": ref("setPieceName"),
-                         "additionalProperties": ref("bound")}}),
+                         "additionalProperties": ref("bound")},
+            "placed": {"type": "array", "maxItems": CAPS["set pieces"], "uniqueItems": True,
+                       "items": ref("setPieceName"),
+                       "description": "Names of `required` whose bound counts only the copies the generated world "
+                                      "placed (ensure placed), which makes the entry need the world."}}),
         "near": closed({"prefab": ref("prefabs"), "within": ref("distance"), **metric_fields()}, ("prefab", "within")),
         "countRule": closed({"prefab": ref("prefabs"), "min": ref("uint32"), "max": ref("uint32"), "near": ref("near")},
                             ("prefab",)),

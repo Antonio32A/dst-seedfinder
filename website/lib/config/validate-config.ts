@@ -175,6 +175,24 @@ const setPieceBoundsOf =
             );
         };
 
+const setPieceRuleOf = (catalog: LevelCatalog): Parse => {
+    const shape = objectOf({
+        tasks: optional(taskListOf(catalog)),
+        required: optional(setPieceBoundsOf(catalog)),
+        ...(catalog.shard === "forest" ? { placed: optional(namesOf(() => undefined, MAX_SET_PIECES_PER_RULE, "set pieces")) } : {})
+    });
+    return (value, path) => {
+        const rule = shape(value, path);
+        const placed = (rule.placed ?? []) as string[];
+        const required = (rule.required ?? {}) as Record<string, unknown>;
+        placed.forEach((name, index) => {
+            if (placed.indexOf(name) < index) fail(`${child(path, "placed")} names ${quoted(name)} twice`);
+            if (!Object.hasOwn(required, name)) fail(`${child(path, "placed")} names ${quoted(name)}, which isn't in required`);
+        });
+        return rule;
+    };
+};
+
 const prefabSwapsOf =
     (shard: Shard): Parse =>
         (value, path) => {
@@ -260,7 +278,7 @@ const criterionOf = (catalog: LevelCatalog) => {
         passive: optional(flag),
         tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
         prefab_swaps: optional(prefabSwapsOf(catalog.shard)),
-        setpieces: rules(objectOf({ tasks: optional(taskList), required: optional(setPieceBoundsOf(catalog)) })),
+        setpieces: rules(setPieceRuleOf(catalog)),
         ...worldSectionsOf(catalog.shard)
     });
 };

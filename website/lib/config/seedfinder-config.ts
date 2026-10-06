@@ -58,6 +58,8 @@ export type PrefabSwaps = Partial<Record<SwapCategory, string>>;
 export interface SetPieceRule {
     tasks?: string[];
     required?: Record<string, SetPieceBound>;
+    /** Names of `required` counted only where the generated world placed them (forest only). */
+    placed?: string[];
 }
 
 /**

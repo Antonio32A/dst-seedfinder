@@ -7,10 +7,12 @@ import ../level/choose.bend as LevelChoose
 import ./json.bend as Json
 import ./parse.bend as Parse
 import ./rules.bend as Rules
+import ./level_checks.bend as LevelChecks
 
 # A world filter (README.md "world find"): criteria are alternatives, a seed matches when one holds.
 # Task sets are masks over data/world_catalog.bend task ids; a rule bounds how many times a set piece
-# (world_catalog piece id) is placed in the rule's tasks.
+# (world_catalog piece id) is planned in the rule's tasks (only its minimum for a `placed` name, whose bound the world
+# decides).
 type Rule is Data:
   Rule{piece: U32, tasks: U32, low: U32, high: U32}
 
@@ -139,12 +141,12 @@ def swaps_of(m: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & Str
 def bound_message(+path: String) -> U32 & String:
   Parse.failure(path ++ " must be an integer in 0..4294967295 or [min, max]")
 
-def bounded_rule(+piece: U32, +tasks: U32, bound: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Rule>:
+def bounded_rule(+piece: U32, +tasks: U32, bound: Json.Json, +placed: Bool, +path: String) -> Result<&1, &1, U32 & String, Rule>:
   match bound:
     case Json.JNum{+low}:
       Done{Rule{piece, tasks, low, unbounded()}}
     case Json.JArr{Con{Json.JNum{+low}, Con{Json.JNum{+high}, Nil{}}}}:
-      Done{Rule{piece, tasks, low, high}}
+      Done{Rule{piece, tasks, low, Bool.pick(U32, placed, unbounded(), high)}}
     case _:
       Fail{bound_message(path)}
 
@@ -160,23 +162,41 @@ def piece_ids(entries: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32
     case Con{_, rest}:
       piece_ids(rest, path)
 
-def rules_in(+tasks: U32, entries: List<&2, Json.Json>, pieces: List<&2, U32>, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
+def rules_in(+tasks: U32, entries: List<&2, Json.Json>, pieces: List<&2, U32>, +placed: List<&2, String>, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   match entries pieces:
     case Con{Json.JField{+name, bound}, rest} Con{+piece, others}:
       do Result<&1, &1, U32 & String, List<&2, Rule>>:
-        rule : Rule <- bounded_rule(piece, tasks, bound, path ++ "[" ++ Parse.quoted(name) ++ "]")
-        rules_in(tasks, rest, others, path, rule <> acc)
+        rule : Rule <- bounded_rule(piece, tasks, bound, is_member(placed, name), path ++ "[" ++ Parse.quoted(name) ++ "]")
+        rules_in(tasks, rest, others, placed, path, rule <> acc)
     case _ _:
       Done{acc}
 
+def placed_name(+name: String, +required: List<&2, Json.Json>, +seen: List<&2, String>, +path: String) -> Result<&1, &1, U32 & String, Unit>:
+  Bool.pick(Result<&1, &1, U32 & String, Unit>, is_member(seen, name), Fail{Parse.failure(path ++ " names " ++ Parse.quoted(name) ++ " twice")},
+    Bool.pick(Result<&1, &1, U32 & String, Unit>, Maybe.is_some(&2, Json.Json, Parse.field(required, name)), Done{Unit{}},
+      Fail{Parse.failure(path ++ " names " ++ Parse.quoted(name) ++ ", which isn't in required")}))
+
+def placed_names(items: List<&2, Json.Json>, +required: List<&2, Json.Json>, +index: U32, +path: String, +seen: List<&2, String>) -> Result<&1, &1, U32 & String, List<&2, String>>:
+  match items:
+    case Nil{}:
+      Done{seen}
+    case Con{item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, String>>:
+        +name : String <- Parse.string_of(item, Parse.indexed(path, index))
+        fresh : Unit <- placed_name(name, required, seen, path)
+        placed_names(rest, required, (index + 1 : U32), path, name <> seen)
+
 def setpiece_rules(item: Json.Json, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   do Result<&1, &1, U32 & String, List<&2, Rule>>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(item, ["tasks", "required"], path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(item, ["tasks", "required", "placed"], path)
     +required : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "required"), path ++ ".required")
     listed : List<&2, Json.Json> <- Parse.capped(required, 16, "set pieces", path ++ ".required")
     pieces : List<&2, U32> <- piece_ids(required, path ++ ".required")
     +tasks : U32 <- task_list(Parse.field(fields, "tasks"), path ++ ".tasks")
-    rules_in(Bool.pick(U32, U32.is_zero(tasks), every_task(), tasks), required, pieces, path ++ ".required", acc)
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "placed"), path ++ ".placed")
+    names : List<&2, Json.Json> <- Parse.capped(items, 16, "set pieces", path ++ ".placed")
+    +placed : List<&2, String> <- placed_names(names, required, 0, path ++ ".placed", Nil{})
+    rules_in(Bool.pick(U32, U32.is_zero(tasks), every_task(), tasks), required, pieces, placed, path ++ ".required", acc)
 
 def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   match items:
@@ -187,20 +207,46 @@ def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&
         more : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), acc)
         rules_of(rest, (index + 1 : U32), path, more)
 
+def only_placed(bounds: List<&2, LevelChecks.Bounded>, +placed: List<&2, String>) -> List<&2, LevelChecks.Bounded>:
+  match bounds:
+    case Nil{}:
+      Nil{}
+    case Con{LevelChecks.Bounded{+name, +low, +high}, rest}:
+      +tail = only_placed(rest, placed)
+      Bool.pick(List<&2, LevelChecks.Bounded>, is_member(placed, name), LevelChecks.Bounded{name, low, high} <> tail, tail)
+
+# The world rules of the setpieces rules (already accepted) that have `placed` names.
+def placed_rules(items: List<&2, Json.Json>, +index: U32) -> List<&2, Rules.Placed>:
+  match items:
+    case Nil{}:
+      Nil{}
+    case Con{Json.JObj{+fields}, rest}:
+      +placed = LevelChecks.listed(Parse.field(fields, "placed"))
+      +tail = placed_rules(rest, (index + 1 : U32))
+      Bool.pick(List<&2, Rules.Placed>, List.is_empty(&2, String, placed), tail,
+        Rules.Placed{index, LevelChecks.listed(Parse.field(fields, "tasks")), only_placed(LevelChecks.bounds_of(LevelChecks.fields_of(Parse.field(fields, "required"))), placed)} <> tail)
+    case Con{_, rest}:
+      placed_rules(rest, (index + 1 : U32))
+
 def later_parts() -> List<&2, String>:
   ["counts", "distances", "tiles", "bridges", "routes"]
 
-def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +path: String) -> Maybe<&2, String>:
+def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +placed: List<&2, Rules.Placed>, +path: String) -> Maybe<&2, String>:
   match sections:
     case Nil{}:
-      None{}
+      match placed:
+        case Nil{}:
+          None{}
+        case Con{Rules.Placed{+index, _, _}, _}:
+          Some{"config: " ++ Parse.indexed(path ++ ".setpieces", index) ++ ".placed is not supported by this binary yet (it needs the generated world)"}
     case Con{+section, rest}:
       Bool.pick(Maybe<&2, String>, Maybe.is_some(&2, Json.Json, Parse.field(fields, section)),
         Some{"config: " ++ path ++ "." ++ section ++ " is not supported by this binary yet (only tasks, prefab_swaps and setpieces are)"},
-        first_later(fields, rest, path))
+        first_later(fields, rest, placed, path))
 
-# One parsed criteria entry: its part A, its parts B-E, the message for a finder without worlds when it has a
-# counts, distances, tiles, bridges or routes key, and whether it is passive (only decided on candidates of other entries).
+# One parsed criteria entry: its part A, its world rules, the message for a finder without worlds when it has a
+# counts, distances, tiles, bridges or routes key or `placed` names, and whether it is passive (only decided on
+# candidates of other entries).
 type Entry is Data:
   Entry{level: Criteria, later: Rules.Later, unsupported: Maybe<&2, String>, passive: Bool}
 
@@ -209,13 +255,14 @@ def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Ent
     +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "bridges", "routes"], path)
     +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
-    listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
+    +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
-    later : Rules.Later <- Rules.later_of(fields, path, False{})
+    +placed : List<&2, Rules.Placed> = placed_rules(listed, 0)
+    later : Rules.Later <- Rules.later_of(fields, path, False{}, placed)
     +required : U32 <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
     +excluded : U32 <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
     +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, first_later(fields, later_parts(), path), passive}
+    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, first_later(fields, later_parts(), placed, path), passive}
 
 def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
   match items:
@@ -364,7 +411,8 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
     active : Unit <- some_active(entries)
     return config_from(windows, entries)
 
-# A config for a finder that only knows part A: the message when some entry has a counts/distances/tiles/bridges/routes key.
+# A config for a finder that only knows part A: the message when some entry has a counts/distances/tiles/bridges/routes key
+# or `placed` names.
 def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
   match config:
     case Config{_, _, _, None{}, _}:

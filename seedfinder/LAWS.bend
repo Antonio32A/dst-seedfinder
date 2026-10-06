@@ -7,6 +7,8 @@ import ./filters/setpiece.bend as FilterSetpiece
 import ./level/prefix.bend as LevelPrefix
 import ./level/summary.bend as LevelSummary
 import ./filters/config.bend as Config
+import ./filters/rules.bend as Rules
+import ./filters/level_checks.bend as LevelChecks
 import ./level/choose.bend as LevelChoose
 
 # Golden values below come from the reference harness (the real worldgen Lua under DST's PCG32),
@@ -93,6 +95,46 @@ law config_parses_every_section:
   {Config.config_of("{\"version\": 1, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"criteria\": [{\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}]}") == Done{Config.Config{True{}, [Config.Criteria{0, 8, 2, 2, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 2}]}], [Config.no_later()], None{}, [Config.Criteria{0, 8, 2, 2, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 2}]}]}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_parses_every_section():
+  {==}
+
+# docs/config.md section A: a `placed` name keeps only its minimum in the level table and is bounded on the world, which
+# makes the entry a world entry (and one a finder without worlds can't decide).
+law config_reads_placed:
+  {Config.config_of("{\"criteria\": [{\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}]}") == Done{Config.Config{True{}, [Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}]}], [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], []}], Some{"config: criteria[0].setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}, [Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}]}]}} : Result<&1, &1, U32 & String, Config.Config>}
+
+def config_reads_placed():
+  {==}
+
+def has_rules(laters: List<&2, Rules.Later>) -> List<&2, Bool>:
+  match laters:
+    case Nil{}:
+      Nil{}
+    case Con{+later, rest}:
+      Rules.has_rules(later) <> has_rules(rest)
+
+def world_entries(compiled: Result<&1, &1, U32 & String, Config.Config>) -> List<&2, Bool>:
+  match compiled:
+    case Done{Config.Config{_, _, laters, _, _}}:
+      has_rules(laters)
+    case Fail{_}:
+      Nil{}
+
+law config_placed_makes_world_entry:
+  {world_entries(Config.config_of("{\"criteria\": [{\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"MooseNest\"]}]}, {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": []}]}]}")) == [True{}, False{}] : List<&2, Bool>}
+
+def config_placed_makes_world_entry():
+  {==}
+
+law config_rejects_placed_outside_required:
+  {Config.config_of("{\"criteria\": [{\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"Chessy_1\"]}]}]}") == Fail{(2, "config: criteria[0].setpieces[0].placed names \"Chessy_1\", which isn't in required")} : Result<&1, &1, U32 & String, Config.Config>}
+
+def config_rejects_placed_outside_required():
+  {==}
+
+law config_rejects_repeated_placed:
+  {Config.config_of("{\"criteria\": [{\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"MooseNest\", \"MooseNest\"]}]}]}") == Fail{(2, "config: criteria[0].setpieces[0].placed names \"MooseNest\" twice")} : Result<&1, &1, U32 & String, Config.Config>}
+
+def config_rejects_repeated_placed():
   {==}
 
 law config_rejects_non_default_setting:

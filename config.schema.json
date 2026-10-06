@@ -730,6 +730,15 @@
      "additionalProperties": {
       "$ref": "#/$defs/bound"
      }
+    },
+    "placed": {
+     "type": "array",
+     "maxItems": 16,
+     "uniqueItems": true,
+     "items": {
+      "$ref": "#/$defs/setPieceName"
+     },
+     "description": "Names of `required` whose bound counts only the copies the generated world placed (ensure placed), which makes the entry need the world."
     }
    }
   },

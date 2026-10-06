@@ -59,6 +59,7 @@ const joined = (parts: Parts[]): Parts => ({
 });
 
 const SECTION_PARTS: SectionParts = {
+    setpieces: () => NOTHING,
     counts: ({ instances }) =>
         joined(instances.map((instance) => (instance.near ? travel(instance, instance.near, []) : {
             ...NOTHING,

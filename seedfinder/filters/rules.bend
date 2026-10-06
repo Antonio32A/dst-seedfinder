@@ -4,10 +4,12 @@ import ../f64/repr.bend as F64Repr
 import ../f64/arith.bend as F64Arith
 import ../f64/cmp.bend as F64Cmp
 import ./parse.bend as Parse
+import ./level_checks.bend as LevelChecks
 import ../data/search_vocab.bend as SearchVocab
 
-# Parts B-E of a criteria entry (docs/config.md section 4). A prefab set is a list of distinct
-# data/search_vocab.bend prefab ids in first-occurrence order; a tile set is a list of vocabulary tile ids.
+# The world rules of a criteria entry (docs/config.md section 4): the `placed` names of its setpieces rules and its
+# parts B-E. A prefab set is a list of distinct data/search_vocab.bend prefab ids in first-occurrence order; a tile set
+# is a list of vocabulary tile ids.
 type Metric is Data:
   Metric{walk: Bool, wormholes: Bool, caves: Bool}
 
@@ -29,27 +31,41 @@ type Route is Data:
 type Bridge is Data:
   Bridge{min: Maybe<&2, F64Repr.F64>, max: Maybe<&2, F64Repr.F64>}
 
-# The counts, distances, tiles, bridges and routes rules of one criteria entry.
+# The `placed` names of setpieces rule `index`: its task scope (empty for every task) and the bounds of those names,
+# checked against the copies the world placed.
+type Placed is Data:
+  Placed{index: U32, tasks: List<&2, String>, bounds: List<&2, LevelChecks.Bounded>}
+
+# The world rules of one criteria entry: the setpieces rules with `placed` names, then the counts, distances, tiles,
+# bridges and routes rules.
 type Later is Data:
-  Later{counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, bridges: List<&2, Bridge>, routes: List<&2, Route>}
+  Later{setpieces: List<&2, Placed>, counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, bridges: List<&2, Bridge>, routes: List<&2, Route>}
 
 def nothing_later() -> Later:
-  Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
+  Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
 
-# True when the entry has at least one rule in counts, distances, tiles, bridges or routes.
+# True when the entry has at least one world rule.
 def has_rules(+later: Later) -> Bool:
   match later:
-    case Later{+counts, +distances, +tiles, +bridges, +routes}:
-      Bool.not(List.is_empty(&2, Count, counts) && List.is_empty(&2, Distance, distances) && List.is_empty(&2, Tiles, tiles)
-        && List.is_empty(&2, Bridge, bridges) && List.is_empty(&2, Route, routes))
+    case Later{+setpieces, +counts, +distances, +tiles, +bridges, +routes}:
+      Bool.not(List.is_empty(&2, Placed, setpieces) && List.is_empty(&2, Count, counts) && List.is_empty(&2, Distance, distances)
+        && List.is_empty(&2, Tiles, tiles) && List.is_empty(&2, Bridge, bridges) && List.is_empty(&2, Route, routes))
 
 # True when some entry has a bridges rule (which needs the world's topology).
 def needs_graph(laters: List<&2, Later>) -> Bool:
   match laters:
     case Nil{}:
       False{}
-    case Con{Later{_, _, _, +bridges, _}, rest}:
+    case Con{Later{_, _, _, _, +bridges, _}, rest}:
       Bool.not(List.is_empty(&2, Bridge, bridges)) || needs_graph(rest)
+
+# True when some entry has a setpieces rule with `placed` names (which needs the world's level plan).
+def needs_plan(laters: List<&2, Later>) -> Bool:
+  match laters:
+    case Nil{}:
+      False{}
+    case Con{Later{+setpieces, _, _, _, _, _}, rest}:
+      Bool.not(List.is_empty(&2, Placed, setpieces)) || needs_plan(rest)
 
 def listed_as_set(json: Json.Json, +kind: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
   match json:
@@ -373,8 +389,9 @@ def routes_of(items: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) 
         others : List<&2, Route> <- routes_of(rest, path, (i + 1 : U32), caves)
         return rule <> others
 
-# Parses the counts, distances, tiles, bridges and routes sections of an entry's fields, in that order.
-def later_of(+fields: List<&2, Json.Json>, +path: String, +caves: Bool) -> Result<&1, &1, U32 & String, Later>:
+# Parses the counts, distances, tiles, bridges and routes sections of an entry's fields, in that order, next to its
+# setpieces rules with `placed` names.
+def later_of(+fields: List<&2, Json.Json>, +path: String, +caves: Bool, +setpieces: List<&2, Placed>) -> Result<&1, &1, U32 & String, Later>:
   do Result<&1, &1, U32 & String, Later>:
     count_items : List<&2, Json.Json> <- section_items(fields, path, "counts")
     counts : List<&2, Count> <- counts_of(count_items, path ++ ".counts", 0, caves)
@@ -386,4 +403,4 @@ def later_of(+fields: List<&2, Json.Json>, +path: String, +caves: Bool) -> Resul
     bridges : List<&2, Bridge> <- bridges_of(bridge_items, path ++ ".bridges", 0)
     route_items : List<&2, Json.Json> <- section_items(fields, path, "routes")
     routes : List<&2, Route> <- routes_of(route_items, path ++ ".routes", 0, caves)
-    return Later{counts, distances, tiles, bridges, routes}
+    return Later{setpieces, counts, distances, tiles, bridges, routes}

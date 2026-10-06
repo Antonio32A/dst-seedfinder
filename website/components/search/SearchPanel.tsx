@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Stepper from "@/components/ui/Stepper";
-import Toggle from "@/components/ui/Toggle";
+import TaggedToggle from "@/components/ui/TaggedToggle";
 import { type LocalSearchRequest, MEMORY_PER_THREAD_MB, type SearchTarget } from "@/lib/browser-search/local-search";
 import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/client/api-client";
 import type { Account } from "@/lib/client/use-account";
@@ -178,7 +178,6 @@ export default function SearchPanel({
     const [error, setError] = useState("");
     const [startSeedDraft, setStartSeedDraft] = useState("");
     const [timings, setTimings] = useState(false);
-    const timingsHintId = useId();
     const { user } = account;
     const inBrowser = target === "browser";
     const startSeedText = startSeedDraft.trim() || String(DEFAULT_START_SEED);
@@ -277,13 +276,9 @@ export default function SearchPanel({
                 </div>
                 <div className="search__row search__row--end">
                     <PlatformField platform={platform} onChange={onPlatformChange}/>
-                    <div className="timings-toggle">
-                        <Toggle checked={timings} onChange={setTimings}>Timings</Toggle>
-                        <span className="tag tag--accent hover-tip" tabIndex={0} aria-describedby={timingsHintId}>
-                            slow
-                            <span className="hover-tip__text" role="tooltip" id={timingsHintId}>{TIMINGS_HINT}</span>
-                        </span>
-                    </div>
+                    <TaggedToggle checked={timings} onChange={setTimings} tag="slow" hint={TIMINGS_HINT}>
+                        Timings
+                    </TaggedToggle>
                 </div>
                 {inBrowser ? <ThreadsField browser={browser}/> :
                         <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange}/>}

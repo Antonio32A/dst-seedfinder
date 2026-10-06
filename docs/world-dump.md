@@ -2,7 +2,8 @@
 
 A `.dstw` file holds one generated world of one shard (the forest or the caves): its tile map, every entity the world
 generation saved, the wormhole links (forest) or tentacle pillar links (caves), its roads, its node graph (topology)
-and, when the seedfinder generated it, the set pieces the world generation placed. `seedfinder world
+and, when the seedfinder generated it, the set pieces the world generation placed and, for the forest, which of the
+level's task set pieces it placed. `seedfinder world
 eval --world` and `seedfinder world find --worlds DIR` read it. `seedfinder world dump` writes it for the worlds the
 seedfinder generates, and `scripts/groundtruth/world_dump.py` from a world dumped on the real dedicated server.
 `scripts/groundtruth/dstw.py` reads it, as a Python library (`World`, `read_dstw`) and from the command line (`info`,
@@ -43,8 +44,8 @@ them). A reader that handles one shard only rejects a dump of the other shard.
 
 A section is a 4-byte ASCII tag, a `u32` payload length `L` in bytes (a multiple of 4), then the payload. The next
 section starts right after it, `8 + L` bytes after the tag. A generated world has `TNAM`, `TILE`, `ENTS` and `WORM`
-exactly once, in this order; a world of the caves shard then has `PILL` once; and it may then have `SETP`, `ROAD` and
-`GRPH` once each, in this order. A reader finds them by tag and skips any tag it does not know.
+exactly once, in this order; a world of the caves shard then has `PILL` once; and it may then have `SETP`, `PLAN`,
+`ROAD` and `GRPH` once each, in this order. A reader finds them by tag and skips any tag it does not know.
 
 ### `TNAM`: tile names
 
@@ -149,6 +150,26 @@ The **members** are the `ENTS` instances the layout's objects became, after the 
 
 A layout the world generation found no place for is not listed.
 
+### `PLAN`: the level plan's task set pieces
+
+Every task set piece the level table plans (its tasks' `set_pieces` and `random_set_pieces`, the pieces
+`seedfinder world show` lists) and whether the world generation placed it. Only `seedfinder world dump` writes this
+section, for the forest; `scripts/groundtruth/world_dump.py` does not, because the game's savedata does not say which
+pieces were dropped. A file without it says nothing about the plan; a reader that needs it (a `setpieces` rule with
+`placed` names, [config.md](config.md) § 4 A) treats the world as unusable.
+
+`u32` count, then per piece, in plan order (the chosen tasks in the order `world show` lists them, each task's
+`set_pieces` then its `random_set_pieces`):
+- its task's id (a string), e.g. `Magic meadow`,
+- its name (a string), e.g. `MooseNest`,
+- `u32` placed: `1` when the world generation placed it, `0` when it dropped it. A piece is dropped when the story
+  found no room for it (`Warning! Couldn't find a spot in <task> for <name>` in the server log), when its room already
+  holds a copy of the same name (a room's `countstaticlayouts` has one entry per name), or when `ReserveSpace` found no
+  spot for its layout in its room (`Warning! Could not find a spot for <name> in node <task>:...`). Only the attempt
+  that produced the world counts.
+
+Two pieces of one name in one task are told apart only by count: which of them is marked `0` is unspecified.
+
 ### `ROAD`: roads
 
 The roads the world generation saved (`save.map.roads` of `map/forest_map.lua`), as polylines. Both writers write this
@@ -197,7 +218,7 @@ WorldSim, so they draw nothing, while the savedata keeps them.
 
 Only what the world generation saved for the dump's shard: the savedata's map tiles, every `savedata.ents` entry
 (whatever its prefab), the teleporter targets of the wormholes (forest) or the tentacle pillars (caves), the roads
-(the caves have none) and the topology's nodes and edges, and for worlds the seedfinder generated, where the world generation placed its layouts. This includes the pocket dimension containers the game adds at (0, 0) when the world
+(the caves have none) and the topology's nodes and edges, and for worlds the seedfinder generated, where the world generation placed its layouts and which of the level's task set pieces it placed. This includes the pocket dimension containers the game adds at (0, 0) when the world
 has none.
 
 It does not hold anything the running game makes later: entities that prefabs spawn once the world loads (e.g. a

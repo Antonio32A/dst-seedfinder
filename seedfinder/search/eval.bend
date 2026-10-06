@@ -71,15 +71,19 @@ def platform_message(+windows: Bool) -> String:
 def graph_missing(+config: ShardSearch.Search, +world: FilterWorld.World) -> Bool:
   Rules.needs_graph(ShardSearch.laters(config)) && Bool.not(FilterWorld.has_graph(world))
 
+def plan_missing(+config: ShardSearch.Search, +world: FilterWorld.World) -> Bool:
+  Rules.needs_plan(ShardSearch.laters(config)) && Bool.not(FilterWorld.has_plan(world))
+
 def evaluate_world(+config: ShardSearch.Search, +text: String, loaded: FilterWorld.Loaded, +path: String, +fast: Bool) -> IO(Unit):
   match loaded:
     case FilterWorld.Generated{+world, +platform}:
       match world:
-        case FilterWorld.World{+seed, _, _, _, _, _, _, _}:
+        case FilterWorld.World{+seed, _, _, _, _, _, _, _, _}:
           Bool.pick(IO(Unit), platform_mismatch(ShardSearch.windows(config), platform), IO.die(Unit, 2, platform_message(ShardSearch.windows(config))),
             Bool.pick(IO(Unit), graph_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no topology (GRPH section), which bridges rules need; regenerate it"),
-              print_outcome(outcome_line(seed, ShardSearch.windows(config), ShardSearch.is_unfiltered(config),
-                entries_loop(LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}})))))
+              Bool.pick(IO(Unit), plan_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no level plan (PLAN section), which setpieces rules with placed names need; regenerate it"),
+                print_outcome(outcome_line(seed, ShardSearch.windows(config), ShardSearch.is_unfiltered(config),
+                  entries_loop(LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))))
     case FilterWorld.GaveUp{+seed}:
       IO.die(Unit, 1, "evaluate: seed " ++ path ++ ": world generation did not finish (seed " ++ U32.show(seed) ++ "); no match")
 

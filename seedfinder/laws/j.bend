@@ -14,7 +14,7 @@ def cave_final() -> GenJob.Final:
   GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0},
     [OceanEnts.Ent{1218, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 12, 99, 0}, OceanEnts.Ent{1217, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0},
       OceanEnts.Ent{5, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{1217, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 10, 11, 0},
-      OceanEnts.Ent{917, F64Repr.F64{1069547520, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}], 3, [], [], 3, FilterDump.Graph{[], []}}
+      OceanEnts.Ent{917, F64Repr.F64{1069547520, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []}
 
 law cave_world_is_dump_world:
   {FilterWorld.loaded_of(Done{SaveData.dump_caves(7, True{}, cave_final())}, True{}) == Done{FilterWorld.Generated{SaveData.cave_world(7, True{}, cave_final()), 1}} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}

@@ -73,7 +73,8 @@ build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # 
   are decided on caves worlds generated in memory, or with `--worlds` on caves dumps, and `world eval` reads a caves dump.
 - `FROM [TO]`: scan a seed range instead of the whole space (can't be combined with `--start-seed`).
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them. A `bridges` rule needs
-  the dumps' topology (their `GRPH` section); a dump without one counts as missing.
+  the dumps' topology (their `GRPH` section) and a `setpieces` rule with `placed` names their level plan (their `PLAN`
+  section); a dump without the one it needs counts as missing.
 - `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).
 - `--verbose-timings`: adds a `timings {json}` line to stderr with the time each option (criteria entry) takes
   ([docs/config.md](../docs/config.md) section 8). It slows the search down: only for finding out what makes one slow.

@@ -275,6 +275,57 @@ button:hover:not(:disabled),
     opacity: 1;
 }
 
+.toggle--large {
+    align-items: center;
+    padding: 4px 12px;
+    font-size: 0.9em;
+    line-height: inherit;
+}
+
+.toggle--large input {
+    margin-top: 0;
+}
+
+.tagged-toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.tagged-toggle > .tag {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+}
+
+.hover-tip {
+    cursor: help;
+}
+
+.hover-tip__text {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 10;
+    width: max-content;
+    max-width: min(36ch, calc(100vw - 32px));
+    padding: 6px 10px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    font-size: calc(var(--font-size) * 0.8);
+    line-height: 1.45;
+    white-space: normal;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.hover-tip:hover .hover-tip__text,
+.hover-tip:focus-visible .hover-tip__text {
+    visibility: visible;
+}
+
 .modal {
     margin: auto;
     max-width: calc(100vw - 32px);

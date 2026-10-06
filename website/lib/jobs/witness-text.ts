@@ -6,6 +6,7 @@ const WHOLE = new Intl.NumberFormat();
 const DISTANCE = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
 const WITNESS_LABELS: Record<WitnessSection, string> = {
+    setpieces: "Set piece",
     counts: "Count",
     distances: "Distance",
     tiles: "Tiles",
@@ -39,6 +40,8 @@ const jumps = (witness: DistancesWitness) => {
 type WitnessFigures = { [S in WitnessSection]: (witness: Extract<Witness, { section: S }>) => string };
 
 const WITNESS_FIGURES: WitnessFigures = {
+    setpieces: (witness) =>
+        witness.pieces.map(({ name, planned, placed }) => `${name} ${WHOLE.format(placed)} of ${WHOLE.format(planned)} placed`).join(", "),
     counts: (witness) =>
         witness.total === undefined ? `${WHOLE.format(witness.count)} found` : `${WHOLE.format(witness.count)} of ${WHOLE.format(witness.total)} nearby`,
     tiles: (witness) => plural(witness.distance, "tile step"),

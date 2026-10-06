@@ -34,7 +34,7 @@ export default function TravelOptions({ travel, onChange }: TravelOptionsProps) 
             <div className="travel">
                 <SegmentedControl legend="Measured" options={METRIC_OPTIONS} value={travel.metric}
                                   onChange={(metric) => onChange({ ...travel, metric })}/>
-                <Toggle checked={travel.links} onChange={(links) => onChange({ ...travel, links })}>
+                <Toggle checked={travel.links} onChange={(links) => onChange({ ...travel, links })} large>
                     allow {shardCatalog(shard).links.plural}
                 </Toggle>
                 <p className="hint">{METRIC_HINTS[shard][travel.metric]}</p>

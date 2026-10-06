@@ -5,9 +5,10 @@ library: from dstw import World, read_dstw
          World(path)      every section of the dump, positions in world units and in exact hundredths
          read_dstw(path)  seed, w, h, entities and the tiles as an (h, w) numpy array
 
-usage: dstw.py info [--top N] FILE   header, sections, tiles, entities, links, layouts, roads, topology, land components
+usage: dstw.py info [--top N] FILE   header, sections, tiles, entities, links, layouts, level plan, roads, topology,
+                                     land components
        dstw.py diff A B              tile and per-prefab differences (exact, in hundredths) and whether the links,
-                                     layouts, roads and topology are equal
+                                     layouts, level plan, roads and topology are equal
        dstw.py graph FILE            topology nodes grouped by task, with their extents in tile coordinates
        dstw.py ents FILE PREFAB...   the positions and tiles of the given prefabs
 """
@@ -32,6 +33,8 @@ NEIGHBOURS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 SECTION_SUMMARIES = {
     "layouts": lambda world: f"layouts {len(world.layouts)}: " + str(Counter(
         LAYOUT_SOURCES.get(layout["source"], layout["source"]) for layout in world.layouts)),
+    "plan": lambda world: f"plan {len(world.plan)} task set pieces, not placed: "
+                          + (", ".join(f"{piece} ({task})" for task, piece, placed in world.plan if not placed) or "none"),
     "roads": lambda world: f"roads {len(world.roads)} ({sum(len(points) for _, points in world.roads)} points)",
     "nodes": lambda world: f"topology {len(world.nodes)} nodes {len(world.edges)} edges",
 }
@@ -68,7 +71,7 @@ class Cursor:
 
 class World:
     """One parsed dump. Entity positions are in world units in `entities` and in exact hundredths in `hundredths`;
-    `layouts`, `roads`, `nodes` and `edges` are None when the dump has no such section."""
+    `layouts`, `plan` (task, piece, placed), `roads`, `nodes` and `edges` are None when the dump has no such section."""
 
     def __init__(self, path):
         buf = Path(path).read_bytes()
@@ -81,7 +84,7 @@ class World:
         self.build = self.width = self.height = 0
         self.tile_names, self.tiles, self.hundredths, self.prefabs = {}, (), {}, []
         self.wormhole_links, self.pillar_links = [], []
-        self.layouts = self.roads = self.nodes = self.edges = None
+        self.layouts = self.plan = self.roads = self.nodes = self.edges = None
         self.sections = {}
         if self.status:
             self.build, self.width, self.height = struct.unpack_from("<3I", buf, 24)
@@ -129,6 +132,9 @@ class World:
             self.layouts.append(dict(name=name, source=source, transform=transform, x=xk / 100, z=zk / 100,
                                      bounds=tuple(k / 100 for k in bounds), members=members))
 
+    def _read_plan(self, cursor):
+        self.plan = [(cursor.string(), cursor.string(), bool(cursor.u32())) for _ in range(cursor.u32())]
+
     def _read_roads(self, cursor):
         self.roads = []
         for _ in range(cursor.u32()):
@@ -146,7 +152,7 @@ class World:
 
     SECTION_READERS = {"TNAM": _read_tile_names, "TILE": _read_tiles, "ENTS": _read_entities,
                        "WORM": _read_wormhole_links, "PILL": _read_pillar_links, "SETP": _read_layouts,
-                       "ROAD": _read_roads, "GRPH": _read_graph}
+                       "PLAN": _read_plan, "ROAD": _read_roads, "GRPH": _read_graph}
 
     def tile(self, tx, ty):
         """The tile id at column tx, row ty."""
@@ -262,7 +268,8 @@ def diff(args):
     diff_entities(a, b)
     verdicts = {True: "equal", False: "DIFFER"}
     for label, part in (("wormholes", lambda w: w.wormhole_links), ("pillars", lambda w: w.pillar_links),
-                        ("layouts", lambda w: w.layouts), ("roads", lambda w: w.roads), ("topology", topology)):
+                        ("layouts", lambda w: w.layouts), ("plan", lambda w: w.plan), ("roads", lambda w: w.roads),
+                        ("topology", topology)):
         pa, pb = part(a), part(b)
         print(label, verdicts[pa == pb] if (pa is None) == (pb is None) else "missing in one")
 

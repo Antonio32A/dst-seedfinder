@@ -285,7 +285,7 @@ def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +e
   +line = Canon.record("landed", [Canon.number("a", a), Canon.number("ctr", Pcg.counter(seed_of(st), rng)),
     Canon.number("n", U32.from_nat(List.length(&2, Entities.Ent, ents))), Canon.field("tiles", hash_text(tiles)), Canon.field("flags", hash_text(flags)),
     Canon.number("topo", GenJob.topology_count(s))])
-  (GenJob.Landed{g, rng, ents, s, w, Nil{}, roads, graph}, [line])
+  (GenJob.Landed{g, rng, ents, s, w, Nil{}, roads, graph, Nil{}}, [line])
 
 def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph) -> GenJob.Landed & List<&2, String>:
   (g, +tiles) = got
@@ -293,7 +293,7 @@ def landed_tiles(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +e
 
 def landed_lines(landed: GenJob.Landed, +st: Tr, +a: U32) -> GenJob.Landed & List<&2, String>:
   match landed:
-    case GenJob.Landed{g, +rng, +ents, +s, +w, _, +roads, +graph}:
+    case GenJob.Landed{g, +rng, +ents, +s, +w, _, +roads, +graph, _}:
       landed_tiles(Grid.tiles_digest(g), st, a, rng, ents, s, w, roads, graph)
 
 def ocean_entered(got: GenJob.Landed & List<&2, String>, +c: Generate.Seed, +a: U32) -> GenJob.Job & List<&2, String>:

@@ -11,9 +11,13 @@ import ./routes.bend as Routes
 import ./tiles.bend as FilterTiles
 import ./witness.bend as Witness
 import ./walk.bend as Walk
+import ./dump.bend as FilterDump
+import ./parse.bend as Parse
+import ./json.bend as Json
+import ./level_checks.bend as LevelChecks
 
-# The checks of parts B-E (criteria.py check_count, check_distance, check_tiles, check_route): whether a rule holds
-# and its witness fields, as evaluate.py --json prints them after "ok".
+# The checks of the world rules (criteria.py check_count, check_distance, check_tiles, check_route, and the setpieces
+# rules' `placed` names): whether a rule holds and its witness fields, as evaluate.py --json prints them after "ok".
 type Check is Data:
   Check{ok: Bool, fields: String}
 
@@ -134,12 +138,12 @@ def distance(+world: FilterWorld.World, rule: Rules.Distance) -> Check:
 
 def world_size(+world: FilterWorld.World) -> U32:
   match world:
-    case FilterWorld.World{_, +w, _, _, _, _, _, _}:
+    case FilterWorld.World{_, +w, _, _, _, _, _, _, _}:
       w
 
 def world_height(+world: FilterWorld.World) -> U32:
   match world:
-    case FilterWorld.World{_, _, +h, _, _, _, _, _}:
+    case FilterWorld.World{_, _, +h, _, _, _, _, _, _}:
       h
 
 def tiles_found(found: Maybe<&2, FilterTiles.Found>, +world: FilterWorld.World, +max: U32) -> Check:
@@ -269,3 +273,34 @@ def route_holds(+world: FilterWorld.World, rule: Rules.Route) -> Bool:
     case Rules.Route{+from, +visit, +to, +max, +fixed, +metric}:
       +s = Relax.space(world, metric)
       route_within(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed, bound_of(max)), max)
+
+# How many of the plan's pieces named `name` in the scope's tasks (every task when empty) there are, or were placed.
+def plan_count(plan: List<&2, FilterDump.Planned>, +scope: List<&2, String>, +name: String, +only_placed: Bool) -> U32:
+  match plan:
+    case Nil{}:
+      0
+    case Con{FilterDump.Planned{+task, +piece, +placed}, rest}:
+      +counted = String.eq(piece, name) && (placed || Bool.not(only_placed)) && (List.is_empty(&2, String, scope) || Parse.is_member(scope, task))
+      (Bool.to_u32(counted) + plan_count(rest, scope, name, only_placed) : U32)
+
+def placed_items(bounds: List<&2, LevelChecks.Bounded>, +plan: List<&2, FilterDump.Planned>, +scope: List<&2, String>) -> List<&2, String>:
+  match bounds:
+    case Nil{}:
+      Nil{}
+    case Con{LevelChecks.Bounded{+name, _, _}, rest}:
+      ("{\"name\":" ++ Json.quote(True{}, name) ++ ",\"planned\":" ++ U32.show(plan_count(plan, scope, name, False{})) ++ ",\"placed\":"
+        ++ U32.show(plan_count(plan, scope, name, True{})) ++ "}") <> placed_items(rest, plan, scope)
+
+def placed_hold(bounds: List<&2, LevelChecks.Bounded>, +plan: List<&2, FilterDump.Planned>, +scope: List<&2, String>) -> Bool:
+  match bounds:
+    case Nil{}:
+      True{}
+    case Con{LevelChecks.Bounded{+name, +low, +high}, rest}:
+      LevelChecks.bound_holds(plan_count(plan, scope, name, True{}), low, high) && placed_hold(rest, plan, scope)
+
+# A setpieces rule's `placed` names: each bound holds on the copies the world placed.
+def placed(+world: FilterWorld.World, rule: Rules.Placed) -> Check:
+  match rule:
+    case Rules.Placed{_, +tasks, +bounds}:
+      +plan = FilterWorld.planned(world)
+      Check{placed_hold(bounds, plan, tasks), ",\"pieces\":" ++ json_list(placed_items(bounds, plan, tasks))}

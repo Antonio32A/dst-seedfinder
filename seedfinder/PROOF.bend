@@ -21,3 +21,4 @@ import ./laws/e.bend as LawsE
 import ./laws/k.bend as LawsK
 import ./laws/j.bend as LawsJ
 import ./laws/t.bend as LawsT
+import ./laws/u.bend as LawsU

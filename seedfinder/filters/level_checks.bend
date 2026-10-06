@@ -69,10 +69,18 @@ def bounds_of(fields: List<&2, Json.Json>) -> List<&2, Bounded>:
     case Nil{}:
       Nil{}
 
+# The bounds as the level table checks them: only the minimum of a `placed` name (the world decides the rest).
+def planned_bounds(bounds: List<&2, Bounded>, +placed: List<&2, String>) -> List<&2, Bounded>:
+  match bounds:
+    case Nil{}:
+      Nil{}
+    case Con{Bounded{+name, +low, +high}, rest}:
+      Bounded{name, low, Bool.pick(Maybe<&2, U32>, Parse.is_member(placed, name), None{}, high)} <> planned_bounds(rest, placed)
+
 def pieces_of(items: List<&2, Json.Json>) -> List<&2, Pieces>:
   match items:
     case Con{Json.JObj{+fields}, rest}:
-      Pieces{listed(Parse.field(fields, "tasks")), bounds_of(fields_of(Parse.field(fields, "required")))} <> pieces_of(rest)
+      Pieces{listed(Parse.field(fields, "tasks")), planned_bounds(bounds_of(fields_of(Parse.field(fields, "required"))), listed(Parse.field(fields, "placed")))} <> pieces_of(rest)
     case Con{_, rest}:
       pieces_of(rest)
     case Nil{}:

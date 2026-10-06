@@ -15,7 +15,8 @@ import ./timings.bend as Timings
 # selects candidates chunk by chunk; each candidate's DIR/<seed>.dstw decides it (a missing dump counts as a world
 # that gave up, i.e. no match, and is reported on stderr). A seed matches when an entry's part A and all its parts
 # B-E hold; the first such entry is the hit's entry and its B-E witnesses are the results. A dump without the topology
-# (no GRPH section) counts as missing too when an entry has a bridges rule.
+# (no GRPH section) counts as missing too when an entry has a bridges rule, and one without the level plan (no PLAN
+# section) when an entry has a setpieces rule with `placed` names.
 
 # The per-run constants: start seed, seeds in the scan, hit limit, time limit, output mode, config, folder, start time
 # and whether to time the options (--verbose-timings).
@@ -95,6 +96,7 @@ def platform_matches(+windows: Bool, +platform: U32) -> Bool:
 
 def usable(+config: ShardSearch.Search, +platform: U32, +world: FilterWorld.World) -> Bool:
   platform_matches(ShardSearch.windows(config), platform) && (FilterWorld.has_graph(world) || Bool.not(Rules.needs_graph(ShardSearch.laters(config))))
+    && (FilterWorld.has_plan(world) || Bool.not(Rules.needs_plan(ShardSearch.laters(config))))
 
 def world_verdict(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: ShardSearch.Search, +seed: U32) -> Verdict:
   match loaded:
@@ -300,7 +302,8 @@ def json_of(+ctx: Ctx) -> Bool:
 def missing_note(+missing: U32, +dir: String) -> IO(Unit):
   Bool.pick(IO(Unit), U32.is_zero(missing), IO.pure(Unit, Unit{}),
     IO.print_err("search: " ++ U32.show(missing) ++ " candidates have no usable world dump in " ++ dir
-      ++ " (missing, unreadable, of the other platform, or without the topology a bridges rule needs; counted as no match)"))
+      ++ " (missing, unreadable, of the other platform, or without the topology a bridges rule or the level plan a placed set piece needs;"
+      ++ " regenerate those; counted as no match)"))
 
 def platform_name(+windows: Bool) -> String:
   Bool.pick(String, windows, "windows", "linux")

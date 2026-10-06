@@ -52,12 +52,12 @@ def link_insts(links: List<&2, FilterWorld.Link>) -> List<&2, FilterWorld.Inst>:
 
 def world_size(+world: FilterWorld.World) -> U32:
   match world:
-    case FilterWorld.World{_, +w, +h, _, _, _, _, _}:
+    case FilterWorld.World{_, +w, +h, _, _, _, _, _, _}:
       (w * h : U32)
 
 def world_links(+world: FilterWorld.World) -> List<&2, FilterWorld.Link>:
   match world:
-    case FilterWorld.World{_, _, _, _, _, +links, _, _}:
+    case FilterWorld.World{_, _, _, _, _, +links, _, _, _}:
       links
 
 def points_only(got: Array<U32> & List<&2, Anchor.Point>) -> List<&2, Anchor.Point>:
@@ -67,7 +67,7 @@ def points_only(got: Array<U32> & List<&2, Anchor.Point>) -> List<&2, Anchor.Poi
 # The instances with their anchors in the world.
 def anchored(+world: FilterWorld.World, insts: List<&2, FilterWorld.Inst>) -> List<&2, Anchor.Point>:
   match world:
-    case FilterWorld.World{_, +w, +h, _, _, _, _, _}:
+    case FilterWorld.World{_, +w, +h, _, _, _, _, _, _}:
       points_only(Anchor.points(insts, Anchor.land_array(world, Anchor.depth_of((w * h : U32))), w, h))
 
 def walker_of(+world: FilterWorld.World, +depth: Nat, links: Links) -> Walker:
@@ -186,7 +186,7 @@ def any_near(seeds: List<&2, WSeed>, +i: U32, +targets: List<&2, Anchor.Point>, 
 # Sound since a walk without jumps is at least the straight line between its end tiles' centres.
 def may_reach(+bound: Maybe<&2, Walk.Length>, +jumps: List<&2, Dijkstra.Jump>, +world: FilterWorld.World, +seeds: List<&2, WSeed>, +targets: List<&2, Anchor.Point>, +owners: List<&2, U32>) -> Bool:
   match bound world:
-    case Some{Walk.Length{+q2, _, _, _}} FilterWorld.World{_, +w, _, _, _, _, _, _}:
+    case Some{Walk.Length{+q2, _, _, _}} FilterWorld.World{_, +w, _, _, _, _, _, _, _}:
       Bool.not(List.is_empty(&2, Dijkstra.Jump, jumps)) || (q2 >= 65535 : U32) || any_near(seeds, 0, targets, owners, w, (q2 + 1 : U32))
     case None{} _:
       True{}

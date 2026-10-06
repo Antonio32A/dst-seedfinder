@@ -51,6 +51,18 @@ interface WitnessBase {
     ok: boolean;
 }
 
+/** A `placed` set piece of a rule: the copies the level table plans in the rule's tasks and those the world placed. */
+export interface PlacedPiece {
+    name: string;
+    planned: number;
+    placed: number;
+}
+
+export interface SetPiecesWitness extends WitnessBase {
+    section: "setpieces";
+    pieces: PlacedPiece[];
+}
+
 export interface CountsWitness extends WitnessBase {
     section: "counts";
     count: number;
@@ -90,7 +102,13 @@ export interface RoutesWitness extends WitnessBase {
     legs: RouteLeg[];
 }
 
-export type Witness = CountsWitness | TilesWitness | DistancesWitness | BridgesWitness | RoutesWitness;
+export type Witness =
+    | SetPiecesWitness
+    | CountsWitness
+    | TilesWitness
+    | DistancesWitness
+    | BridgesWitness
+    | RoutesWitness;
 
 export type WitnessSection = Witness["section"];
 
@@ -191,7 +209,13 @@ const tile = shape<WitnessTile>({ tx: uint32, ty: uint32, x: finite, z: finite }
 const room = shape<WitnessRoom>({ node: text, type: uint32, x: finite, z: finite });
 const witnessBase = { index: withDefault(uint32, 0), ok: withDefault(boolean, true) };
 
+const placedPiece = shape<PlacedPiece>({ name: text, planned: uint32, placed: uint32 });
+
 const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> = {
+    setpieces: shape({
+        ...witnessBase,
+        pieces: (value) => (Array.isArray(value) ? listOf(placedPiece)(value) : undefined)
+    }),
     counts: shape({ ...witnessBase, count: uint32, instances: listOf(countedInstance) }, { total: uint32 }),
     tiles: shape({ ...witnessBase, distance: uint32 }, { from_tile: tile, to_tile: tile }),
     distances: shape({ ...witnessBase, distance: nullable(finite), wormholes: jumps }, {
@@ -231,7 +255,7 @@ const witness: Parser<Witness> = (raw) => {
     return parsed ? ({ ...parsed, section } as Witness) : undefined;
 };
 
-/** The world checks (parts B-E) of a results array, without its level-table checks. */
+/** The world checks of a results array (`placed` set pieces and parts B-E), without its level-table checks. */
 export const parseWitnesses = (results: unknown): Witness[] => listOf(witness)(results) ?? [];
 
 const SWAP_CATEGORIES: SwapCategory[] = ["grass", "twigs", "berries"];

@@ -436,7 +436,7 @@ def post_chain(ps: Ps, shard: Finish.Shard, +cx: OceanState.Ctx, +rc: Rc, +c: Ge
 def post_lines(+c: Generate.Seed, +w: U32, land: PopulateState.Land, +rc: Rc, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match land:
     case PopulateState.Land{g, +rng, +ents, _}:
-      post_chain(Ps{GenJob.atriumed(OceanState.ents_of(GenJob.sea_of(GenJob.Landed{g, rng, ents, rc_story(rc), w, Nil{}, Nil{}, graph}))), Nil{}},
+      post_chain(Ps{GenJob.atriumed(OceanState.ents_of(GenJob.sea_of(GenJob.Landed{g, rng, ents, rc_story(rc), w, Nil{}, Nil{}, graph, Nil{}}))), Nil{}},
         GenJob.cave_shard(), OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, False{}}, rc, c, w, graph)
 
 def ca_mazes(t: CaTr, +rc: Rc, +e: MazeEnv.Env) -> List<&2, String>:
@@ -530,7 +530,7 @@ def world_digest(got: Grid.Grid & Grid.Hash, +a: U32, +ctr: U32, +n: U32) -> Lis
 
 def world_lines(world: GenJob.Final, +seed: U32, +a: U32) -> List<&2, String>:
   match world:
-    case GenJob.Final{g, +rng, +ents, _, _, _, _, _}:
+    case GenJob.Final{g, +rng, +ents, _, _, _, _, _, _}:
       world_digest(Grid.tiles_digest(g), a, Pcg.counter(seed, rng), U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
 
 def crashed_name(+last: U32) -> String:

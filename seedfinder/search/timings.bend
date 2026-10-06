@@ -27,6 +27,8 @@ type Timings is Data:
 
 def job_rule(+job: Evaluate.Job) -> Rule:
   match job:
+    case Evaluate.JPlaced{Rules.Placed{+i, _, _}}:
+      Rule{"setpieces", i, 0n}
     case Evaluate.JCount{+i, _}:
       Rule{"counts", i, 0n}
     case Evaluate.JTiles{+i, _}:

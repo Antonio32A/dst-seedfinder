@@ -49,9 +49,10 @@ the way `--platform` overrides `platform`. An unknown shard is an error, in the 
 generation (`forest_map.Generate`) on: the tile map and every entity position. The level table is the same on both.
 So:
 - part A (`tasks`, `prefab_swaps`, `setpieces`) ignores `platform`: its results are identical on both platforms;
-- parts B–F (`counts`, `distances`, `tiles`, `routes`, `bridges`) are evaluated on that platform's world, and their verdicts and
-  witnesses hold only for worlds generated on that OS. The caves' Linux worlds are checked against the real game
-  (301 worlds); its Windows worlds are generated the same way but not checked yet.
+- parts B–F (`counts`, `distances`, `tiles`, `routes`, `bridges`) and the `placed` names of `setpieces` (§ 4 A) are
+  evaluated on that platform's world, and their verdicts and witnesses hold only for worlds generated on that OS. The
+  caves' Linux worlds are checked against the real game (301 worlds); its Windows worlds are generated the same way
+  but not checked yet.
 
 Windows is the primary platform, hence the default: a v1 config without `platform` is a Windows config. The value is
 case-sensitive, and there is no "any platform" value. A finder that can't generate a platform's worlds rejects a
@@ -116,10 +117,22 @@ caves the grass is always `"regular grass"` (the gekko is excluded there, though
 | `twigs` | `"regular twigs"`, `"twiggy trees"` |
 | `berries` | `"regular berries"`, `"juicy berries"` |
 
-**`setpieces`** (≤ 16 rules) `{"tasks"?: task list, "required"?: {name: bound, ...}}` (≤ 16 names per rule):
-- `count(name)` is how many times the piece is placed, summed over `set_pieces` and `random_set_pieces` of the rule's
-  tasks. A missing or empty `tasks` means every task. A scoped task that the world didn't choose contributes nothing.
+**`setpieces`** (≤ 16 rules) `{"tasks"?: task list, "required"?: {name: bound, ...}, "placed"?: [name, ...]}` (≤ 16
+names per rule):
+- `count(name)` is how many times the level table plans the piece, summed over `set_pieces` and `random_set_pieces` of
+  the rule's tasks. A missing or empty `tasks` means every task. A scoped task that the world didn't choose contributes
+  nothing.
 - `bound`: an integer `n` means `count ≥ n`, and `[min, max]` means `min ≤ count ≤ max`. `[0, 0]` means "none".
+- `placed` ("ensure placed", forest only): names of `required`, each at most once. For these names `count(name)` is how
+  many of those planned copies the generated world really placed. A planned copy can be dropped: the story finds no
+  room for it, a second copy lands in a room that already has one, or the room's `ReserveSpace` finds no spot for its
+  layout (the server log's `Warning! Could not find a spot for MooseNest in node ...`). Only the attempt that produced
+  the world counts. Most dropped pieces are big ones (`MooseNest`, `Rotted Base`, `Beefalo Farm`, `Maxwell*`,
+  `CaveEntrance`, `ResurrectionStone`, `WormholeGrass`); a boon rarely is. A rule with `placed` names makes its entry
+  need the generated world on the config's platform: the level table only checks `count ≥ min` for those names (a
+  world can't place more than it plans), the world decides the bound, and the result is a world witness (§ 8). A world
+  dump without a `PLAN` section ([world-dump.md](world-dump.md)) can't decide it: `world find --worlds` counts it as a
+  missing dump, and `world eval` stops with an error.
 - Realistic maxima (default settings): ≤ 8 boons in total, ≤ 1 trap, ≤ 1 point of interest, ≤ 1 protected piece.
   Fixed pieces have their fixed counts. Use the catalog's `level_stats.max` to clamp inputs.
 
@@ -295,6 +308,8 @@ parse it: it validates with the schema and the caps first.
 | `shard` not `"forest"` or `"caves"` | `unknown shard <value> (forest or caves)`, e.g. `unknown shard "nether" (forest or caves)` |
 | `--shard` not `forest` or `caves` | `--shard must be forest or caves, got "<value>"` (a usage error, exit 2) |
 | unknown set piece | `unknown set piece "<name>" in <path>` |
+| `placed` name not in `required` | `<path> names "<name>", which isn't in required`, e.g. `criteria[0].setpieces[0].placed names "Chessy_1", which isn't in required` |
+| repeated `placed` name | `<path> names "<name>" twice` |
 | unknown tile | `unknown tile "<name>" in <path>` |
 | non-land tile | `tile "<name>" in <path> is not a land tile` |
 | bad prefab swap | `unknown prefab swap "<category>": <value> in <path>` |
@@ -303,7 +318,7 @@ parse it: it validates with the schema and the caps first.
 | every entry is passive | `every criteria entry is passive (at least one must not be)` |
 
 Not expressible in the schema, so only the finder catches them: repeated keys, `20.0` for an integer (JSON Schema
-accepts it), and overlapping route stops.
+accepts it), overlapping route stops, and `placed` names that aren't keys of `required`.
 
 ## 8. Search command and output
 
@@ -354,8 +369,9 @@ done {"scanned": C, "last_scanned": L, "next_seed": X, "hits": H, "stopped": "li
 - `level`: the level table, exactly as `seedfinder world show` prints it:
   `{"prefab_swaps": {"grass": .., "twigs": .., "berries": ..}, "tasks": [{"task", "set_pieces", "random_set_pieces"}, ...]}`.
   Tasks are in chosen order, and pieces in placement order.
-- `results`: one witness per rule of that entry's `counts`, `tiles`, `distances`, `bridges` and `routes`, in that order. So it's
-  `[]` when the entry has only level-table sections. Level-table facts are in `level`.
+- `results`: one witness per `setpieces` rule with `placed` names and per rule of that entry's `counts`, `tiles`,
+  `distances`, `bridges` and `routes`, in that order. So it's `[]` when the entry has only level-table sections.
+  Level-table facts are in `level`.
 - Consumers ignore unknown fields.
 - `scanned`: the first C seeds of the scan order are decided. `last_scanned` is the C-th one (`null` if C = 0), and
   `next_seed` the one after it (`null` once all 2^32 seeds are scanned). With `stopped: "limit"`, `last_scanned` is
@@ -366,6 +382,7 @@ hit). Instances are `{"prefab", "index", "x", "z"}`, and distances are world uni
 
 | Section | Fields |
 |---|---|
+| setpieces | `pieces: [{"name", "planned", "placed"}]`: per `placed` name, in `required` order, the copies the level table plans in the rule's tasks and those the world placed. |
 | counts | `count`. With `near`, also `total` (instances of `prefab`) and `instances`: every counted instance plus `near` (its nearest near-instance) and `distance`. |
 | tiles | `distance` (steps), `from_tile`, `to_tile` as `{"tx", "ty", "x", "z"}` (x/z of the tile centre) |
 | distances | `distance`, `from`, `to`, `wormholes: [{"entry", "exit"}]` (jumps in path order; `pillars` in the caves). With `D = ∞` (possible with only `min`), it's just `"distance": null`. |

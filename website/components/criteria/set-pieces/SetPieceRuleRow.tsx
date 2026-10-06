@@ -4,6 +4,7 @@ import OddsTag from "@/components/criteria/OddsTag";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Select from "@/components/ui/Select";
 import Stepper from "@/components/ui/Stepper";
+import TaggedToggle from "@/components/ui/TaggedToggle";
 import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import type { SetPieceInfo, TaskInfo } from "@/lib/catalog/level-types";
 import {
@@ -20,6 +21,8 @@ const SCOPE_OPTIONS: { value: ScopeMode; label: string }[] = [
     { value: "anywhere", label: "Anywhere" },
     { value: "only", label: "Only in these biomes..." }
 ];
+
+const ENSURE_PLACED_HINT = "The worldgen sometimes fails to place set pieces, so this requires generating and checking worlds after. If your search already generates a world, this is practically free.";
 
 const SINGLE_COUNT_MODES = new Set<CountMode>(["atLeast", "exactly"]);
 
@@ -139,6 +142,15 @@ export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: S
                 <PieceHeader piece={piece} name={name} catalog={catalog} onRemove={onRemove}/>
                 <CountControls rule={effectiveRule(rule, catalog)} name={name} max={max} hint={hint} update={update}/>
                 <ScopeControls rule={rule} name={name} catalog={catalog} fixedTasks={fixedTasks} update={update}/>
+                {catalog.shard === "forest" && (
+                        <div className="rule__controls">
+                            <TaggedToggle checked={rule.ensurePlaced}
+                                          onChange={(ensurePlaced) => update({ ensurePlaced })}
+                                          tag="slow (sometimes)" hint={ENSURE_PLACED_HINT}>
+                                Ensure placed
+                            </TaggedToggle>
+                        </div>
+                )}
             </li>
     );
 }

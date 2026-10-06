@@ -8,9 +8,11 @@ import ./level_checks.bend as LevelChecks
 import ../level/summary.bend as LevelSummary
 
 # One config evaluated on one world (evaluate.py): per criteria entry the results of its sections in the order
-# tasks, prefab_swaps, setpieces, counts, tiles, distances, bridges, routes; parts B-E run in parallel.
+# tasks, prefab_swaps, setpieces, then its world rules: the setpieces rules' `placed` names, counts, tiles, distances,
+# bridges, routes; the world rules run in parallel.
 
 type Job is Data:
+  JPlaced{rule: Rules.Placed}
   JCount{index: U32, rule: Rules.Count}
   JTiles{index: U32, rule: Rules.Tiles}
   JDistance{index: U32, rule: Rules.Distance}
@@ -31,6 +33,10 @@ def checked(+section: String, +index: U32, c: Checks.Check) -> Outcome:
 
 def run_job(+world: FilterWorld.World, job: Job) -> Outcome:
   match job:
+    case JPlaced{+rule}:
+      match rule:
+        case Rules.Placed{+i, _, _}:
+          checked("setpieces", i, Checks.placed(world, rule))
     case JCount{+i, rule}:
       checked("counts", i, Checks.count(world, rule))
     case JTiles{+i, rule}:
@@ -79,6 +85,8 @@ def check_ok(+c: Checks.Check) -> Bool:
 
 def job_holds(+world: FilterWorld.World, job: Job) -> Bool:
   match job:
+    case JPlaced{rule}:
+      check_ok(Checks.placed(world, rule))
     case JCount{_, rule}:
       Checks.count_holds(world, rule)
     case JTiles{_, rule}:
@@ -110,6 +118,13 @@ def routes_hold(jobs: List<&2, Job>, go: Bool, +world: FilterWorld.World) -> Boo
 # holds(parallel_jobs(world, jobs)), from the verdicts alone.
 def parallel_holds(+world: FilterWorld.World, +jobs: List<&2, Job>) -> Bool:
   routes_hold(only(jobs, True{}, Nil{}), all_true(Par.map(~Job, ~Bool, ~FilterWorld.World, ~job_verdict, world, only(jobs, False{}, Nil{}))), world)
+
+def placed_jobs(rules: List<&2, Rules.Placed>) -> List<&2, Job>:
+  match rules:
+    case Nil{}:
+      Nil{}
+    case Con{rule, rest}:
+      JPlaced{rule} <> placed_jobs(rest)
 
 def count_jobs(rules: List<&2, Rules.Count>, +i: U32) -> List<&2, Job>:
   match rules:
@@ -146,11 +161,11 @@ def route_jobs(rules: List<&2, Rules.Route>, +i: U32) -> List<&2, Job>:
     case Con{rule, rest}:
       JRoute{i, rule} <> route_jobs(rest, (i + 1 : U32))
 
-# The jobs of parts B-E in result order: counts, tiles, distances, bridges, routes.
+# The jobs of the world rules in result order: setpieces, counts, tiles, distances, bridges, routes.
 def jobs_of(later: Rules.Later) -> List<&2, Job>:
   match later:
-    case Rules.Later{counts, distances, tiles, bridges, routes}:
-      List.concat(&2, Job, [count_jobs(counts, 0), tile_jobs(tiles, 0), distance_jobs(distances, 0), bridge_jobs(bridges, 0), route_jobs(routes, 0)])
+    case Rules.Later{setpieces, counts, distances, tiles, bridges, routes}:
+      List.concat(&2, Job, [placed_jobs(setpieces), count_jobs(counts, 0), tile_jobs(tiles, 0), distance_jobs(distances, 0), bridge_jobs(bridges, 0), route_jobs(routes, 0)])
 
 def pair_outcome(+section: String, +index: U32, got: Bool & String) -> Outcome:
   (+ok, +fields) = got

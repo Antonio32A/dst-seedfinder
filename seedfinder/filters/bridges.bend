@@ -84,7 +84,7 @@ def table_of(+nodes: List<&2, FilterDump.Node>) -> TileTable.Tree<FilterDump.Nod
 
 def graph_of(+world: FilterWorld.World) -> FilterDump.Graph:
   match world:
-    case FilterWorld.World{_, _, _, _, _, _, _, +graph}:
+    case FilterWorld.World{_, _, _, _, _, _, _, +graph, _}:
       Maybe.default(&2, FilterDump.Graph, graph, FilterDump.Graph{Nil{}, Nil{}})
 
 def length_of(+d: U32) -> F64Repr.F64:

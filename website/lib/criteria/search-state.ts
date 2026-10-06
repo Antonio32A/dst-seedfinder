@@ -41,6 +41,7 @@ export interface PieceRule {
     max: number;
     scopeMode: ScopeMode;
     scopeTasks: string[];
+    ensurePlaced: boolean;
 }
 
 export interface CriteriaGroup extends WorldRows {
@@ -127,7 +128,8 @@ export function newRule(pieceId: string, catalog: LevelCatalog): PieceRule {
         min: 1,
         max: 1,
         scopeMode: fixed ? "only" : "anywhere",
-        scopeTasks: []
+        scopeTasks: [],
+        ensurePlaced: false
     };
 }
 
@@ -156,7 +158,7 @@ export function ruleScope(rule: PieceRule, catalog: LevelCatalog): string[] {
 }
 
 function rulesToSetPieces(rules: PieceRule[], catalog: LevelCatalog): SetPieceRule[] {
-    const entries: { scopeKey: string; rule: { tasks?: string[]; required: Record<string, SetPieceBound> } }[] = [];
+    const entries: { scopeKey: string; rule: SetPieceRule & { required: Record<string, SetPieceBound> } }[] = [];
     for (const rule of rules) {
         const clamped = effectiveRule(rule, catalog);
         const tasks = ruleScope(rule, catalog);
@@ -165,6 +167,7 @@ function rulesToSetPieces(rules: PieceRule[], catalog: LevelCatalog): SetPieceRu
             entry.scopeKey === scopeKey && !Object.hasOwn(entry.rule.required, rule.pieceId));
         const target = existing ?? { scopeKey, rule: { ...(tasks.length > 0 ? { tasks } : {}), required: {} } };
         target.rule.required[rule.pieceId] = REQUIREMENT[rule.mode](clamped);
+        if (rule.ensurePlaced && catalog.shard === "forest") target.rule.placed = [...(target.rule.placed ?? []), rule.pieceId];
         if (!existing) entries.push(target);
     }
     return entries.map((entry) => entry.rule);
@@ -214,12 +217,13 @@ function countFromRequirement(requirement: unknown): Pick<PieceRule, "mode" | "m
 function entryToRules(entry: unknown, catalog: LevelCatalog): PieceRule[] {
     const record = asRecord(entry);
     const scopeTasks = asStrings(record.tasks).filter((id) => catalog.taskById.has(id));
+    const placed = catalog.shard === "forest" ? asStrings(record.placed) : [];
     return Object.entries(asRecord(record.required)).flatMap(([pieceId, requirement]) => {
         const count = countFromRequirement(requirement);
         const piece = catalog.setPieceById.get(pieceId);
         if (!piece || !count) return [];
         const scopeMode: ScopeMode = scopeTasks.length > 0 || piece.kind === "fixed" ? "only" : "anywhere";
-        return [{ key: newKey(), pieceId, ...count, scopeMode, scopeTasks }];
+        return [{ key: newKey(), pieceId, ...count, scopeMode, scopeTasks, ensurePlaced: placed.includes(pieceId) }];
     });
 }
 
@@ -289,11 +293,12 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
                 swap.id === category && swap.options.some((option) => option.id === variant)))
         );
         const rules = group.rules.filter((rule) => to.setPieceById.has(rule.pieceId));
+        const placed = rules.filter((rule) => rule.ensurePlaced && shard !== "forest").length;
         const biomes = Object.fromEntries(
             Object.entries(group.biomes).filter(([id]) => to.optionalTaskIds.includes(id))
         );
         dropped += Object.keys(group.swaps).length - Object.keys(swaps).length;
-        dropped += group.rules.length - rules.length;
+        dropped += group.rules.length - rules.length + placed;
         dropped += Object.keys(group.biomes).length - Object.keys(biomes).length;
         const world = worldRowsFor(group, state.shard, shard);
         dropped += world.dropped;
@@ -303,7 +308,8 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
             biomes,
             rules: rules.map((rule) => ({
                 ...rule,
-                scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id))
+                scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id)),
+                ensurePlaced: rule.ensurePlaced && shard === "forest"
             })),
             ...world.rows
         };
