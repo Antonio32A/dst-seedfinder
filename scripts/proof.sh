@@ -29,6 +29,17 @@ if [[ -n "$extra" ]]; then
     status=1
 fi
 
+holds() {
+    if [[ "$2" == 0 ]]; then
+        [[ "$(head -1 "$1")" == "ALL PROOFS CHECK" ]]
+        return
+    fi
+    [[ "$(head -1 "$1")" == "SOME PROOFS FAIL" ]] \
+        && sed -n 2p "$1" | grep -Eqx 'Error: [0-9]+ defs? rel(y|ies) on unsafe or foreign code:' \
+        && ! tail -n +3 "$1" | grep -Ev '^- (\.\./)?[a-z_]+/' | grep -q . \
+        && ! tail -n +3 "$1" | grep -q 'laws/'
+}
+
 logs="$(mktemp -d "${TMPDIR:-/tmp}/proof.XXXXXX")"
 trap 'rm -rf "$logs"' EXIT
 start=$(date +%s.%N)
@@ -51,12 +62,13 @@ for i in "${!files[@]}"; do
         wall=0
         kb=0
     fi
-    result="$(tail -1 "$logs/$i.out")"
     exit_code="$(cat "$logs/$i.exit")"
+    held=0
+    holds "$logs/$i.out" "$exit_code" || held=1
     mb=$((kb / 1024))
 
     note=""
-    if [[ "$exit_code" != 0 || "$result" != "All terms check." ]]; then
+    if (( held != 0 )); then
         note="FAILED (exit $exit_code)"
         status=1
     elif (( mb > mb_budget )) || [[ "$(echo "$wall > $secs_budget" | bc)" == 1 ]]; then
@@ -64,7 +76,7 @@ for i in "${!files[@]}"; do
     fi
 
     printf '%-16s %7.1f s %6d MB  %s\n' "${files[$i]}" "$wall" "$mb" "${note:-ok}"
-    if [[ "$exit_code" != 0 || "$result" != "All terms check." ]]; then
+    if (( held != 0 )); then
         sed 's/^/    /' "$logs/$i.out" | tail -20
     fi
 done

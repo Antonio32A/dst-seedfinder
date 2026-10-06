@@ -15,4 +15,4 @@ def main() -> IO(Unit):
   do IO<Unit>:
     raw : List<String> <- IO.args()
     +args : List<&2, String> = Args.share(raw)
-    run(Args.word(args, 0n), List.drop(&2, String, args, 1n))
+    run(Args.word(args, 1n), List.drop(&2, String, args, 2n))

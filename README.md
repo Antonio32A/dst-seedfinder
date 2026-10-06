@@ -48,7 +48,6 @@ backend.
 ### bend
 
 We use a custom version of Bend which has WebAssembly support. This is used so users can find seeds in their browser.
-This also contains a patch which fixes a Bend bug ([bendlang/bend#1093](https://github.com/bendlang/bend/issues/1093)).
 
 ### scripts
 
@@ -111,4 +110,16 @@ just run the seedfinder in their browser, which was still surprisingly fast (~80
 
 In the end, a lot of the code was cleaned up and improved. During the entire process, the agents were heavily monitored
 and steered. Everything was also fully sandboxed to ensure it doesn't fuck up some shit while it's running.
-The entire process took ~3 days.  
+The entire process took ~3 days.
+
+### Map Viewer
+
+The map viewer was also ported similarly:
+
+- All rendering API calls were dumped into a file with [apitrace](https://github.com/apitrace/apitrace).
+- The base image without any overlays was reconstructed, and correctly cropped.
+- A simple test to see how accurate the result image was set up, this way I could target 99.9% accuracy.
+- Bunch of scripts were created to export the KTEX textures, what  
+- Every "layer" of the map (the terrain, terrain shaders, entity rendering, ocean shaders) were all reconstructed to
+  match the game as accurate as possible using the dumped rendering calls. 
+- A bunch of other features were added on top of it (e.g. filters, search, map preview, etc).

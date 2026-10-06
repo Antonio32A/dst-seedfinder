@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # usage: bend.sh ARGS...   (same arguments as the bend CLI)
-# Runs the pinned compiler, the bend/ submodule (Bend 2.0.29 with the WebAssembly target), on the Bun runtime inside
+# Runs the pinned compiler, the bend/ submodule (Bend 2.0.35 with the WebAssembly target), on the Bun runtime inside
 # the installed bend CLI (BUN_BE_BUN), whatever version that CLI is. Without a caller's `ulimit -v`, it runs under
 # BEND_VLIMIT KB (16 GB), so a runaway check fails instead of taking the machine down.
 set -euo pipefail
