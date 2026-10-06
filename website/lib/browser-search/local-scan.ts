@@ -1,5 +1,7 @@
 import { type SearchHit, type SearchOutput, SEED_SPACE, type StopReason } from "@/lib/jobs/job-result";
 import { scanPosition } from "@/lib/jobs/runner-output";
+import type { SpeedCounts } from "@/lib/jobs/search-speed";
+import { type SearchTimings, sumTimings } from "@/lib/jobs/search-timings";
 
 const FIRST_CHUNK = 64;
 const MIN_CHUNK = 16;
@@ -7,11 +9,15 @@ const MAX_CHUNK = 1 << 24;
 const MAX_GROWTH = 8;
 const TARGET_CHUNK_MS = 5000;
 
+/** `prefiltered` and `generated` count the seeds whose level table was checked and the worlds generated. */
 export interface Chunk {
     position: number;
     from: number;
     to: number;
     scanned: number;
+    prefiltered: number;
+    generated: number;
+    timings: SearchTimings | null;
     hits: SearchHit[];
     finished: boolean;
 }
@@ -40,6 +46,9 @@ export class LocalScan {
             from,
             to: from + size - 1,
             scanned: 0,
+            prefiltered: 0,
+            generated: 0,
+            timings: null,
             hits: [],
             finished: false
         };
@@ -50,14 +59,23 @@ export class LocalScan {
 
     finish(chunk: Chunk, scanned: number, elapsedMs: number): void {
         chunk.scanned = scanned;
+        chunk.prefiltered = Math.max(chunk.prefiltered, scanned);
         chunk.finished = true;
         if (scanned <= 0 || elapsedMs <= 0) return;
         const fitted = Math.round((scanned * TARGET_CHUNK_MS) / elapsedMs);
         this.chunkSize = Math.max(MIN_CHUNK, Math.min(fitted, this.chunkSize * MAX_GROWTH, MAX_CHUNK));
     }
 
-    totalScanned(): number {
-        return this.chunks.reduce((total, chunk) => total + chunk.scanned, 0);
+    counts(): SpeedCounts {
+        return this.chunks.reduce((total, chunk) => ({
+            prefiltered: total.prefiltered + chunk.prefiltered,
+            generated: total.generated + chunk.generated,
+            decided: total.decided + chunk.scanned
+        }), { prefiltered: 0, generated: 0, decided: 0 });
+    }
+
+    timings(): SearchTimings | null {
+        return sumTimings(this.chunks.flatMap((chunk) => (chunk.timings ? [chunk.timings] : [])));
     }
 
     stopReason(): StopReason | null {

@@ -1,5 +1,7 @@
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import type { SearchHit } from "./job-result";
+import type { SearchSpeeds } from "./search-speed";
+import type { SearchTimings } from "./search-timings";
 
 export const ACTIVE_JOB_STATUSES = ["queued", "starting", "running"] as const;
 export const FINISHED_JOB_STATUSES = ["done", "failed", "cancelled"] as const;
@@ -23,11 +25,13 @@ export interface WorldProgress {
     generating: number;
 }
 
+/** `timings` only with `--verbose-timings`. */
 export interface JobProgress {
     scanned: number;
     hits: number;
-    seedsPerSecond: number;
     worlds?: WorldProgress;
+    speeds?: SearchSpeeds;
+    timings?: SearchTimings;
 }
 
 export interface JobView {

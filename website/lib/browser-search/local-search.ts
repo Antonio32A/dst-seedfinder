@@ -1,7 +1,9 @@
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import type { JobStatus } from "@/lib/jobs/job-events";
 import type { SearchOutput } from "@/lib/jobs/job-result";
-import { type DoneSummary, exitKind, parseOutputLine } from "@/lib/jobs/runner-output";
+import { type DoneSummary, exitKind, type OutputLine, parseOutputLine } from "@/lib/jobs/runner-output";
+import { type SearchSpeeds, SpeedMeter } from "@/lib/jobs/search-speed";
+import { inRealTime, type SearchTimings } from "@/lib/jobs/search-timings";
 import { type Chunk, LocalScan } from "./local-scan";
 import { compileSeedfinder } from "./seedfinder-wasm";
 
@@ -21,6 +23,7 @@ export interface LocalRun {
     to: number;
     limit: number;
     config: string;
+    timings: boolean;
 }
 
 /** `code` is -1 when the worker crashed or failed to load. */
@@ -35,13 +38,16 @@ export interface LocalSearchRequest {
     wanted: number;
     startSeed: number;
     threads: number;
+    /** Runs every chunk with `--verbose-timings`. */
+    timings: boolean;
 }
 
 export interface LocalSearchState {
     request: LocalSearchRequest;
     status: Extract<JobStatus, "starting" | "running" | "done" | "failed" | "cancelled">;
     search: SearchOutput;
-    seedsPerSecond: number;
+    speeds: SearchSpeeds | null;
+    timings: SearchTimings | null;
     generatesWorlds: boolean;
     error: string | null;
 }
@@ -66,17 +72,21 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
     let module: WebAssembly.Module | null = null;
     let status: LocalSearchState["status"] = "starting";
     let error: string | null = null;
-    let runningSince = 0;
+    let meter: SpeedMeter | null = null;
     let generatesWorlds = false;
     let updateTimer = 0;
 
     const state = (): LocalSearchState => {
-        const seconds = runningSince === 0 ? 0 : (performance.now() - runningSince) / 1000;
+        const now = performance.now();
+        meter?.record(now, scan.counts());
+        const summed = scan.timings();
+        const timings = summed && meter ? inRealTime(summed, now - meter.startedAt) : summed;
         return {
             request,
             status,
-            search: scan.output(),
-            seedsPerSecond: seconds > 0 ? scan.totalScanned() / seconds : 0,
+            search: timings ? { ...scan.output(), timings } : scan.output(),
+            speeds: meter?.speeds() ?? null,
+            timings,
             generatesWorlds,
             error
         };
@@ -104,17 +114,25 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
         const chunk = scan.claim();
         Object.assign(slot, { chunk, startedAt: performance.now(), summary: null, configError: null, lastError: null });
         if (chunk === null || module === null) return;
-        const run: LocalRun = { module, from: chunk.from, to: chunk.to, limit: request.wanted, config };
+        const { from, to } = chunk;
+        const run: LocalRun = { module, from, to, limit: request.wanted, config, timings: request.timings };
         slot.worker.postMessage(run);
+    };
+
+    const progressed = (chunk: Chunk, { progress }: Extract<OutputLine, { kind: "progress" }>) => {
+        Object.assign(chunk, {
+            scanned: progress.scanned,
+            prefiltered: progress.prefiltered,
+            generated: progress.worlds?.generated ?? 0
+        });
+        generatesWorlds ||= progress.worlds !== undefined;
     };
 
     const readLine = (slot: Slot, chunk: Chunk, { line, stderr }: Extract<WorkerMessage, { type: "line" }>) => {
         const parsed = parseOutputLine(line);
         if (parsed?.kind === "hit") chunk.hits.push(parsed.hit);
-        if (parsed?.kind === "progress") {
-            chunk.scanned = parsed.progress.scanned;
-            generatesWorlds ||= parsed.progress.worlds !== undefined;
-        }
+        if (parsed?.kind === "progress") progressed(chunk, parsed);
+        if (parsed?.kind === "timings") chunk.timings = parsed.timings;
         if (parsed?.kind === "done") slot.summary = parsed.summary;
         if (parsed?.kind === "error") slot.configError = parsed.error;
         if (stderr && parsed === null) slot.lastError = line;
@@ -148,7 +166,7 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
             if (status !== "starting") return;
             module = loaded;
             status = "running";
-            runningSince = performance.now();
+            meter = new SpeedMeter(performance.now());
             for (let index = 0; index < request.threads; index++) {
                 const slot: Slot = {
                     worker: new Worker(new URL("./local-search.worker.ts", import.meta.url), { type: "module" }),

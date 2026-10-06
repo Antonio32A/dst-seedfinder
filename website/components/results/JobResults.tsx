@@ -17,6 +17,7 @@ import {
 } from "@/lib/jobs/job-result";
 import { describeWitness, plural } from "@/lib/jobs/witness-text";
 import { mapPath } from "@/lib/world-map/map-route";
+import SearchTimings from "./SearchTimings";
 
 export type ShownJob = Pick<JobView, "status" | "config" | "result" | "error">;
 
@@ -263,6 +264,7 @@ function SearchSummary({ job, search, onCopy, further }: JobResultsProps & { sea
                                  showOption={(job.config.criteria?.length ?? 0) > 1} onCopy={onCopy}/>
                 )}
                 {canContinue && <SearchFurther startSeed={nextSeed} further={further}/>}
+                {search.timings && <SearchTimings timings={search.timings} config={job.config}/>}
             </div>
     );
 }

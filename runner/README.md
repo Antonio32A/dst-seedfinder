@@ -25,6 +25,7 @@ Build config:
 - `RUNNER_TOKEN`: the job's bearer token
 - `JOB_LIMIT`, `JOB_TIME_LIMIT`, `JOB_START_SEED`: passed to `seedfinder world find` as `--limit`, `--time-limit` and
   `--start-seed`
+- `JOB_VERBOSE_TIMINGS` (optional): `1` adds `--verbose-timings`
 
 The package is private, so the website also needs:
 - `GHCR_USER` (the GitHub user that owns it) 

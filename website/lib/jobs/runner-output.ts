@@ -2,6 +2,8 @@ import type { Platform } from "@/lib/config/seedfinder-config";
 import { isRecord } from "@/lib/records";
 import type { JobProgress } from "./job-events";
 import { type SearchHit, SEED_SPACE, type StopReason } from "./job-result";
+import { parseSpeedLine, type SearchSpeeds } from "./search-speed";
+import { parseTimingsLine, type SearchTimings } from "./search-timings";
 
 export const MAX_CHUNK_BYTES = 256 * 1024;
 export const MAX_LINE_BYTES = 64 * 1024;
@@ -14,8 +16,13 @@ export interface DoneSummary {
     stopped: StopReason;
 }
 
+/** `prefiltered`: the seeds whose level table was checked. */
+export type ProgressLine = Pick<JobProgress, "scanned" | "hits" | "worlds"> & { prefiltered: number };
+
 export type OutputLine =
-    | { kind: "progress"; progress: Omit<JobProgress, "seedsPerSecond"> & { seedsPerSecond: number | null } }
+    | { kind: "progress"; progress: ProgressLine }
+    | { kind: "speed"; speeds: SearchSpeeds }
+    | { kind: "timings"; timings: SearchTimings }
     | { kind: "hit"; hit: SearchHit }
     | { kind: "done"; summary: DoneSummary }
     | { kind: "error"; error: string };
@@ -24,6 +31,7 @@ export interface JobObject extends DoneSummary {
     version: 1;
     platform: Platform;
     hits: SearchHit[];
+    timings?: SearchTimings;
 }
 
 /** `skipping` while the current line is too long to keep. */
@@ -34,8 +42,10 @@ export interface LineTail {
 
 export type ExitKind = "done" | "config-error" | "crash";
 
-const PROGRESS_LINE = /^scanned (\d+)\/\d+ matches (\d+) \((\d+) seeds\/s\)$/;
-const WORLDGEN_PROGRESS_LINE = /^search: scanned (\d+), (?:levels \d+, )?worlds (\d+), generating (\d+)\b.*\bhits (\d+)\b/;
+const PROGRESS_LINE = /^scanned (\d+)\/\d+ matches (\d+) \(\d+ seeds\/s\)$/;
+const WORLDGEN_PROGRESS_LINE = /^search: scanned (\d+), (?:levels (\d+), )?worlds (\d+), generating (\d+)\b.*\bhits (\d+)\b/;
+const SPEED_LINE = /^speed /;
+const TIMINGS_LINE = /^timings /;
 const HIT_LINE = /^(\d+) (\{.*\})$/;
 const DONE_LINE = /^done (\{.*\})$/;
 const CONFIG_ERROR_LINE = /^config: (.*)$/;
@@ -55,22 +65,36 @@ type LineParser = (match: RegExpMatchArray) => OutputLine | null;
 const LINE_PARSERS: [RegExp, LineParser][] = [
     [
         PROGRESS_LINE,
-        ([, scanned, hits, rate]) => ({
+        ([, scanned, hits]) => ({
             kind: "progress",
-            progress: { scanned: Number(scanned), hits: Number(hits), seedsPerSecond: Number(rate) }
+            progress: { scanned: Number(scanned), hits: Number(hits), prefiltered: Number(scanned) }
         })
     ],
     [
         WORLDGEN_PROGRESS_LINE,
-        ([, scanned, generated, generating, hits]) => ({
+        ([, scanned, levels, generated, generating, hits]) => ({
             kind: "progress",
             progress: {
                 scanned: Number(scanned),
                 hits: Number(hits),
-                seedsPerSecond: null,
+                prefiltered: Number((levels as string | undefined) ?? scanned),
                 worlds: { generated: Number(generated), generating: Number(generating) }
             }
         })
+    ],
+    [
+        SPEED_LINE,
+        ({ input }) => {
+            const speeds = parseSpeedLine(input ?? "");
+            return speeds && { kind: "speed", speeds };
+        }
+    ],
+    [
+        TIMINGS_LINE,
+        ({ input }) => {
+            const timings = parseTimingsLine(input ?? "");
+            return timings && { kind: "timings", timings };
+        }
     ],
     [
         HIT_LINE,
@@ -150,7 +174,7 @@ export function scanPosition(start: number, scanned: number): Omit<DoneSummary, 
 
 /**
  * Without a done summary (cancelled, dead or out of time), the latest progress becomes `stopped: "time"` so a follow-up
- * search can continue from it.
+ * search can continue from it. The latest progress's timings are kept.
  */
 export function jobObject(
     platform: Platform,
@@ -162,5 +186,6 @@ export function jobObject(
         ...scanPosition(fallback.startSeed, fallback.progress?.scanned ?? 0),
         stopped: "time" as const
     };
-    return { version: 1, platform, hits, ...position };
+    const timings = fallback.progress?.timings;
+    return { version: 1, platform, hits, ...position, ...(timings ? { timings } : {}) };
 }

@@ -81,6 +81,7 @@ export async function POST(request: Request) {
             startSeed: job.startSeed ?? DEFAULT_START_SEED,
             config: JSON.stringify(job.config),
             platform: job.config.platform ?? DEFAULT_PLATFORM,
+            timings: job.timings ?? false,
             origin: env.PUBLIC_ORIGIN || new URL(request.url).origin
         })
         .then(

@@ -105,3 +105,47 @@ def is_unfiltered(+search: Search) -> Bool:
       List.is_empty(&2, Config.Criteria, criteria)
     case Search{_, _, CaveLevels{criteria}, _, _}:
       List.is_empty(&2, CaveConfig.Criteria, criteria)
+
+def forest_entries(criteria: List<&2, Config.Criteria>) -> List<&2, Levels>:
+  match criteria:
+    case Nil{}:
+      Nil{}
+    case Con{+c, rest}:
+      ForestLevels{[c]} <> forest_entries(rest)
+
+def cave_entries(criteria: List<&2, CaveConfig.Criteria>) -> List<&2, Levels>:
+  match criteria:
+    case Nil{}:
+      Nil{}
+    case Con{+c, rest}:
+      CaveLevels{[c]} <> cave_entries(rest)
+
+# The part A criteria of each entry on its own, in entry order.
+def each_entry(levels: Levels) -> List<&2, Levels>:
+  match levels:
+    case ForestLevels{criteria}:
+      forest_entries(criteria)
+    case CaveLevels{criteria}:
+      cave_entries(criteria)
+
+def forest_count(n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +count: Nat) -> Nat:
+  match n:
+    case 0n:
+      count
+    case 1n+p:
+      forest_count(p, (seed + 1 : U32), criteria, Bool.pick(Nat, Config.matches(criteria, seed), Nat.add(count, 1n), count))
+
+def cave_count(n: Nat, +seed: U32, +criteria: List<&2, CaveConfig.Criteria>, +count: Nat) -> Nat:
+  match n:
+    case 0n:
+      count
+    case 1n+p:
+      cave_count(p, (seed + 1 : U32), criteria, Bool.pick(Nat, CaveConfig.matches(criteria, seed), Nat.add(count, 1n), count))
+
+# How many of the seeds lo..lo+n-1 have a level table that satisfies some of the criteria, on one thread.
+def count_leaf(levels: Levels, +lo: U32, n: Nat) -> Nat:
+  match levels:
+    case ForestLevels{criteria}:
+      forest_count(n, lo, Config.local_criteria(criteria), 0n)
+    case CaveLevels{criteria}:
+      cave_count(n, lo, CaveConfig.local_criteria(criteria), 0n)

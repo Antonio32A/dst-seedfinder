@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Stepper from "@/components/ui/Stepper";
+import Toggle from "@/components/ui/Toggle";
 import { type LocalSearchRequest, MEMORY_PER_THREAD_MB, type SearchTarget } from "@/lib/browser-search/local-search";
 import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/client/api-client";
 import type { Account } from "@/lib/client/use-account";
@@ -43,6 +44,7 @@ interface SearchPanelProps {
 const START_SEED_PROBLEM = `The start seed has to be a whole number from 0 to ${SEED_SPACE - 1}.`;
 const UNSUPPORTED = "This browser can't run the seedfinder: it needs WebAssembly threads.";
 const MEMORY = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
+const TIMINGS_HINT = "Enables timings for how long each options took. This should not be enabled when actually looking for seeds, but only when trying to figure out how to improve seed searching speed.";
 
 const TARGET_HINTS: Record<SearchTarget, string> = {
     cloud: "Server that spends my money, but is usually faster. Uses credits and requires you to log in.",
@@ -175,6 +177,8 @@ export default function SearchPanel({
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [startSeedDraft, setStartSeedDraft] = useState("");
+    const [timings, setTimings] = useState(false);
+    const timingsHintId = useId();
     const { user } = account;
     const inBrowser = target === "browser";
     const startSeedText = startSeedDraft.trim() || String(DEFAULT_START_SEED);
@@ -185,7 +189,7 @@ export default function SearchPanel({
             : blockingProblem(issues, inBrowser ? undefined : user?.credits, maxCost, startSeed);
 
     const checkedRequest = () => {
-        const checked = validateJobRequest({ config, wanted, maxCost, startSeed });
+        const checked = validateJobRequest({ config, wanted, maxCost, startSeed, ...(timings ? { timings } : {}) });
         if (!checked.ok) setError(`This search can't be sent: ${checked.error}`);
         return checked.ok ? checked.value : null;
     };
@@ -214,7 +218,8 @@ export default function SearchPanel({
             config: request.config,
             wanted: request.wanted,
             startSeed: request.startSeed ?? DEFAULT_START_SEED,
-            threads: browser.threads
+            threads: browser.threads,
+            timings: request.timings ?? false
         });
     };
 
@@ -270,7 +275,16 @@ export default function SearchPanel({
                         />
                     </label>
                 </div>
-                <PlatformField platform={platform} onChange={onPlatformChange}/>
+                <div className="search__row search__row--end">
+                    <PlatformField platform={platform} onChange={onPlatformChange}/>
+                    <div className="timings-toggle">
+                        <Toggle checked={timings} onChange={setTimings}>Timings</Toggle>
+                        <span className="tag tag--accent hover-tip" tabIndex={0} aria-describedby={timingsHintId}>
+                            slow
+                            <span className="hover-tip__text" role="tooltip" id={timingsHintId}>{TIMINGS_HINT}</span>
+                        </span>
+                    </div>
+                </div>
                 {inBrowser ? <ThreadsField browser={browser}/> :
                         <MaxCostField value={maxCost} wanted={wanted} onChange={onMaxCostChange}/>}
                 <div className="search__actions">

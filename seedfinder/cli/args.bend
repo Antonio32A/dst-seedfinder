@@ -51,7 +51,7 @@ def is_inline_flag(flags: List<&2, String>, +arg: String) -> Bool:
 
 def arg_kind(+arg: String) -> U32:
   Bool.pick(U32, Config.is_member(value_flags(), arg), 2,
-    Bool.pick(U32, String.eq(arg, "--json") || is_inline_flag(value_flags(), arg), 1,
+    Bool.pick(U32, String.eq(arg, "--json") || String.eq(arg, "--verbose-timings") || is_inline_flag(value_flags(), arg), 1,
       Bool.pick(U32, String.starts_with(arg, "--"), 3, 0)))
 
 def with_positional(+kind: U32, +arg: String, +prefix: String, rest: Result<&1, &1, U32 & String, List<&2, String>>) -> Result<&1, &1, U32 & String, List<&2, String>>:
@@ -168,9 +168,9 @@ def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:
         Bool.pick(Result<&1, &1, U32 & String, Bool>, String.eq(text, "bend"), Done{False{}}, Fail{(2, "--kk must be native or bend, got \"" ++ text ++ "\"")}))
 
 # A world find query; `platform` overrides the config's platform (platform_flag), `worlds` is the --worlds folder of
-# pre-generated world dumps (<seed>.dstw), `native` the KK engine (kk_flag).
+# pre-generated world dumps (<seed>.dstw), `native` the KK engine (kk_flag), `timings` --verbose-timings.
 type Query is Data:
-  Query{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Maybe<&2, String>, platform: U32, worlds: Maybe<&2, String>, native: Bool}
+  Query{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Maybe<&2, String>, platform: U32, worlds: Maybe<&2, String>, native: Bool, timings: Bool}
 
 def at_most_two(+given: List<&2, String>) -> Result<&1, &1, U32 & String, Unit>:
   Bool.pick(Result<&1, &1, U32 & String, Unit>, Nat.is_le(List.length(&2, String, given), 2n), Done{Unit{}},
@@ -187,17 +187,22 @@ def query_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Query>:
     +time_ms : Nat <- time_limit(flag_value(args, "--time-limit"))
     +platform : U32 <- platform_flag(flag_value(args, "--platform"))
     +native : Bool <- kk_flag(flag_value(args, "--kk"))
-    return Query{start, total, limit, time_ms, Config.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native}
+    return Query{start, total, limit, time_ms, Config.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native, Config.is_member(args, "--verbose-timings")}
 
 def query_config(+q: Query) -> Maybe<&2, String>:
   match q:
-    case Query{_, _, _, _, _, config, _, _, _}:
+    case Query{_, _, _, _, _, config, _, _, _, _}:
       config
 
 def query_json(+q: Query) -> Bool:
   match q:
-    case Query{_, _, _, _, +json, _, _, _, _}:
+    case Query{_, _, _, _, +json, _, _, _, _, _}:
       json
+
+def query_timings(+q: Query) -> Bool:
+  match q:
+    case Query{_, _, _, _, _, _, _, _, _, +timings}:
+      timings
 
 # A world dump query: seeds from..from + total - 1, the platform, the KK engine (kk_flag) and the output path, a
 # folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed, and the caves shard when

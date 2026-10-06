@@ -75,6 +75,8 @@ build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # 
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them. A `bridges` rule needs
   the dumps' topology (their `GRPH` section); a dump without one counts as missing.
 - `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).
+- `--verbose-timings`: adds a `timings {json}` line to stderr with the time each option (criteria entry) takes
+  ([docs/config.md](../docs/config.md) section 8). It slows the search down: only for finding out what makes one slow.
 
 `gen --shard caves` runs the whole caves worldgen (up to 5 attempts, retried like the forest's: CheckForValidCells, the
 site areas, DetectDisconnect and the required prefabs fail an attempt) and prints the forest's line with `shard=caves`.

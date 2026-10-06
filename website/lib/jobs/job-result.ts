@@ -1,5 +1,6 @@
 import type { SwapCategory } from "@/lib/catalog/level-types";
 import { asRecord, isRecord } from "@/lib/records";
+import { parseTimings, type SearchTimings } from "./search-timings";
 
 export const SEED_SPACE = 2 ** 32;
 
@@ -117,6 +118,7 @@ export interface SearchOutput {
     last_scanned: number | null;
     next_seed: number | null;
     stopped?: StopReason;
+    timings?: SearchTimings;
 }
 
 export type JobResult = { kind: "search"; search: SearchOutput } | { kind: "error"; error: string };
@@ -272,7 +274,8 @@ export function parseJobResult(result: unknown): JobResult | null {
     const error = text(asRecord(result).error);
     if (error !== undefined) return { kind: "error", error };
     const parsed = search(result);
-    return parsed ? { kind: "search", search: parsed } : null;
+    const timings = parseTimings(asRecord(result).timings);
+    return parsed ? { kind: "search", search: timings ? { ...parsed, timings } : parsed } : null;
 }
 
 /** The scan may wrap around the seed space. */

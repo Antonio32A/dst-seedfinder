@@ -127,9 +127,11 @@ export interface SeedfinderConfig {
     criteria?: Criterion[];
 }
 
+/** `timings` runs the search with `--verbose-timings`. */
 export interface JobRequest {
     config: SeedfinderConfig;
     wanted: number;
     maxCost: number;
     startSeed?: number;
+    timings?: boolean;
 }

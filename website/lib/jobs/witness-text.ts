@@ -13,6 +13,10 @@ const WITNESS_LABELS: Record<WitnessSection, string> = {
     routes: "Route"
 };
 
+/** A world rule as the timings name it, e.g. "Distance rule 2". */
+export const ruleLabel = (section: string, index: number) =>
+    `${(WITNESS_LABELS as Record<string, string | undefined>)[section] ?? section} rule ${index + 1}`;
+
 /** `count` and `one` or `many`, e.g. "1 seed", "2,000 seeds". */
 export const plural = (count: number, one: string, many = `${one}s`) => `${WHOLE.format(count)} ${count === 1 ? one : many}`;
 

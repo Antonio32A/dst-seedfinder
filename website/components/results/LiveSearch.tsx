@@ -6,6 +6,8 @@ import { formatDuration, timeLimitSeconds } from "@/lib/jobs/credits";
 import type { JobProgress, JobStatus, JobView, Machine } from "@/lib/jobs/job-events";
 import JobResults, { type JobResultsProps } from "./JobResults";
 import LiveStats, { checkedNote, type LiveRow } from "./LiveStats";
+import SearchSpeeds from "./SearchSpeeds";
+import SearchTimings from "./SearchTimings";
 
 const MAX_ATTEMPTS = 3;
 
@@ -32,7 +34,7 @@ interface Clock {
     now: number;
 }
 
-const progressRows = ({ scanned, seedsPerSecond, worlds }: JobProgress): LiveRow[] => [
+const progressRows = ({ scanned, worlds }: JobProgress): LiveRow[] => [
     { label: "Checked", value: count(scanned, "seed"), note: checkedNote(worlds !== undefined) },
     ...(worlds
             ? [
@@ -43,8 +45,7 @@ const progressRows = ({ scanned, seedsPerSecond, worlds }: JobProgress): LiveRow
                 },
                 { label: "Generated", value: count(worlds.generated, "world") }
             ]
-            : []),
-    { label: "Speed", value: `${COMPACT.format(seedsPerSecond)} seeds/s` }
+            : [])
 ];
 
 const machineRows = ({ cpuName, cores, ghz, dollarsPerHour }: Machine, {
@@ -135,6 +136,9 @@ export default function LiveSearch({ job, live, stopping, onStop, ...results }: 
                             </p>
                     ))}
                     {rows.length > 0 && <LiveStats rows={rows}/>}
+                    {live.status === "running" && progress?.speeds && <SearchSpeeds speeds={progress.speeds}/>}
+                    {live.status === "running" && progress?.timings &&
+                            <SearchTimings timings={progress.timings} config={job.config}/>}
                     {live.offline && <p className="hint">Connection lost, reconnecting...</p>}
                 </div>
                 <JobResults job={shown} {...results} />

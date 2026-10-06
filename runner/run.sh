@@ -48,10 +48,12 @@ fetch_config() {
 
 start_search() {
     : >"$output"
+    set --
+    [ "${JOB_VERBOSE_TIMINGS:-0}" = 1 ] && set -- --verbose-timings
     (
         {
             seedfinder -- world find --start-seed "$JOB_START_SEED" \
-                --limit "$JOB_LIMIT" --time-limit "$JOB_TIME_LIMIT" --config "$config" 2>&1
+                --limit "$JOB_LIMIT" --time-limit "$JOB_TIME_LIMIT" --config "$config" "$@" 2>&1
             echo $? >"$work/status"
         } | tr -d '\000' >"$output"
         mv "$work/status" "$exit_file"

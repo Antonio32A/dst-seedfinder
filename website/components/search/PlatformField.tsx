@@ -10,14 +10,11 @@ interface PlatformFieldProps {
 
 export default function PlatformField({ platform, onChange }: PlatformFieldProps) {
     return (
-            <div>
-                <SegmentedControl
-                        legend="Platform"
-                        options={PLATFORMS.map((value) => ({ value, label: PLATFORM_LABELS[value] }))}
-                        value={platform}
-                        onChange={onChange}
-                />
-                <p className="hint">The OS of the computer that generates the world.</p>
-            </div>
+            <SegmentedControl
+                    legend="Platform"
+                    options={PLATFORMS.map((value) => ({ value, label: PLATFORM_LABELS[value] }))}
+                    value={platform}
+                    onChange={onChange}
+            />
     );
 }

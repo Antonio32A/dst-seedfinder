@@ -49,7 +49,6 @@ const RETRY_MS = 30_000;
 const KEEP_FINISHED_MS = 24 * 60 * 60_000;
 const DESTROY_RETRY_WINDOW_MS = 60 * 60_000;
 const HEARTBEAT_MS = 20_000;
-const SPEED_WINDOW_MS = 30_000;
 const MAX_RESULT_BYTES = 1_000_000;
 
 const NO_MACHINE = "No machine was free for the search. Your credits were refunded.";
@@ -72,6 +71,7 @@ export interface JobSpec {
     config: string;
     platform: Platform;
     origin: string;
+    timings?: boolean;
 }
 
 type ResultKind = "search" | "config-error" | "none";
@@ -126,6 +126,8 @@ const EXIT_ENDINGS: Record<ExitKind, EndingKind> = {
     crash: failed(CRASHED, "search")
 };
 
+const PROGRESS_KINDS = new Set<OutputLine["kind"]>(["progress", "speed", "timings"]);
+
 export const RUNNER_GET_STATUSES = new Set<JobStatus>(["starting", "running"]);
 export const RUNNER_POST_STATUSES = new Set<JobStatus>(["running"]);
 
@@ -148,7 +150,6 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
     private readonly subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
     private heartbeat: ReturnType<typeof setInterval> | null = null;
     private wrapping: Promise<void> | null = null;
-    private speedSamples: { at: number; scanned: number }[] = [];
 
     private readonly alarmSteps: Record<JobStatus, (state: RoomState) => Promise<void>> = {
         queued: () => this.requeue(),
@@ -409,7 +410,8 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
                 RUNNER_TOKEN: token,
                 JOB_LIMIT: String(job.wanted),
                 JOB_TIME_LIMIT: String(timeLimitMs / 1000),
-                JOB_START_SEED: String(job.startSeed)
+                JOB_START_SEED: String(job.startSeed),
+                JOB_VERBOSE_TIMINGS: job.timings ? "1" : "0"
             }
         }).then(
             (instanceId) => ({ instanceId, error: null }),
@@ -517,7 +519,8 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
             const event = this.lineEffects[line.kind](line as never);
             if (event) events.push(event);
         }
-        const progress = parsed.some((line) => line.kind === "progress") ? (this.state as RoomState).progress : null;
+        const progressed = parsed.some((line) => PROGRESS_KINDS.has(line.kind));
+        const progress = progressed ? (this.state as RoomState).progress : null;
         this.broadcast([...events, ...(progress ? [{ type: "progress" as const, progress }] : [])]);
     }
 
@@ -526,17 +529,16 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
             kind: K;
         }>) => JobEvent | null
     } = {
-        progress: ({ progress }) => {
-            const now = Date.now();
-            this.speedSamples = [...this.speedSamples.filter(({ at }) => at >= now - SPEED_WINDOW_MS), {
-                at: now,
-                scanned: progress.scanned
-            }];
-            const [oldest] = this.speedSamples;
-            const since = oldest.at < now ? oldest : { at: (this.state as RoomState).startedAt ?? now, scanned: 0 };
-            const seedsPerSecond = progress.seedsPerSecond ??
-                Math.round(((progress.scanned - since.scanned) * 1000) / Math.max(now - since.at, 1000));
-            this.save({ progress: { ...progress, seedsPerSecond } });
+        progress: ({ progress: { scanned, hits, worlds } }) => {
+            this.saveProgress({ scanned, hits, worlds });
+            return null;
+        },
+        speed: ({ speeds }) => {
+            this.saveProgress({ speeds });
+            return null;
+        },
+        timings: ({ timings }) => {
+            this.saveProgress({ timings });
             return null;
         },
         hit: ({ hit }) => {
@@ -557,6 +559,10 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
             return null;
         }
     };
+
+    private saveProgress(patch: Partial<JobProgress>): void {
+        this.save({ progress: { ...((this.state as RoomState).progress ?? { scanned: 0, hits: 0 }), ...patch } });
+    }
 
     private async exited(exit: number, endedAt: number): Promise<void> {
         const tail = new TextDecoder().decode((this.state as RoomState).tail.bytes);

@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import type { LocalSearchState } from "@/lib/browser-search/local-search";
 import JobResults, { type JobResultsProps, type ShownJob } from "./JobResults";
 import LiveStats, { checkedNote } from "./LiveStats";
+import SearchSpeeds from "./SearchSpeeds";
+import SearchTimings from "./SearchTimings";
 
 const COMPACT = new Intl.NumberFormat("en", { notation: "compact", maximumSignificantDigits: 3 });
 
@@ -20,7 +22,7 @@ interface LocalSearchProps {
 }
 
 export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: LocalSearchProps) {
-    const { request, status, search, seedsPerSecond, generatesWorlds, error } = state;
+    const { request, status, search, speeds, timings, generatesWorlds, error } = state;
     const headline = HEADLINES[status];
     const scanned = search.scanned ?? 0;
 
@@ -36,7 +38,6 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: 
             value: `${COMPACT.format(scanned)} ${scanned === 1 ? "seed" : "seeds"}`,
             note: checkedNote(generatesWorlds)
         },
-        { label: "Speed", value: `${COMPACT.format(seedsPerSecond)} seeds/s` },
         { label: "Threads", value: String(request.threads) }
     ];
 
@@ -58,6 +59,8 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: 
                             <p className="live__details">Keep this tab open. Closing or reloading it stops the
                                 search.</p>
                             {status === "running" && <LiveStats rows={rows}/>}
+                            {status === "running" && speeds && <SearchSpeeds speeds={speeds}/>}
+                            {status === "running" && timings && <SearchTimings timings={timings} config={request.config}/>}
                         </div>
                 )}
                 {status === "cancelled" && <p className="muted">You stopped this search.</p>}

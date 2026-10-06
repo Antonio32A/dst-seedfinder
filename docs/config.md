@@ -321,7 +321,26 @@ search [--start-seed S] [--limit N] [--time-limit T] [--json] CONFIG.json
 `seedfinder world find` implements this (see `seedfinder/README.md` for its extra flags). With `--worlds DIR`, it
 decides seeds on world dumps ([world-dump.md](world-dump.md)) instead of generating them, like `seedfinder world eval`
 does on one. The exit status is 0 with at least one hit, 1 with none, and 2 on a config, usage or runtime error.
-stderr carries progress and isn't part of the contract.
+stderr carries progress and isn't part of the contract, apart from two lines the website reads:
+
+- `speed 30s: P/G/T full: P/G/T`, about once a second and once at the end: seeds whose level table was checked
+  (prefiltering), worlds generated (generation) and seeds decided (total), per second over the last 30 s and over
+  the whole run. A rate below 100 has one decimal.
+- `timings {json}` with `--verbose-timings`, next to the speed line: where the search spent its time, per option
+  (criteria entry, in order). Each option's level table goes over every prefiltered seed on its own and each world
+  rule is checked on a round's worlds at once between two clock reads, so the search is slower with it.
+
+```
+timings {"elapsed_ms": E, "seeds": S, "prefilter_ms": P, "generation_ms": G, "hits_ms": H,
+         "options": [{"prefilter_ms": P, "passed": N, "worlds": W, "rules": [{"section": "distances", "index": 0, "ms": M}]}]}
+```
+
+`seeds` is how many seeds the options' level tables went over, `prefilter_ms` (top level) the ms of the search's own
+prefilter, `generation_ms` of generating the worlds (0 in a level-table search) and `hits_ms` of the witnesses and level
+tables of the hits (on the worlds). Per option, `prefilter_ms` and
+`passed` are the ms its level table took over the `seeds` and how many passed it, `worlds` the worlds its rules were
+checked on (those whose level table passes it and that no earlier option matched) and `rules` the ms of each rule, in
+witness order.
 
 **Line mode.** Every hit prints as `<seed> {json}` on stdout, in scan order. Each is printed once it and every
 earlier seed are decided. The last line is `done {json}`:

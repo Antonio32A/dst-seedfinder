@@ -352,13 +352,15 @@ export function validateConfig(config: unknown): Validation<SeedfinderConfig> {
 export function validateJobRequest(body: unknown): Validation<JobRequest> {
     return validated(() => {
         const fields = recordAt(body, "the request");
-        const unknownKey = Object.keys(fields).find((key) => !["config", "wanted", "maxCost", "startSeed"].includes(key));
+        const unknownKey = Object.keys(fields).find((key) => !["config", "wanted", "maxCost", "startSeed", "timings"].includes(key));
         if (unknownKey !== undefined) fail(`unknown key ${quoted(unknownKey)} in the request`);
+        if (fields.timings !== undefined && typeof fields.timings !== "boolean") fail("\"timings\" must be true or false");
         return {
             config: parseConfig(fields.config),
             wanted: integerIn(fields.wanted, "\"wanted\"", MIN_WANTED, MAX_WANTED),
             maxCost: creditsIn(fields.maxCost, "\"maxCost\"", MIN_MAX_COST, MAX_MAX_COST),
-            ...(fields.startSeed === undefined ? {} : { startSeed: integerIn(fields.startSeed, "\"startSeed\"", 0, MAX_UINT32) })
+            ...(fields.startSeed === undefined ? {} : { startSeed: integerIn(fields.startSeed, "\"startSeed\"", 0, MAX_UINT32) }),
+            ...(fields.timings ? { timings: true } : {})
         };
     });
 }
