@@ -1,0 +1,14 @@
+name: Set up Bend
+description: Installs the pinned Bend compiler from the bend/ submodule as the bend CLI.
+runs:
+    using: composite
+    steps:
+        -   run: git submodule update --init --depth 1 bend
+            shell: bash
+        -   uses: oven-sh/setup-bun@v2
+            with:
+                bun-version: 1.4.2
+        -   run: |
+                scripts/install-bend.sh
+                echo "$HOME/.bend/bin" >> "$GITHUB_PATH"
+            shell: bash

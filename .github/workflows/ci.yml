@@ -1,0 +1,140 @@
+name: CI
+
+on:
+    push:
+        branches: [master]
+    pull_request:
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+env:
+    EMSDK_VERSION: 6.0.10
+
+defaults:
+    run:
+        shell: bash
+
+jobs:
+    website:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        defaults:
+            run:
+                working-directory: website
+        steps:
+            -   uses: actions/checkout@v7
+            -   uses: actions/setup-node@v7
+                with:
+                    node-version-file: website/.nvmrc
+                    cache: npm
+                    cache-dependency-path: website/package-lock.json
+            -   run: npm ci
+            -   run: npm run lint
+            -   run: npx tsc --noEmit
+            -   run: npm test
+
+    laws:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        steps:
+            -   uses: actions/checkout@v7
+            -   id: bend
+                run: echo "sha=$(git rev-parse HEAD:bend)" >> "$GITHUB_OUTPUT"
+            -   id: cache
+                uses: actions/cache@v6
+                with:
+                    path: build/laws
+                    key: laws-${{ steps.bend.outputs.sha }}-${{ hashFiles('seedfinder/**', 'scripts/bend.sh', 'scripts/install-bend.sh', 'scripts/proof.sh') }}
+            -   if: steps.cache.outputs.cache-hit == 'true'
+                run: cat build/laws/proof.txt
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                uses: ./.github/actions/setup-bend
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                run: |
+                    sudo apt-get update -qq
+                    sudo apt-get install -y -qq bc time
+                    mkdir -p build/laws
+                    scripts/proof.sh -j 4 | tee build/laws/proof.txt
+
+    seedfinder:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        steps:
+            -   uses: actions/checkout@v7
+            -   id: bend
+                run: echo "sha=$(git rev-parse HEAD:bend)" >> "$GITHUB_OUTPUT"
+            -   id: cache
+                uses: actions/cache@v6
+                with:
+                    path: build/runner/seedfinder
+                    key: seedfinder-${{ steps.bend.outputs.sha }}-${{ hashFiles('seedfinder/**', 'scripts/bend.sh', 'scripts/build.sh', 'scripts/install-bend.sh', 'runner/Dockerfile') }}
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                uses: ./.github/actions/setup-bend
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                run: scripts/build.sh seedfinder/main.bend build/runner/seedfinder.c
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                run: |
+                    docker build --platform linux/amd64 --target build --build-context csrc=build/runner \
+                        -t seedfinder-build runner
+                    docker create --name seedfinder-build seedfinder-build
+                    docker cp seedfinder-build:/src/seedfinder build/runner/seedfinder
+            -   uses: actions/upload-artifact@v7
+                with:
+                    name: seedfinder-linux-x86_64
+                    path: build/runner/seedfinder
+                    if-no-files-found: error
+
+    wasm-single:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        steps:
+            -   uses: actions/checkout@v7
+            -   id: bend
+                run: echo "sha=$(git rev-parse HEAD:bend)" >> "$GITHUB_OUTPUT"
+            -   id: cache
+                uses: actions/cache@v6
+                with:
+                    path: build/wasm-single
+                    key: wasm-single-${{ env.EMSDK_VERSION }}-${{ steps.bend.outputs.sha }}-${{ hashFiles('seedfinder/**', 'scripts/bend.sh', 'scripts/build.sh', 'scripts/install-bend.sh') }}
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                uses: mymindstorm/setup-emsdk@v16
+                with:
+                    version: ${{ env.EMSDK_VERSION }}
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                uses: ./.github/actions/setup-bend
+            -   if: steps.cache.outputs.cache-hit != 'true'
+                run: scripts/build.sh wasm-single
+            -   uses: actions/upload-artifact@v7
+                with:
+                    name: wasm-single
+                    path: build/wasm-single
+                    if-no-files-found: error
+                    retention-days: 1
+
+    preview-worker:
+        needs: wasm-single
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+        defaults:
+            run:
+                working-directory: website/preview-worker
+        steps:
+            -   uses: actions/checkout@v7
+            -   uses: actions/download-artifact@v8
+                with:
+                    name: wasm-single
+                    path: build/wasm-single
+            -   uses: actions/setup-node@v7
+                with:
+                    node-version-file: website/preview-worker/.nvmrc
+                    cache: npm
+                    cache-dependency-path: website/preview-worker/package-lock.json
+            -   run: npm ci
+            -   run: npm run typecheck
+            -   run: npm run build

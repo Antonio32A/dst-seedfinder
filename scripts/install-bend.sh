@@ -15,12 +15,12 @@ if [[ ! -f "$src/bend2/main.ts" ]]; then
 fi
 
 mkdir -p "$prefix/bin" "$prefix/bend2" "$prefix/guide"
-trap 'rm -f "$prefix/bin/bend.new"' EXIT
-"$bun" build --compile "$src/bend2/main.ts" --outfile "$prefix/bin/bend.new"
-version="$(BEND_NO_TELEMETRY=1 "$prefix/bin/bend.new" version)"
-
 rm -rf "$prefix/bend2/effs"
 cp -r "$src/bend2/base.bend" "$src/bend2/effs" "$prefix/bend2/"
 cp "$src"/guide/*.md "$prefix/guide/"
+
+trap 'rm -f "$prefix/bin/bend.new"' EXIT
+"$bun" build --compile "$src/bend2/main.ts" --outfile "$prefix/bin/bend.new"
+version="$(BEND_NO_TELEMETRY=1 "$prefix/bin/bend.new" version)"
 mv "$prefix/bin/bend.new" "$prefix/bin/bend"
 echo "installed $version into $prefix" >&2
