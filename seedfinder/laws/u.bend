@@ -70,3 +70,45 @@ law placed_rule_scoped_to_tasks:
 
 def placed_rule_scoped_to_tasks():
   {==}
+
+def placed_member() -> Rules.Member:
+  Rules.Member{LevelChecks.Pieces{[], []}, [LevelChecks.Bounded{"MooseNest", 1, None{}}]}
+
+def level_member() -> Rules.Member:
+  Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, []}
+
+# A group holds when one of its rules holds on the level table (of the world's seed) and on the placed copies.
+law group_fails_on_dropped_copy:
+  {Checks.placed(world(False{}), Rules.AnyPlaced{0, [placed_member()], None{}}) == Checks.Check{False{}, ",\"any\":[{\"ok\":false,\"counts\":{},\"pieces\":[{\"name\":\"MooseNest\",\"planned\":1,\"placed\":0}]}]"} : Checks.Check}
+
+def group_fails_on_dropped_copy():
+  {==}
+
+law group_holds_on_placed_copy:
+  {Checks.placed(world(True{}), Rules.AnyPlaced{0, [placed_member()], None{}}) == Checks.Check{True{}, ",\"any\":[{\"ok\":true,\"counts\":{},\"pieces\":[{\"name\":\"MooseNest\",\"planned\":1,\"placed\":1}]}]"} : Checks.Check}
+
+def group_holds_on_placed_copy():
+  {==}
+
+def holds(+c: Checks.Check) -> Bool:
+  match c:
+    case Checks.Check{+ok, _}:
+      ok
+
+law group_holds_on_other_rule:
+  {holds(Checks.placed(world(False{}), Rules.AnyPlaced{0, [placed_member(), level_member()], None{}})) == True{} : Bool}
+
+def group_holds_on_other_rule():
+  {==}
+
+def total_rule() -> Rules.Placed:
+  +moose : LevelChecks.Bounded = LevelChecks.Bounded{"MooseNest", 0, None{}}
+  Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [moose]}, [moose]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"CookingBoon", 0, None{}}]}, []}], Some{LevelChecks.Total{2, None{}}}}
+
+# A group's total counts the placed copies of its `placed` names and the planned ones of the others: seed 1 plans
+# CookingBoon once, and MooseNest 7 times, of which the world's plan holds the one copy.
+law group_total_counts_placed_copies:
+  {(Checks.placed(world(True{}), total_rule()), holds(Checks.placed(world(False{}), total_rule()))) == (Checks.Check{True{}, ",\"any\":[{\"ok\":true,\"counts\":{\"MooseNest\":7},\"pieces\":[{\"name\":\"MooseNest\",\"planned\":1,\"placed\":1}]},{\"ok\":true,\"counts\":{\"CookingBoon\":1},\"pieces\":[]}],\"total\":2"}, False{}) : Checks.Check & Bool}
+
+def group_total_counts_placed_copies():
+  {==}

@@ -31,10 +31,25 @@ type Route is Data:
 type Bridge is Data:
   Bridge{min: Maybe<&2, F64Repr.F64>, max: Maybe<&2, F64Repr.F64>}
 
+# A rule of a setpieces group: the bounds the level table checks (only the minimum of a `placed` name) and the bounds
+# of its `placed` names, checked against the copies the world placed.
+type Member is Data:
+  Member{level: LevelChecks.Pieces, placed: List<&2, LevelChecks.Bounded>}
+
 # The `placed` names of setpieces rule `index`: its task scope (empty for every task) and the bounds of those names,
-# checked against the copies the world placed.
+# checked against the copies the world placed; or setpieces group `index` with `placed` names in some of its rules,
+# which holds when one of its rules holds on both the level table and the world, and its total (placed copies for the
+# `placed` names) is in bounds.
 type Placed is Data:
   Placed{index: U32, tasks: List<&2, String>, bounds: List<&2, LevelChecks.Bounded>}
+  AnyPlaced{index: U32, members: List<&2, Member>, total: Maybe<&2, LevelChecks.Total>}
+
+def placed_index(+rule: Placed) -> U32:
+  match rule:
+    case Placed{+index, _, _}:
+      index
+    case AnyPlaced{+index, _, _}:
+      index
 
 # The world rules of one criteria entry: the setpieces rules with `placed` names, then the counts, distances, tiles,
 # bridges and routes rules.

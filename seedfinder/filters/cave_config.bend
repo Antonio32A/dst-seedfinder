@@ -7,18 +7,23 @@ import ./json.bend as Json
 import ./parse.bend as Parse
 import ./config.bend as Config
 import ./rules.bend as Rules
+import ./level_checks.bend as LevelChecks
 
 # The search config of the caves shard (docs/config.md): its part A, the level table. Task sets are two words over
 # data/cave_catalog.bend task ids (ids 0-31 in `lo`, ids 32.. in `hi`); a rule bounds how many times a set piece (a
-# cave_catalog key) is placed in the rule's tasks. Parts B-E (rules.bend) are decided on the caves world.
+# cave_catalog key) is placed in the rule's tasks; each setpieces group needs one of its rules' lists to hold and the
+# sum of all its rules' counts within its total. Parts B-E (rules.bend) are decided on the caves world.
 type TaskSet is Data:
   TaskSet{lo: U32, hi: U32}
 
 type Rule is Data:
   Rule{key: U32, tasks: TaskSet, low: U32, high: U32}
 
+type Group is Data:
+  Group{alternatives: List<&2, List<&2, Rule>>, total: Maybe<&2, LevelChecks.Total>}
+
 type Criteria is Data:
-  Criteria{required: TaskSet, excluded: TaskSet, swap_care: U32, swap_want: U32, rules: List<&2, Rule>}
+  Criteria{required: TaskSet, excluded: TaskSet, swap_care: U32, swap_want: U32, rules: List<&2, Rule>, groups: List<&2, Group>}
 
 # A compiled caves config: the platform for the report, the part A criteria of the entries, their parts B-E (in the same
 # order) and the part A criteria that make a seed a candidate (those of the entries that are not passive; anything when
@@ -30,7 +35,7 @@ def every_task() -> TaskSet:
   TaskSet{4294967295, 4294967295}
 
 def anything() -> Criteria:
-  Criteria{TaskSet{0, 0}, TaskSet{0, 0}, 0, 0, Nil{}}
+  Criteria{TaskSet{0, 0}, TaskSet{0, 0}, 0, 0, Nil{}, Nil{}}
 
 def lookup(names: List<&2, CaveCatalog.Name>, +name: String) -> Maybe<&2, U32>:
   match names:
@@ -145,14 +150,60 @@ def setpiece_rules(item: Json.Json, +path: String, acc: List<&2, Rule>) -> Resul
     +tasks : TaskSet <- task_list(Parse.field(fields, "tasks"), path ++ ".tasks")
     rules_in(scope_of(tasks), required, keys, path ++ ".required", acc)
 
+def single_rules(group: Bool, item: Json.Json, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
+  match group:
+    case True{}:
+      Done{acc}
+    case False{}:
+      setpiece_rules(item, path, acc)
+
+# The rules of the setpieces items that aren't groups.
 def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   match items:
     case Nil{}:
       Done{acc}
-    case Con{item, rest}:
+    case Con{+item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Rule>>:
-        more : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), acc)
+        more : List<&2, Rule> <- single_rules(Config.is_group(item), item, Parse.indexed(path, index), acc)
         rules_of(rest, (index + 1 : U32), path, more)
+
+def member_rules(items: List<&2, Json.Json>, +index: U32, +path: String) -> Result<&1, &1, U32 & String, List<&2, List<&2, Rule>>>:
+  match items:
+    case Nil{}:
+      Done{Nil{}}
+    case Con{item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, List<&2, Rule>>>:
+        rules : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), Nil{})
+        others : List<&2, List<&2, Rule>> <- member_rules(rest, (index + 1 : U32), path)
+        return rules <> others
+
+def group_of(item: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Group>:
+  do Result<&1, &1, U32 & String, Group>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(item, ["any", "total"], path)
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "any"), path ++ ".any")
+    listed : List<&2, Json.Json> <- Parse.nonempty_capped(items, 16, "rules", path ++ ".any")
+    alternatives : List<&2, List<&2, Rule>> <- member_rules(listed, 0, path ++ ".any")
+    total : Maybe<&2, LevelChecks.Total> <- Config.total_of(Parse.field(fields, "total"), False{}, path ++ ".total")
+    return Group{alternatives, total}
+
+def maybe_group(group: Bool, item: Json.Json, +path: String, groups: List<&2, Group>) -> Result<&1, &1, U32 & String, List<&2, Group>>:
+  match group:
+    case False{}:
+      Done{groups}
+    case True{}:
+      do Result<&1, &1, U32 & String, List<&2, Group>>:
+        parsed : Group <- group_of(item, path)
+        return parsed <> groups
+
+# The setpieces groups, each as the rules of its members and its total.
+def groups_of(items: List<&2, Json.Json>, +index: U32, +path: String) -> Result<&1, &1, U32 & String, List<&2, Group>>:
+  match items:
+    case Nil{}:
+      Done{Nil{}}
+    case Con{+item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, Group>>:
+        others : List<&2, Group> <- groups_of(rest, (index + 1 : U32), path)
+        maybe_group(Config.is_group(item), item, Parse.indexed(path, index), others)
 
 type Entry is Data:
   Entry{level: Criteria, later: Rules.Later, passive: Bool}
@@ -162,13 +213,14 @@ def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Ent
     +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "bridges", "routes"], path)
     +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
-    listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
+    +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
+    groups : List<&2, Group> <- groups_of(listed, 0, path ++ ".setpieces")
     later : Rules.Later <- Rules.later_of(fields, path, True{}, Nil{})
     required : TaskSet <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
     excluded : TaskSet <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
     +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, passive}
+    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}, later, passive}
 
 def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
   match items:
@@ -235,7 +287,7 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
 
 def tasks_hold(+c: Criteria, +lo: U32, +hi: U32, +swaps: U32) -> Bool:
   match c:
-    case Criteria{TaskSet{+required_lo, +required_hi}, TaskSet{+excluded_lo, +excluded_hi}, +care, +want, _}:
+    case Criteria{TaskSet{+required_lo, +required_hi}, TaskSet{+excluded_lo, +excluded_hi}, +care, +want, _, _}:
       U32.is_zero(((required_lo .&. U32.not(lo)) .|. (required_hi .&. U32.not(hi)) .|. (excluded_lo .&. lo) .|. (excluded_hi .&. hi)
         .|. ((swaps .^. want) .&. care) : U32))
 
@@ -274,8 +326,48 @@ def rules_hold(rules: List<&2, Rule>, +placed: List<&2, CaveChoose.Placed>) -> B
 
 def criteria_rules(+c: Criteria) -> List<&2, Rule>:
   match c:
-    case Criteria{_, _, _, _, rules}:
+    case Criteria{_, _, _, _, rules, _}:
       rules
+
+def criteria_groups(+c: Criteria) -> List<&2, Group>:
+  match c:
+    case Criteria{_, _, _, _, _, groups}:
+      groups
+
+def some_hold(alternatives: List<&2, List<&2, Rule>>, +placed: List<&2, CaveChoose.Placed>) -> Bool:
+  match alternatives:
+    case Nil{}:
+      False{}
+    case Con{rules, rest}:
+      rules_hold(rules, placed) || some_hold(rest, placed)
+
+def rules_total(rules: List<&2, Rule>, +placed: List<&2, CaveChoose.Placed>) -> U32:
+  match rules:
+    case Nil{}:
+      0
+    case Con{+rule, rest}:
+      (placed_in(placed, rule) + rules_total(rest, placed) : U32)
+
+def alternatives_total(alternatives: List<&2, List<&2, Rule>>, +placed: List<&2, CaveChoose.Placed>) -> U32:
+  match alternatives:
+    case Nil{}:
+      0
+    case Con{rules, rest}:
+      (rules_total(rules, placed) + alternatives_total(rest, placed) : U32)
+
+def total_holds(total: Maybe<&2, LevelChecks.Total>, alternatives: List<&2, List<&2, Rule>>, +placed: List<&2, CaveChoose.Placed>) -> Bool:
+  match total:
+    case None{}:
+      True{}
+    case Some{LevelChecks.Total{+low, high}}:
+      LevelChecks.bound_holds(alternatives_total(alternatives, placed), low, high)
+
+def groups_hold(groups: List<&2, Group>, +placed: List<&2, CaveChoose.Placed>) -> Bool:
+  match groups:
+    case Nil{}:
+      True{}
+    case Con{Group{+alternatives, total}, rest}:
+      some_hold(alternatives, placed) && total_holds(total, alternatives, placed) && groups_hold(rest, placed)
 
 def any_hold(criteria: List<&2, Criteria>, +w: CaveChoose.World, +lo: U32, +hi: U32) -> Bool:
   match criteria:
@@ -284,7 +376,7 @@ def any_hold(criteria: List<&2, Criteria>, +w: CaveChoose.World, +lo: U32, +hi: 
     case Con{+c, rest}:
       match w:
         case CaveChoose.World{+swaps, _, +placed, _}:
-          (tasks_hold(c, lo, hi, swaps) && rules_hold(criteria_rules(c), placed)) || any_hold(rest, w, lo, hi)
+          (tasks_hold(c, lo, hi, swaps) && rules_hold(criteria_rules(c), placed) && groups_hold(criteria_groups(c), placed)) || any_hold(rest, w, lo, hi)
 
 def world_holds(+criteria: List<&2, Criteria>, +w: CaveChoose.World, +lo: U32, +hi: U32) -> Bool:
   match w:
@@ -299,12 +391,48 @@ def rules_possible(rules: List<&2, Rule>, +entries: List<&2, CaveChoose.Entry>) 
     case Con{Rule{+key, _, +low, _}, rest}:
       (low <= CaveChoose.count_of(entries, key) : U32) && rules_possible(rest, entries)
 
+def some_possible(alternatives: List<&2, List<&2, Rule>>, +entries: List<&2, CaveChoose.Entry>) -> Bool:
+  match alternatives:
+    case Nil{}:
+      False{}
+    case Con{rules, rest}:
+      rules_possible(rules, entries) || some_possible(rest, entries)
+
+def rules_most(rules: List<&2, Rule>, +entries: List<&2, CaveChoose.Entry>) -> U32:
+  match rules:
+    case Nil{}:
+      0
+    case Con{Rule{+key, _, _, _}, rest}:
+      (CaveChoose.count_of(entries, key) + rules_most(rest, entries) : U32)
+
+def alternatives_most(alternatives: List<&2, List<&2, Rule>>, +entries: List<&2, CaveChoose.Entry>) -> U32:
+  match alternatives:
+    case Nil{}:
+      0
+    case Con{rules, rest}:
+      (rules_most(rules, entries) + alternatives_most(rest, entries) : U32)
+
+def total_possible(total: Maybe<&2, LevelChecks.Total>, alternatives: List<&2, List<&2, Rule>>, +entries: List<&2, CaveChoose.Entry>) -> Bool:
+  match total:
+    case None{}:
+      True{}
+    case Some{LevelChecks.Total{+low, _}}:
+      (low <= alternatives_most(alternatives, entries) : U32)
+
+def groups_possible(groups: List<&2, Group>, +entries: List<&2, CaveChoose.Entry>) -> Bool:
+  match groups:
+    case Nil{}:
+      True{}
+    case Con{Group{+alternatives, total}, rest}:
+      some_possible(alternatives, entries) && total_possible(total, alternatives, entries) && groups_possible(rest, entries)
+
 def any_possible(criteria: List<&2, Criteria>, +lo: U32, +hi: U32, +swaps: U32, +entries: List<&2, CaveChoose.Entry>) -> Bool:
   match criteria:
     case Nil{}:
       False{}
     case Con{+c, rest}:
-      (tasks_hold(c, lo, hi, swaps) && rules_possible(criteria_rules(c), entries)) || any_possible(rest, lo, hi, swaps, entries)
+      (tasks_hold(c, lo, hi, swaps) && rules_possible(criteria_rules(c), entries) && groups_possible(criteria_groups(c), entries))
+        || any_possible(rest, lo, hi, swaps, entries)
 
 def choose_gate(pass: Bool, +criteria: List<&2, Criteria>, +c: CavePrefix.Chosen, a: CaveChoose.Added) -> Bool:
   match pass:
@@ -351,10 +479,24 @@ def local_rules(rules: List<&2, Rule>) -> List<&2, Rule>:
     case Con{Rule{+key, TaskSet{+lo, +hi}, +low, +high}, rest}:
       Rule{key, TaskSet{lo, hi}, low, high} <> local_rules(rest)
 
+def local_alternatives(alternatives: List<&2, List<&2, Rule>>) -> List<&2, List<&2, Rule>>:
+  match alternatives:
+    case Nil{}:
+      Nil{}
+    case Con{rules, rest}:
+      local_rules(rules) <> local_alternatives(rest)
+
+def local_groups(groups: List<&2, Group>) -> List<&2, Group>:
+  match groups:
+    case Nil{}:
+      Nil{}
+    case Con{Group{alternatives, total}, rest}:
+      Group{local_alternatives(alternatives), Config.local_total(total)} <> local_groups(rest)
+
 # A private copy, so parallel workers do not share reference counts.
 def local_criteria(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
   match criteria:
     case Nil{}:
       Nil{}
-    case Con{Criteria{TaskSet{+required_lo, +required_hi}, TaskSet{+excluded_lo, +excluded_hi}, +care, +want, rules}, rest}:
-      Criteria{TaskSet{required_lo, required_hi}, TaskSet{excluded_lo, excluded_hi}, care, want, local_rules(rules)} <> local_criteria(rest)
+    case Con{Criteria{TaskSet{+required_lo, +required_hi}, TaskSet{+excluded_lo, +excluded_hi}, +care, +want, rules, groups}, rest}:
+      Criteria{TaskSet{required_lo, required_hi}, TaskSet{excluded_lo, excluded_hi}, care, want, local_rules(rules), local_groups(groups)} <> local_criteria(rest)

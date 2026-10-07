@@ -86,6 +86,17 @@ def rules(rule):
     return {"type": "array", "maxItems": CAPS["rules"], "items": ref(rule)}
 
 
+def setpiece_items(rule, group):
+    return {"type": "array", "maxItems": CAPS["rules"], "items": {"oneOf": [ref(rule), ref(group)]}}
+
+
+def setpiece_group(rule):
+    total = {**ref("bound"), "description": "Bounds the counts of every name of the group's rules, summed."}
+    return closed({"any": {"type": "array", "minItems": 1, "maxItems": CAPS["rules"], "items": ref(rule)},
+                   "total": total}, ("any",),
+                  description="Holds when any of its rules holds (OR) and its total is within bounds.")
+
+
 def metric_fields(links="wormholes"):
     return {"metric": ref("metric"), links: {"type": "boolean", "default": False}}
 
@@ -124,6 +135,7 @@ def definitions(catalog):
                        "items": ref("setPieceName"),
                        "description": "Names of `required` whose bound counts only the copies the generated world "
                                       "placed (ensure placed), which makes the entry need the world."}}),
+        "setPieceGroup": setpiece_group("setPieceRule"),
         "near": closed({"prefab": ref("prefabs"), "within": ref("distance"), **metric_fields()}, ("prefab", "within")),
         "countRule": closed({"prefab": ref("prefabs"), "min": ref("uint32"), "max": ref("uint32"), "near": ref("near")},
                             ("prefab",)),
@@ -141,7 +153,7 @@ def definitions(catalog):
                             ("from", "visit", "max")),
         "entry": closed({"passive": {"type": "boolean", "default": False,
                                      "description": "Only decided on candidates of the entries that aren't passive."},
-                         "tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"), "setpieces": rules("setPieceRule"),
+                         "tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"), "setpieces": setpiece_items("setPieceRule", "setPieceGroup"),
                          "counts": rules("countRule"), "distances": rules("distanceRule"), "tiles": rules("tileRule"),
                          "bridges": rules("bridgeRule"), "routes": rules("routeRule")},
                         description="All sections and all rules must hold (AND)."),
@@ -167,6 +179,7 @@ def cave_definitions():
             "tasks": ref("caveTaskList"),
             "required": {"type": "object", "maxProperties": CAPS["set pieces"],
                          "propertyNames": ref("caveSetPieceName"), "additionalProperties": ref("bound")}}),
+        "caveSetPieceGroup": setpiece_group("caveSetPieceRule"),
         "cavePrefabs": one_or_list("cavePrefabId", CAPS["prefab ids"], "A caves prefab id or a list of them (their union)."),
         "caveNear": closed({"prefab": ref("cavePrefabs"), "within": ref("distance"), **metric_fields("pillars")},
                            ("prefab", "within")),
@@ -184,7 +197,7 @@ def cave_definitions():
                                          "description": "Only decided on candidates of the entries that aren't "
                                                         "passive."},
                              "tasks": ref("caveTasks"), "prefab_swaps": ref("cavePrefabSwaps"),
-                             "setpieces": rules("caveSetPieceRule"), "counts": rules("caveCountRule"),
+                             "setpieces": setpiece_items("caveSetPieceRule", "caveSetPieceGroup"), "counts": rules("caveCountRule"),
                              "distances": rules("caveDistanceRule"), "tiles": rules("tileRule"),
                              "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
                             description="All sections and all rules must hold (AND). Counts, distances and routes "

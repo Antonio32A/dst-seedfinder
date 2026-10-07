@@ -81,10 +81,8 @@ export default function WorldSection({ shard, rows, onChange }: WorldSectionProp
                         World details <span className="tag tag--accent">slow</span>
                     </h4>
                     <p className="muted small">
-                        These need each seed&apos;s world generated, about a second of CPU time per seed, so far fewer
-                        seeds
-                        are checked than with the other filters. Narrow the search with biomes, resources or set pieces
-                        first. Distances are in tiles, and the map is about {MAP_SIZE_TILES} tiles across.
+                        These require every world to be fully generated, so you should set up some filters for biomes,
+                        resources or set pieces to find worlds faster. 
                     </p>
                     {SECTIONS.filter(({ id }) => rows[id].length > 0).map(({ id, title }) => (
                             <div key={id} className="world-area__section">

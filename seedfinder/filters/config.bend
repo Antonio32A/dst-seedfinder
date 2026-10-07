@@ -12,12 +12,16 @@ import ./level_checks.bend as LevelChecks
 # A world filter (README.md "world find"): criteria are alternatives, a seed matches when one holds.
 # Task sets are masks over data/world_catalog.bend task ids; a rule bounds how many times a set piece
 # (world_catalog piece id) is planned in the rule's tasks (only its minimum for a `placed` name, whose bound the world
-# decides).
+# decides). Every rule of an entry must hold, and each of its setpieces groups needs one of its rules' lists to hold
+# and the sum of all its rules' counts within its total (only its minimum when the group has `placed` names).
 type Rule is Data:
   Rule{piece: U32, tasks: U32, low: U32, high: U32}
 
+type Group is Data:
+  Group{alternatives: List<&2, List<&2, Rule>>, total: Maybe<&2, LevelChecks.Total>}
+
 type Criteria is Data:
-  Criteria{required: U32, excluded: U32, swap_care: U32, swap_want: U32, rules: List<&2, Rule>}
+  Criteria{required: U32, excluded: U32, swap_care: U32, swap_want: U32, rules: List<&2, Rule>, groups: List<&2, Group>}
 
 # A compiled config: the platform the worlds are generated on (windows unless "linux"), the part A criteria of the
 # entries, their parts B-E (in the same order), the first "not supported by this binary yet" message when an entry
@@ -33,7 +37,7 @@ def unbounded() -> U32:
   4294967295
 
 def anything() -> Criteria:
-  Criteria{0, 0, 0, 0, Nil{}}
+  Criteria{0, 0, 0, 0, Nil{}, Nil{}}
 
 # The search criteria of a config: an empty criteria list matches every seed.
 def or_anything(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
@@ -198,14 +202,82 @@ def setpiece_rules(item: Json.Json, +path: String, acc: List<&2, Rule>) -> Resul
     +placed : List<&2, String> <- placed_names(names, required, 0, path ++ ".placed", Nil{})
     rules_in(Bool.pick(U32, U32.is_zero(tasks), every_task(), tasks), required, pieces, placed, path ++ ".required", acc)
 
+# A setpieces group: `{"any": [rule, ...], "total"?: bound}`.
+def is_group(+item: Json.Json) -> Bool:
+  match item:
+    case Json.JObj{+fields}:
+      Maybe.is_some(&2, Json.Json, Parse.field(fields, "any")) || Maybe.is_some(&2, Json.Json, Parse.field(fields, "total"))
+    case _:
+      False{}
+
+def single_rules(group: Bool, item: Json.Json, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
+  match group:
+    case True{}:
+      Done{acc}
+    case False{}:
+      setpiece_rules(item, path, acc)
+
+# The rules of the setpieces items that aren't groups.
 def rules_of(items: List<&2, Json.Json>, +index: U32, +path: String, acc: List<&2, Rule>) -> Result<&1, &1, U32 & String, List<&2, Rule>>:
   match items:
     case Nil{}:
       Done{acc}
-    case Con{item, rest}:
+    case Con{+item, rest}:
       do Result<&1, &1, U32 & String, List<&2, Rule>>:
-        more : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), acc)
+        more : List<&2, Rule> <- single_rules(is_group(item), item, Parse.indexed(path, index), acc)
         rules_of(rest, (index + 1 : U32), path, more)
+
+def member_rules(items: List<&2, Json.Json>, +index: U32, +path: String) -> Result<&1, &1, U32 & String, List<&2, List<&2, Rule>>>:
+  match items:
+    case Nil{}:
+      Done{Nil{}}
+    case Con{item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, List<&2, Rule>>>:
+        rules : List<&2, Rule> <- setpiece_rules(item, Parse.indexed(path, index), Nil{})
+        others : List<&2, List<&2, Rule>> <- member_rules(rest, (index + 1 : U32), path)
+        return rules <> others
+
+# A group's optional `total` bound; `planned` drops its maximum (LevelChecks.total_from).
+def total_of(m: Maybe<&2, Json.Json>, +planned: Bool, +path: String) -> Result<&1, &1, U32 & String, Maybe<&2, LevelChecks.Total>>:
+  match m:
+    case None{}:
+      Done{None{}}
+    case Some{+bound}:
+      match bound:
+        case Json.JNum{_}:
+          Done{LevelChecks.total_from(Some{bound}, planned)}
+        case Json.JArr{Con{Json.JNum{_}, Con{Json.JNum{_}, Nil{}}}}:
+          Done{LevelChecks.total_from(Some{bound}, planned)}
+        case _:
+          Fail{bound_message(path)}
+
+def group_of(item: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Group>:
+  do Result<&1, &1, U32 & String, Group>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(item, ["any", "total"], path)
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "any"), path ++ ".any")
+    +listed : List<&2, Json.Json> <- Parse.nonempty_capped(items, 16, "rules", path ++ ".any")
+    alternatives : List<&2, List<&2, Rule>> <- member_rules(listed, 0, path ++ ".any")
+    total : Maybe<&2, LevelChecks.Total> <- total_of(Parse.field(fields, "total"), LevelChecks.has_placed(listed), path ++ ".total")
+    return Group{alternatives, total}
+
+def maybe_group(group: Bool, item: Json.Json, +path: String, groups: List<&2, Group>) -> Result<&1, &1, U32 & String, List<&2, Group>>:
+  match group:
+    case False{}:
+      Done{groups}
+    case True{}:
+      do Result<&1, &1, U32 & String, List<&2, Group>>:
+        parsed : Group <- group_of(item, path)
+        return parsed <> groups
+
+# The setpieces groups, each as the rules of its members and its total.
+def groups_of(items: List<&2, Json.Json>, +index: U32, +path: String) -> Result<&1, &1, U32 & String, List<&2, Group>>:
+  match items:
+    case Nil{}:
+      Done{Nil{}}
+    case Con{+item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, Group>>:
+        others : List<&2, Group> <- groups_of(rest, (index + 1 : U32), path)
+        maybe_group(is_group(item), item, Parse.indexed(path, index), others)
 
 def only_placed(bounds: List<&2, LevelChecks.Bounded>, +placed: List<&2, String>) -> List<&2, LevelChecks.Bounded>:
   match bounds:
@@ -215,16 +287,43 @@ def only_placed(bounds: List<&2, LevelChecks.Bounded>, +placed: List<&2, String>
       +tail = only_placed(rest, placed)
       Bool.pick(List<&2, LevelChecks.Bounded>, is_member(placed, name), LevelChecks.Bounded{name, low, high} <> tail, tail)
 
-# The world rules of the setpieces rules (already accepted) that have `placed` names.
+def placed_bounds(+fields: List<&2, Json.Json>) -> List<&2, LevelChecks.Bounded>:
+  only_placed(LevelChecks.bounds_of(LevelChecks.fields_of(Parse.field(fields, "required"))), LevelChecks.listed(Parse.field(fields, "placed")))
+
+def members_of(items: List<&2, Json.Json>) -> List<&2, Rules.Member>:
+  match items:
+    case Nil{}:
+      Nil{}
+    case Con{Json.JObj{+fields}, rest}:
+      Rules.Member{LevelChecks.rule_pieces(fields), placed_bounds(fields)} <> members_of(rest)
+    case Con{_, rest}:
+      members_of(rest)
+
+def any_placed(members: List<&2, Rules.Member>) -> Bool:
+  match members:
+    case Nil{}:
+      False{}
+    case Con{Rules.Member{_, +placed}, rest}:
+      Bool.not(List.is_empty(&2, LevelChecks.Bounded, placed)) || any_placed(rest)
+
+def placed_rule(group: Maybe<&2, Json.Json>, +fields: List<&2, Json.Json>, +index: U32, +tail: List<&2, Rules.Placed>) -> List<&2, Rules.Placed>:
+  match group:
+    case Some{Json.JArr{items}}:
+      +members = members_of(items)
+      Bool.pick(List<&2, Rules.Placed>, any_placed(members), Rules.AnyPlaced{index, members, LevelChecks.total_from(Parse.field(fields, "total"), False{})} <> tail, tail)
+    case _:
+      +placed = placed_bounds(fields)
+      Bool.pick(List<&2, Rules.Placed>, List.is_empty(&2, LevelChecks.Bounded, placed), tail,
+        Rules.Placed{index, LevelChecks.listed(Parse.field(fields, "tasks")), placed} <> tail)
+
+# The world rules of the setpieces items (already accepted) that have `placed` names: rules, and groups with a rule
+# that has them.
 def placed_rules(items: List<&2, Json.Json>, +index: U32) -> List<&2, Rules.Placed>:
   match items:
     case Nil{}:
       Nil{}
     case Con{Json.JObj{+fields}, rest}:
-      +placed = LevelChecks.listed(Parse.field(fields, "placed"))
-      +tail = placed_rules(rest, (index + 1 : U32))
-      Bool.pick(List<&2, Rules.Placed>, List.is_empty(&2, String, placed), tail,
-        Rules.Placed{index, LevelChecks.listed(Parse.field(fields, "tasks")), only_placed(LevelChecks.bounds_of(LevelChecks.fields_of(Parse.field(fields, "required"))), placed)} <> tail)
+      placed_rule(Parse.field(fields, "any"), fields, index, placed_rules(rest, (index + 1 : U32)))
     case Con{_, rest}:
       placed_rules(rest, (index + 1 : U32))
 
@@ -239,6 +338,8 @@ def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +place
           None{}
         case Con{Rules.Placed{+index, _, _}, _}:
           Some{"config: " ++ Parse.indexed(path ++ ".setpieces", index) ++ ".placed is not supported by this binary yet (it needs the generated world)"}
+        case Con{Rules.AnyPlaced{+index, _, _}, _}:
+          Some{"config: " ++ Parse.indexed(path ++ ".setpieces", index) ++ ".any has placed names, which this binary doesn't support yet (they need the generated world)"}
     case Con{+section, rest}:
       Bool.pick(Maybe<&2, String>, Maybe.is_some(&2, Json.Json, Parse.field(fields, section)),
         Some{"config: " ++ path ++ "." ++ section ++ " is not supported by this binary yet (only tasks, prefab_swaps and setpieces are)"},
@@ -257,12 +358,13 @@ def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Ent
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
     +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
     rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
+    groups : List<&2, Group> <- groups_of(listed, 0, path ++ ".setpieces")
     +placed : List<&2, Rules.Placed> = placed_rules(listed, 0)
     later : Rules.Later <- Rules.later_of(fields, path, False{}, placed)
     +required : U32 <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
     +excluded : U32 <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
     +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules}, later, first_later(fields, later_parts(), placed, path), passive}
+    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}, later, first_later(fields, later_parts(), placed, path), passive}
 
 def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
   match items:
@@ -422,7 +524,7 @@ def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
 
 def tasks_hold(+c: Criteria, +chosen: U32, +swaps: U32) -> Bool:
   match c:
-    case Criteria{+required, +excluded, +care, +want, _}:
+    case Criteria{+required, +excluded, +care, +want, _, _}:
       U32.is_zero(((required .&. U32.not(chosen)) .|. (excluded .&. chosen) .|. ((swaps .^. want) .&. care) : U32))
 
 def any_tasks_hold(criteria: List<&2, Criteria>, +chosen: U32, +swaps: U32) -> Bool:
@@ -455,15 +557,56 @@ def rules_possible(rules: List<&2, Rule>, +pieces: LevelSetpieces.Pieces) -> Boo
 
 def criteria_rules(+c: Criteria) -> List<&2, Rule>:
   match c:
-    case Criteria{_, _, _, _, rules}:
+    case Criteria{_, _, _, _, rules, _}:
       rules
+
+def criteria_groups(+c: Criteria) -> List<&2, Group>:
+  match c:
+    case Criteria{_, _, _, _, _, groups}:
+      groups
+
+def some_possible(alternatives: List<&2, List<&2, Rule>>, +pieces: LevelSetpieces.Pieces) -> Bool:
+  match alternatives:
+    case Nil{}:
+      False{}
+    case Con{rules, rest}:
+      rules_possible(rules, pieces) || some_possible(rest, pieces)
+
+def rules_most(rules: List<&2, Rule>, +pieces: LevelSetpieces.Pieces) -> U32:
+  match rules:
+    case Nil{}:
+      0
+    case Con{Rule{+piece, _, _, _}, rest}:
+      (most_placed(pieces, piece) + rules_most(rest, pieces) : U32)
+
+def alternatives_most(alternatives: List<&2, List<&2, Rule>>, +pieces: LevelSetpieces.Pieces) -> U32:
+  match alternatives:
+    case Nil{}:
+      0
+    case Con{rules, rest}:
+      (rules_most(rules, pieces) + alternatives_most(rest, pieces) : U32)
+
+def total_possible(total: Maybe<&2, LevelChecks.Total>, alternatives: List<&2, List<&2, Rule>>, +pieces: LevelSetpieces.Pieces) -> Bool:
+  match total:
+    case None{}:
+      True{}
+    case Some{LevelChecks.Total{+low, _}}:
+      (low <= alternatives_most(alternatives, pieces) : U32)
+
+def groups_possible(groups: List<&2, Group>, +pieces: LevelSetpieces.Pieces) -> Bool:
+  match groups:
+    case Nil{}:
+      True{}
+    case Con{Group{+alternatives, total}, rest}:
+      some_possible(alternatives, pieces) && total_possible(total, alternatives, pieces) && groups_possible(rest, pieces)
 
 def any_possible(criteria: List<&2, Criteria>, +chosen: U32, +swaps: U32, +pieces: LevelSetpieces.Pieces) -> Bool:
   match criteria:
     case Nil{}:
       False{}
     case Con{+c, rest}:
-      (tasks_hold(c, chosen, swaps) && rules_possible(criteria_rules(c), pieces)) || any_possible(rest, chosen, swaps, pieces)
+      (tasks_hold(c, chosen, swaps) && rules_possible(criteria_rules(c), pieces) && groups_possible(criteria_groups(c), pieces))
+        || any_possible(rest, chosen, swaps, pieces)
 
 type Specials is Data:
   Specials{codes: U32, tasks: U32, count: U32}
@@ -486,23 +629,32 @@ def special_placed(+sp: Specials, +code: U32, +tasks: U32) -> U32:
 type Judging is Type:
   Judging{table: Array<U32>, holds: Bool}
 
-def judge_count(got: Array<U32> & U32, holds: Bool, +rule: Rule, +sp: Specials) -> Judging:
+def piece_count(got: Array<U32> & U32, +rule: Rule, +sp: Specials) -> Array<U32> & U32:
   (table, +mask) = got
   match rule:
-    case Rule{+piece, +tasks, +low, +high}:
+    case Rule{+piece, +tasks, _, _}:
       +special = (piece >= WorldCatalog.special_piece() : U32)
-      +placed = Bool.pick(U32, special, special_placed(sp, (piece - WorldCatalog.special_piece() : U32), tasks), LevelChoose.popcount((mask .&. tasks : U32)))
-      Judging{table, holds && (low <= placed : U32) && (placed <= high : U32)}
+      (table, Bool.pick(U32, special, special_placed(sp, (piece - WorldCatalog.special_piece() : U32), tasks), LevelChoose.popcount((mask .&. tasks : U32))))
 
 def rule_piece(+rule: Rule) -> U32:
   match rule:
     case Rule{+piece, _, _, _}:
       piece
 
+# How many times the rule's piece is placed in its tasks.
+def count_of(+rule: Rule, table: Array<U32>, +sp: Specials) -> Array<U32> & U32:
+  piece_count(table[((LevelChoose.mask_slot() + rule_piece(rule)) .&. 127 : U32)], rule, sp)
+
+def judge_count(got: Array<U32> & U32, holds: Bool, +rule: Rule) -> Judging:
+  (table, +placed) = got
+  match rule:
+    case Rule{_, _, +low, +high}:
+      Judging{table, holds && (low <= placed : U32) && (placed <= high : U32)}
+
 def judge(+rule: Rule, st: Judging, +sp: Specials) -> Judging:
   match st:
     case Judging{table, holds}:
-      judge_count(table[((LevelChoose.mask_slot() + rule_piece(rule)) .&. 127 : U32)], holds, rule, sp)
+      judge_count(count_of(rule, table, sp), holds, rule)
 
 def rules_hold(rules: List<&2, Rule>, st: Judging, +sp: Specials) -> Judging:
   match rules:
@@ -516,10 +668,67 @@ def either(any: Bool, judged: Judging) -> Judging:
     case Judging{table, holds}:
       Judging{table, any || holds}
 
+def both(all: Bool, judged: Judging) -> Judging:
+  match judged:
+    case Judging{table, holds}:
+      Judging{table, all && holds}
+
+# `holds` of the result: whether one of the alternatives' rules all hold (or `holds` of st already was).
+def some_hold(alternatives: List<&2, List<&2, Rule>>, st: Judging, +sp: Specials) -> Judging:
+  match alternatives:
+    case Nil{}:
+      st
+    case Con{rules, rest}:
+      match st:
+        case Judging{table, any}:
+          some_hold(rest, either(any, rules_hold(rules, Judging{table, True{}}, sp)), sp)
+
+def added(got: Array<U32> & U32, +sum: U32) -> Array<U32> & U32:
+  (table, +count) = got
+  (table, (sum + count : U32))
+
+def rules_total(rules: List<&2, Rule>, got: Array<U32> & U32, +sp: Specials) -> Array<U32> & U32:
+  match rules:
+    case Nil{}:
+      got
+    case Con{+rule, rest}:
+      (table, +sum) = got
+      rules_total(rest, added(count_of(rule, table, sp), sum), sp)
+
+def alternatives_total(alternatives: List<&2, List<&2, Rule>>, got: Array<U32> & U32, +sp: Specials) -> Array<U32> & U32:
+  match alternatives:
+    case Nil{}:
+      got
+    case Con{rules, rest}:
+      alternatives_total(rest, rules_total(rules, got, sp), sp)
+
+def total_judged(got: Array<U32> & U32, holds: Bool, +low: U32, high: Maybe<&2, U32>) -> Judging:
+  (table, +sum) = got
+  Judging{table, holds && LevelChecks.bound_holds(sum, low, high)}
+
+# `holds` of the result: whether `holds` of judged was and the group's total is in bounds.
+def total_holds(total: Maybe<&2, LevelChecks.Total>, alternatives: List<&2, List<&2, Rule>>, judged: Judging, +sp: Specials) -> Judging:
+  match total:
+    case None{}:
+      judged
+    case Some{LevelChecks.Total{+low, high}}:
+      match judged:
+        case Judging{table, holds}:
+          total_judged(alternatives_total(alternatives, (table, 0), sp), holds, low, high)
+
+def groups_hold(groups: List<&2, Group>, st: Judging, +sp: Specials) -> Judging:
+  match groups:
+    case Nil{}:
+      st
+    case Con{Group{+alternatives, total}, rest}:
+      match st:
+        case Judging{table, holds}:
+          groups_hold(rest, both(holds, total_holds(total, alternatives, some_hold(alternatives, Judging{table, False{}}, sp), sp)), sp)
+
 def criterion_step(+c: Criteria, st: Judging, +chosen: U32, +swaps: U32, +sp: Specials) -> Judging:
   match st:
     case Judging{table, any}:
-      either(any, rules_hold(criteria_rules(c), Judging{table, tasks_hold(c, chosen, swaps)}, sp))
+      either(any, groups_hold(criteria_groups(c), rules_hold(criteria_rules(c), Judging{table, tasks_hold(c, chosen, swaps)}, sp), sp))
 
 def criteria_hold(criteria: List<&2, Criteria>, st: Judging, +chosen: U32, +swaps: U32, +sp: Specials) -> Judging:
   match criteria:
@@ -582,11 +791,34 @@ def local_rules(rules: List<&2, Rule>) -> List<&2, Rule>:
     case Con{Rule{+piece, +tasks, +low, +high}, rest}:
       Rule{piece, tasks, low, high} <> local_rules(rest)
 
+def local_alternatives(alternatives: List<&2, List<&2, Rule>>) -> List<&2, List<&2, Rule>>:
+  match alternatives:
+    case Nil{}:
+      Nil{}
+    case Con{rules, rest}:
+      local_rules(rules) <> local_alternatives(rest)
+
+def local_total(total: Maybe<&2, LevelChecks.Total>) -> Maybe<&2, LevelChecks.Total>:
+  match total:
+    case Some{LevelChecks.Total{+low, Some{+high}}}:
+      Some{LevelChecks.Total{low, Some{high}}}
+    case Some{LevelChecks.Total{+low, None{}}}:
+      Some{LevelChecks.Total{low, None{}}}
+    case None{}:
+      None{}
+
+def local_groups(groups: List<&2, Group>) -> List<&2, Group>:
+  match groups:
+    case Nil{}:
+      Nil{}
+    case Con{Group{alternatives, total}, rest}:
+      Group{local_alternatives(alternatives), local_total(total)} <> local_groups(rest)
+
 # A private copy, so parallel workers do not share reference counts.
 def local_criteria(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
   match criteria:
     case Nil{}:
       Nil{}
-    case Con{Criteria{+required, +excluded, +care, +want, rules}, rest}:
-      Criteria{required, excluded, care, want, local_rules(rules)} <> local_criteria(rest)
+    case Con{Criteria{+required, +excluded, +care, +want, rules, groups}, rest}:
+      Criteria{required, excluded, care, want, local_rules(rules), local_groups(groups)} <> local_criteria(rest)
 

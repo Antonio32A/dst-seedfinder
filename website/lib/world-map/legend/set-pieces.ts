@@ -1,13 +1,13 @@
 import { CAVE_TASKS } from "@/lib/catalog/cave-level";
 import { prefabName } from "@/lib/catalog/prefab-sets";
-import { type SeedfinderConfig, type Shard, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
+import { type SeedfinderConfig, setPieceRules, type Shard, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import type { LegendGroup, LegendPrefab } from "./prefab-visibility";
 
 export const SET_PIECE_COLOUR = [255, 100, 40] as const;
 
 export const defaultShownSetPieces = (search?: SeedfinderConfig): Set<string> => new Set((search?.criteria ?? [])
-    .flatMap(({ setpieces = [] }) => setpieces.flatMap(({ required = {} }) => Object.keys(required))));
+    .flatMap(({ setpieces = [] }) => setPieceRules(setpieces).flatMap(({ required = {} }) => Object.keys(required))));
 
 const tally = (names: Iterable<string>) => {
     const counts = new Map<string, number>();

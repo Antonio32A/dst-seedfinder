@@ -34,9 +34,7 @@ def checked(+section: String, +index: U32, c: Checks.Check) -> Outcome:
 def run_job(+world: FilterWorld.World, job: Job) -> Outcome:
   match job:
     case JPlaced{+rule}:
-      match rule:
-        case Rules.Placed{+i, _, _}:
-          checked("setpieces", i, Checks.placed(world, rule))
+      checked("setpieces", Rules.placed_index(rule), Checks.placed(world, rule))
     case JCount{+i, rule}:
       checked("counts", i, Checks.count(world, rule))
     case JTiles{+i, rule}:
@@ -171,7 +169,7 @@ def pair_outcome(+section: String, +index: U32, got: Bool & String) -> Outcome:
   (+ok, +fields) = got
   Outcome{ok, False{}, result_json(section, index, ok, fields)}
 
-def setpiece_outcomes(rules: List<&2, LevelChecks.Pieces>, +placed: List<&2, LevelChecks.Placed>, +i: U32) -> List<&2, Outcome>:
+def setpiece_outcomes(rules: List<&2, LevelChecks.Setpiece>, +placed: List<&2, LevelChecks.Placed>, +i: U32) -> List<&2, Outcome>:
   match rules:
     case Nil{}:
       Nil{}
@@ -188,7 +186,7 @@ def has_swaps(+shown: LevelChecks.Shown) -> Bool:
     case LevelChecks.Shown{_, _, +swaps, _}:
       Bool.not(List.is_empty(&2, LevelChecks.Swap, swaps))
 
-def shown_pieces(+shown: LevelChecks.Shown) -> List<&2, LevelChecks.Pieces>:
+def shown_pieces(+shown: LevelChecks.Shown) -> List<&2, LevelChecks.Setpiece>:
   match shown:
     case LevelChecks.Shown{_, _, _, +pieces}:
       pieces

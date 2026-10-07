@@ -120,11 +120,13 @@ function ScopeControls({ rule, name, catalog, fixedTasks, update }: {
 interface SetPieceRuleRowProps {
     rule: PieceRule;
     catalog: LevelCatalog;
+    /** False in a group whose total does the counting. */
+    counted?: boolean;
     onChange: (rule: PieceRule) => void;
     onRemove: () => void;
 }
 
-export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: SetPieceRuleRowProps) {
+export default function SetPieceRuleRow({ rule, catalog, counted = true, onChange, onRemove }: SetPieceRuleRowProps) {
     const piece = catalog.setPieceById.get(rule.pieceId);
     const name = piece?.name ?? rule.pieceId;
     const max = ruleMax(rule, catalog);
@@ -140,7 +142,10 @@ export default function SetPieceRuleRow({ rule, catalog, onChange, onRemove }: S
     return (
             <li className="rule">
                 <PieceHeader piece={piece} name={name} catalog={catalog} onRemove={onRemove}/>
-                <CountControls rule={effectiveRule(rule, catalog)} name={name} max={max} hint={hint} update={update}/>
+                {counted && (
+                        <CountControls rule={effectiveRule(rule, catalog)} name={name} max={max} hint={hint}
+                                       update={update}/>
+                )}
                 <ScopeControls rule={rule} name={name} catalog={catalog} fixedTasks={fixedTasks} update={update}/>
                 {catalog.shard === "forest" && (
                         <div className="rule__controls">

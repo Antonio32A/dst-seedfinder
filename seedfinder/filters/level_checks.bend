@@ -16,8 +16,17 @@ type Bounded is Data:
 type Pieces is Data:
   Pieces{tasks: List<&2, String>, bounds: List<&2, Bounded>}
 
+# A setpieces group's `total`: bounds the copies of every name of its rules, summed.
+type Total is Data:
+  Total{low: U32, high: Maybe<&2, U32>}
+
+# A setpieces item: one rule, or a group (`any`) that holds when one of its rules holds and its total is in bounds.
+type Setpiece is Data:
+  Single{rule: Pieces}
+  Group{rules: List<&2, Pieces>, total: Maybe<&2, Total>}
+
 type Shown is Data:
-  Shown{required: List<&2, String>, excluded: List<&2, String>, swaps: List<&2, Swap>, setpieces: List<&2, Pieces>}
+  Shown{required: List<&2, String>, excluded: List<&2, String>, swaps: List<&2, Swap>, setpieces: List<&2, Setpiece>}
 
 def texts(items: List<&2, Json.Json>) -> List<&2, String>:
   match items:
@@ -77,10 +86,52 @@ def planned_bounds(bounds: List<&2, Bounded>, +placed: List<&2, String>) -> List
     case Con{Bounded{+name, +low, +high}, rest}:
       Bounded{name, low, Bool.pick(Maybe<&2, U32>, Parse.is_member(placed, name), None{}, high)} <> planned_bounds(rest, placed)
 
-def pieces_of(items: List<&2, Json.Json>) -> List<&2, Pieces>:
+# A setpieces rule's tasks and the bounds the level table checks.
+def rule_pieces(+fields: List<&2, Json.Json>) -> Pieces:
+  Pieces{listed(Parse.field(fields, "tasks")), planned_bounds(bounds_of(fields_of(Parse.field(fields, "required"))), listed(Parse.field(fields, "placed")))}
+
+# The rules of a list of setpieces rules (a group's `any`).
+def rules_pieces(items: List<&2, Json.Json>) -> List<&2, Pieces>:
   match items:
     case Con{Json.JObj{+fields}, rest}:
-      Pieces{listed(Parse.field(fields, "tasks")), planned_bounds(bounds_of(fields_of(Parse.field(fields, "required"))), listed(Parse.field(fields, "placed")))} <> pieces_of(rest)
+      rule_pieces(fields) <> rules_pieces(rest)
+    case Con{_, rest}:
+      rules_pieces(rest)
+    case Nil{}:
+      Nil{}
+
+# Whether one of a group's rules has `placed` names.
+def has_placed(items: List<&2, Json.Json>) -> Bool:
+  match items:
+    case Nil{}:
+      False{}
+    case Con{Json.JObj{+fields}, rest}:
+      Bool.not(List.is_empty(&2, String, listed(Parse.field(fields, "placed")))) || has_placed(rest)
+    case Con{_, rest}:
+      has_placed(rest)
+
+# A group's `total` (accepted already); `planned` drops the maximum, as the level table only checks the minimum when
+# the total counts `placed` names.
+def total_from(m: Maybe<&2, Json.Json>, +planned: Bool) -> Maybe<&2, Total>:
+  match m:
+    case Some{Json.JNum{+low}}:
+      Some{Total{low, None{}}}
+    case Some{Json.JArr{Con{Json.JNum{+low}, Con{Json.JNum{+high}, _}}}}:
+      Some{Total{low, Bool.pick(Maybe<&2, U32>, planned, None{}, Some{high})}}
+    case _:
+      None{}
+
+def setpiece_from(group: Maybe<&2, Json.Json>, +fields: List<&2, Json.Json>) -> Setpiece:
+  match group:
+    case Some{Json.JArr{+items}}:
+      Group{rules_pieces(items), total_from(Parse.field(fields, "total"), has_placed(items))}
+    case _:
+      Single{rule_pieces(fields)}
+
+def pieces_of(items: List<&2, Json.Json>) -> List<&2, Setpiece>:
+  match items:
+    case Con{Json.JObj{+fields}, rest}:
+      setpiece_from(Parse.field(fields, "any"), fields) <> pieces_of(rest)
     case Con{_, rest}:
       pieces_of(rest)
     case Nil{}:
@@ -260,8 +311,64 @@ def pieces_hold(bounds: List<&2, Bounded>, +names: List<&2, String>) -> Bool:
       bound_holds(occurrences(names, name), low, high) && pieces_hold(rest, names)
 
 # check_setpieces for one rule: (ok, fields after "ok").
-def setpiece_check(+rule: Pieces, +placed: List<&2, Placed>) -> Bool & String:
+def rule_check(+rule: Pieces, +placed: List<&2, Placed>) -> Bool & String:
   match rule:
     case Pieces{+tasks, +bounds}:
       +names = scoped(placed, tasks)
       (pieces_hold(bounds, names), ",\"counts\":{" ++ String.join(piece_items(bounds, names), ",") ++ "}")
+
+def checked_item(got: Bool & String) -> String:
+  (+ok, +fields) = got
+  "{\"ok\":" ++ Bool.pick(String, ok, "true", "false") ++ fields ++ "}"
+
+def group_items(rules: List<&2, Pieces>, +placed: List<&2, Placed>) -> List<&2, String>:
+  match rules:
+    case Nil{}:
+      Nil{}
+    case Con{+rule, rest}:
+      checked_item(rule_check(rule, placed)) <> group_items(rest, placed)
+
+def group_holds(rules: List<&2, Pieces>, +placed: List<&2, Placed>) -> Bool:
+  match rules:
+    case Nil{}:
+      False{}
+    case Con{Pieces{+tasks, +bounds}, rest}:
+      pieces_hold(bounds, scoped(placed, tasks)) || group_holds(rest, placed)
+
+def bounds_total(bounds: List<&2, Bounded>, +names: List<&2, String>) -> U32:
+  match bounds:
+    case Nil{}:
+      0
+    case Con{Bounded{+name, _, _}, rest}:
+      (occurrences(names, name) + bounds_total(rest, names) : U32)
+
+def group_total(rules: List<&2, Pieces>, +placed: List<&2, Placed>) -> U32:
+  match rules:
+    case Nil{}:
+      0
+    case Con{Pieces{+tasks, +bounds}, rest}:
+      (bounds_total(bounds, scoped(placed, tasks)) + group_total(rest, placed) : U32)
+
+def total_holds(total: Maybe<&2, Total>, +sum: U32) -> Bool:
+  match total:
+    case None{}:
+      True{}
+    case Some{Total{+low, high}}:
+      bound_holds(sum, low, high)
+
+def total_field(total: Maybe<&2, Total>, +sum: U32) -> String:
+  match total:
+    case None{}:
+      ""
+    case Some{_}:
+      ",\"total\":" ++ U32.show(sum)
+
+# check_setpieces for one setpieces item: (ok, fields after "ok"); a group lists its rules' results under "any", and
+# the sum its `total` bounds under "total".
+def setpiece_check(+item: Setpiece, +placed: List<&2, Placed>) -> Bool & String:
+  match item:
+    case Single{+rule}:
+      rule_check(rule, placed)
+    case Group{+rules, +total}:
+      +sum = group_total(rules, placed)
+      (group_holds(rules, placed) && total_holds(total, sum), ",\"any\":[" ++ String.join(group_items(rules, placed), ",") ++ "]" ++ total_field(total, sum))

@@ -4,6 +4,7 @@ import ../cli/args.bend as Args
 import ../filters/config.bend as Config
 import ../filters/cave_config.bend as CaveConfig
 import ../filters/rules.bend as Rules
+import ../filters/level_checks.bend as LevelChecks
 import ../filters/cave_setpiece.bend as CaveFilter
 import ../level/cave_prefix.bend as CavePrefix
 import ../level/cave_summary.bend as CaveSummary
@@ -73,7 +74,7 @@ def config_names_its_shard():
   {==}
 
 law cave_config_tasks:
-  {CaveConfig.config_of("{\"shard\": \"caves\", \"criteria\": [{\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, []}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, []}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"shard\": \"caves\", \"criteria\": [{\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, [], []}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, [], []}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_tasks():
   {==}
@@ -137,21 +138,28 @@ def cave_config_rejects_forest_set_pieces():
   {==}
 
 law cave_config_set_pieces:
-  {CaveConfig.config_of("{\"criteria\": [{\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}]}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}]}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"criteria\": [{\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], []}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], []}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_set_pieces():
   {==}
 
+# A caves setpieces group and its total, kept apart from the rules like in the forest.
+law cave_config_set_piece_group:
+  {CaveConfig.config_of("{\"criteria\": [{\"setpieces\": [{\"any\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}, {\"required\": {\"MiscBoon\": 3}}], \"total\": 5}]}]}") == Done{CaveConfig.Config{True{}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [], [CaveConfig.Group{[[CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], [CaveConfig.Rule{32, CaveConfig.TaskSet{4294967295, 4294967295}, 3, 4294967295}]], Some{LevelChecks.Total{5, None{}}}}]}], [Rules.nothing_later()], [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [], [CaveConfig.Group{[[CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], [CaveConfig.Rule{32, CaveConfig.TaskSet{4294967295, 4294967295}, 3, 4294967295}]], Some{LevelChecks.Total{5, None{}}}}]}]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+
+def cave_config_set_piece_group():
+  {==}
+
 # Seed 1 has MoreAltars (id 44, bit 12 of the second word) and seed 3 has not.
 law cave_config_matches_by_task:
-  {(CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, []}], 1), CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, []}], 3)) == (True{}, False{}) : (Bool & Bool)}
+  {(CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, [], []}], 1), CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, [], []}], 3)) == (True{}, False{}) : (Bool & Bool)}
 
 def cave_config_matches_by_task():
   {==}
 
 # Seed 1 has twiggy trees (bit 1 of the swaps) and no grass gekko (bit 0, which the caves never take).
 law cave_config_matches_by_swap:
-  {(CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 2, 2, []}], 1), CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 1, 1, []}], 1)) == (True{}, False{}) : (Bool & Bool)}
+  {(CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 2, 2, [], []}], 1), CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 1, 1, [], []}], 1)) == (True{}, False{}) : (Bool & Bool)}
 
 def cave_config_matches_by_swap():
   {==}

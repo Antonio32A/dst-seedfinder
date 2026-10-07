@@ -15,6 +15,7 @@ import ./dump.bend as FilterDump
 import ./parse.bend as Parse
 import ./json.bend as Json
 import ./level_checks.bend as LevelChecks
+import ../level/summary.bend as LevelSummary
 
 # The checks of the world rules (criteria.py check_count, check_distance, check_tiles, check_route, and the setpieces
 # rules' `placed` names): whether a rule holds and its witness fields, as evaluate.py --json prints them after "ok".
@@ -298,9 +299,65 @@ def placed_hold(bounds: List<&2, LevelChecks.Bounded>, +plan: List<&2, FilterDum
     case Con{LevelChecks.Bounded{+name, +low, +high}, rest}:
       LevelChecks.bound_holds(plan_count(plan, scope, name, True{}), low, high) && placed_hold(rest, plan, scope)
 
-# A setpieces rule's `placed` names: each bound holds on the copies the world placed.
+def member_holds(members: List<&2, Rules.Member>, +levels: List<&2, LevelChecks.Placed>, +plan: List<&2, FilterDump.Planned>) -> Bool:
+  match members:
+    case Nil{}:
+      False{}
+    case Con{Rules.Member{LevelChecks.Pieces{+tasks, +bounds}, +placed}, rest}:
+      (LevelChecks.pieces_hold(bounds, LevelChecks.scoped(levels, tasks)) && placed_hold(placed, plan, tasks)) || member_holds(rest, levels, plan)
+
+def member_item(got: Bool & String, +placed_ok: Bool, +pieces: List<&2, String>) -> String:
+  (+ok, +fields) = got
+  "{\"ok\":" ++ Bool.pick(String, ok && placed_ok, "true", "false") ++ fields ++ ",\"pieces\":" ++ json_list(pieces) ++ "}"
+
+def member_items(members: List<&2, Rules.Member>, +levels: List<&2, LevelChecks.Placed>, +plan: List<&2, FilterDump.Planned>) -> List<&2, String>:
+  match members:
+    case Nil{}:
+      Nil{}
+    case Con{Rules.Member{+level, +placed}, rest}:
+      match level:
+        case LevelChecks.Pieces{+tasks, _}:
+          member_item(LevelChecks.rule_check(level, levels), placed_hold(placed, plan, tasks), placed_items(placed, plan, tasks))
+            <> member_items(rest, levels, plan)
+
+def is_placed(bounds: List<&2, LevelChecks.Bounded>, +name: String) -> Bool:
+  match bounds:
+    case Nil{}:
+      False{}
+    case Con{LevelChecks.Bounded{+placed, _, _}, rest}:
+      String.eq(placed, name) || is_placed(rest, name)
+
+def names_total(bounds: List<&2, LevelChecks.Bounded>, +placed: List<&2, LevelChecks.Bounded>, +names: List<&2, String>, +plan: List<&2, FilterDump.Planned>, +scope: List<&2, String>) -> U32:
+  match bounds:
+    case Nil{}:
+      0
+    case Con{LevelChecks.Bounded{+name, _, _}, rest}:
+      +count = Bool.pick(U32, is_placed(placed, name), plan_count(plan, scope, name, True{}), LevelChecks.occurrences(names, name))
+      (count + names_total(rest, placed, names, plan, scope) : U32)
+
+# A group's total: the copies of its names in their rules' tasks, the placed ones for `placed` names.
+def world_total(members: List<&2, Rules.Member>, +levels: List<&2, LevelChecks.Placed>, +plan: List<&2, FilterDump.Planned>) -> U32:
+  match members:
+    case Nil{}:
+      0
+    case Con{Rules.Member{LevelChecks.Pieces{+tasks, +bounds}, +placed}, rest}:
+      (names_total(bounds, placed, LevelChecks.scoped(levels, tasks), plan, tasks) + world_total(rest, levels, plan) : U32)
+
+def world_seed(+world: FilterWorld.World) -> U32:
+  match world:
+    case FilterWorld.World{+seed, _, _, _, _, _, _, _, _}:
+      seed
+
+# A setpieces rule's `placed` names: each bound holds on the copies the world placed. A setpieces group holds when one
+# of its rules holds on the level table (of the world's seed) and on the copies the world placed, and its total does.
 def placed(+world: FilterWorld.World, rule: Rules.Placed) -> Check:
   match rule:
     case Rules.Placed{_, +tasks, +bounds}:
       +plan = FilterWorld.planned(world)
       Check{placed_hold(bounds, plan, tasks), ",\"pieces\":" ++ json_list(placed_items(bounds, plan, tasks))}
+    case Rules.AnyPlaced{_, +members, +total}:
+      +plan = FilterWorld.planned(world)
+      +levels = LevelChecks.placed(LevelSummary.summary(world_seed(world)))
+      +sum = world_total(members, levels, plan)
+      Check{member_holds(members, levels, plan) && LevelChecks.total_holds(total, sum),
+        ",\"any\":[" ++ String.join(member_items(members, levels, plan), ",") ++ "]" ++ LevelChecks.total_field(total, sum)}

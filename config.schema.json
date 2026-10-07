@@ -742,6 +742,28 @@
     }
    }
   },
+  "setPieceGroup": {
+   "description": "Holds when any of its rules holds (OR) and its total is within bounds.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "any": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/setPieceRule"
+     }
+    },
+    "total": {
+     "$ref": "#/$defs/bound",
+     "description": "Bounds the counts of every name of the group's rules, summed."
+    }
+   },
+   "required": [
+    "any"
+   ]
+  },
   "near": {
    "type": "object",
    "additionalProperties": false,
@@ -910,7 +932,14 @@
      "type": "array",
      "maxItems": 16,
      "items": {
-      "$ref": "#/$defs/setPieceRule"
+      "oneOf": [
+       {
+        "$ref": "#/$defs/setPieceRule"
+       },
+       {
+        "$ref": "#/$defs/setPieceGroup"
+       }
+      ]
      }
     },
     "counts": {
@@ -1403,6 +1432,28 @@
     }
    }
   },
+  "caveSetPieceGroup": {
+   "description": "Holds when any of its rules holds (OR) and its total is within bounds.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "any": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/caveSetPieceRule"
+     }
+    },
+    "total": {
+     "$ref": "#/$defs/bound",
+     "description": "Bounds the counts of every name of the group's rules, summed."
+    }
+   },
+   "required": [
+    "any"
+   ]
+  },
   "cavePrefabs": {
    "description": "A caves prefab id or a list of them (their union).",
    "oneOf": [
@@ -1554,7 +1605,14 @@
      "type": "array",
      "maxItems": 16,
      "items": {
-      "$ref": "#/$defs/caveSetPieceRule"
+      "oneOf": [
+       {
+        "$ref": "#/$defs/caveSetPieceRule"
+       },
+       {
+        "$ref": "#/$defs/caveSetPieceGroup"
+       }
+      ]
      }
     },
     "counts": {

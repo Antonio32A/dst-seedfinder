@@ -24,7 +24,8 @@ game scripts and the finder's caps (§ 6). Never edit it by hand.
 
 An **entry** is an object with the optional sections `tasks`, `prefab_swaps`, `setpieces`, `counts`, `distances`,
 `tiles`, `bridges`, `routes`, and the optional flag `passive` (`true` or `false`, default `false`). An entry holds when **all**
-its sections hold and, within a section, all its rules hold (**AND**). `{}` holds for every seed.
+its sections hold and, within a section, all its rules hold (**AND**); a `setpieces` group holds when any of its rules
+holds (**OR**, § 4 A). `{}` holds for every seed.
 
 **Passive entries.** A seed is a **candidate** when the level table (part A) of some entry that isn't passive holds.
 Only candidates can match, and a candidate matches the first entry, passive or not, that holds on it. So a passive
@@ -133,6 +134,17 @@ names per rule):
   world can't place more than it plans), the world decides the bound, and the result is a world witness (§ 8). A world
   dump without a `PLAN` section ([world-dump.md](world-dump.md)) can't decide it: `world find --worlds` counts it as a
   missing dump, and `world eval` stops with an error.
+- **Groups.** A `setpieces` item can also be a group `{"any": [rule, ...], "total"?: bound}` (1 to 16 rules of the form
+  above, no nested groups, no other keys). It holds when at least one of its rules holds (**OR**) and, with `total`, the
+  sum of `count(name)` over every name of every rule (each in its rule's tasks, as written) is within `total`; the
+  entry's other items must all hold. E.g. `[{"any": [{"required": {"MooseNest": 1}}, {"required": {"Chessy_1": 1}}]},
+  {"required": {"Level4Boon": 1}}]` is (MooseNest or Chessy_1) and Level4Boon, and `{"any": [{"required": {"MiscBoon":
+  0}}, {"required": {"Level4Boon": 0}}], "total": 5}` is at least 5 of MiscBoon and Level4Boon together (a cane's
+  boons). A group counts as one rule of the section, and its index is its position in `setpieces`. A group with `placed`
+  names in any of its rules makes its entry need the generated world: the level table checks every rule with only the
+  minimum of its `placed` names (and only the minimum of `total`), and the world decides the group (a rule holds when
+  its bounds hold on the level table and its `placed` names on the world; `total` counts the placed copies of `placed`
+  names).
 - Realistic maxima (default settings): ≤ 8 boons in total, ≤ 1 trap, ≤ 1 point of interest, ≤ 1 protected piece.
   Fixed pieces have their fixed counts. Use the catalog's `level_stats.max` to clamp inputs.
 
@@ -268,9 +280,9 @@ The finder rejects a config over any cap with a config error.
 | What | Cap |
 |---|---|
 | `criteria` entries (alternatives) | 25 |
-| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per entry | 16 |
+| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per entry, and per `setpieces` group (min 1) | 16 |
 | prefab ids per prefab set (`prefab`, `from`, `to`, `near.prefab`, each `visit` stop) | 16 |
-| set piece names per `setpieces[].required` | 16 |
+| set piece names per `setpieces[].required` (and per rule of a group) | 16 |
 | task ids per task list (`tasks.required`, `tasks.excluded`, `setpieces[].tasks`) | 25 |
 | `routes[].visit` stops | 6 (min 1) |
 | tile names per tile set | 16 |
@@ -297,11 +309,11 @@ parse it: it validates with the schema and the caps first.
 | non-default setting | `only default settings are supported (<key>)` |
 | missing required field | `<path>.<key> is required` |
 | bad uint32 | `<path> must be an integer in 0..4294967295` |
-| bad set piece bound | `<path> must be an integer in 0..4294967295 or [min, max]` |
+| bad set piece bound or group `total` | `<path> must be an integer in 0..4294967295 or [min, max]` |
 | bad distance | `<path> must be a number in 0..1000000` |
 | bad metric / order | `<path> must be "straight" or "walk"` / `<path> must be "any" or "fixed"` |
 | bad prefab / tile set | `<path> must be a prefab id or a list of prefab ids` / `... a tile name or a list of tile names` |
-| empty prefab set, tile set or `visit` | `<path> must not be empty` |
+| empty prefab set, tile set, `visit` or group | `<path> must not be empty` |
 | over a cap | `<path> has <n> <entries\|rules\|prefab ids\|set pieces\|tasks\|stops\|tiles> (at most <cap>)` |
 | unknown prefab id | `unknown prefab "<id>" in <path>`, plus ` (a catalog group name: list its prefab ids)` for group names |
 | unknown task | `unknown task "<id>" in <path>` |
@@ -369,7 +381,7 @@ done {"scanned": C, "last_scanned": L, "next_seed": X, "hits": H, "stopped": "li
 - `level`: the level table, exactly as `seedfinder world show` prints it:
   `{"prefab_swaps": {"grass": .., "twigs": .., "berries": ..}, "tasks": [{"task", "set_pieces", "random_set_pieces"}, ...]}`.
   Tasks are in chosen order, and pieces in placement order.
-- `results`: one witness per `setpieces` rule with `placed` names and per rule of that entry's `counts`, `tiles`,
+- `results`: one witness per `setpieces` rule or group with `placed` names and per rule of that entry's `counts`, `tiles`,
   `distances`, `bridges` and `routes`, in that order. So it's `[]` when the entry has only level-table sections.
   Level-table facts are in `level`.
 - Consumers ignore unknown fields.
@@ -382,7 +394,7 @@ hit). Instances are `{"prefab", "index", "x", "z"}`, and distances are world uni
 
 | Section | Fields |
 |---|---|
-| setpieces | `pieces: [{"name", "planned", "placed"}]`: per `placed` name, in `required` order, the copies the level table plans in the rule's tasks and those the world placed. |
+| setpieces | `pieces: [{"name", "planned", "placed"}]`: per `placed` name, in `required` order, the copies the level table plans in the rule's tasks and those the world placed. A group has `any` instead: per rule, `{"ok", "counts": {name: planned, ...}, "pieces": [...]}`, with `ok` whether that rule holds, `counts` its `required` names as the level table counts them (only the minimum checked for a `placed` name), and `pieces` its `placed` names as above; with `total`, also `total`, the sum it bounds. |
 | counts | `count`. With `near`, also `total` (instances of `prefab`) and `instances`: every counted instance plus `near` (its nearest near-instance) and `distance`. |
 | tiles | `distance` (steps), `from_tile`, `to_tile` as `{"tx", "ty", "x", "z"}` (x/z of the tile centre) |
 | distances | `distance`, `from`, `to`, `wormholes: [{"entry", "exit"}]` (jumps in path order; `pillars` in the caves). With `D = ∞` (possible with only `min`), it's just `"distance": null`. |

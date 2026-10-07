@@ -1,4 +1,12 @@
-import type { DistancesWitness, Witness, WitnessInstance, WitnessRoom, WitnessSection } from "./job-result";
+import type {
+    DistancesWitness,
+    GroupRuleResult,
+    PlacedPiece,
+    Witness,
+    WitnessInstance,
+    WitnessRoom,
+    WitnessSection
+} from "./job-result";
 
 const UNITS_PER_TILE = 4;
 
@@ -37,11 +45,24 @@ const jumps = (witness: DistancesWitness) => {
     return witness.wormholes.length > 0 ? `, ${plural(witness.wormholes.length, noun)}` : "";
 };
 
+const placedText = ({ name, planned, placed }: PlacedPiece) => `${name} ${WHOLE.format(placed)} of ${WHOLE.format(planned)} placed`;
+
+const groupRuleText = ({ counts, pieces }: GroupRuleResult) => [
+    ...pieces.map(placedText),
+    ...Object.entries(counts)
+        .filter(([name]) => !pieces.some((piece) => piece.name === name))
+        .map(([name, count]) => `${name} ${WHOLE.format(count)} planned`)
+].join(", ");
+
 type WitnessFigures = { [S in WitnessSection]: (witness: Extract<Witness, { section: S }>) => string };
 
 const WITNESS_FIGURES: WitnessFigures = {
-    setpieces: (witness) =>
-        witness.pieces.map(({ name, planned, placed }) => `${name} ${WHOLE.format(placed)} of ${WHOLE.format(planned)} placed`).join(", "),
+    setpieces: (witness) => {
+        if (!witness.any) return witness.pieces.map(placedText).join(", ");
+        return witness.total === undefined
+            ? witness.any.map(groupRuleText).join(" or ")
+            : `${witness.any.map(groupRuleText).join(", ")}: ${WHOLE.format(witness.total)} in total`;
+    },
     counts: (witness) =>
         witness.total === undefined ? `${WHOLE.format(witness.count)} found` : `${WHOLE.format(witness.count)} of ${WHOLE.format(witness.total)} nearby`,
     tiles: (witness) => plural(witness.distance, "tile step"),

@@ -11,6 +11,8 @@ import {
     PLATFORMS,
     type SeedfinderConfig,
     type SetPieceBound,
+    type SetPieceGroup,
+    type SetPieceItem,
     type SetPieceRule,
     type Shard,
     SHARDS,
@@ -44,12 +46,24 @@ export interface PieceRule {
     ensurePlaced: boolean;
 }
 
+export type GroupMatch = "any" | Exclude<CountMode, "none">;
+
+/** Set pieces of which a world needs any one, or, with a total match, that many of all of them together. */
+export interface PieceGroup {
+    key: string;
+    rules: PieceRule[];
+    match: GroupMatch;
+    min: number;
+    max: number;
+}
+
 export interface CriteriaGroup extends WorldRows {
     key: string;
     passive: boolean;
     biomes: Record<string, BiomeChoice>;
     swaps: Partial<Record<SwapCategory, string>>;
     rules: PieceRule[];
+    pieceGroups: PieceGroup[];
 }
 
 export interface SearchState {
@@ -83,6 +97,13 @@ export const COUNT_MODES: { id: CountMode; label: string }[] = [
     { id: "none", label: "None" }
 ];
 
+export const GROUP_MATCHES: { id: GroupMatch; label: string }[] = [
+    { id: "any", label: "Any one" },
+    { id: "atLeast", label: "Total at least" },
+    { id: "exactly", label: "Total exactly" },
+    { id: "between", label: "Total between" }
+];
+
 const MODE_FLOOR: Record<CountMode, number> = { atLeast: 1, exactly: 1, between: 0, none: 0 };
 
 const KIND_TOTALS: Partial<Record<SetPieceKind, { most: number; noun: string }>> = {
@@ -92,7 +113,7 @@ const KIND_TOTALS: Partial<Record<SetPieceKind, { most: number; noun: string }>>
     protected: { most: 1, noun: "guarded resources" }
 };
 
-const REQUIREMENT: Record<CountMode, (rule: PieceRule) => SetPieceBound> = {
+const REQUIREMENT: Record<CountMode, (count: Pick<PieceRule, "min" | "max">) => SetPieceBound> = {
     atLeast: (rule) => rule.min,
     exactly: (rule) => [rule.min, rule.min],
     between: (rule) => [rule.min, rule.max],
@@ -107,6 +128,7 @@ export function emptyGroup(passive = false): CriteriaGroup {
         biomes: {},
         swaps: {},
         rules: [],
+        pieceGroups: [],
         counts: [],
         distances: [],
         tiles: [],
@@ -133,6 +155,10 @@ export function newRule(pieceId: string, catalog: LevelCatalog): PieceRule {
     };
 }
 
+export function newPieceGroup(): PieceGroup {
+    return { key: newKey(), rules: [], match: "any", min: 1, max: 1 };
+}
+
 export function ruleMax(rule: PieceRule, catalog: LevelCatalog): number {
     const piece = catalog.setPieceById.get(rule.pieceId);
     if (!piece) return 0;
@@ -145,6 +171,23 @@ export function effectiveRule(rule: PieceRule, catalog: LevelCatalog): PieceRule
     const hi = Math.max(ruleMax(rule, catalog), MODE_FLOOR[rule.mode]);
     const min = clamp(rule.min, MODE_FLOOR[rule.mode], hi);
     return { ...rule, min, max: clamp(rule.max, min, hi) };
+}
+
+/** The most a group's set pieces can add up to, each kind capped at what a world can have. */
+export function totalMax(pieceGroup: PieceGroup, catalog: LevelCatalog): number {
+    const byKind = new Map<SetPieceKind, number>();
+    for (const rule of pieceGroup.rules) {
+        const kind = catalog.setPieceById.get(rule.pieceId)?.kind;
+        if (kind) byKind.set(kind, (byKind.get(kind) ?? 0) + ruleMax(rule, catalog));
+    }
+    return [...byKind].reduce((sum, [kind, most]) => sum + Math.min(most, KIND_TOTALS[kind]?.most ?? Infinity), 0);
+}
+
+export function effectiveTotal(pieceGroup: PieceGroup, catalog: LevelCatalog): PieceGroup {
+    const floor = pieceGroup.match === "any" ? 0 : MODE_FLOOR[pieceGroup.match];
+    const hi = Math.max(totalMax(pieceGroup, catalog), floor);
+    const min = clamp(pieceGroup.min, floor, hi);
+    return { ...pieceGroup, min, max: clamp(pieceGroup.max, min, hi) };
 }
 
 function compact<T extends object>(value: T): T | undefined {
@@ -173,6 +216,31 @@ function rulesToSetPieces(rules: PieceRule[], catalog: LevelCatalog): SetPieceRu
     return entries.map((entry) => entry.rule);
 }
 
+function ruleToSetPiece(rule: PieceRule, catalog: LevelCatalog, bound?: SetPieceBound): SetPieceRule {
+    const tasks = ruleScope(rule, catalog);
+    return {
+        ...(tasks.length > 0 ? { tasks } : {}),
+        required: { [rule.pieceId]: bound ?? REQUIREMENT[rule.mode](effectiveRule(rule, catalog)) },
+        ...(rule.ensurePlaced && catalog.shard === "forest" ? { placed: [rule.pieceId] } : {})
+    };
+}
+
+/** With a total match, only the total bounds the set pieces, so each of them is at least 0. */
+function pieceGroupItem(pieceGroup: PieceGroup, catalog: LevelCatalog): SetPieceGroup {
+    if (pieceGroup.match === "any") return { any: pieceGroup.rules.map((rule) => ruleToSetPiece(rule, catalog)) };
+    return {
+        any: pieceGroup.rules.map((rule) => ruleToSetPiece(rule, catalog, 0)),
+        total: REQUIREMENT[pieceGroup.match](effectiveTotal(pieceGroup, catalog))
+    };
+}
+
+function setPieceItems(group: CriteriaGroup, catalog: LevelCatalog): SetPieceItem[] {
+    const anyOf = group.pieceGroups
+        .filter((pieceGroup) => pieceGroup.rules.length > 0)
+        .map((pieceGroup) => pieceGroupItem(pieceGroup, catalog));
+    return [...rulesToSetPieces(group.rules, catalog), ...anyOf];
+}
+
 function biomesWith(group: CriteriaGroup, choice: BiomeChoice, catalog: LevelCatalog): string[] {
     return catalog.optionalTaskIds.filter((id) => group.biomes[id] === choice);
 }
@@ -184,7 +252,7 @@ function groupToCriterion(group: CriteriaGroup, catalog: LevelCatalog): Criterio
             excluded: nonEmpty(biomesWith(group, "exclude", catalog))
         }),
         prefab_swaps: compact(group.swaps),
-        setpieces: nonEmpty(rulesToSetPieces(group.rules, catalog)),
+        setpieces: nonEmpty(setPieceItems(group, catalog)),
         ...worldSections(group, catalog.shard)
     });
     return sections && { passive: group.passive, ...sections };
@@ -227,8 +295,22 @@ function entryToRules(entry: unknown, catalog: LevelCatalog): PieceRule[] {
     });
 }
 
+const isGroupItem = (item: unknown) => Object.hasOwn(asRecord(item), "any");
+
+function itemToPieceGroup(item: unknown, catalog: LevelCatalog): PieceGroup {
+    const record = asRecord(item);
+    const total = record.total === undefined ? undefined : countFromRequirement(record.total);
+    const rules = itemsToRules(asArray(record.any), catalog);
+    const match = total?.mode === "none" ? "between" : total?.mode ?? "any";
+    return { ...newPieceGroup(), ...(total && { min: total.min, max: total.max }), rules, match };
+}
+
+const itemsToRules = (items: unknown[], catalog: LevelCatalog) =>
+    items.flatMap((item) => entryToRules(item, catalog)).slice(0, MAX_RULES_PER_SECTION);
+
 function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGroup {
     const record = asRecord(criterion);
+    const items = asArray(record.setpieces).slice(0, MAX_RULES_PER_SECTION);
     const tasks = asRecord(record.tasks);
     const swaps = asRecord(record.prefab_swaps);
     const biomeEntries = (ids: unknown, choice: BiomeChoice) =>
@@ -247,10 +329,11 @@ function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGr
                 .filter((swap) => swap.options.some((option) => option.id === swaps[swap.id]))
                 .map((swap) => [swap.id, swaps[swap.id]])
         ),
-        rules: asArray(record.setpieces)
-            .slice(0, MAX_RULES_PER_SECTION)
-            .flatMap((entry) => entryToRules(entry, catalog))
-            .slice(0, MAX_RULES_PER_SECTION),
+        rules: itemsToRules(items.filter((item) => !isGroupItem(item)), catalog),
+        pieceGroups: items
+            .filter(isGroupItem)
+            .map((item) => itemToPieceGroup(item, catalog))
+            .filter((pieceGroup) => pieceGroup.rules.length > 0),
         ...worldRowsOf(record, catalog.shard)
     };
 }
@@ -292,13 +375,23 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
             Object.entries(group.swaps).filter(([category, variant]) => to.swaps.some((swap) =>
                 swap.id === category && swap.options.some((option) => option.id === variant)))
         );
-        const rules = group.rules.filter((rule) => to.setPieceById.has(rule.pieceId));
-        const placed = rules.filter((rule) => rule.ensurePlaced && shard !== "forest").length;
+        const moveRules = (rules: PieceRule[]) => {
+            const kept = rules.filter((rule) => to.setPieceById.has(rule.pieceId));
+            dropped += rules.length - kept.length + kept.filter((rule) => rule.ensurePlaced && shard !== "forest").length;
+            return kept.map((rule) => ({
+                ...rule,
+                scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id)),
+                ensurePlaced: rule.ensurePlaced && shard === "forest"
+            }));
+        };
+        const rules = moveRules(group.rules);
+        const pieceGroups = group.pieceGroups
+            .map((pieceGroup) => ({ ...pieceGroup, rules: moveRules(pieceGroup.rules) }))
+            .filter((pieceGroup) => pieceGroup.rules.length > 0);
         const biomes = Object.fromEntries(
             Object.entries(group.biomes).filter(([id]) => to.optionalTaskIds.includes(id))
         );
         dropped += Object.keys(group.swaps).length - Object.keys(swaps).length;
-        dropped += group.rules.length - rules.length + placed;
         dropped += Object.keys(group.biomes).length - Object.keys(biomes).length;
         const world = worldRowsFor(group, state.shard, shard);
         dropped += world.dropped;
@@ -306,19 +399,23 @@ export function switchShard(state: SearchState, shard: Shard): { state: SearchSt
             ...group,
             swaps,
             biomes,
-            rules: rules.map((rule) => ({
-                ...rule,
-                scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id)),
-                ensurePlaced: rule.ensurePlaced && shard === "forest"
-            })),
+            rules,
+            pieceGroups,
             ...world.rows
         };
     });
     return { state: { ...state, shard, groups }, dropped };
 }
 
+/** A total match ignores its set pieces' own counts. */
+const groupedRules = (group: CriteriaGroup) =>
+    group.pieceGroups.flatMap((pieceGroup) => pieceGroup.match === "any"
+        ? pieceGroup.rules
+        : pieceGroup.rules.map((rule): PieceRule => ({ ...rule, mode: "between", min: 0 })));
+
 const levelTableChoices = (group: CriteriaGroup) =>
-    Object.keys(group.biomes).length + Object.keys(group.swaps).length + group.rules.length;
+    Object.keys(group.biomes).length + Object.keys(group.swaps).length + group.rules.length
+    + groupedRules(group).length;
 
 export function isEmptyGroup(group: CriteriaGroup): boolean {
     return levelTableChoices(group) + worldRowCount(group) === 0;
@@ -336,11 +433,17 @@ const tooManyBiomes =
                 }]
                 : [];
 
+/** A set piece group only needs one of its picks, so a pick in one that can never match is just a warning. */
 const ruleIssues =
     (check: (rule: PieceRule, name: string, catalog: LevelCatalog) => Issue | undefined): GroupCheck =>
-        (group, catalog) =>
-            group.rules.flatMap((rule) =>
-                check(rule, catalog.setPieceById.get(rule.pieceId)?.name ?? rule.pieceId, catalog) ?? []);
+        (group, catalog) => {
+            const issuesOf = (rule: PieceRule) =>
+                check(rule, catalog.setPieceById.get(rule.pieceId)?.name ?? rule.pieceId, catalog) ?? [];
+            return [
+                ...group.rules.flatMap(issuesOf),
+                ...groupedRules(group).flatMap(issuesOf).map((issue): Issue => ({ ...issue, severity: "warning" }))
+            ];
+        };
 
 const GROUP_CHECKS: GroupCheck[] = [
     tooManyBiomes("include", "Must have"),
@@ -377,6 +480,10 @@ const GROUP_CHECKS: GroupCheck[] = [
             }] : [];
         });
     },
+    (group) =>
+        group.pieceGroups.some((pieceGroup) => pieceGroup.rules.length === 0)
+            ? [{ severity: "warning", message: "a set piece group has no set pieces, so it's ignored." }]
+            : [],
     (group) =>
         !group.passive && worldRowCount(group) > 0 && levelTableChoices(group) === 0
             ? [{

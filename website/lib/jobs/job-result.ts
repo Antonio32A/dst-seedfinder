@@ -58,9 +58,20 @@ export interface PlacedPiece {
     placed: number;
 }
 
+/** A set piece group's rule: whether it holds, its set pieces as the level table counts them and its `placed` ones. */
+export interface GroupRuleResult {
+    ok: boolean;
+    counts: Record<string, number>;
+    pieces: PlacedPiece[];
+}
+
 export interface SetPiecesWitness extends WitnessBase {
     section: "setpieces";
+    /** Empty for a group, whose rules are in `any`. */
     pieces: PlacedPiece[];
+    any?: GroupRuleResult[];
+    /** A group's sum that its `total` bounds. */
+    total?: number;
 }
 
 export interface CountsWitness extends WitnessBase {
@@ -210,12 +221,28 @@ const room = shape<WitnessRoom>({ node: text, type: uint32, x: finite, z: finite
 const witnessBase = { index: withDefault(uint32, 0), ok: withDefault(boolean, true) };
 
 const placedPiece = shape<PlacedPiece>({ name: text, planned: uint32, placed: uint32 });
+const placedPieces: Parser<PlacedPiece[]> = (value) => (Array.isArray(value) ? listOf(placedPiece)(value) : undefined);
+const countsByName: Parser<Record<string, number>> = (value) =>
+    isRecord(value) && Object.values(value).every((count) => uint32(count) !== undefined)
+        ? (value as Record<string, number>)
+        : undefined;
+const groupRule = shape<GroupRuleResult>({ ok: boolean, counts: countsByName, pieces: placedPieces });
+
+/** A group's world check, whose every rule has `placed` pieces, unlike the level table's result for it. */
+const groupRules: Parser<GroupRuleResult[]> = (value) => {
+    const rules = Array.isArray(value) ? value.map(groupRule) : [];
+    return rules.length > 0 && rules.every((rule) => rule !== undefined) ? (rules as GroupRuleResult[]) : undefined;
+};
 
 const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> = {
-    setpieces: shape({
-        ...witnessBase,
-        pieces: (value) => (Array.isArray(value) ? listOf(placedPiece)(value) : undefined)
-    }),
+    setpieces: (value) => {
+        const base = shape(witnessBase)(value);
+        const any = isRecord(value) ? groupRules(value.any) : undefined;
+        const total = isRecord(value) ? uint32(value.total) : undefined;
+        return base && any
+            ? { ...base, pieces: [], any, ...(total === undefined ? {} : { total }) }
+            : shape({ ...witnessBase, pieces: placedPieces })(value);
+    },
     counts: shape({ ...witnessBase, count: uint32, instances: listOf(countedInstance) }, { total: uint32 }),
     tiles: shape({ ...witnessBase, distance: uint32 }, { from_tile: tile, to_tile: tile }),
     distances: shape({ ...witnessBase, distance: nullable(finite), wormholes: jumps }, {

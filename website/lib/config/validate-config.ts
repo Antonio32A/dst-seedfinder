@@ -160,6 +160,11 @@ const tileSet = nameSetOf(
     "must be a tile name or a list of tile names"
 );
 
+const boundAt: Parse = (bound, path) =>
+    (Array.isArray(bound) ? bound.length === 2 && bound.every(isUint32) : isUint32(bound))
+        ? bound
+        : fail(`${path} must be an integer in 0..${MAX_UINT32} or [min, max]`);
+
 const setPieceBoundsOf =
     (catalog: LevelCatalog): Parse =>
         (value, path) => {
@@ -168,10 +173,7 @@ const setPieceBoundsOf =
             const unknown = pieces.find(([name]) => !catalog.setPieceById.has(name));
             if (unknown) fail(`unknown set piece ${quoted(unknown[0])} in ${path}`);
             return Object.fromEntries(
-                pieces.map(([name, bound]) => {
-                    const valid = Array.isArray(bound) ? bound.length === 2 && bound.every(isUint32) : isUint32(bound);
-                    return [name, valid ? bound : fail(`${path}[${quoted(name)}] must be an integer in 0..${MAX_UINT32} or [min, max]`)];
-                })
+                pieces.map(([name, bound]) => [name, boundAt(bound, `${path}[${quoted(name)}]`)])
             );
         };
 
@@ -191,6 +193,13 @@ const setPieceRuleOf = (catalog: LevelCatalog): Parse => {
         });
         return rule;
     };
+};
+
+const setPieceItemOf = (catalog: LevelCatalog): Parse => {
+    const rule = setPieceRuleOf(catalog);
+    const group = objectOf({ any: required(listOf(rule, MAX_RULES_PER_SECTION, "rules", 1)), total: optional(boundAt) });
+    const isGroup = (value: unknown) => isRecord(value) && (Object.hasOwn(value, "any") || Object.hasOwn(value, "total"));
+    return (value, path) => (isGroup(value) ? group(value, path) : rule(value, path));
 };
 
 const prefabSwapsOf =
@@ -278,7 +287,7 @@ const criterionOf = (catalog: LevelCatalog) => {
         passive: optional(flag),
         tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
         prefab_swaps: optional(prefabSwapsOf(catalog.shard)),
-        setpieces: rules(setPieceRuleOf(catalog)),
+        setpieces: rules(setPieceItemOf(catalog)),
         ...worldSectionsOf(catalog.shard)
     });
 };

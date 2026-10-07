@@ -62,6 +62,18 @@ export interface SetPieceRule {
     placed?: string[];
 }
 
+/** Holds when any of its rules holds and, with `total`, the counts of all its rules' set pieces add up to it. */
+export interface SetPieceGroup {
+    any: SetPieceRule[];
+    total?: SetPieceBound;
+}
+
+export type SetPieceItem = SetPieceRule | SetPieceGroup;
+
+/** The rules of set piece items, with each group's rules in its place. */
+export const setPieceRules = (items: SetPieceItem[]): SetPieceRule[] =>
+    items.flatMap((item) => ("any" in item ? item.any : [item]));
+
 /**
  * A rule's travel options: its metric and whether it may use the links, as `wormholes` in the forest and `pillars`
  * in the caves.
@@ -114,7 +126,7 @@ export interface Criterion {
     passive?: boolean;
     tasks?: TaskFilter;
     prefab_swaps?: PrefabSwaps;
-    setpieces?: SetPieceRule[];
+    setpieces?: SetPieceItem[];
     counts?: CountRule[];
     distances?: DistanceRule[];
     tiles?: TileRule[];
