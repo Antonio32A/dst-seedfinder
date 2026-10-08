@@ -49,7 +49,7 @@ def world_has_graph_of_its_dump():
 # nearest other neighbour (C) is 500 away and A's (C) 800, so A is the stray end.
 def toy(+edges: List<&2, FilterDump.Edge>) -> FilterWorld.World:
   +nodes = {[FilterDump.Node{"A", 5, 0, 0}, FilterDump.Node{"B", 1, 100000, 0}, FilterDump.Node{"C", 7, 0, 80000}, FilterDump.Node{"D", 2, 30000, 40000}] : List<&2, FilterDump.Node>}
-  FilterWorld.World{1, 2, 2, Nil{}, Nil{}, Nil{}, Nil{}, Some{FilterDump.Graph{nodes, edges}}, None{}}
+  FilterWorld.World{1, 2, 2, Nil{}, Nil{}, Nil{}, Nil{}, Some{FilterDump.Graph{nodes, edges}}, None{}, [0]}
 
 def toy_edges() -> List<&2, FilterDump.Edge>:
   [FilterDump.Edge{0, 1}, FilterDump.Edge{2, 0}, FilterDump.Edge{3, 0}, FilterDump.Edge{3, 2}]

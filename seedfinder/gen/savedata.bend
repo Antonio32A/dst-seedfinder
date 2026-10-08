@@ -146,19 +146,42 @@ def links(+wormholes: List<&2, OceanEnts.Ent>) -> List<&2, FilterDump.Link>:
 def pair_word(+hold: U32, +tile: U32) -> U32:
   ((hold << 16n) .|. tile : U32)
 
-# The tiles from cell c down to cell 0, two u16 per word (the even cell in the low half), prepended to acc.
-def packed_loop(n: Nat, got: Grid.Grid & U32, +c: U32, +hold: U32, +acc: List<&2, U32>) -> List<&2, U32>:
+# The packed tiles of a grid with their land bits (FilterWorld.land_bits).
+type Packed is Data:
+  Packed{tiles: List<&2, U32>, land: List<&2, U32>}
+
+def prepended_if(on: Bool, +x: U32, xs: List<&2, U32>) -> List<&2, U32>:
+  match on:
+    case True{}:
+      x <> xs
+    case False{}:
+      xs
+
+# The tiles from cell c down to cell 0, two u16 per word (the even cell in the low half), prepended to acc, and their land
+# bits, 32 cells to a word with the word in progress in `bits`, prepended to land.
+def packed_loop(n: Nat, got: Grid.Grid & U32, +c: U32, +hold: U32, +bits: U32, acc: List<&2, U32>, land: List<&2, U32>) -> Packed:
   match n:
     case 0n:
-      acc
+      Packed{acc, land}
     case 1n+p:
       (g, +cell) = got
+      +tile = Grid.tile_of(cell)
       +even = U32.is_zero((c .&. 1 : U32))
-      packed_loop(p, Grid.get(g, (c - 1 : U32)), (c - 1 : U32), Bool.pick(U32, even, 0, Grid.tile_of(cell)),
-        Bool.pick(List<&2, U32>, even, pair_word(hold, Grid.tile_of(cell)) <> acc, acc))
+      +flush = U32.is_zero((c .&. 31 : U32))
+      +word = (bits .|. (FilterWorld.land_flag(tile) << U32.to_nat((c .&. 31 : U32))) : U32)
+      packed_loop(p, Grid.get(g, (c - 1 : U32)), (c - 1 : U32), Bool.pick(U32, even, 0, tile), Bool.pick(U32, flush, 0, word),
+        prepended_if(even, pair_word(hold, tile), acc), prepended_if(flush, word, land))
+
+def packed_land(g: Grid.Grid, +n: U32) -> Packed:
+  packed_loop(U32.to_nat(n), Grid.get(g, (n - 1 : U32)), (n - 1 : U32), 0, 0, Nil{}, Nil{})
+
+def tiles_of(+packed: Packed) -> List<&2, U32>:
+  match packed:
+    case Packed{+tiles, _}:
+      tiles
 
 def packed(g: Grid.Grid, +n: U32) -> List<&2, U32>:
-  packed_loop(U32.to_nat(n), Grid.get(g, (n - 1 : U32)), (n - 1 : U32), 0, Nil{})
+  tiles_of(packed_land(g, n))
 
 # The PLAN section's entries, by name.
 def plan_of(plan: List<&2, PopulatePlanned.Planned>) -> List<&2, FilterDump.Planned>:
@@ -168,10 +191,12 @@ def plan_of(plan: List<&2, PopulatePlanned.Planned>) -> List<&2, FilterDump.Plan
     case Con{PopulatePlanned.Planned{+task, +name, +placed}, rest}:
       FilterDump.Planned{Strings.name(task), Strings.name(name), placed} <> plan_of(rest)
 
-def world_of_groups(gr: Grouped, +seed: U32, +w: U32, +tiles: List<&2, U32>, +graph: FilterDump.Graph, +plan: List<&2, PopulatePlanned.Planned>) -> FilterWorld.World:
+def world_of_groups(gr: Grouped, +seed: U32, +w: U32, +packed: Packed, +graph: FilterDump.Graph, +plan: List<&2, PopulatePlanned.Planned>) -> FilterWorld.World:
   match gr:
     case Grouped{+groups, +wormholes}:
-      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, FilterWorld.links_of(links(wormholes), groups, GenTagsData.vocab_wormhole()), tiles, Some{graph}, Some{plan_of(plan)}}
+      match packed:
+        case Packed{+tiles, +land}:
+          FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, FilterWorld.links_of(links(wormholes), groups, GenTagsData.vocab_wormhole()), tiles, Some{graph}, Some{plan_of(plan)}, land}
 
 def grouped(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) -> Grouped:
   (_, a) = got
@@ -181,8 +206,7 @@ def grouped(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) ->
 def world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
   match final:
     case GenJob.Final{g, _, +ents, +w, _, _, _, +graph, +plan}:
-      +tiles = packed(g, (w * w : U32))
-      world_of_groups(grouped(buckets(ents, (lookup(), Array.new(List<&2, OceanEnts.Ent>, bucket_depth(), Nil{}))), windows), seed, w, tiles, graph, plan)
+      world_of_groups(grouped(buckets(ents, (lookup(), Array.new(List<&2, OceanEnts.Ent>, bucket_depth(), Nil{}))), windows), seed, w, packed_land(g, (w * w : U32)), graph, plan)
 
 def sid_bucket_add(got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +sid: U32, +e: OceanEnts.Ent) -> Array<List<&2, OceanEnts.Ent>>:
   (a, +old) = got
@@ -518,6 +542,11 @@ def cave_links(pillars: List<&2, FilterDump.Pillar>, +groups: List<&2, List<&2, 
     case Con{FilterDump.Pillar{+entry_prefab, +entry, +exit_prefab, +exit}, rest}:
       FilterWorld.Link{FilterWorld.instance_at(groups, entry_prefab, entry), FilterWorld.instance_at(groups, exit_prefab, exit)} <> cave_links(rest, groups)
 
+def cave_world_of(+seed: U32, +w: U32, +groups: List<&2, List<&2, FilterWorld.Inst>>, +links: List<&2, FilterWorld.Link>, +packed: Packed, +graph: FilterDump.Graph) -> FilterWorld.World:
+  match packed:
+    case Packed{+tiles, +land}:
+      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, links, tiles, Some{graph}, None{}, land}
+
 # The filters' world of a generated caves world, equal to what FilterWorld.of_bytes_in reads from its dump_caves.
 def cave_world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
   match final:
@@ -525,4 +554,4 @@ def cave_world(+seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.W
       +sids = List.append(&2, U32, GenTagsData.vocab_prefab_sids(), GenTagsData.cave_vocab_prefab_sids())
       +groups = groups_by_sid(sids, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(), Nil{})), windows)
       +pils = List.append(&2, Pil, pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar()), pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar_atrium()))
-      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(), groups, cave_links(pillar_links(pils, pils), groups), packed(g, (w * w : U32)), Some{graph}, None{}}
+      cave_world_of(seed, w, groups, cave_links(pillar_links(pils, pils), groups), packed_land(g, (w * w : U32)), graph)

@@ -80,9 +80,29 @@ def append_loop(moved: List<&2, Ent>, +prefab: U32, acc: List<&2, Ent>) -> List<
 def appended(+ents: List<&2, Ent>, +moved: List<&2, Ent>, +prefab: U32) -> List<&2, Ent>:
   append_loop(moved, prefab, ents)
 
+def split_back(hit: Bool, +e: Ent, got: List<&2, Ent> & List<&2, Ent>) -> List<&2, Ent> & List<&2, Ent>:
+  (kept, found) = got
+  (keep_if(Bool.not(hit), e, kept), found)
+
+def split_loop(ents: List<&2, Ent>, +prefab: U32, found: List<&2, Ent>) -> List<&2, Ent> & List<&2, Ent>:
+  match ents:
+    case Nil{}:
+      (Nil{}, found)
+    case Con{+e, rest}:
+      +hit = U32.is_eq(prefab_of(e), prefab)
+      split_back(hit, e, split_loop(rest, prefab, keep_if(hit, e, found)))
+
+# (without(ents, prefab), of_prefab(ents, prefab)) in one walk of the list.
+def split(+ents: List<&2, Ent>, +prefab: U32) -> List<&2, Ent> & List<&2, Ent>:
+  split_loop(ents, prefab, Nil{})
+
+def moved_done(got: List<&2, Ent> & List<&2, Ent>, +to: U32) -> List<&2, Ent>:
+  (+kept, +found) = got
+  appended(kept, found, to)
+
 # Moves savedata.ents[from] to the end of savedata.ents[to].
 def moved(+ents: List<&2, Ent>, +from: U32, +to: U32) -> List<&2, Ent>:
-  appended(without(ents, from), of_prefab(ents, from), to)
+  moved_done(split(ents, from), to)
 
 def with_piece(+e: Ent, +piece: U32) -> Ent:
   match e:

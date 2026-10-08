@@ -101,13 +101,6 @@ def cell_index(+p: U32, +w: U32) -> U32:
 type Stroke is Data:
   Stroke{index: U32, tile: U32}
 
-def solid_strokes(pts: List<&2, U32>, +w: U32, +tile: U32) -> List<&2, Stroke>:
-  match pts:
-    case Nil{}:
-      Nil{}
-    case Con{+p, rest}:
-      Stroke{cell_index(p, w), tile} <> solid_strokes(rest, w, tile)
-
 def stroke_if(pending: Bool, +i: U32, +tile: U32, acc: List<&2, Stroke>) -> List<&2, Stroke>:
   match pending:
     case True{}:
@@ -125,21 +118,30 @@ def noisy_strokes(pts: List<&2, U32>, got: Array<U32> & F64Repr.F64, +prev: U32,
       noisy_strokes(rest, Perlin.noise_eighths(perm, SiteTiles.unpack_x(p), SiteTiles.unpack_y(p)),
         cell_index(p, w), True{}, w, r, stroke_if(pending, prev, resolve(r, n), acc))
 
-def brush_strokes(b: Brush, +pts: List<&2, U32>, perm: Array<U32>, +w: U32) -> Array<U32> & List<&2, Stroke>:
+# A site's paint: a solid site writes its points straight to the tile map, a noisy site's cells are resolved first.
+type Run is Data:
+  Direct{tile: U32, pts: List<&2, U32>}
+  Strokes{strokes: List<&2, Stroke>}
+
+def stroked(got: Array<U32> & List<&2, Stroke>) -> Array<U32> & Run:
+  (perm, +strokes) = got
+  (perm, Strokes{strokes})
+
+def brush_run(b: Brush, +pts: List<&2, U32>, perm: Array<U32>, +w: U32) -> Array<U32> & Run:
   match b:
     case Solid{+tile}:
-      (perm, solid_strokes(pts, w, tile))
+      (perm, Direct{tile, pts})
     case Noisy{+r}:
-      noisy_strokes(pts, (perm, F64Repr.zero()), 0, False{}, w, r, Nil{})
+      stroked(noisy_strokes(pts, (perm, F64Repr.zero()), 0, False{}, w, r, Nil{}))
 
-def site_strokes(on: Bool, +n: TileWorld.Node, +pts: List<&2, U32>, perm: Array<U32>, +w: U32) -> Array<U32> & List<&2, Stroke>:
+def site_run(on: Bool, +n: TileWorld.Node, +pts: List<&2, U32>, perm: Array<U32>, +w: U32) -> Array<U32> & Run:
   match on:
     case False{}:
-      (perm, Nil{})
+      (perm, Strokes{Nil{}})
     case True{}:
       match n:
         case TileWorld.Node{_, _, _, +tile, _, _, _, _, _, _}:
-          brush_strokes(brush_of(tile), pts, perm, w)
+          brush_run(brush_of(tile), pts, perm, w)
 
 type Job is Data:
   Job{site: TileWorld.Site, tiles: List<&2, U32>}
@@ -155,31 +157,31 @@ def jobs_of(sites: List<&2, TileWorld.Site>, lists: List<&2, List<&2, U32>>) -> 
         case Con{+pts, more}:
           Job{s, pts} <> jobs_of(rest, more)
 
-def keep_last(pending: Bool, +last: List<&2, Stroke>, acc: List<&2, List<&2, Stroke>>) -> List<&2, List<&2, Stroke>>:
+def keep_last(pending: Bool, +last: Run, acc: List<&2, Run>) -> List<&2, Run>:
   match pending:
     case True{}:
       last <> acc
     case False{}:
       acc
 
-def leaf_loop(jobs: List<&2, Job>, got: Array<U32> & List<&2, Stroke>, +pending: Bool, +w: U32, acc: List<&2, List<&2, Stroke>>) -> List<&2, List<&2, Stroke>>:
+def leaf_loop(jobs: List<&2, Job>, got: Array<U32> & Run, +pending: Bool, +w: U32, acc: List<&2, Run>) -> List<&2, Run>:
   match jobs:
     case Nil{}:
       (_, +last) = got
-      List.reverse(&2, List<&2, Stroke>, keep_last(pending, last, acc))
+      List.reverse(&2, Run, keep_last(pending, last, acc))
     case Con{Job{+s, +pts}, rest}:
       (perm, +last) = got
-      leaf_loop(rest, site_strokes(painted(TileWorld.node_of(s)), TileWorld.node_of(s), pts, perm, w), True{}, w,
+      leaf_loop(rest, site_run(painted(TileWorld.node_of(s)), TileWorld.node_of(s), pts, perm, w), True{}, w,
         keep_last(pending, last, acc))
 
-def par_strokes(+d: Nat, +jobs: List<&2, Job>, +n: Nat, +w: U32) -> List<&2, List<&2, Stroke>>:
+def par_runs(+d: Nat, +jobs: List<&2, Job>, +n: Nat, +w: U32) -> List<&2, Run>:
   match d:
     case 0n:
-      leaf_loop(jobs, (Perlin.permutation(), Nil{}), False{}, w, Nil{})
+      leaf_loop(jobs, (Perlin.permutation(), Strokes{Nil{}}), False{}, w, Nil{})
     case 1n+p:
       +half = Nat.div(n, 2n)
-      a b = par_strokes(p, List.take(&2, Job, jobs, half), half, w) par_strokes(p, List.drop(&2, Job, jobs, half), Nat.sub(n, half), w)
-      List.append(&2, List<&2, Stroke>, a, b)
+      a b = par_runs(p, List.take(&2, Job, jobs, half), half, w) par_runs(p, List.drop(&2, Job, jobs, half), Nat.sub(n, half), w)
+      List.append(&2, Run, a, b)
 
 def write_strokes(ss: List<&2, Stroke>, cells: Array<U32>) -> Array<U32>:
   match ss:
@@ -188,12 +190,26 @@ def write_strokes(ss: List<&2, Stroke>, cells: Array<U32>) -> Array<U32>:
     case Con{Stroke{+i, +tile}, rest}:
       write_strokes(rest, write(cells, i, tile))
 
-def write_all(sss: List<&2, List<&2, Stroke>>, cells: Array<U32>) -> Array<U32>:
-  match sss:
+def write_points(pts: List<&2, U32>, cells: Array<U32>, +w: U32, +tile: U32) -> Array<U32>:
+  match pts:
     case Nil{}:
       cells
-    case Con{+ss, rest}:
-      write_all(rest, write_strokes(ss, cells))
+    case Con{+p, rest}:
+      write_points(rest, write(cells, cell_index(p, w), tile), w, tile)
+
+def write_run(run: Run, cells: Array<U32>, +w: U32) -> Array<U32>:
+  match run:
+    case Direct{+tile, pts}:
+      write_points(pts, cells, w, tile)
+    case Strokes{ss}:
+      write_strokes(ss, cells)
+
+def write_all(runs: List<&2, Run>, cells: Array<U32>, +w: U32) -> Array<U32>:
+  match runs:
+    case Nil{}:
+      cells
+    case Con{+run, rest}:
+      write_all(rest, write_run(run, cells, w), w)
 
 def site_tiles_list(sites: List<&2, TileWorld.Site>) -> List<&2, SiteTiles.Counted>:
   match sites:
@@ -225,7 +241,7 @@ def paint(w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid:
   match w:
     case TileWorld.World{+width, +height, _, +sites, _, _, _, _, _}:
       +jobs = jobs_of(sites, lists)
-      Grid.Grid{write_all(par_strokes(fork_depth(), jobs, List.length(&2, Job, jobs), width), fresh_cells(Grid.new(width, height, initial_cell()))), width, height}
+      Grid.Grid{write_all(par_runs(fork_depth(), jobs, List.length(&2, Job, jobs), width), fresh_cells(Grid.new(width, height, initial_cell())), width), width, height}
 
 # The SiteTiles of every site with its size, in site order (computed in parallel).
 def counted_site_tiles(w: TileWorld.World) -> List<&2, SiteTiles.Counted>:

@@ -77,7 +77,7 @@ def evaluate_world(+config: ShardSearch.Search, +text: String, loaded: FilterWor
   match loaded:
     case FilterWorld.Generated{+world, +platform}:
       match world:
-        case FilterWorld.World{+seed, _, _, _, _, _, _, _, _}:
+        case FilterWorld.World{+seed, _, _, _, _, _, _, _, _, _}:
           Bool.pick(IO(Unit), platform_mismatch(ShardSearch.windows(config), platform), IO.die(Unit, 2, platform_message(ShardSearch.windows(config))),
             Bool.pick(IO(Unit), graph_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no topology (GRPH section), which bridges rules need; regenerate it"),
               Bool.pick(IO(Unit), plan_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no level plan (PLAN section), which setpieces rules with placed names need; regenerate it"),

@@ -14,6 +14,7 @@ import ../data/tasks.bend as Tasks
 import ../storygen/catalog.bend as StoryCatalog
 import ../gen/cave_custom.bend as CaveCustom
 import ../gen/savedata.bend as SaveData
+import ../filters/world.bend as FilterWorld
 import ../f64/repr.bend as F64Repr
 import ../worldsim/grid.bend as Grid
 import ../ocean/ents.bend as OceanEnts
@@ -268,4 +269,27 @@ law cave_pillar_link_needs_its_exit:
   {SaveData.pillar_links([pil(155, 0, 2300000, 2300009)], [pil(155, 0, 2300000, 2300009)]) == [] : List<&2, FilterDump.Pillar>}
 
 def cave_pillar_link_needs_its_exit():
+  {==}
+
+# The land bits made with the packed tiles of a 7 x 5 grid (a partial top word, tile 31 on the word boundary) are those of
+# the packed tile list.
+def edge_grid() -> Grid.Grid:
+  Grid.put(Grid.put(Grid.put(Grid.put(Grid.new(7, 5, Grid.cell(6, 0)), 0, Grid.cell(1, 0)), 3, Grid.cell(128, 0)), 31, Grid.cell(10497, 0)), 34, Grid.cell(10498, 0))
+
+# The land bits made with the packed tiles of a 7 x 5 grid (a partial top word, tile 31 on the word boundary) are
+# those of the packed tile list.
+def fused_land(+packed: SaveData.Packed) -> List<&2, U32>:
+  match packed:
+    case SaveData.Packed{_, +land}:
+      land
+
+def listed_land(+packed: SaveData.Packed) -> List<&2, U32>:
+  match packed:
+    case SaveData.Packed{+tiles, _}:
+      FilterWorld.land_bits(tiles, 0n, 0)
+
+law packed_land_bits_match_tile_list:
+  {fused_land(SaveData.packed_land(edge_grid(), 35)) == listed_land(SaveData.packed_land(edge_grid(), 35)) : List<&2, U32>}
+
+def packed_land_bits_match_tile_list():
   {==}

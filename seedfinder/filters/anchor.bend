@@ -28,25 +28,32 @@ def depth_for(n: Nat, +size: U32, +d: Nat) -> Nat:
 def depth_of(+size: U32) -> Nat:
   depth_for(24n, size, 0n)
 
-def land_bit(+tile: U32) -> U32:
-  Bool.to_u32(FilterWorld.is_land_tile(tile))
+def bit_cell(off: Bool, a: Array<U32>, +i: U32) -> Array<U32>:
+  match off:
+    case True{}:
+      a
+    case False{}:
+      a[i] <- 1
 
-def written_pair(a: Array<U32>, +i: U32, +word: U32) -> Array<U32>:
-  a[i] <- land_bit((word .&. 65535 : U32))
-  a[(i + 1 : U32)] <- land_bit((word >> 16n : U32))
+def bits_cells(n: Nat, a: Array<U32>, +i: U32, +bits: U32) -> Array<U32>:
+  match n:
+    case 0n:
+      a
+    case 1n+p:
+      bits_cells(p, bit_cell(U32.is_zero((bits .&. 1 : U32)), a, i), (i + 1 : U32), (bits >> 1n : U32))
 
-def land_cells(words: List<&2, U32>, +i: U32, a: Array<U32>) -> Array<U32>:
+def land_bit_cells(words: List<&2, U32>, +i: U32, a: Array<U32>) -> Array<U32>:
   match words:
     case Nil{}:
       a
-    case Con{+word, rest}:
-      land_cells(rest, (i + 2 : U32), written_pair(a, i, word))
+    case Con{+bits, rest}:
+      land_bit_cells(rest, (i + 32 : U32), bits_cells(Bool.pick(Nat, U32.is_zero(bits), 0n, 32n), a, i, bits))
 
 # A cell array with 1 on land tiles and 0 elsewhere (index ty*W + tx), of 2^depth cells.
 def land_array(+world: FilterWorld.World, +depth: Nat) -> Array<U32>:
   match world:
-    case FilterWorld.World{_, _, _, _, _, _, +tiles, _, _}:
-      land_cells(tiles, 0, [0 : U32^depth])
+    case FilterWorld.World{_, _, _, _, _, _, _, _, _, +land}:
+      land_bit_cells(land, 0, [0 : U32^depth])
 
 def is_negative(+v: U32) -> Bool:
   (v >= 2147483648 : U32)

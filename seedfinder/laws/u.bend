@@ -46,7 +46,7 @@ def dropped_piece_not_placed():
   {==}
 
 def world(+placed: Bool) -> FilterWorld.World:
-  FilterWorld.World{1, 2, 2, Nil{}, Nil{}, Nil{}, Nil{}, None{}, Some{[FilterDump.Planned{"Make a pick", "MooseNest", placed}]}}
+  FilterWorld.World{1, 2, 2, Nil{}, Nil{}, Nil{}, Nil{}, None{}, Some{[FilterDump.Planned{"Make a pick", "MooseNest", placed}]}, [0]}
 
 def moose_rule(+tasks: List<&2, String>) -> Rules.Placed:
   Rules.Placed{0, tasks, [LevelChecks.Bounded{"MooseNest", 1, None{}}]}

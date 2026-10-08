@@ -123,7 +123,7 @@ def link_ends(links: List<&2, FilterWorld.Link>) -> List<&2, Ends>:
 
 def world_links(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>) -> List<&2, Ends>:
   match loaded:
-    case Done{FilterWorld.Generated{FilterWorld.World{_, _, _, _, _, +links, _, _, _}, _}}:
+    case Done{FilterWorld.Generated{FilterWorld.World{_, _, _, _, _, +links, _, _, _, _}, _}}:
       link_ends(links)
     case _:
       Nil{}

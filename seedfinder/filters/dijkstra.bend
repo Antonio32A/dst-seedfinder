@@ -627,19 +627,26 @@ def settle_loop(n: Nat, s: Search, +ctx: Ctx) -> Search:
     case _ other:
       other
 
-def land_word(+tile: U32) -> U32:
-  Bool.to_u32(FilterWorld.is_land_tile(tile))
+def land_bit(off: Bool, cells: Array<U32>, +i: U32) -> Array<U32>:
+  match off:
+    case True{}:
+      cells
+    case False{}:
+      cells[at(i, 0)] <- 1
 
-def land_pair(cells: Array<U32>, +i: U32, +word: U32) -> Array<U32>:
-  cells[at(i, 0)] <- land_word((word .&. 65535 : U32))
-  cells[at((i + 1 : U32), 0)] <- land_word((word >> 16n : U32))
+def land_bits_cells(n: Nat, cells: Array<U32>, +i: U32, +bits: U32) -> Array<U32>:
+  match n:
+    case 0n:
+      cells
+    case 1n+p:
+      land_bits_cells(p, land_bit(U32.is_zero((bits .&. 1 : U32)), cells, i), (i + 1 : U32), (bits >> 1n : U32))
 
-def land_cells(words: List<&2, U32>, cells: Array<U32>, +i: U32) -> Array<U32>:
+def land_word_cells(words: List<&2, U32>, cells: Array<U32>, +i: U32) -> Array<U32>:
   match words:
     case Nil{}:
       cells
-    case Con{+word, rest}:
-      land_cells(rest, land_pair(cells, i, word), (i + 2 : U32))
+    case Con{+bits, rest}:
+      land_word_cells(rest, land_bits_cells(Bool.pick(Nat, U32.is_zero(bits), 0n, 32n), cells, i, bits), (i + 32 : U32))
 
 def offset_x(+k: U32) -> U32:
   match k:
@@ -758,8 +765,8 @@ def started(got: Array<U32> & U32, starts: List<&2, Start>, +ctx: Ctx) -> Array<
 # bound, the labels past it may stay unsettled.
 def run(+world: FilterWorld.World, +depth: Nat, +jumps: List<&2, Jump>, starts: List<&2, Start>, targets: List<&2, U32>, +needed: U32, +bound: Maybe<&2, Walk.Length>) -> Array<U32>:
   match world:
-    case FilterWorld.World{_, +w, +h, _, _, _, +tiles, _, _}:
-      masked_cells = all_masks(U32.to_nat((w * h : U32)), land_cells(tiles, [0 : U32^(Nat.add(depth, 4n))], 0), 0, w, h)
+    case FilterWorld.World{_, +w, +h, _, _, _, _, _, _, +land}:
+      masked_cells = all_masks(U32.to_nat((w * h : U32)), land_word_cells(land, [0 : U32^(Nat.add(depth, 4n))], 0), 0, w, h)
       started(flag_targets(targets, (flag_jumps(jumps, masked_cells), 0)), starts, Ctx{w, needed, jumps, bound})
 
 def second_label_of(got: Array<U32> & Cand, +first: Cand) -> Array<U32> & List<&2, Cand>:

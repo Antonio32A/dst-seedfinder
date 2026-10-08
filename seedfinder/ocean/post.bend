@@ -28,9 +28,13 @@ def pair_loop(+wormhole: U32, markers: List<&2, OceanEnts.Ent>, +id: U32, acc: L
 
 # SwapOutWormholeMarkers: consecutive markers become wormhole pairs (ids from MIN_WORMHOLE_ID, each targeting the
 # other) at the end of savedata.ents.wormhole; an odd last marker is dropped, and so are the markers.
+def swapped_done(got: List<&2, OceanEnts.Ent> & List<&2, OceanEnts.Ent>, +wormhole: U32) -> List<&2, OceanEnts.Ent>:
+  (+kept, markers) = got
+  +pairs = pair_loop(wormhole, markers, OceanPostData.min_wormhole_id(), Nil{})
+  OceanEnts.appended(kept, pairs, wormhole)
+
 def swap_wormholes(+wormhole: U32, +ents: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
-  +pairs = pair_loop(wormhole, OceanEnts.of_prefab(ents, OceanPostData.wormhole_marker()), OceanPostData.min_wormhole_id(), Nil{})
-  OceanEnts.appended(OceanEnts.without(ents, OceanPostData.wormhole_marker()), pairs, wormhole)
+  swapped_done(OceanEnts.split(ents, OceanPostData.wormhole_marker()), wormhole)
 
 def customization_loop(n: Nat, +ents: List<&2, OceanEnts.Ent>, +i: U32) -> List<&2, OceanEnts.Ent>:
   match n:
@@ -52,6 +56,10 @@ def random_loop(xs: List<&2, OceanEnts.Ent>, +row: List<&2, U32>, got: List<&2, 
       (+acc, rng) = got
       random_loop(rest, row, chosen(MathRandom.random_upto(rng, (U32.from_nat(List.length(&2, U32, row)) - 1 : U32)), row, e, acc))
 
+def randomized(got: List<&2, OceanEnts.Ent> & List<&2, OceanEnts.Ent>, +row: List<&2, U32>, rng: Pcg.Rng) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
+  (kept, proxies) = got
+  random_loop(proxies, row, (kept, rng))
+
 def randomization_loop(n: Nat, got: List<&2, OceanEnts.Ent> & Pcg.Rng, +i: U32) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
   match n:
     case 0n:
@@ -59,8 +67,7 @@ def randomization_loop(n: Nat, got: List<&2, OceanEnts.Ent> & Pcg.Rng, +i: U32) 
     case 1n+p:
       (+ents, rng) = got
       +row = OceanPostData.randomization_proxies(i)
-      +proxy = Blob.at(row, 0)
-      randomization_loop(p, random_loop(OceanEnts.of_prefab(ents, proxy), row, (OceanEnts.without(ents, proxy), rng)), (i + 1 : U32))
+      randomization_loop(p, randomized(OceanEnts.split(ents, Blob.at(row, 0)), row, rng), (i + 1 : U32))
 
 def post_done(got: List<&2, OceanEnts.Ent> & Pcg.Rng, +c: OceanState.Ctx, +wormhole: U32, g: Grid.Grid, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (+ents, rng) = got
