@@ -39,7 +39,7 @@ def hash(+id: U32) -> U32:
 
 # Byte length of string id.
 def length(+id: U32) -> U32:
-  Blob.at(strings(id), 2)
+  strings_at(id, 2)
 
 # The bytes of string id as a String (one Char per byte).
 def name(+id: U32) -> String:

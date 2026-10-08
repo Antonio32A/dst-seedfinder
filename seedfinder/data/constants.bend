@@ -99,6 +99,9 @@ def perlin_chunk(+c: U32) -> List<&2, String>:
 def perlin(+i: U32) -> List<&2, U32>:
   Blob.row(perlin_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def perlin_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(perlin_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 def kk_x(+v: U32) -> U32 & U32:
   Blob.f64(kk_positions(v), 0)
 
@@ -118,4 +121,4 @@ def perlin_half(odd: Bool, +u: U32) -> U32:
 # The perlin permutation p[i & 255].
 def perlin_p(+i: U32) -> U32:
   +k = (i .&. 255 : U32)
-  perlin_half(U32.is_ne((k .&. 1 : U32), 0), Blob.at(perlin(0), (k >> 1n : U32)))
+  perlin_half(U32.is_ne((k .&. 1 : U32), 0), perlin_at(0, (k >> 1n : U32)))

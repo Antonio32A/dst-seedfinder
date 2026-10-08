@@ -22,6 +22,28 @@ def row_nat(n: Nat, rows: List<&2, String>) -> List<&2, U32>:
     case 1n+p Con{_, t}:
       row_nat(p, t)
 
+def unit_nat(n: Nat, s: String) -> U32:
+  match n s:
+    case _ SNil{}:
+      1048575
+    case 0n SCon{h, _}:
+      unit(h)
+    case 1n+p SCon{_, t}:
+      unit_nat(p, t)
+
+def row_at_nat(n: Nat, rows: List<&2, String>, +j: U32) -> U32:
+  match n rows:
+    case _ Nil{}:
+      1048575
+    case 0n Con{r, _}:
+      unit_nat(U32.to_nat(j), r)
+    case 1n+p Con{_, t}:
+      row_at_nat(p, t, j)
+
+# Unit j of row k of a chunk without decoding the row (1048575, the NONE unit, past either end).
+def row_at(rows: List<&2, String>, +k: U32, +j: U32) -> U32:
+  row_at_nat(U32.to_nat(k), rows, j)
+
 # Row k of a chunk, decoded (Nil past its end).
 def row(rows: List<&2, String>, +k: U32) -> List<&2, U32>:
   row_nat(U32.to_nat(k), rows)

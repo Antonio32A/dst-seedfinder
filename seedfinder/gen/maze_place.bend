@@ -61,20 +61,14 @@ def tile_if(painted: Bool, g: Grid.Grid, +x: U32, +y: U32, +tile: U32) -> Grid.G
     case False{}:
       g
 
-def paint_rows(n: Nat, g: Grid.Grid, +v: U32, +t: PopulatePlace.Turn, +side: U32, +spot: Spot, +column: U32, +row: U32) -> Grid.Grid:
-  match n:
-    case 0n:
+def paint_cells(cells: List<&2, U32>, g: Grid.Grid, +side: U32, +spot: Spot, +q: U32) -> Grid.Grid:
+  match cells:
+    case Nil{}:
       g
-    case 1n+p:
-      +tile = PopulatePlace.ground_at(v, t, side, column, row)
-      paint_rows(p, tile_if(Bool.not(U32.is_zero(tile)), g, (x_of(spot) + column + 1 : U32), (y_of(spot) + row + 1 : U32), tile), v, t, side, spot, column, (row + 1 : U32))
-
-def paint_columns(n: Nat, g: Grid.Grid, +v: U32, +t: PopulatePlace.Turn, +side: U32, +spot: Spot, +column: U32) -> Grid.Grid:
-  match n:
-    case 0n:
-      g
-    case 1n+p:
-      paint_columns(p, paint_rows(U32.to_nat(side), g, v, t, side, spot, column, 0), v, t, side, spot, (column + 1 : U32))
+    case Con{+tile, rest}:
+      +column = (q / side : U32)
+      +row = (q % side : U32)
+      paint_cells(rest, tile_if(Bool.not(U32.is_zero(tile)), g, (x_of(spot) + column + 1 : U32), (y_of(spot) + row + 1 : U32), tile), side, spot, (q + 1 : U32))
 
 def reserved_ent(got: Grid.Grid & Bool, +prefab: U32, +px: F64Repr.F64, +py: F64Repr.F64, +width: U32, rng: Pcg.Rng, +ents: List<&2, Entities.Ent>) -> Laid:
   (g, _) = got
@@ -102,7 +96,7 @@ def painted_and_placed(+v: U32, +items: List<&2, PopulateLayout.Item>, +sized: F
       +side = Layouts.ground_size(v)
       +centre = F64Arith.add(F64Arith.add(F64Repr.from_u32(x_of(spot)), sized), F64Repr.half())
       add_objects(items, PopulatePlace.Frame{centre, F64Arith.add(F64Arith.add(F64Repr.from_u32(y_of(spot)), sized), F64Repr.half()), t, PopulatePlace.scale_of(Layouts.scale(v))},
-        width_of(spot), Laid{paint_columns(U32.to_nat(side), g, v, t, side, spot, 0), rng, ents})
+        width_of(spot), Laid{paint_cells(PopulatePlace.ground(v, t), g, side, spot, 0), rng, ents})
 
 def turned(got: PopulatePlace.Turn & Pcg.Rng, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
   (+random, rng) = got

@@ -40,6 +40,9 @@ def cases_chunk(+c: U32) -> List<&2, String>:
 def cases(+i: U32) -> List<&2, U32>:
   Blob.row(cases_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def cases_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(cases_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row variant: the pickspawnprefab input table in pairs() order, one unit per entry: prefab string id << 8 | weight id (data/rooms.bend).
 def variants_count() -> U32:
   757
@@ -132,7 +135,7 @@ def ocean_picks(+i: U32) -> List<&2, U32>:
   Blob.row(ocean_picks_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
 def swappable_count(+room: U32, +depth: U32) -> U32:
-  Blob.at(cases((((room * 2 : U32) + depth : U32) - 1 : U32)), 0)
+  cases_at((((room * 2 : U32) + depth : U32) - 1 : U32), 0)
 
 # The variant for a room, depth and case index (see above).
 def variant(+room: U32, +depth: U32, +index: U32) -> U32:

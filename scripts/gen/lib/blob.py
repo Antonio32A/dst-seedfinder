@@ -85,6 +85,7 @@ class Module:
         self.lines += [f"import {i}" for i in imports]
         self.lines.append("")
         self.tables = {}
+        self.shifts = {}
 
     def comment(self, *lines):
         self.lines += [f"# {line}" if line else "#" for line in lines]
@@ -96,7 +97,8 @@ class Module:
         self.lines += text.strip("\n").split("\n") + [""]
 
     def table(self, name, rows, doc=None, shift=CHUNK_SHIFT):
-        """Table `name` with 2^shift rows per chunk: `name(i)` is row i, Nil past the end."""
+        """Table `name` with 2^shift rows per chunk: `name(i)` is row i, Nil past the end. Hand-written code may call
+        `name_at(i, j)`, unit j of row i read without decoding the row: text() emits it for the tables that use it."""
         rows = [list(r) for r in rows]
         if doc:
             self.comment(doc)
@@ -109,6 +111,7 @@ class Module:
         self.lines += ["    case _:", "      Nil{}", ""]
         self.lines += [f"def {name}(+i: U32) -> List<&2, U32>:",
                        f"  Blob.row({name}_chunk((i >> {shift}n : U32)), (i .&. {per - 1} : U32))", ""]
+        self.shifts[name] = (shift, len(self.lines))
 
     def values(self, name, values, doc, past):
         """Table `name` of U32 values in constant chunks of CHUNK_ROWS (no decoding): `name(i)`, `past` past the end."""
@@ -121,7 +124,13 @@ class Module:
                        f"  Blob.value({name}_chunk((i >> {CHUNK_SHIFT}n : U32)), (i .&. {CHUNK_ROWS - 1} : U32), {past})", ""]
 
     def text(self):
-        return "\n".join(self.lines).rstrip("\n") + "\n"
+        lines = list(self.lines)
+        body = "\n".join(lines)
+        for name, (shift, end) in sorted(self.shifts.items(), key=lambda item: -item[1][1]):
+            if f"{name}_at(" in body:
+                lines[end:end] = [f"def {name}_at(+i: U32, +j: U32) -> U32:",
+                                  f"  Blob.row_at({name}_chunk((i >> {shift}n : U32)), (i .&. {(1 << shift) - 1} : U32), j)", ""]
+        return "\n".join(lines).rstrip("\n") + "\n"
 
     def emit(self):
         """Writes data/<name>.bend, or prints it with the single argument `-`."""
@@ -169,6 +178,28 @@ def row_nat(n: Nat, rows: List<&2, String>) -> List<&2, U32>:
       units(r)
     case 1n+p Con{_, t}:
       row_nat(p, t)
+
+def unit_nat(n: Nat, s: String) -> U32:
+  match n s:
+    case _ SNil{}:
+      1048575
+    case 0n SCon{h, _}:
+      unit(h)
+    case 1n+p SCon{_, t}:
+      unit_nat(p, t)
+
+def row_at_nat(n: Nat, rows: List<&2, String>, +j: U32) -> U32:
+  match n rows:
+    case _ Nil{}:
+      1048575
+    case 0n Con{r, _}:
+      unit_nat(U32.to_nat(j), r)
+    case 1n+p Con{_, t}:
+      row_at_nat(p, t, j)
+
+# Unit j of row k of a chunk without decoding the row (1048575, the NONE unit, past either end).
+def row_at(rows: List<&2, String>, +k: U32, +j: U32) -> U32:
+  row_at_nat(U32.to_nat(k), rows, j)
 
 # Row k of a chunk, decoded (Nil past its end).
 def row(rows: List<&2, String>, +k: U32) -> List<&2, U32>:

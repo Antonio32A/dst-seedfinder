@@ -104,9 +104,6 @@ def ground_index(+t: Turn, +n: U32, +column: U32, +row: U32) -> U32:
       +clmn = flipped(fx, n, Bool.pick(U32, switch, row, column))
       (rw * n + clmn : U32)
 
-def ground_at(+v: U32, +t: Turn, +n: U32, +column: U32, +row: U32) -> U32:
-  Layouts.ground_tile(v, ground_index(t, n, column, row))
-
 def unpack_ground(units: List<&2, U32>, tiles: Array<U32>, +k: U32) -> Array<U32>:
   match units:
     case Nil{}:

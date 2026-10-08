@@ -85,7 +85,7 @@ def distribute_module(d):
                                   "depth-1 distributeprefabs directly).")
     m.code('''
 def swappable_count(+room: U32, +depth: U32) -> U32:
-  Blob.at(cases((((room * 2 : U32) + depth : U32) - 1 : U32)), 0)
+  cases_at((((room * 2 : U32) + depth : U32) - 1 : U32), 0)
 
 # The variant for a room, depth and case index (see above).
 def variant(+room: U32, +depth: U32, +index: U32) -> U32:
@@ -174,7 +174,7 @@ def unpack_list(xs: List<&2, U32>) -> List<&2, U32>:
 
 # pickspawnprefab's items order for a distribute variant on a tile class: indices into the variant's entries.
 def pick(+variant: U32, +class: U32) -> List<&2, U32>:
-  unpack_list(pick_lists(Blob.at(variant_picks(variant), class)))
+  unpack_list(pick_lists(variant_picks_at(variant, class)))
 ''')
     return m
 

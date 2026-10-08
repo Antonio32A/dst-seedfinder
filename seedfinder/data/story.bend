@@ -19,6 +19,9 @@ def piece_keys_chunk(+c: U32) -> List<&2, String>:
 def piece_keys(+i: U32) -> List<&2, U32>:
   Blob.row(piece_keys_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def piece_keys_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(piece_keys_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row code (data/world_catalog.bend random set piece code): string id, layout.
 def piece_specials_count() -> U32:
   21
@@ -32,6 +35,9 @@ def piece_specials_chunk(+c: U32) -> List<&2, String>:
 
 def piece_specials(+i: U32) -> List<&2, U32>:
   Blob.row(piece_specials_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+def piece_specials_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(piece_specials_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
 
 # Row room: its tags (ipairs order) as rows of data/rooms.bend's maptags table.
 def room_maptags_count() -> U32:
@@ -101,16 +107,16 @@ def region_link_room() -> U32:
   47
 
 def piece_key(+key: U32) -> U32:
-  Blob.at(piece_keys(key), 0)
+  piece_keys_at(key, 0)
 
 def piece_key_layout(+key: U32) -> U32:
-  Blob.at(piece_keys(key), 1)
+  piece_keys_at(key, 1)
 
 def piece_special(+code: U32) -> U32:
-  Blob.at(piece_specials(code), 0)
+  piece_specials_at(code, 0)
 
 def piece_special_layout(+code: U32) -> U32:
-  Blob.at(piece_specials(code), 1)
+  piece_specials_at(code, 1)
 
 def is_impassable(+tile: U32) -> Bool:
   U32.is_eq(tile, impassable_value()) || ((tile >= legacy_impassable_first() : U32) && (tile <= legacy_impassable_last() : U32))

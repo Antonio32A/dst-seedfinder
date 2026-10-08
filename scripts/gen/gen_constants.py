@@ -84,7 +84,7 @@ def perlin_half(odd: Bool, +u: U32) -> U32:
 # The perlin permutation p[i & 255].
 def perlin_p(+i: U32) -> U32:
   +k = (i .&. 255 : U32)
-  perlin_half(U32.is_ne((k .&. 1 : U32), 0), Blob.at(perlin(0), (k >> 1n : U32)))
+  perlin_half(U32.is_ne((k .&. 1 : U32), 0), perlin_at(0, (k >> 1n : U32)))
 ''')
     m.emit()
 

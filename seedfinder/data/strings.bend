@@ -93,6 +93,9 @@ def strings_chunk(+c: U32) -> List<&2, String>:
 def strings(+i: U32) -> List<&2, U32>:
   Blob.row(strings_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def strings_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(strings_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Entry id: the hash of row id, for lookups without decoding.
 def hashes_chunk(+c: U32) -> List<&2, U32>:
   match c:
@@ -189,7 +192,7 @@ def hash(+id: U32) -> U32:
 
 # Byte length of string id.
 def length(+id: U32) -> U32:
-  Blob.at(strings(id), 2)
+  strings_at(id, 2)
 
 # The bytes of string id as a String (one Char per byte).
 def name(+id: U32) -> String:

@@ -43,6 +43,9 @@ def rooms_chunk(+c: U32) -> List<&2, String>:
 def rooms(+i: U32) -> List<&2, U32>:
   Blob.row(rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def rooms_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row room: the room's tag ids in ipairs order.
 def room_tags_count() -> U32:
   102
@@ -82,6 +85,9 @@ def ca_rows_chunk(+c: U32) -> List<&2, String>:
 
 def ca_rows(+i: U32) -> List<&2, U32>:
   Blob.row(ca_rows_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+def ca_rows_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(ca_rows_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
 
 # Row room: the RunCA translate layers in table order as (tile, item_count, items[1] as a ca_items index) triples.
 def room_ca_layers_count() -> U32:
@@ -159,6 +165,9 @@ def tags_chunk(+c: U32) -> List<&2, String>:
 def tags(+i: U32) -> List<&2, U32>:
   Blob.row(tags_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def tags_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(tags_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row task: kind (0 required, 1 optional), room_bg (tile), background_room, cove room (Blank when unset), entrance_room (NONE when none or a list), 1 when the entrance is a list, cove_room_chance, cove_room_max_edges, crosslink_factor, make_loop (NONE when unset), 1 with maze_tiles, room_tags poison bits, the math.random() < cove chance threshold (U32, 2 units; the chance defaults to 0.35).
 def tasks_count() -> U32:
   51
@@ -174,6 +183,9 @@ def tasks_chunk(+c: U32) -> List<&2, String>:
 
 def tasks(+i: U32) -> List<&2, U32>:
   Blob.row(tasks_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+def tasks_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(tasks_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
 
 # Row task: the room ids of a list entrance_room in list order.
 def task_entrance_choices_count() -> U32:
@@ -299,6 +311,9 @@ def start_rooms_chunk(+c: U32) -> List<&2, String>:
 def start_rooms(+i: U32) -> List<&2, U32>:
   Blob.row(start_rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def start_rooms_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(start_rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 def maze_type_dfs_4way_meta() -> U32:
   0
 
@@ -422,6 +437,9 @@ def maze_layouts_chunk(+c: U32) -> List<&2, String>:
 def maze_layouts(+i: U32) -> List<&2, U32>:
   Blob.row(maze_layouts_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def maze_layouts_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(maze_layouts_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row task: maze_tile_size (default 8), the shape of maze_tiles (0 plain: rooms and bosses; 1 special: also special.start and special.finish; 2 archive: also archive.keyroom), bridge_ground (a tile, NONE when unset). Meaningful for tasks with the maze flag.
 def task_maze_info_count() -> U32:
   51
@@ -438,17 +456,20 @@ def task_maze_info_chunk(+c: U32) -> List<&2, String>:
 def task_maze_info(+i: U32) -> List<&2, U32>:
   Blob.row(task_maze_info_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def task_maze_info_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(task_maze_info_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 def task_maze_size(+task: U32) -> U32:
-  Blob.at(task_maze_info(task), 0)
+  task_maze_info_at(task, 0)
 
 def task_maze_kind(+task: U32) -> U32:
-  Blob.at(task_maze_info(task), 1)
+  task_maze_info_at(task, 1)
 
 def task_maze_bridge_ground(+task: U32) -> U32:
-  Blob.at(task_maze_info(task), 2)
+  task_maze_info_at(task, 2)
 
 def maze_layout(+choice: U32, +cell: U32) -> U32:
-  Blob.at(maze_layouts(choice), cell)
+  maze_layouts_at(choice, cell)
 
 def maze_choice_name(+choice: U32) -> String:
   Blob.text(maze_choice_names(choice))
@@ -616,94 +637,94 @@ def default_cove_max_edges() -> U32:
   1
 
 def room_value(+i: U32) -> U32:
-  Blob.at(rooms(i), 0)
+  rooms_at(i, 0)
 
 def room_node_type(+i: U32) -> U32:
-  Blob.at(rooms(i), 1)
+  rooms_at(i, 1)
 
 def room_internal_type(+i: U32) -> U32:
-  Blob.at(rooms(i), 2)
+  rooms_at(i, 2)
 
 def room_exit_weight(+i: U32) -> U32:
-  Blob.at(rooms(i), 3)
+  rooms_at(i, 3)
 
 def room_entrance_weight(+i: U32) -> U32:
-  Blob.at(rooms(i), 4)
+  rooms_at(i, 4)
 
 def room_flags(+i: U32) -> U32:
-  Blob.at(rooms(i), 5)
+  rooms_at(i, 5)
 
 def room_poison(+i: U32) -> U32:
-  Blob.at(rooms(i), 6)
+  rooms_at(i, 6)
 
 def tag_kind(+i: U32) -> U32:
-  Blob.at(tags(i), 0)
+  tags_at(i, 0)
 
 def tag_once(+i: U32) -> U32:
-  Blob.at(tags(i), 1)
+  tags_at(i, 1)
 
 def room_ca_iterations(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 0)
+  ca_rows_at(i, 0)
 
 def room_ca_seed_mode(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 1)
+  ca_rows_at(i, 1)
 
 def room_ca_random_points(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 2)
+  ca_rows_at(i, 2)
 
 def room_ca_layer_count(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 3)
+  ca_rows_at(i, 3)
 
 def room_ca_centroid_tile(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 4)
+  ca_rows_at(i, 4)
 
 def room_ca_centroid_count(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 5)
+  ca_rows_at(i, 5)
 
 def room_ca_centroid_item(+i: U32) -> U32:
-  Blob.at(ca_rows(i), 6)
+  ca_rows_at(i, 6)
 
 def task_kind(+i: U32) -> U32:
-  Blob.at(tasks(i), 0)
+  tasks_at(i, 0)
 
 def task_room_bg(+i: U32) -> U32:
-  Blob.at(tasks(i), 1)
+  tasks_at(i, 1)
 
 def task_background_room(+i: U32) -> U32:
-  Blob.at(tasks(i), 2)
+  tasks_at(i, 2)
 
 def task_cove_room(+i: U32) -> U32:
-  Blob.at(tasks(i), 3)
+  tasks_at(i, 3)
 
 def task_entrance_room(+i: U32) -> U32:
-  Blob.at(tasks(i), 4)
+  tasks_at(i, 4)
 
 def task_entrance_is_list(+i: U32) -> U32:
-  Blob.at(tasks(i), 5)
+  tasks_at(i, 5)
 
 def task_cove_room_chance(+i: U32) -> U32:
-  Blob.at(tasks(i), 6)
+  tasks_at(i, 6)
 
 def task_cove_room_max_edges(+i: U32) -> U32:
-  Blob.at(tasks(i), 7)
+  tasks_at(i, 7)
 
 def task_crosslink_factor(+i: U32) -> U32:
-  Blob.at(tasks(i), 8)
+  tasks_at(i, 8)
 
 def task_make_loop(+i: U32) -> U32:
-  Blob.at(tasks(i), 9)
+  tasks_at(i, 9)
 
 def task_maze(+i: U32) -> U32:
-  Blob.at(tasks(i), 10)
+  tasks_at(i, 10)
 
 def task_room_poison(+i: U32) -> U32:
-  Blob.at(tasks(i), 11)
+  tasks_at(i, 11)
 
 def task_cove_threshold(+i: U32) -> U32:
   Blob.word(tasks(i), 12)
 
 def start_room(+k: U32) -> U32:
-  Blob.at(start_rooms(0), k)
+  start_rooms_at(0, k)
 
 def room_name(+i: U32) -> String:
   Blob.text(room_names(i))

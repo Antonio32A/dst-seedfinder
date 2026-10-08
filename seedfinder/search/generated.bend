@@ -281,17 +281,17 @@ def world_verdict(job: GenJob.Job, +config: ShardSearch.Search, +seed: U32) -> S
 def stage_cost(+caves: Bool, +stage: U32) -> U32:
   match stage:
     case 4:
-      Bool.pick(U32, caves, 31, 24)
+      Bool.pick(U32, caves, 20, 18)
     case 5:
-      Bool.pick(U32, caves, 17, 50)
+      Bool.pick(U32, caves, 16, 57)
     case 6:
-      100
+      67
     case 10:
-      13
+      10
     case 11:
-      55
+      35
     case 12:
-      80
+      27
     case _:
       8
 

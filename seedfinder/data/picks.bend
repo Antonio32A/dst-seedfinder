@@ -63,6 +63,9 @@ def variant_picks_chunk(+c: U32) -> List<&2, String>:
 def variant_picks(+i: U32) -> List<&2, U32>:
   Blob.row(variant_picks_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def variant_picks_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(variant_picks_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row list: count, then indices into the variant's entries, 4 per unit (5 bits each, lowest first).
 def pick_lists_count() -> U32:
   2366
@@ -246,4 +249,4 @@ def unpack_list(xs: List<&2, U32>) -> List<&2, U32>:
 
 # pickspawnprefab's items order for a distribute variant on a tile class: indices into the variant's entries.
 def pick(+variant: U32, +class: U32) -> List<&2, U32>:
-  unpack_list(pick_lists(Blob.at(variant_picks(variant), class)))
+  unpack_list(pick_lists(variant_picks_at(variant, class)))

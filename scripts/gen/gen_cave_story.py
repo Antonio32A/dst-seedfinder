@@ -108,16 +108,16 @@ def maze_data(m, story_tasks, maze_constants):
                                "the maze flag.")
     m.code('''
 def task_maze_size(+task: U32) -> U32:
-  Blob.at(task_maze_info(task), 0)
+  task_maze_info_at(task, 0)
 
 def task_maze_kind(+task: U32) -> U32:
-  Blob.at(task_maze_info(task), 1)
+  task_maze_info_at(task, 1)
 
 def task_maze_bridge_ground(+task: U32) -> U32:
-  Blob.at(task_maze_info(task), 2)
+  task_maze_info_at(task, 2)
 
 def maze_layout(+choice: U32, +cell: U32) -> U32:
-  Blob.at(maze_layouts(choice), cell)
+  maze_layouts_at(choice, cell)
 
 def maze_choice_name(+choice: U32) -> String:
   Blob.text(maze_choice_names(choice))
@@ -292,9 +292,9 @@ def main():
             ("task_entrance_is_list", "tasks", 5), ("task_cove_room_chance", "tasks", 6),
             ("task_cove_room_max_edges", "tasks", 7), ("task_crosslink_factor", "tasks", 8),
             ("task_make_loop", "tasks", 9), ("task_maze", "tasks", 10), ("task_room_poison", "tasks", 11)):
-        accessors.append(f"def {name}(+i: U32) -> U32:\n  Blob.at({table}(i), {column})\n")
+        accessors.append(f"def {name}(+i: U32) -> U32:\n  {table}_at(i, {column})\n")
     accessors.append("def task_cove_threshold(+i: U32) -> U32:\n  Blob.word(tasks(i), 12)\n")
-    accessors.append("def start_room(+k: U32) -> U32:\n  Blob.at(start_rooms(0), k)\n")
+    accessors.append("def start_room(+k: U32) -> U32:\n  start_rooms_at(0, k)\n")
     for name, table in (("room_name", "room_names"), ("ca_item_name", "ca_items"), ("tag_name", "tag_names"), ("tag_value", "tag_values")):
         accessors.append(f"def {name}(+i: U32) -> String:\n  Blob.text({table}(i))\n")
     m.code("\n".join(accessors))

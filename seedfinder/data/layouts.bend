@@ -78,6 +78,9 @@ def states_chunk(+c: U32) -> List<&2, String>:
 def states(+i: U32) -> List<&2, U32>:
   Blob.row(states_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def states_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(states_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row variant: name (string id), type (LAYOUT), scale (f64, 4 units; 1.0 when unset, as ConvertLayoutToEntitylist sets it), flags, force_rotation, start_mask, fill_mask, layout_position (NONE when unset), ground size (0 = no ground), min_dist_from_land, initfn closure, add_topology property ref (0 = none).
 def variants_count() -> U32:
   466
@@ -120,6 +123,9 @@ def variants_chunk(+c: U32) -> List<&2, String>:
 def variants(+i: U32) -> List<&2, U32>:
   Blob.row(variants_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def variants_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(variants_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row variant: ground tiles, size * size, row-major as layout.ground[row][col] (0 = no tile), two per unit (10 bits each, the lower first).
 def ground_count() -> U32:
   466
@@ -161,6 +167,9 @@ def ground_chunk(+c: U32) -> List<&2, String>:
 
 def ground(+i: U32) -> List<&2, U32>:
   Blob.row(ground_chunk((i >> 5n : U32)), (i .&. 31 : U32))
+
+def ground_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(ground_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
 
 # Row variant: layout.layout in pairs() order: per key (string id, object count, sized), then per object x, y, (width, height when sized = the key is an area). With flag_static_list this flattened is ConvertLayoutToEntitylist's result.
 def groups_count() -> U32:
@@ -493,41 +502,41 @@ def closure_literals(+i: U32) -> List<&2, U32>:
   Blob.row(closure_literals_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
 def variant(+layout: U32, +state: U32) -> U32:
-  Blob.at(states(layout), state)
+  states_at(layout, state)
 
 def name(+variant: U32) -> U32:
-  Blob.at(variants(variant), 0)
+  variants_at(variant, 0)
 
 def layout_type(+variant: U32) -> U32:
-  Blob.at(variants(variant), 1)
+  variants_at(variant, 1)
 
 # layout.scale as f64 (hi, lo).
 def scale(+variant: U32) -> U32 & U32:
   Blob.f64(variants(variant), 2)
 
 def flags(+variant: U32) -> U32:
-  Blob.at(variants(variant), 6)
+  variants_at(variant, 6)
 
 def has(+variant: U32, +flag: U32) -> Bool:
   U32.is_ne((flags(variant) .&. flag : U32), 0)
 
 def force_rotation(+variant: U32) -> U32:
-  Blob.at(variants(variant), 7)
+  variants_at(variant, 7)
 
 def start_mask(+variant: U32) -> U32:
-  Blob.at(variants(variant), 8)
+  variants_at(variant, 8)
 
 def fill_mask(+variant: U32) -> U32:
-  Blob.at(variants(variant), 9)
+  variants_at(variant, 9)
 
 def layout_position(+variant: U32) -> U32:
-  Blob.at(variants(variant), 10)
+  variants_at(variant, 10)
 
 def ground_size(+variant: U32) -> U32:
-  Blob.at(variants(variant), 11)
+  variants_at(variant, 11)
 
 def min_dist_from_land(+variant: U32) -> U32:
-  Blob.at(variants(variant), 12)
+  variants_at(variant, 12)
 
 def ground_half(odd: Bool, +u: U32) -> U32:
   match odd:
@@ -538,4 +547,4 @@ def ground_half(odd: Bool, +u: U32) -> U32:
 
 # Ground tile k (row-major) of a variant.
 def ground_tile(+variant: U32, +k: U32) -> U32:
-  ground_half(U32.is_ne((k .&. 1 : U32), 0), Blob.at(ground(variant), (k >> 1n : U32)))
+  ground_half(U32.is_ne((k .&. 1 : U32), 0), ground_at(variant, (k >> 1n : U32)))

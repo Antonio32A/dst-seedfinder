@@ -17,6 +17,9 @@ def tasks_chunk(+c: U32) -> List<&2, String>:
 def tasks(+i: U32) -> List<&2, U32>:
   Blob.row(tasks_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def tasks_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(tasks_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row task: #locks, then the locks in ipairs order (LOCKS ids).
 def task_locks_count() -> U32:
   25
@@ -139,37 +142,37 @@ def default_cove_max_edges() -> U32:
   1
 
 def kind(+task: U32) -> U32:
-  Blob.at(tasks(task), 0)
+  tasks_at(task, 0)
 
 def room_bg(+task: U32) -> U32:
-  Blob.at(tasks(task), 1)
+  tasks_at(task, 1)
 
 def background_room(+task: U32) -> U32:
-  Blob.at(tasks(task), 2)
+  tasks_at(task, 2)
 
 def cove_room(+task: U32) -> U32:
-  Blob.at(tasks(task), 3)
+  tasks_at(task, 3)
 
 def entrance_room(+task: U32) -> U32:
-  Blob.at(tasks(task), 4)
+  tasks_at(task, 4)
 
 def cove_room_chance(+task: U32) -> U32:
-  Blob.at(tasks(task), 5)
+  tasks_at(task, 5)
 
 def cove_room_max_edges(+task: U32) -> U32:
-  Blob.at(tasks(task), 6)
+  tasks_at(task, 6)
 
 def crosslink_factor(+task: U32) -> U32:
-  Blob.at(tasks(task), 7)
+  tasks_at(task, 7)
 
 def make_loop(+task: U32) -> U32:
-  Blob.at(tasks(task), 8)
+  tasks_at(task, 8)
 
 def region_id(+task: U32) -> U32:
-  Blob.at(tasks(task), 9)
+  tasks_at(task, 9)
 
 def level_set_piece_blocker(+task: U32) -> U32:
-  Blob.at(tasks(task), 10)
+  tasks_at(task, 10)
 
 # math.random() < (cove_room_chance or 0.35) holds exactly when the PCG output is below this.
 def cove_threshold(+task: U32) -> U32:

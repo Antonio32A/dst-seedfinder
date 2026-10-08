@@ -74,6 +74,9 @@ def rooms_chunk(+c: U32) -> List<&2, String>:
 def rooms(+i: U32) -> List<&2, U32>:
   Blob.row(rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def rooms_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 # Row room: the room's tags (ipairs order).
 def room_tags_count() -> U32:
   168
@@ -392,6 +395,9 @@ def cave_rooms_chunk(+c: U32) -> List<&2, String>:
 def cave_rooms(+i: U32) -> List<&2, U32>:
   Blob.row(cave_rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
+def cave_rooms_at(+i: U32, +j: U32) -> U32:
+  Blob.row_at(cave_rooms_chunk((i >> 5n : U32)), (i .&. 31 : U32), j)
+
 def forest_room_count() -> U32:
   68
 
@@ -416,16 +422,16 @@ def row_of(+room: U32, +depth: U32) -> U32:
   (((room * 2 : U32) + depth : U32) - 1 : U32)
 
 def name(+room: U32) -> U32:
-  Blob.at(rooms(room), 0)
+  rooms_at(room, 0)
 
 def value(+room: U32) -> U32:
-  Blob.at(rooms(room), 1)
+  rooms_at(room, 1)
 
 def node_type(+room: U32) -> U32:
-  Blob.at(rooms(room), 2)
+  rooms_at(room, 2)
 
 def flags(+room: U32) -> U32:
-  Blob.at(rooms(room), 3)
+  rooms_at(room, 3)
 
 def has(+room: U32, +flag: U32) -> Bool:
   U32.is_ne((flags(room) .&. flag : U32), 0)
@@ -439,17 +445,17 @@ def distribute_threshold(+room: U32) -> U32:
   Blob.word(rooms(room), 8)
 
 def internal_type(+room: U32) -> U32:
-  Blob.at(rooms(room), 10)
+  rooms_at(room, 10)
 
 def random_node_exit_weight(+room: U32) -> U32:
-  Blob.at(rooms(room), 11)
+  rooms_at(room, 11)
 
 def random_node_entrance_weight(+room: U32) -> U32:
-  Blob.at(rooms(room), 12)
+  rooms_at(room, 12)
 
 # The row of a room of data/cave_story.bend in this module.
 def from_cave_room(+cave_room: U32) -> U32:
-  Blob.at(cave_rooms(cave_room), 0)
+  cave_rooms_at(cave_room, 0)
 
 # A distribute weight as f64 (hi, lo).
 def weight(+id: U32) -> U32 & U32:

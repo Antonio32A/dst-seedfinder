@@ -350,25 +350,18 @@ def ground_set(on: Bool, g: Grid.Grid, +x: U32, +y: U32, +tile: U32) -> Grid.Gri
     case True{}:
       Points.set_tile(g, x, y, tile, 1)
 
-def ground_rows(n: Nat, g: Grid.Grid, +v: U32, +t: PopulatePlace.Turn, +size: U32, +x: U32, +y: U32, +column: U32, +row: U32) -> Grid.Grid:
-  match n:
-    case 0n:
+def ground_cells(cells: List<&2, U32>, g: Grid.Grid, +n: U32, +x: U32, +y: U32, +q: U32) -> Grid.Grid:
+  match cells:
+    case Nil{}:
       g
-    case 1n+p:
-      +tile = PopulatePlace.ground_at(v, t, size, column, row)
-      ground_rows(p, ground_set(U32.is_ne(tile, 0), g, (x + column + 1 : U32), (y + row + 1 : U32), tile), v, t, size, x, y, column, (row + 1 : U32))
-
-def ground_columns(n: Nat, g: Grid.Grid, +v: U32, +t: PopulatePlace.Turn, +size: U32, +x: U32, +y: U32, +column: U32) -> Grid.Grid:
-  match n:
-    case 0n:
-      g
-    case 1n+p:
-      ground_columns(p, ground_rows(U32.to_nat(size), g, v, t, size, x, y, column, 0), v, t, size, x, y, (column + 1 : U32))
+    case Con{+tile, rest}:
+      +column = (q / n : U32)
+      +row = (q % n : U32)
+      ground_cells(rest, ground_set(U32.is_ne(tile, 0), g, (x + column + 1 : U32), (y + row + 1 : U32), tile), n, x, y, (q + 1 : U32))
 
 # The layout's ground tiles at position + (column, row), 1-based, reserved (SetTile(x, y, tile, 1)).
 def ground(g: Grid.Grid, +v: U32, +t: PopulatePlace.Turn, +x: U32, +y: U32) -> Grid.Grid:
-  +n = Layouts.ground_size(v)
-  ground_columns(U32.to_nat(n), g, v, t, n, x, y, 0)
+  ground_cells(PopulatePlace.ground(v, t), g, Layouts.ground_size(v), x, y, 0)
 
 # Where the entities go: rcx, rcy (position + size + 0.5), the transform and the scale.
 type Frame is Data:
