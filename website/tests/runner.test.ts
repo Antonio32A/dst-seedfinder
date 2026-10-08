@@ -129,10 +129,10 @@ describe("a search's own token", () => {
         expect((await loadJob(search.id))?.status).toBe("starting");
     });
 
-    it("fetches the config while starting, which starts the search", async () => {
+    it("fetches the config, upgraded to the current version, while starting, which starts the search", async () => {
         const response = await runner("GET", search.id, bearer(search.token));
         expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ version: 1, shard: "forest", platform: "windows" });
+        expect(await response.json()).toEqual({ version: 2, shard: "forest", platform: "windows" });
         expect((await loadJob(search.id))?.status).toBe("running");
     });
 
