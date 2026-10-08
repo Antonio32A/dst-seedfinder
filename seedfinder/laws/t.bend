@@ -78,7 +78,7 @@ def no_bridge_is_null():
 
 def later_of(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match compiled:
-    case Done{CaveConfig.Config{_, _, +later}}:
+    case Done{CaveConfig.Config{_, _, +later, _}}:
       Done{later}
     case Fail{failure}:
       Fail{failure}

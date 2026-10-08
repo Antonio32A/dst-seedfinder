@@ -1,3 +1,4 @@
+import { type Filter, optionName } from "@/lib/config/seedfinder-config";
 import { type OptionTiming, rulesMs, type SearchTimings as Timings } from "@/lib/jobs/search-timings";
 import { plural, ruleLabel } from "@/lib/jobs/witness-text";
 import LiveStats from "./LiveStats";
@@ -13,10 +14,10 @@ const duration = (ms: number) => {
 
 const share = (ms: number, elapsedMs: number) => (elapsedMs > 0 ? `${Math.round((ms * 100) / elapsedMs)}% of the time` : undefined);
 
-function OptionRow({ timing, index }: { timing: OptionTiming; index: number }) {
+function OptionRow({ timing, name }: { timing: OptionTiming; name: string }) {
     return (
             <tr>
-                <th scope="row">Option {index + 1}</th>
+                <th scope="row">{name}</th>
                 <td>
                     {timing.rules.length === 0 ? <span className="muted">no world rules</span> : (
                             <>
@@ -37,7 +38,7 @@ function OptionRow({ timing, index }: { timing: OptionTiming; index: number }) {
 }
 
 /** Where a `--verbose-timings` search spent its time. */
-export default function SearchTimings({ timings }: { timings: Timings }) {
+export default function SearchTimings({ timings, filters }: { timings: Timings; filters?: Filter[] }) {
     const { elapsed_ms: elapsed, prefilter_ms: prefilter, generation_ms: generation, hits_ms: hits, options } = timings;
     const optionsMs = options.reduce((total, timing) => total + rulesMs(timing), 0);
     const other = Math.max(0, elapsed - prefilter - generation - hits - optionsMs);
@@ -62,7 +63,7 @@ export default function SearchTimings({ timings }: { timings: Timings }) {
                         </thead>
                         <tbody>
                         {options.map((timing, index) => (
-                                <OptionRow key={index} timing={timing} index={index}/>
+                                <OptionRow key={index} timing={timing} name={optionName(filters?.[index], index)}/>
                         ))}
                         </tbody>
                     </table>

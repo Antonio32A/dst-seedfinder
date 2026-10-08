@@ -43,16 +43,16 @@ def outcomes_of(skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -> L
     case False{}:
       Evaluate.parallel_jobs(world, Evaluate.jobs_of(later))
 
-def entry_verdict(+seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
-  Hit{"\"entry\":" ++ U32.show(index) ++ ",\"level\":" ++ ShardSearch.summary_json(caves, seed) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
+def entry_verdict(+names: List<&2, String>, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
+  Hit{SearchReport.entry_json(index, SearchReport.name_at(names, index)) ++ ",\"level\":" ++ ShardSearch.summary_json(caves, seed) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
 
-def first_entry(laters: List<&2, Rules.Later>, found: Bool, +world: FilterWorld.World, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
+def first_entry(laters: List<&2, Rules.Later>, +names: List<&2, String>, found: Bool, +world: FilterWorld.World, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
   match laters found:
     case _ True{}:
-      entry_verdict(seed, caves, (index - 1 : U32), outcomes)
+      entry_verdict(names, seed, caves, (index - 1 : U32), outcomes)
     case Con{+later, ls} False{}:
       +found = Evaluate.parallel_holds(world, Evaluate.jobs_of(later))
-      first_entry(ls, found, world, seed, caves, (index + 1 : U32), outcomes_of(Bool.not(found), world, later))
+      first_entry(ls, names, found, world, seed, caves, (index + 1 : U32), outcomes_of(Bool.not(found), world, later))
     case _ _:
       Miss{}
 
@@ -64,7 +64,7 @@ def later_at(+laters: List<&2, Rules.Later>, +index: U32) -> Rules.Later:
 def open_verdict(+o: Timings.Open, +config: ShardSearch.Search, +seed: U32, +otherwise: Verdict) -> Verdict:
   match o:
     case Timings.Open{Some{+world}, Some{+index}}:
-      entry_verdict(seed, ShardSearch.caves(config), index, Evaluate.parallel_jobs(world, Evaluate.jobs_of(later_at(ShardSearch.laters(config), index))))
+      entry_verdict(ShardSearch.names(config), seed, ShardSearch.caves(config), index, Evaluate.parallel_jobs(world, Evaluate.jobs_of(later_at(ShardSearch.laters(config), index))))
     case _:
       otherwise
 
@@ -95,7 +95,7 @@ def world_verdict(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +con
   match loaded:
     case Done{FilterWorld.Generated{+world, +platform}}:
       Bool.pick(Verdict, usable(config, platform, world),
-        first_entry(ShardSearch.laters(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
+        first_entry(ShardSearch.laters(config), ShardSearch.names(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
     case Done{FilterWorld.GaveUp{_}}:
       Miss{}
     case Fail{_}:

@@ -8,6 +8,7 @@ import {
     type Generation,
     MAX_FILTERS,
     MAX_RULES_PER_SECTION,
+    optionName,
     type Platform,
     PLATFORMS,
     type SeedfinderConfig,
@@ -70,6 +71,7 @@ export interface GenerationPicks {
 /** World details checked on a generated world; a world matches when any filter holds. */
 export interface WorldFilter extends WorldRows {
     key: string;
+    name: string;
 }
 
 export interface SearchState {
@@ -134,7 +136,7 @@ export function emptyGeneration(): GenerationPicks {
 }
 
 export function emptyFilter(): WorldFilter {
-    return { key: newKey(), counts: [], distances: [], tiles: [], bridges: [], routes: [] };
+    return { key: newKey(), name: "", counts: [], distances: [], tiles: [], bridges: [], routes: [] };
 }
 
 export function defaultState(): SearchState {
@@ -264,8 +266,11 @@ function toGeneration(generation: GenerationPicks, catalog: LevelCatalog): Gener
 export function toSeedfinderConfig(state: SearchState): SeedfinderConfig {
     const catalog = levelCatalogOf(state.shard);
     const generation = toGeneration(state.generation, catalog);
-    const filters = nonEmpty(state.filters.flatMap((filter) =>
-        compact<Filter>(worldSections(filter, state.shard)) ?? []));
+    const filters = nonEmpty(state.filters.flatMap((filter) => {
+        const sections = compact<Filter>(worldSections(filter, state.shard));
+        const name = filter.name.trim();
+        return sections ? [{ ...(name ? { name } : {}), ...sections }] : [];
+    }));
     return {
         version: CONFIG_VERSION,
         shard: state.shard,
@@ -347,7 +352,12 @@ export function fromSeedfinderConfig(config: unknown): SearchState {
     const shard = SHARDS.find((candidate) => candidate === record.shard) ?? DEFAULT_SHARD;
     const filters = asArray(record.filters)
         .slice(0, MAX_FILTERS)
-        .map((filter): WorldFilter => ({ key: newKey(), ...worldRowsOf(asRecord(filter), shard) }));
+        .map(asRecord)
+        .map((filter): WorldFilter => ({
+            key: newKey(),
+            name: typeof filter.name === "string" ? filter.name : "",
+            ...worldRowsOf(filter, shard)
+        }));
     return {
         shard,
         platform: PLATFORMS.find((platform) => platform === record.platform) ?? DEFAULT_PLATFORM,
@@ -497,7 +507,8 @@ const capitalized = (message: string) => message.charAt(0).toUpperCase() + messa
 function filterIssues(state: SearchState): Issue[] {
     const multiple = state.filters.length > 1;
     return state.filters.flatMap((filter, index) => {
-        const label = (message: string) => (multiple ? `Option ${index + 1}: ${message}` : capitalized(message));
+        const labelled = multiple || filter.name.trim() !== "";
+        const label = (message: string) => (labelled ? `${optionName(filter, index)}: ${message}` : capitalized(message));
         const empty: Issue[] = multiple && worldRowCount(filter) === 0
             ? [{ severity: "warning", message: "nothing picked, so it's ignored." }]
             : [];

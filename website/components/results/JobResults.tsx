@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { memo, useId, useMemo, useState } from "react";
 import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
-import { DEFAULT_PLATFORM, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import { DEFAULT_PLATFORM, optionName, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import type { JobView } from "@/lib/jobs/job-events";
 import {
     type LevelTable,
@@ -153,8 +153,10 @@ const HitRow = memo(function HitRow({ hit, platform, config, showOption, onCopy 
                           aria-label={`Map of seed ${seed} on ${platform}`}>
                         map
                     </Link>
-                    {showOption && hit.entry !== null &&
-                            <span className="tag tag--accent">Option {hit.entry + 1}</span>}
+                    {(showOption || hit.name !== undefined) && hit.entry !== null &&
+                            <span className="tag tag--accent">
+                                {hit.name ?? optionName(config.filters?.[hit.entry], hit.entry)}
+                            </span>}
                     <button
                             type="button"
                             className="link-button hit__toggle"
@@ -264,7 +266,7 @@ function SearchSummary({ job, search, onCopy, further }: JobResultsProps & { sea
                                  showOption={(job.config.filters?.length ?? 0) > 1} onCopy={onCopy}/>
                 )}
                 {canContinue && <SearchFurther startSeed={nextSeed} further={further}/>}
-                {search.timings && <SearchTimings timings={search.timings}/>}
+                {search.timings && <SearchTimings timings={search.timings} filters={job.config.filters}/>}
             </div>
     );
 }

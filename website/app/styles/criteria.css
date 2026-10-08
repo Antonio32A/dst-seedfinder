@@ -15,8 +15,22 @@
     gap: 8px;
 }
 
+.group__name {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
 .group__title {
     margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.group__rename {
+    width: min(100%, 32ch);
+    padding: 4px 8px;
+    font-weight: 700;
 }
 
 .or-divider {

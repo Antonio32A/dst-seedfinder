@@ -921,6 +921,11 @@
     "max"
    ]
   },
+  "filterName": {
+   "type": "string",
+   "maxLength": 40,
+   "description": "Labels the filter and the hits it matches (their `name`)."
+  },
   "generation": {
    "description": "The level table: a seed is a candidate when all its sections and rules hold (AND).",
    "type": "object",
@@ -953,6 +958,9 @@
    "type": "object",
    "additionalProperties": false,
    "properties": {
+    "name": {
+     "$ref": "#/$defs/filterName"
+    },
     "counts": {
      "type": "array",
      "maxItems": 16,
@@ -1628,6 +1636,9 @@
    "type": "object",
    "additionalProperties": false,
    "properties": {
+    "name": {
+     "$ref": "#/$defs/filterName"
+    },
     "counts": {
      "type": "array",
      "maxItems": 16,

@@ -137,6 +137,8 @@ export interface LevelTable {
 export interface SearchHit {
     seed: number;
     entry: number | null;
+    /** The name of the filter that matched, when it has one. */
+    name?: string;
     level: LevelTable;
     results: Witness[];
 }
@@ -304,12 +306,15 @@ const level = shape<LevelTable>({
     tasks: listOf(shape<LevelTask>({ task: text, set_pieces: strings, random_set_pieces: strings }))
 });
 
-const hit = shape<SearchHit>({
-    seed: uint32,
-    entry: withDefault(nullable(uint32), null),
-    level: withDefault(level, EMPTY_LEVEL),
-    results: listOf(witness)
-});
+const hit = shape<Omit<SearchHit, "name">, Pick<SearchHit, "name">>(
+    {
+        seed: uint32,
+        entry: withDefault(nullable(uint32), null),
+        level: withDefault(level, EMPTY_LEVEL),
+        results: listOf(witness)
+    },
+    { name: text }
+);
 
 const search = shape<Pick<SearchOutput, "hits" | "last_scanned" | "next_seed">, Pick<SearchOutput, "scanned" | "stopped">>(
     {

@@ -14,6 +14,7 @@ export const MAX_TASKS_PER_LIST = 25;
 export const MIN_ROUTE_STOPS = 1;
 export const MAX_ROUTE_STOPS = 6;
 export const MAX_TILE_NAMES = 16;
+export const MAX_FILTER_NAME_LENGTH = 40;
 
 export const MIN_WANTED = 1;
 export const MAX_WANTED = 100;
@@ -131,12 +132,18 @@ export interface Generation {
 
 /** Rules checked on a generated world. */
 export interface Filter {
+    /** Labels the filter and its hits. */
+    name?: string;
     counts?: CountRule[];
     distances?: DistanceRule[];
     tiles?: TileRule[];
     bridges?: BridgeRule[];
     routes?: RouteRule[];
 }
+
+/** What a filter is called: its name, or its place among the filters. */
+export const optionName = (filter: { name?: string } | undefined, index: number): string =>
+    filter?.name?.trim() || `Option ${index + 1}`;
 
 /** A seed matches when `generation` holds and, with filters, any of them holds on its world. */
 export interface SeedfinderConfig {

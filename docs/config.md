@@ -21,7 +21,7 @@ game scripts and the finder's caps (§ 6). Never edit it by hand.
 | `platform` | `"windows"` \| `"linux"` | `"windows"` | The OS of the host that generates the world (the dedicated server). |
 | `settings` | object | `{}` | Reserved. Every value must be `"default"` (any key). |
 | `generation` | object | `{}` | The level table (part A): the optional sections `tasks`, `prefab_swaps` and `setpieces` (§ 4 A). A seed is a **candidate** when it holds. `{}` holds for every seed. |
-| `filters` | list of filters, ≤ 25 | `[]` | Alternatives (**OR**) on the candidates' worlds. A filter is an object with the optional sections `counts`, `distances`, `tiles`, `bridges` and `routes` (§ 4 B–F). Missing or `[]` accepts every candidate. |
+| `filters` | list of filters, ≤ 25 | `[]` | Alternatives (**OR**) on the candidates' worlds. A filter is an object with an optional `name` (a string of at most 40 characters that labels it, and the hits it matches, § 8) and the optional sections `counts`, `distances`, `tiles`, `bridges` and `routes` (§ 4 B–F). Missing or `[]` accepts every candidate. |
 
 A seed matches when it is a candidate and some filter holds on its world (or there are no filters). A section holds
 when **all** its rules hold (**AND**), and so does a filter or `generation` when all its sections hold; a `setpieces`
@@ -278,8 +278,9 @@ The finder rejects a config over any cap with a config error.
 | task ids per task list (`tasks.required`, `tasks.excluded`, `setpieces[].tasks`) | 25 |
 | `routes[].visit` stops | 6 (min 1) |
 | tile names per tile set | 16 |
+| characters per filter `name` | 40 |
 
-A list is counted as written, before duplicates are removed.
+A list is counted as written, before duplicates are removed, and a name by its Unicode code points.
 
 ## 7. Errors
 
@@ -306,7 +307,7 @@ parse it: it validates with the schema and the caps first.
 | bad metric / order | `<path> must be "straight" or "walk"` / `<path> must be "any" or "fixed"` |
 | bad prefab / tile set | `<path> must be a prefab id or a list of prefab ids` / `... a tile name or a list of tile names` |
 | empty prefab set, tile set, `visit` or group | `<path> must not be empty` |
-| over a cap | `<path> has <n> <entries\|rules\|prefab ids\|set pieces\|tasks\|stops\|tiles> (at most <cap>)` |
+| over a cap | `<path> has <n> <entries\|rules\|prefab ids\|set pieces\|tasks\|stops\|tiles\|characters> (at most <cap>)` |
 | unknown prefab id | `unknown prefab "<id>" in <path>`, plus ` (a catalog group name: list its prefab ids)` for group names |
 | unknown task | `unknown task "<id>" in <path>` |
 | `shard` not `"forest"` or `"caves"` | `unknown shard <value> (forest or caves)`, e.g. `unknown shard "nether" (forest or caves)` |
@@ -362,11 +363,12 @@ earlier option matched) and `rules` the ms of each rule, in witness order.
 earlier seed are decided. The last line is `done {json}`:
 
 ```
-<seed> {"entry": <int>, "level": {level table}, "results": [witness, ...]}
+<seed> {"entry": <int>, "name": <string>, "level": {level table}, "results": [witness, ...]}
 done {"scanned": C, "last_scanned": L, "next_seed": X, "hits": H, "stopped": "limit"|"time"|"end"}
 ```
 
 - `entry`: the index of the first filter that holds (`0` when `filters` is empty).
+- `name`: that filter's `name`, only when it has a non-empty one.
 - `level`: the level table, exactly as `seedfinder world show` prints it:
   `{"prefab_swaps": {"grass": .., "twigs": .., "berries": ..}, "tasks": [{"task", "set_pieces", "random_set_pieces"}, ...]}`.
   Tasks are in chosen order, and pieces in placement order.
@@ -500,16 +502,18 @@ from the vents room it links to, and its turf runs back to it. Its witness:
 done {"scanned": 1, "last_scanned": 1, "next_seed": null, "hits": 1, "stopped": "end"}
 ```
 
-**Two alternatives**: `generation` needs 5 misc boons and Level4Boons together (a cane's boons). Filter 0 needs the
-Pig King within 500 walking units and grass next to birchnut, filter 1 a sculpture within 600 units of spawn.
-A seed with the boons matches when either holds on its world, and only the worlds of seeds with the boons are
-generated:
+**Two alternatives**: `generation` needs 5 misc boons and Level4Boons together (a cane's boons). Filter 0 ("Pig King")
+needs the Pig King within 500 walking units and grass next to birchnut, filter 1 ("Sculpture") a sculpture within 600
+units of spawn. A seed with the boons matches when either holds on its world, and only the worlds of seeds with the
+boons are generated:
 
 ```json
 {"generation": {"setpieces": [{"any": [{"required": {"MiscBoon": 0}}, {"required": {"Level4Boon": 0}}], "total": 5}]},
- "filters": [{"distances": [{"from": "multiplayer_portal", "to": "pigking", "max": 500, "metric": "walk"}],
+ "filters": [{"name": "Pig King",
+              "distances": [{"from": "multiplayer_portal", "to": "pigking", "max": 500, "metric": "walk"}],
               "counts": [{"prefab": "grass", "min": 1, "near": {"prefab": "deciduoustree", "within": 8}}]},
-             {"distances": [{"from": "multiplayer_portal", "to": ["sculpture_rook", "sculpture_knight", "sculpture_bishop"],
+             {"name": "Sculpture",
+              "distances": [{"from": "multiplayer_portal", "to": ["sculpture_rook", "sculpture_knight", "sculpture_bishop"],
                              "max": 600}]}]}
 ```
 

@@ -26,9 +26,10 @@ type Criteria is Data:
   Criteria{required: TaskSet, excluded: TaskSet, swap_care: U32, swap_want: U32, rules: List<&2, Rule>, groups: List<&2, Group>}
 
 # A compiled caves config: the platform for the report, the part A criteria of `generation` (they make a seed a
-# candidate) and the parts B-E of each `filters` entry (one without rules when there are no filters).
+# candidate), the parts B-E of each `filters` entry (one without rules when there are no filters) and the name of each
+# filter ("" when it has none).
 type Config is Data:
-  Config{windows: Bool, level: Criteria, filters: List<&2, Rules.Later>}
+  Config{windows: Bool, level: Criteria, filters: List<&2, Rules.Later>, names: List<&2, String>}
 
 def every_task() -> TaskSet:
   TaskSet{4294967295, 4294967295}
@@ -218,7 +219,8 @@ def generation_of(json: Json.Json) -> Result<&1, &1, U32 & String, Criteria>:
 
 def filter_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Rules.Later>:
   do Result<&1, &1, U32 & String, Rules.Later>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, Config.later_parts(), path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, "name" <> Config.later_parts(), path)
+    named : Unit <- Config.name_of(Parse.field(fields, "name"), path ++ ".name")
     Rules.later_of(fields, path, True{}, Nil{})
 
 def filter_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
@@ -243,9 +245,9 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
     defaults : Unit <- Config.default_settings(settings)
     level : Criteria <- generation_of(Maybe.default(&2, Json.Json, Parse.field(fields, "generation"), Json.JObj{Nil{}}))
     items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "filters"), "filters")
-    listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "filters")
+    +listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "filters")
     filters : List<&2, Rules.Later> <- filter_list(listed, 0)
-    return Config{windows, level, Config.or_unfiltered(filters, Nil{})}
+    return Config{windows, level, Config.or_unfiltered(filters, Nil{}), Config.names_of(listed)}
 
 def tasks_hold(+c: Criteria, +lo: U32, +hi: U32, +swaps: U32) -> Bool:
   match c:

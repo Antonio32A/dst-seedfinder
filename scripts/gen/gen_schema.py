@@ -34,13 +34,13 @@ MAX_INTEGER = 4294967295
 MAX_DISTANCE = 1000000
 WEBSITE_CAPS = {"entries": "MAX_FILTERS", "rules": "MAX_RULES_PER_SECTION", "prefab ids": "MAX_PREFAB_IDS",
                 "set pieces": "MAX_SET_PIECES_PER_RULE", "tasks": "MAX_TASKS_PER_LIST", "stops": "MAX_ROUTE_STOPS",
-                "tiles": "MAX_TILE_NAMES"}
+                "tiles": "MAX_TILE_NAMES", "characters": "MAX_FILTER_NAME_LENGTH"}
 
 
 def caps():
     found = {}
     for path in sorted(FILTERS.glob("*.bend")):
-        for cap, noun in re.findall(r'capped\([^,]+, (\d+), "([^"]+)"', path.read_text(encoding="utf-8")):
+        for cap, noun in re.findall(r'capped(?:_text)?\([^,]+, (\d+), "([^"]+)"', path.read_text(encoding="utf-8")):
             found.setdefault(noun, set()).add(int(cap))
     if found.keys() != WEBSITE_CAPS.keys() or any(len(values) != 1 for values in found.values()):
         sys.exit(f"gen_schema.py: the caps in {FILTERS.relative_to(ROOT)} are not one per {list(WEBSITE_CAPS)}: "
@@ -151,11 +151,14 @@ def definitions(catalog):
                              "to": ref("prefabs"), "max": ref("distance"),
                              "order": {"enum": list(ORDERS), "default": "any"}, **metric_fields()},
                             ("from", "visit", "max")),
+        "filterName": {"type": "string", "maxLength": CAPS["characters"],
+                       "description": "Labels the filter and the hits it matches (their `name`)."},
         "generation": closed({"tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"),
                               "setpieces": setpiece_items("setPieceRule", "setPieceGroup")},
                              description="The level table: a seed is a candidate when all its sections and rules hold "
                                          "(AND)."),
-        "filter": closed({"counts": rules("countRule"), "distances": rules("distanceRule"), "tiles": rules("tileRule"),
+        "filter": closed({"name": ref("filterName"), "counts": rules("countRule"),
+                          "distances": rules("distanceRule"), "tiles": rules("tileRule"),
                           "bridges": rules("bridgeRule"), "routes": rules("routeRule")},
                          description="World rules: all sections and all rules must hold (AND)."),
     }
@@ -198,8 +201,9 @@ def cave_definitions():
                                   "setpieces": setpiece_items("caveSetPieceRule", "caveSetPieceGroup")},
                                  description="The caves' level table: a seed is a candidate when all its sections and "
                                              "rules hold (AND)."),
-        "caveFilter": closed({"counts": rules("caveCountRule"), "distances": rules("caveDistanceRule"),
-                              "tiles": rules("tileRule"), "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
+        "caveFilter": closed({"name": ref("filterName"), "counts": rules("caveCountRule"),
+                              "distances": rules("caveDistanceRule"), "tiles": rules("tileRule"),
+                              "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
                              description="World rules: all sections and all rules must hold (AND). Counts, distances "
                                          "and routes use the caves' prefabs, and `pillars` lets a distance use the "
                                          "tentacle pillar links."),

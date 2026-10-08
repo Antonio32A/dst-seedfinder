@@ -60,7 +60,7 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: 
                                 search.</p>
                             {status === "running" && <LiveStats rows={rows}/>}
                             {status === "running" && speeds && <SearchSpeeds speeds={speeds}/>}
-                            {status === "running" && timings && <SearchTimings timings={timings}/>}
+                            {status === "running" && timings && <SearchTimings timings={timings} filters={request.config.filters}/>}
                         </div>
                 )}
                 {status === "cancelled" && <p className="muted">You stopped this search.</p>}

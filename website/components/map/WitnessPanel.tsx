@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import type { Filter, SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import { type Filter, optionName, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { describeWitness } from "@/lib/jobs/witness-text";
 import { type EvalLoad, evaluateWorld } from "@/lib/world-map/search/evaluate-world";
 import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
@@ -37,7 +37,7 @@ function WitnessChecks({ evaluation, filter, world, map }: WitnessChecksProps) {
     return (
             <>
                 <h3 id={titleId} className="map__witnesses-title">
-                    Checks{entries > 1 && ` of option ${entry + 1}`}
+                    Checks{entries > 1 && ` of ${optionName(filter, entry)}`}
                 </h3>
                 {!matched && <p className="notice notice--warning">This world doesn't match the search.</p>}
                 {witnesses.length === 0 && <p className="muted">The search has no world checks.</p>}

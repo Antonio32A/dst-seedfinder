@@ -301,9 +301,9 @@ def chunk_count(+n: Nat) -> Nat:
 
 def levels_of(loaded: ConfigFile.Loaded) -> ShardSearch.Levels:
   match loaded:
-    case ConfigFile.Forest{Config.Config{_, +level, _, _}}:
+    case ConfigFile.Forest{Config.Config{_, +level, _, _, _}}:
       ShardSearch.ForestLevels{[level]}
-    case ConfigFile.Caves{CaveConfig.Config{_, +level, _}}:
+    case ConfigFile.Caves{CaveConfig.Config{_, +level, _, _}}:
       ShardSearch.CaveLevels{[level]}
 
 def run(loaded: ConfigFile.Loaded, +from: U32, +to: U32) -> IO(Unit):

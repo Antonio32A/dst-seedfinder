@@ -56,7 +56,7 @@ def shard_flag_values():
   {==}
 
 law forest_config_accepts_the_shard_key:
-  {Config.config_of("{\"shard\": \"forest\"}") == Done{Config.Config{True{}, Config.anything(), [Config.no_later()], None{}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"shard\": \"forest\"}") == Done{Config.Config{True{}, Config.anything(), [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def forest_config_accepts_the_shard_key():
   {==}
@@ -74,7 +74,7 @@ def config_names_its_shard():
   {==}
 
 law cave_config_tasks:
-  {CaveConfig.config_of("{\"shard\": \"caves\", \"generation\": {\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, [], []}, [Rules.nothing_later()]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"shard\": \"caves\", \"generation\": {\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, [], []}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_tasks():
   {==}
@@ -93,7 +93,7 @@ def cave_config_rejects_the_gekko():
 
 def later_of(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match compiled:
-    case Done{CaveConfig.Config{_, _, +later}}:
+    case Done{CaveConfig.Config{_, _, +later, _}}:
       Done{later}
     case Fail{failure}:
       Fail{failure}
@@ -138,14 +138,14 @@ def cave_config_rejects_forest_set_pieces():
   {==}
 
 law cave_config_set_pieces:
-  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], []}, [Rules.nothing_later()]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], []}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_set_pieces():
   {==}
 
 # A caves setpieces group and its total, kept apart from the rules like in the forest.
 law cave_config_set_piece_group:
-  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}, {\"required\": {\"MiscBoon\": 3}}], \"total\": 5}]}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [], [CaveConfig.Group{[[CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], [CaveConfig.Rule{32, CaveConfig.TaskSet{4294967295, 4294967295}, 3, 4294967295}]], Some{LevelChecks.Total{5, None{}}}}]}, [Rules.nothing_later()]}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}, {\"required\": {\"MiscBoon\": 3}}], \"total\": 5}]}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [], [CaveConfig.Group{[[CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], [CaveConfig.Rule{32, CaveConfig.TaskSet{4294967295, 4294967295}, 3, 4294967295}]], Some{LevelChecks.Total{5, None{}}}}]}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_set_piece_group():
   {==}

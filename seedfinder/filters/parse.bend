@@ -112,6 +112,12 @@ def capped(+items: List<&2, Json.Json>, +cap: U32, +noun: String, +path: String)
   Bool.pick(Result<&1, &1, U32 & String, List<&2, Json.Json>>, (count <= cap : U32), Done{items},
     Fail{failure(path ++ " has " ++ U32.show(count) ++ " " ++ noun ++ " (at most " ++ U32.show(cap) ++ ")")})
 
+# Text of at most cap characters ("<path> has <n> <noun> (at most <cap>)").
+def capped_text(+text: String, +cap: U32, +noun: String, +path: String) -> Result<&1, &1, U32 & String, String>:
+  +count = String.length(text)
+  Bool.pick(Result<&1, &1, U32 & String, String>, Nat.is_le(count, U32.to_nat(cap)), Done{text},
+    Fail{failure(path ++ " has " ++ Nat.show(count) ++ " " ++ noun ++ " (at most " ++ U32.show(cap) ++ ")")})
+
 def not_empty(+items: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
   Bool.pick(Result<&1, &1, U32 & String, List<&2, Json.Json>>, List.is_empty(&2, Json.Json, items),
     Fail{failure(path ++ " must not be empty")}, Done{items})

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { dropsLevelTables, upgradeConfig } from "@/lib/config/upgrade-config";
+import { optionName } from "@/lib/config/seedfinder-config";
 import { validateConfig } from "@/lib/config/validate-config";
+import { parseJobResult } from "@/lib/jobs/job-result";
+import { parseOutputLine } from "@/lib/jobs/runner-output";
 import {
     defaultState,
     droppedNotice,
@@ -67,6 +70,55 @@ describe("a search's world generation and world filters", () => {
             error: "config: unknown key \"tasks\" in filters[0]"
         });
         expect(validateConfig({ criteria: [] })).toEqual({ ok: false, error: "config: unknown key \"criteria\" in the config" });
+    });
+});
+
+describe("a world filter's name", () => {
+    const named = (): SearchState => {
+        const state = search();
+        state.filters[0].name = "  Pig King ";
+        state.filters[1].name = "Nothing";
+        state.filters[2].name = " ";
+        return state;
+    };
+
+    it("is written trimmed when set, and comes back", () => {
+        const config = toSeedfinderConfig(named());
+        expect(config.filters?.map((filter) => filter.name)).toEqual(["Pig King", undefined]);
+        expect(validateConfig(config).ok).toBe(true);
+        expect(fromSeedfinderConfig(config).filters.map((filter) => filter.name)).toEqual(["Pig King", ""]);
+    });
+
+    it("labels its option, which is otherwise numbered", () => {
+        const messages = validateSearch(named()).map((issue) => issue.message);
+        expect(messages).toContain("Nothing: nothing picked, so it's ignored.");
+        expect(optionName({ name: "Pig King" }, 0)).toBe("Pig King");
+        expect(optionName({ name: " " }, 2)).toBe("Option 3");
+        expect(optionName(undefined, 1)).toBe("Option 2");
+    });
+
+    it("comes with the hits it matched, from the finder", () => {
+        const level = { prefab_swaps: {}, tasks: [] };
+        const parsed = parseJobResult({
+            hits: [{ seed: 7, entry: 1, name: "Pig King", level, results: [] }, { seed: 9, entry: 0, level, results: [] }],
+            last_scanned: 9,
+            next_seed: 10
+        });
+        expect(parsed?.kind === "search" && parsed.search.hits.map((hit) => hit.name)).toEqual(["Pig King", undefined]);
+        const line = parseOutputLine(`7 ${JSON.stringify({ entry: 1, name: "Pig King", level, results: [] })}`);
+        expect(line?.kind === "hit" && line.hit.name).toBe("Pig King");
+    });
+
+    it("is a string of at most 40 characters like the finder's", () => {
+        expect(validateConfig({ filters: [{ name: "🐷".repeat(40) }] }).ok).toBe(true);
+        expect(validateConfig({ filters: [{ name: "🐷".repeat(41) }] })).toEqual({
+            ok: false,
+            error: "config: filters[0].name has 41 characters (at most 40)"
+        });
+        expect(validateConfig({ filters: [{ name: 1 }] })).toEqual({
+            ok: false,
+            error: "config: filters[0].name must be a string"
+        });
     });
 });
 

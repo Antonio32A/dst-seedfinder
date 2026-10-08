@@ -7,6 +7,7 @@ import ./filters/setpiece.bend as FilterSetpiece
 import ./level/prefix.bend as LevelPrefix
 import ./level/summary.bend as LevelSummary
 import ./filters/config.bend as Config
+import ./search/report.bend as SearchReport
 import ./filters/rules.bend as Rules
 import ./filters/level_checks.bend as LevelChecks
 import ./level/choose.bend as LevelChoose
@@ -92,7 +93,7 @@ def world_seed_1_level_table():
   {==}
 
 law config_parses_every_section:
-  {Config.config_of("{\"version\": 2, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"generation\": {\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 8, 2, 2, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 2}], []}, [Config.no_later()], None{}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 2, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"generation\": {\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 8, 2, 2, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 2}], []}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_parses_every_section():
   {==}
@@ -100,7 +101,7 @@ def config_parses_every_section():
 # docs/config.md section A: a `placed` name keeps only its minimum in the level table and is bounded on the world, which
 # makes a world rule (one a finder without worlds can't decide).
 law config_reads_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}], []}, [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], []}], Some{"config: generation.setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"generation\": {\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}], []}, [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], []}], Some{"config: generation.setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_placed():
   {==}
@@ -114,7 +115,7 @@ def has_rules(laters: List<&2, Rules.Later>) -> List<&2, Bool>:
 
 def world_entries(compiled: Result<&1, &1, U32 & String, Config.Config>) -> List<&2, Bool>:
   match compiled:
-    case Done{Config.Config{_, _, laters, _}}:
+    case Done{Config.Config{_, _, laters, _, _}}:
       has_rules(laters)
     case Fail{_}:
       Nil{}
@@ -142,14 +143,14 @@ def config_rejects_repeated_placed():
 
 # docs/config.md section A: a group (`any`) is kept apart from the rules, as the rules of each of its members.
 law config_reads_group:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"Chessy_1\": 1}}, {\"any\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": 1}}, {\"required\": {\"Chessy_1\": [0, 0]}}]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 33554431, 1, 4294967295}], [Config.Group{[[Config.Rule{3, 32768, 1, 4294967295}], [Config.Rule{70, 33554431, 0, 0}]], None{}}]}, [Config.no_later()], None{}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"Chessy_1\": 1}}, {\"any\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": 1}}, {\"required\": {\"Chessy_1\": [0, 0]}}]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 33554431, 1, 4294967295}], [Config.Group{[[Config.Rule{3, 32768, 1, 4294967295}], [Config.Rule{70, 33554431, 0, 0}]], None{}}]}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group():
   {==}
 
 # A group with `placed` names in one of its rules is one world rule, at the group's index.
 law config_reads_group_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": [1, 2]}, \"placed\": [\"MooseNest\"]}, {\"required\": {\"Chessy_1\": 1}}]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 1, 4294967295}], [Config.Rule{70, 33554431, 1, 4294967295}]], None{}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 1, None{}}]}, [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"Chessy_1", 1, None{}}]}, []}], None{}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": [1, 2]}, \"placed\": [\"MooseNest\"]}, {\"required\": {\"Chessy_1\": 1}}]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 1, 4294967295}], [Config.Rule{70, 33554431, 1, 4294967295}]], None{}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 1, None{}}]}, [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"Chessy_1", 1, None{}}]}, []}], None{}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_placed():
   {==}
@@ -162,13 +163,13 @@ def config_rejects_empty_group():
 
 # A group's `total`; with `placed` names the level table keeps only its minimum and the world rule the whole bound.
 law config_reads_group_total:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}}, {\"tasks\": [\"Badlands\"], \"required\": {\"Chessy_1\": 0}}], \"total\": [2, 3]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}], [Config.Rule{70, 32768, 0, 4294967295}]], Some{LevelChecks.Total{2, Some{3}}}}]}, [Config.no_later()], None{}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}}, {\"tasks\": [\"Badlands\"], \"required\": {\"Chessy_1\": 0}}], \"total\": [2, 3]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}], [Config.Rule{70, 32768, 0, 4294967295}]], Some{LevelChecks.Total{2, Some{3}}}}]}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_total():
   {==}
 
 law config_reads_group_total_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}, \"placed\": [\"MooseNest\"]}], \"total\": [1, 2]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}]], Some{LevelChecks.Total{1, None{}}}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, [LevelChecks.Bounded{"MooseNest", 0, None{}}]}], Some{LevelChecks.Total{1, Some{2}}}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}, \"placed\": [\"MooseNest\"]}], \"total\": [1, 2]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}]], Some{LevelChecks.Total{1, None{}}}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, [LevelChecks.Bounded{"MooseNest", 0, None{}}]}], Some{LevelChecks.Total{1, Some{2}}}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_total_placed():
   {==}
@@ -277,8 +278,26 @@ law config_caps_entries:
 def config_caps_entries():
   {==}
 
+# docs/config.md section 1: a filter's `name` labels it and its hits, and has at most 40 characters.
+law config_reads_filter_names:
+  {(Config.config_of("{\"filters\": [{\"name\": \"abcdefghijklmnopqrstuvwxyzabcdefghijklmn\"}]}"), Config.config_of("{\"filters\": [{\"name\": \"abcdefghijklmnopqrstuvwxyzabcdefghijklmno\"}]}"),
+    Config.config_of("{\"filters\": [{\"name\": 1}]}"))
+    == (Done{Config.Config{True{}, Config.anything(), [Config.no_later()], None{}, ["abcdefghijklmnopqrstuvwxyzabcdefghijklmn"]}}, Fail{(2, "config: filters[0].name has 41 characters (at most 40)")},
+      Fail{(2, "config: filters[0].name must be a string")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+
+def config_reads_filter_names():
+  {==}
+
+# docs/config.md section 8: a hit names its filter when that filter has a name.
+law hit_entry_names_its_filter:
+  {(SearchReport.entry_json(0, SearchReport.name_at([], 0)), SearchReport.entry_json(1, SearchReport.name_at(["", "Pig \"King\""], 1)))
+    == ("\"entry\":0", "\"entry\":1,\"name\":\"Pig \\\"King\\\"\"") : String & String}
+
+def hit_entry_names_its_filter():
+  {==}
+
 law config_reads_linux_platform:
-  {Config.config_of("{\"platform\": \"linux\"}") == Done{Config.Config{False{}, Config.anything(), [Config.no_later()], None{}}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"platform\": \"linux\"}") == Done{Config.Config{False{}, Config.anything(), [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_linux_platform():
   {==}

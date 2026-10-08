@@ -13,36 +13,41 @@ type Levels is Data:
 # A compiled search config of either shard as the world search sees it: the platform, the shard, the part A criteria
 # of `generation` that pick the candidates, and the parts B-E of every filter.
 type Search is Data:
-  Search{windows: Bool, caves: Bool, level: Levels, laters: List<&2, Rules.Later>}
+  Search{windows: Bool, caves: Bool, level: Levels, laters: List<&2, Rules.Later>, names: List<&2, String>}
 
 def of_forest(+config: Config.Config) -> Search:
   match config:
-    case Config.Config{+windows, +level, +laters, _}:
-      Search{windows, False{}, ForestLevels{[level]}, laters}
+    case Config.Config{+windows, +level, +laters, _, +names}:
+      Search{windows, False{}, ForestLevels{[level]}, laters, names}
 
 def of_caves(+config: CaveConfig.Config) -> Search:
   match config:
-    case CaveConfig.Config{+windows, +level, +laters}:
-      Search{windows, True{}, CaveLevels{[level]}, laters}
+    case CaveConfig.Config{+windows, +level, +laters, +names}:
+      Search{windows, True{}, CaveLevels{[level]}, laters, names}
 
 def windows(+search: Search) -> Bool:
   match search:
-    case Search{+windows, _, _, _}:
+    case Search{+windows, _, _, _, _}:
       windows
 
 def caves(+search: Search) -> Bool:
   match search:
-    case Search{_, +caves, _, _}:
+    case Search{_, +caves, _, _, _}:
       caves
 
 def laters(+search: Search) -> List<&2, Rules.Later>:
   match search:
-    case Search{_, _, _, +laters}:
+    case Search{_, _, _, +laters, _}:
       laters
+
+def names(+search: Search) -> List<&2, String>:
+  match search:
+    case Search{_, _, _, _, +names}:
+      names
 
 def level(+search: Search) -> Levels:
   match search:
-    case Search{_, _, +level, _}:
+    case Search{_, _, +level, _, _}:
       level
 
 # The level table of `seed` as JSON, as `world show` prints it.

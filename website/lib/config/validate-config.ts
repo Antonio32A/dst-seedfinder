@@ -12,6 +12,7 @@ import {
     type JobRequest,
     LINKS_KEY,
     MAX_DISTANCE,
+    MAX_FILTER_NAME_LENGTH,
     MAX_FILTERS,
     MAX_PREFAB_IDS,
     MAX_ROUTE_STOPS,
@@ -254,10 +255,19 @@ const routeOf = (shard: Shard): Parse => {
 
 const rules = (parse: Parse) => optional(listOf(parse, MAX_RULES_PER_SECTION, "rules"));
 
+const filterName: Parse<string> = (value, path) => {
+    if (typeof value !== "string") fail(`${path} must be a string`);
+    const length = [...value].length;
+    return length <= MAX_FILTER_NAME_LENGTH
+        ? value
+        : fail(`${path} has ${length} characters (at most ${MAX_FILTER_NAME_LENGTH})`);
+};
+
 const filterOf = (shard: Shard): Parse => {
     const prefabSet = prefabSetOf(shard);
     const metricFields = metricFieldsOf(shard);
     return objectOf({
+        name: optional(filterName),
         counts: rules(
             objectOf({
                 prefab: required(prefabSet),

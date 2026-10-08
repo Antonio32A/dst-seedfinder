@@ -29,20 +29,46 @@ def position_json(+start: U32, +scanned: Nat, +code: U32) -> String:
   +following = Bool.pick(String, U32.is_eq(code, 2) || Nat.is_eq(scanned, seed_space()), "null", U32.show(next))
   "\"scanned\":" ++ Nat.show(scanned) ++ ",\"last_scanned\":" ++ last ++ ",\"next_seed\":" ++ following
 
-# A level-table hit's fields: without world rules, the first filter matches every candidate.
-def hit_fields(+seed: U32) -> String:
-  "\"entry\":0,\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
+def json_escaped(+code: U32) -> String:
+  Bool.pick(String, U32.is_eq(code, 34) || U32.is_eq(code, 92), SCon{Chr{92}, SCon{Chr{code}, SNil{}}},
+    SCon{Chr{Bool.pick(U32, (code < 32 : U32), 32, code)}, SNil{}})
+
+def json_text(s: String) -> String:
+  match s:
+    case SNil{}:
+      SNil{}
+    case SCon{Chr{+code}, rest}:
+      json_escaped(code) ++ json_text(rest)
+
+def name_json(name: String) -> String:
+  match name:
+    case SNil{}:
+      ""
+    case SCon{+c, rest}:
+      ",\"name\":\"" ++ json_text(SCon{c, rest}) ++ "\""
+
+# A hit's `entry` and, when that filter has one, its `name`.
+def entry_json(+index: U32, +name: String) -> String:
+  "\"entry\":" ++ U32.show(index) ++ name_json(name)
+
+# The name of the filter at `index` ("" when it has none).
+def name_at(+names: List<&2, String>, +index: U32) -> String:
+  Maybe.default(&2, String, List.get(&2, String, names, U32.to_nat(index)), "")
+
+# A level-table hit's fields: without world rules, the first filter (named `name`) matches every candidate.
+def hit_fields(+name: String, +seed: U32) -> String:
+  entry_json(0, name) ++ ",\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
 
 # A hit: its seed and the fields of its JSON object after the seed.
 type Hit is Data:
   Hit{seed: U32, fields: String}
 
-def hits_of(hits: List<&2, U32>) -> List<&2, Hit>:
+def hits_of(+name: String, hits: List<&2, U32>) -> List<&2, Hit>:
   match hits:
     case Nil{}:
       Nil{}
     case Con{+seed, rest}:
-      Hit{seed, hit_fields(seed)} <> hits_of(rest)
+      Hit{seed, hit_fields(name, seed)} <> hits_of(name, rest)
 
 def hits_json(hits: List<&2, Hit>) -> List<&2, String>:
   match hits:
@@ -86,20 +112,9 @@ def print_hits_report(
         exit_status(found)
 
 def print_report(
-  json: Bool, windows: Bool, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
+  json: Bool, windows: Bool, +name: String, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
 ) -> IO(Unit):
-  print_hits_report(json, windows, hits_of(hits), start, scanned, found, code)
-
-def json_escaped(+code: U32) -> String:
-  Bool.pick(String, U32.is_eq(code, 34) || U32.is_eq(code, 92), SCon{Chr{92}, SCon{Chr{code}, SNil{}}},
-    SCon{Chr{Bool.pick(U32, (code < 32 : U32), 32, code)}, SNil{}})
-
-def json_text(s: String) -> String:
-  match s:
-    case SNil{}:
-      SNil{}
-    case SCon{Chr{+code}, rest}:
-      json_escaped(code) ++ json_text(rest)
+  print_hits_report(json, windows, hits_of(name, hits), start, scanned, found, code)
 
 def print_error(failure: U32 & String) -> IO(Unit):
   (code, +message) = failure

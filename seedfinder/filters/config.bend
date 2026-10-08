@@ -26,9 +26,9 @@ type Criteria is Data:
 # A compiled config: the platform the worlds are generated on (windows unless "linux"), the part A criteria of
 # `generation` (they make a seed a candidate), the parts B-E of each `filters` entry with the world rules of the
 # generation's `placed` names (one entry with only those when there are no filters), and the first "not supported by
-# this binary yet" message when the config has world rules.
+# this binary yet" message when the config has world rules, and the name of each filter ("" when it has none).
 type Config is Data:
-  Config{windows: Bool, level: Criteria, filters: List<&2, Rules.Later>, unsupported: Maybe<&2, String>}
+  Config{windows: Bool, level: Criteria, filters: List<&2, Rules.Later>, unsupported: Maybe<&2, String>, names: List<&2, String>}
 
 def every_task() -> U32:
   33554431
@@ -372,10 +372,39 @@ def generation_of(json: Json.Json) -> Result<&1, &1, U32 & String, Generation>:
     +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), "generation.prefab_swaps")
     return Generation{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}, placed_rules(listed, 0)}
 
+# A filter's optional `name`, which labels it and its hits.
+def name_of(m: Maybe<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, Unit>:
+  match m:
+    case None{}:
+      Done{Unit{}}
+    case Some{json}:
+      do Result<&1, &1, U32 & String, Unit>:
+        name : String <- Parse.string_of(json, path)
+        capped : String <- Parse.capped_text(name, 40, "characters", path)
+        return Unit{}
+
 def filter_of(json: Json.Json, +placed: List<&2, Rules.Placed>, +path: String) -> Result<&1, &1, U32 & String, Rules.Later>:
   do Result<&1, &1, U32 & String, Rules.Later>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, later_parts(), path)
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, "name" <> later_parts(), path)
+    named : Unit <- name_of(Parse.field(fields, "name"), path ++ ".name")
     Rules.later_of(fields, path, False{}, placed)
+
+def name_in(m: Maybe<&2, Json.Json>) -> String:
+  match m:
+    case Some{Json.JStr{name}}:
+      name
+    case _:
+      ""
+
+# The names of the filters (already accepted), "" for those without one.
+def names_of(items: List<&2, Json.Json>) -> List<&2, String>:
+  match items:
+    case Nil{}:
+      Nil{}
+    case Con{Json.JObj{+fields}, rest}:
+      name_in(Parse.field(fields, "name")) <> names_of(rest)
+    case Con{_, rest}:
+      "" <> names_of(rest)
 
 def filter_list(items: List<&2, Json.Json>, +placed: List<&2, Rules.Placed>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match items:
@@ -399,7 +428,7 @@ def config_from(+windows: Bool, generation: Generation, +listed: List<&2, Json.J
     case Generation{level, +placed}:
       do Result<&1, &1, U32 & String, Config>:
         filters : List<&2, Rules.Later> <- filter_list(listed, placed, 0)
-        return Config{windows, level, or_unfiltered(filters, placed), first_message(filters_message(listed, 0), placed_message(placed))}
+        return Config{windows, level, or_unfiltered(filters, placed), first_message(filters_message(listed, 0), placed_message(placed)), names_of(listed)}
 
 def is_default(json: Json.Json) -> Bool:
   match json:
@@ -502,9 +531,9 @@ def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
 # key or `generation` has `placed` names.
 def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
   match config:
-    case Config{_, _, _, None{}}:
+    case Config{_, _, _, None{}, _}:
       Done{config}
-    case Config{_, _, _, Some{+message}}:
+    case Config{_, _, _, Some{+message}, _}:
       Fail{(2, message)}
 
 def tasks_hold(+c: Criteria, +chosen: U32, +swaps: U32) -> Bool:
