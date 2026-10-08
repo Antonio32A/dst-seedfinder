@@ -9,7 +9,8 @@ import { parseOutputLine } from "@/lib/jobs/runner-output";
 import {
     decodeShareParam,
     defaultState,
-    emptyGroup,
+    emptyFilter,
+    emptyGeneration,
     encodeShareParam,
     fromSeedfinderConfig,
     newRule,
@@ -23,7 +24,7 @@ const forest = levelCatalogOf("forest");
 const caves = levelCatalogOf("caves");
 
 describe("a search on the caves", () => {
-    const search = (shard: "forest" | "caves") => ({ ...defaultState(), shard, groups: [emptyGroup()] });
+    const search = (shard: "forest" | "caves") => ({ ...defaultState(), shard });
 
     it("carries the shard in its config", () => {
         expect(toSeedfinderConfig(search("caves")).shard).toBe("caves");
@@ -32,18 +33,16 @@ describe("a search on the caves", () => {
 
     it("writes cave tasks and set pieces as the finder reads them", () => {
         const state = search("caves");
-        state.groups[0].biomes = { MoreAltars: "include", SpiderLand: "exclude" };
-        state.groups[0].swaps = { twigs: "twiggy trees" };
-        state.groups[0].rules = [{ ...newRule("MiscBoon", caves), min: 2 }];
+        state.generation.biomes = { MoreAltars: "include", SpiderLand: "exclude" };
+        state.generation.swaps = { twigs: "twiggy trees" };
+        state.generation.rules = [{ ...newRule("MiscBoon", caves), min: 2 }];
         const config = toSeedfinderConfig(state);
-        expect(config.criteria).toEqual([
-            {
-                passive: false,
-                tasks: { required: ["MoreAltars"], excluded: ["SpiderLand"] },
-                prefab_swaps: { twigs: "twiggy trees" },
-                setpieces: [{ required: { MiscBoon: 2 } }]
-            }
-        ]);
+        expect(config.generation).toEqual({
+            tasks: { required: ["MoreAltars"], excluded: ["SpiderLand"] },
+            prefab_swaps: { twigs: "twiggy trees" },
+            setpieces: [{ required: { MiscBoon: 2 } }]
+        });
+        expect(config.filters).toBeUndefined();
         expect(validateConfig(config).ok).toBe(true);
         expect(validateSearch(state).filter((issue) => issue.severity === "error")).toEqual([]);
     });
@@ -51,15 +50,15 @@ describe("a search on the caves", () => {
     it("reads a config back into the shard it names", () => {
         const back = fromSeedfinderConfig({ version: 1, shard: "caves", criteria: [{ tasks: { required: ["MoreAltars", "Great Plains"] } }] });
         expect(back.shard).toBe("caves");
-        expect(back.groups[0].biomes).toEqual({ MoreAltars: "include" });
+        expect(back.generation.biomes).toEqual({ MoreAltars: "include" });
         expect(fromSeedfinderConfig({ version: 1 }).shard).toBe("forest");
     });
 
     it("allows at most eight biomes in a world, not five", () => {
         const state = search("caves");
-        state.groups[0].biomes = Object.fromEntries(CAVE_OPTIONAL_TASK_IDS.slice(0, 6).map((id) => [id, "include" as const]));
+        state.generation.biomes = Object.fromEntries(CAVE_OPTIONAL_TASK_IDS.slice(0, 6).map((id) => [id, "include" as const]));
         expect(validateSearch(state).some((issue) => issue.severity === "error")).toBe(false);
-        state.groups[0].biomes = Object.fromEntries(CAVE_OPTIONAL_TASK_IDS.slice(0, 9).map((id) => [id, "include" as const]));
+        state.generation.biomes = Object.fromEntries(CAVE_OPTIONAL_TASK_IDS.slice(0, 9).map((id) => [id, "include" as const]));
         expect(validateSearch(state).some((issue) => issue.severity === "error")).toBe(true);
     });
 });
@@ -67,14 +66,14 @@ describe("a search on the caves", () => {
 describe("switching shard", () => {
     it("keeps the resources both shards have and drops the rest", () => {
         const state = defaultState();
-        state.groups[0].biomes = { "Killer bees!": "include" };
-        state.groups[0].swaps = { grass: "grass gekko", twigs: "twiggy trees" };
-        state.groups[0].rules = [newRule("MooseNest", forest), newRule("MiscBoon", forest)];
+        state.generation.biomes = { "Killer bees!": "include" };
+        state.generation.swaps = { grass: "grass gekko", twigs: "twiggy trees" };
+        state.generation.rules = [newRule("MooseNest", forest), newRule("MiscBoon", forest)];
         const { state: cave, dropped } = switchShard(state, "caves");
         expect(cave.shard).toBe("caves");
-        expect(cave.groups[0].biomes).toEqual({});
-        expect(cave.groups[0].swaps).toEqual({ twigs: "twiggy trees" });
-        expect(cave.groups[0].rules.map((rule) => rule.pieceId)).toEqual(["MiscBoon"]);
+        expect(cave.generation.biomes).toEqual({});
+        expect(cave.generation.swaps).toEqual({ twigs: "twiggy trees" });
+        expect(cave.generation.rules.map((rule) => rule.pieceId)).toEqual(["MiscBoon"]);
         expect(dropped).toBe(3);
     });
 
@@ -85,24 +84,24 @@ describe("switching shard", () => {
 
     it("drops the world details whose prefabs the caves don't have", () => {
         const state = defaultState();
-        state.groups[0].counts = [{ key: "a", prefabs: ["beefalo"], mode: "atLeast", min: 1, max: 1, near: null }];
+        state.filters[0].counts = [{ key: "a", prefabs: ["beefalo"], mode: "atLeast", min: 1, max: 1, near: null }];
         const { state: cave, dropped } = switchShard(state, "caves");
-        expect(cave.groups[0].counts).toEqual([]);
+        expect(cave.filters[0].counts).toEqual([]);
         expect(dropped).toBe(1);
     });
 });
 
 describe("validating a config", () => {
     it("checks the tasks and set pieces against the shard the config names", () => {
-        expect(validateConfig({ shard: "caves", criteria: [{ tasks: { required: ["Great Plains"] } }] })).toEqual({
+        expect(validateConfig({ shard: "caves", generation: { tasks: { required: ["Great Plains"] } } })).toEqual({
             ok: false,
-            error: "config: unknown task \"Great Plains\" in criteria[0].tasks.required"
+            error: "config: unknown task \"Great Plains\" in generation.tasks.required"
         });
-        expect(validateConfig({ criteria: [{ tasks: { required: ["MoreAltars"] } }] })).toEqual({
+        expect(validateConfig({ generation: { tasks: { required: ["MoreAltars"] } } })).toEqual({
             ok: false,
-            error: "config: unknown task \"MoreAltars\" in criteria[0].tasks.required"
+            error: "config: unknown task \"MoreAltars\" in generation.tasks.required"
         });
-        expect(validateConfig({ shard: "caves", criteria: [{ setpieces: [{ required: { CaveEntrance: 1 } }] }] }).ok).toBe(false);
+        expect(validateConfig({ shard: "caves", generation: { setpieces: [{ required: { CaveEntrance: 1 } }] } }).ok).toBe(false);
     });
 
     it("rejects an unknown shard like the finder", () => {
@@ -110,13 +109,13 @@ describe("validating a config", () => {
     });
 
     it("has no gekko in the caves", () => {
-        expect(validateConfig({ shard: "caves", criteria: [{ prefab_swaps: { grass: "grass gekko" } }] }).ok).toBe(false);
-        expect(validateConfig({ shard: "caves", criteria: [{ prefab_swaps: { grass: "regular grass" } }] }).ok).toBe(true);
-        expect(validateConfig({ criteria: [{ prefab_swaps: { grass: "grass gekko" } }] }).ok).toBe(true);
+        expect(validateConfig({ shard: "caves", generation: { prefab_swaps: { grass: "grass gekko" } } }).ok).toBe(false);
+        expect(validateConfig({ shard: "caves", generation: { prefab_swaps: { grass: "regular grass" } } }).ok).toBe(true);
+        expect(validateConfig({ generation: { prefab_swaps: { grass: "grass gekko" } } }).ok).toBe(true);
     });
 
     it("fills in the forest", () => {
-        const checked = validateConfig({ version: 1 });
+        const checked = validateConfig({ version: 2 });
         expect(checked.ok && checked.value.shard).toBe("forest");
     });
 });
@@ -140,7 +139,7 @@ describe("the output of a caves search", () => {
 
 describe("the world filters on the caves", () => {
     const caveGroup = () => ({
-        ...emptyGroup(),
+        ...emptyFilter(),
         counts: [{ key: "c", prefabs: ["rabbithouse"], mode: "atLeast" as const, min: 10, max: 10, near: null }],
         distances: [{
             key: "d",
@@ -166,69 +165,69 @@ describe("the world filters on the caves", () => {
     });
 
     it("writes the pillar links as `pillars`, and the forest's as `wormholes`", () => {
-        const config = toSeedfinderConfig({ shard: "caves", platform: "linux", groups: [caveGroup()] });
-        expect(config.criteria?.[0].distances).toEqual([{ from: "cave_exit", to: "minotaur_spawner", max: 520, metric: "walk", pillars: true }]);
-        expect(config.criteria?.[0].counts).toEqual([{ prefab: "rabbithouse", min: 10 }]);
-        expect(config.criteria?.[0].routes).toEqual([{ from: "cave_exit", visit: ["atrium_gate"], to: "cave_exit", max: 2000 }]);
+        const config = toSeedfinderConfig({ shard: "caves", platform: "linux", generation: emptyGeneration(), filters: [caveGroup()] });
+        expect(config.filters?.[0].distances).toEqual([{ from: "cave_exit", to: "minotaur_spawner", max: 520, metric: "walk", pillars: true }]);
+        expect(config.filters?.[0].counts).toEqual([{ prefab: "rabbithouse", min: 10 }]);
+        expect(config.filters?.[0].routes).toEqual([{ from: "cave_exit", visit: ["atrium_gate"], to: "cave_exit", max: 2000 }]);
         expect(validateConfig(config).ok).toBe(true);
         const forestRow = { ...caveGroup().distances[0], from: ["multiplayer_portal"], to: ["pigking"] };
-        const forestConfig = toSeedfinderConfig({ shard: "forest", platform: "linux", groups: [{ ...emptyGroup(), distances: [forestRow] }] });
-        expect(forestConfig.criteria?.[0].distances?.[0]).toEqual({ from: "multiplayer_portal", to: "pigking", max: 520, metric: "walk", wormholes: true });
+        const forestConfig = toSeedfinderConfig({ shard: "forest", platform: "linux", generation: emptyGeneration(), filters: [{ ...emptyFilter(), distances: [forestRow] }] });
+        expect(forestConfig.filters?.[0].distances?.[0]).toEqual({ from: "multiplayer_portal", to: "pigking", max: 520, metric: "walk", wormholes: true });
     });
 
     it("reads a saved caves config back with its rows and keeps the shard", () => {
-        const config = toSeedfinderConfig({ shard: "caves", platform: "linux", groups: [caveGroup()] });
+        const config = toSeedfinderConfig({ shard: "caves", platform: "linux", generation: emptyGeneration(), filters: [caveGroup()] });
         const back = fromSeedfinderConfig(JSON.parse(JSON.stringify(config)));
         expect(back.shard).toBe("caves");
         expect(back.platform).toBe("linux");
-        expect(back.groups[0].distances[0]).toMatchObject({ from: ["cave_exit"], to: ["minotaur_spawner"], metric: "walk", links: true });
+        expect(back.filters[0].distances[0]).toMatchObject({ from: ["cave_exit"], to: ["minotaur_spawner"], metric: "walk", links: true });
         expect(toSeedfinderConfig(back)).toEqual(config);
         expect(toSeedfinderConfig(fromSeedfinderConfig(decodeShareParam(encodeShareParam(config))))).toEqual(config);
     });
 
     it("rejects the other shard's prefabs and link flag like the finder", () => {
-        expect(validateConfig({ shard: "caves", criteria: [{ counts: [{ prefab: "beefalo" }] }] })).toEqual({
+        expect(validateConfig({ shard: "caves", filters: [{ counts: [{ prefab: "beefalo" }] }] })).toEqual({
             ok: false,
-            error: "config: unknown prefab \"beefalo\" in criteria[0].counts[0].prefab"
+            error: "config: unknown prefab \"beefalo\" in filters[0].counts[0].prefab"
         });
-        expect(validateConfig({ criteria: [{ counts: [{ prefab: "cave_exit" }] }] })).toEqual({
+        expect(validateConfig({ filters: [{ counts: [{ prefab: "cave_exit" }] }] })).toEqual({
             ok: false,
-            error: "config: unknown prefab \"cave_exit\" in criteria[0].counts[0].prefab"
+            error: "config: unknown prefab \"cave_exit\" in filters[0].counts[0].prefab"
         });
-        expect(validateConfig({ shard: "caves", criteria: [{ distances: [{ from: "cave_exit", to: "cave_hole", wormholes: true }] }] })).toEqual({
+        expect(validateConfig({ shard: "caves", filters: [{ distances: [{ from: "cave_exit", to: "cave_hole", wormholes: true }] }] })).toEqual({
             ok: false,
-            error: "config: unknown key \"wormholes\" in criteria[0].distances[0]"
+            error: "config: unknown key \"wormholes\" in filters[0].distances[0]"
         });
-        expect(validateConfig({ criteria: [{ distances: [{ from: "pigking", to: "pigking", pillars: true }] }] }).ok).toBe(false);
-        expect(validateConfig({ shard: "caves", criteria: [{ distances: [{ from: "cave_exit", to: "cave_hole", pillars: true }] }] }).ok).toBe(true);
+        expect(validateConfig({ filters: [{ distances: [{ from: "pigking", to: "pigking", pillars: true }] }] }).ok).toBe(false);
+        expect(validateConfig({ shard: "caves", filters: [{ distances: [{ from: "cave_exit", to: "cave_hole", pillars: true }] }] }).ok).toBe(true);
     });
 
     it("moves the rows to the other shard, the spawn becoming its spawn", () => {
-        const state = { shard: "caves" as const, platform: "linux" as const, groups: [caveGroup()] };
+        const state = { shard: "caves" as const, platform: "linux" as const, generation: emptyGeneration(), filters: [caveGroup()] };
         const forestState = switchShard(state, "forest");
         expect(forestState.state.shard).toBe("forest");
-        expect(forestState.state.groups[0].counts).toEqual([]);
-        expect(forestState.state.groups[0].distances).toEqual([]);
+        expect(forestState.state.filters[0].counts).toEqual([]);
+        expect(forestState.state.filters[0].distances).toEqual([]);
         expect(forestState.dropped).toBe(3);
         const shared = {
-            ...emptyGroup(),
+            ...emptyFilter(),
             distances: [{ ...caveGroup().distances[0], from: ["cave_exit"], to: ["bat", "minotaur_spawner"] }]
         };
-        const moved = switchShard({ ...state, groups: [shared] }, "forest");
-        expect(moved.state.groups[0].distances[0]).toMatchObject({ from: ["multiplayer_portal"], to: ["bat"], links: true });
+        const moved = switchShard({ ...state, filters: [shared] }, "forest");
+        expect(moved.state.filters[0].distances[0]).toMatchObject({ from: ["multiplayer_portal"], to: ["bat"], links: true });
     });
 
     it("keeps the prefabs both shards have", () => {
         const forestGroup = {
-            ...emptyGroup(),
+            ...emptyFilter(),
             distances: [{
                 key: "d", from: ["multiplayer_portal"], to: ["bat", "pigking"], mode: "within" as const, min: 0, max: 100,
                 metric: "straight" as const, links: false
             }]
         };
-        const moved = switchShard({ ...defaultState(), groups: [forestGroup] }, "caves");
-        expect(moved.state.groups[0].distances[0]).toMatchObject({ from: ["cave_exit"], metric: "straight" });
-        expect(moved.state.groups[0].distances[0].to).toEqual(["bat"]);
+        const moved = switchShard({ ...defaultState(), filters: [forestGroup] }, "caves");
+        expect(moved.state.filters[0].distances[0]).toMatchObject({ from: ["cave_exit"], metric: "straight" });
+        expect(moved.state.filters[0].distances[0].to).toEqual(["bat"]);
         expect(moved.dropped).toBe(1);
     });
 
@@ -246,46 +245,46 @@ describe("the world filters on the caves", () => {
     });
 
     it("validates cave worlds the same way on both platforms", () => {
-        const state = { shard: "caves" as const, platform: "windows" as const, groups: [caveGroup()] };
+        const state = { shard: "caves" as const, platform: "windows" as const, generation: emptyGeneration(), filters: [caveGroup()] };
         expect(validateSearch(state)).toEqual(validateSearch({ ...state, platform: "linux" }));
     });
 });
 
 describe("the turf bridge rules", () => {
     const bridgeGroup = () => ({
-        ...emptyGroup(),
+        ...emptyFilter(),
         bridges: [{ key: "b", min: 240, max: null }, { key: "c", min: 0, max: 400 }, { key: "d", min: 100, max: 300 }]
     });
 
     it("writes a bridge's bounds as the finder reads them, leaving out a zero minimum and no maximum", () => {
         for (const shard of ["forest", "caves"] as const) {
-            const config = toSeedfinderConfig({ shard, platform: "windows", groups: [bridgeGroup()] });
-            expect(config.criteria?.[0].bridges).toEqual([{ min: 240 }, { max: 400 }, { min: 100, max: 300 }]);
+            const config = toSeedfinderConfig({ shard, platform: "windows", generation: emptyGeneration(), filters: [bridgeGroup()] });
+            expect(config.filters?.[0].bridges).toEqual([{ min: 240 }, { max: 400 }, { min: 100, max: 300 }]);
             expect(validateConfig(config).ok).toBe(true);
             expect(toSeedfinderConfig(fromSeedfinderConfig(JSON.parse(JSON.stringify(config))))).toEqual(config);
         }
     });
 
     it("keeps the bridges when switching shard", () => {
-        const moved = switchShard({ shard: "caves", platform: "windows", groups: [bridgeGroup()] }, "forest");
-        expect(moved.state.groups[0].bridges).toEqual(bridgeGroup().bridges);
+        const moved = switchShard({ shard: "caves", platform: "windows", generation: emptyGeneration(), filters: [bridgeGroup()] }, "forest");
+        expect(moved.state.filters[0].bridges).toEqual(bridgeGroup().bridges);
         expect(moved.dropped).toBe(0);
     });
 
     it("rejects a bad bound like the finder", () => {
-        expect(validateConfig({ shard: "caves", criteria: [{ bridges: [{ min: -1 }] }] })).toEqual({
+        expect(validateConfig({ shard: "caves", filters: [{ bridges: [{ min: -1 }] }] })).toEqual({
             ok: false,
-            error: "config: criteria[0].bridges[0].min must be a number in 0..1000000"
+            error: "config: filters[0].bridges[0].min must be a number in 0..1000000"
         });
-        expect(validateConfig({ criteria: [{ bridges: [{ max: 10, metric: "walk" }] }] })).toEqual({
+        expect(validateConfig({ filters: [{ bridges: [{ max: 10, metric: "walk" }] }] })).toEqual({
             ok: false,
-            error: "config: unknown key \"metric\" in criteria[0].bridges[0]"
+            error: "config: unknown key \"metric\" in filters[0].bridges[0]"
         });
     });
 
     it("says a bridge whose minimum is above its maximum can't match", () => {
-        const group = { ...emptyGroup(), bridges: [{ key: "b", min: 500, max: 400 }] };
-        expect(validateSearch({ shard: "caves", platform: "windows", groups: [group] })).toContainEqual({
+        const group = { ...emptyFilter(), bridges: [{ key: "b", min: 500, max: 400 }] };
+        expect(validateSearch({ shard: "caves", platform: "windows", generation: emptyGeneration(), filters: [group] })).toContainEqual({
             severity: "error",
             message: "Turf bridge 1: minimum is above maximum."
         });

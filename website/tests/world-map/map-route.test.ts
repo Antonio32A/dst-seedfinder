@@ -4,9 +4,9 @@ import { decodeShareParam, encodeShareParam } from "@/lib/criteria/search-state"
 import { mapPath, parseMapConfig, parseMapRoute, pickedMapPath } from "@/lib/world-map/map-route";
 
 const CONFIG: SeedfinderConfig = {
-    version: 1,
+    version: 2,
     platform: "windows",
-    criteria: [{ distances: [{ from: "multiplayer_portal", to: "pigking", max: 400 }] }]
+    filters: [{ distances: [{ from: "multiplayer_portal", to: "pigking", max: 400 }] }]
 };
 
 describe("the map route", () => {
@@ -43,9 +43,15 @@ describe("the map route", () => {
         expect(parseMapConfig(encodeShareParam(CONFIG), "linux", "caves")).toEqual({ config: { ...CONFIG, shard: "caves", platform: "linux" } });
     });
 
+    it("evaluates a v1 link's criteria as generation and filters", () => {
+        const old = { version: 1, criteria: [{ distances: [{ from: "multiplayer_portal", to: "pigking", max: 400 }] }] };
+        expect(parseMapConfig(encodeShareParam(old as unknown as SeedfinderConfig), "windows"))
+            .toEqual({ config: { ...CONFIG, shard: "forest" } });
+    });
+
     it.each([
         ["isn't a share param", "not base64!"],
-        ["isn't a config", encodeShareParam({ ...CONFIG, criteria: "none" } as unknown as SeedfinderConfig)]
+        ["isn't a config", encodeShareParam({ ...CONFIG, filters: "none" } as unknown as SeedfinderConfig)]
     ])("refuses a linked config that %s", (_, share) => {
         expect(parseMapConfig(share, "linux")).toEqual({ error: expect.stringMatching(/\S/) });
     });

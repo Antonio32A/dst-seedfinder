@@ -11,8 +11,8 @@ import {
     DEFAULT_SHARD,
     type JobRequest,
     LINKS_KEY,
-    MAX_CRITERIA,
     MAX_DISTANCE,
+    MAX_FILTERS,
     MAX_PREFAB_IDS,
     MAX_ROUTE_STOPS,
     MAX_RULES_PER_SECTION,
@@ -254,10 +254,10 @@ const routeOf = (shard: Shard): Parse => {
 
 const rules = (parse: Parse) => optional(listOf(parse, MAX_RULES_PER_SECTION, "rules"));
 
-const worldSectionsOf = (shard: Shard): Fields => {
+const filterOf = (shard: Shard): Parse => {
     const prefabSet = prefabSetOf(shard);
     const metricFields = metricFieldsOf(shard);
-    return {
+    return objectOf({
         counts: rules(
             objectOf({
                 prefab: required(prefabSet),
@@ -278,29 +278,16 @@ const worldSectionsOf = (shard: Shard): Fields => {
         tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
         bridges: rules(objectOf({ min: optional(distance), max: optional(distance) })),
         routes: rules(routeOf(shard))
-    };
-};
-
-const criterionOf = (catalog: LevelCatalog) => {
-    const taskList = taskListOf(catalog);
-    return objectOf({
-        passive: optional(flag),
-        tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
-        prefab_swaps: optional(prefabSwapsOf(catalog.shard)),
-        setpieces: rules(setPieceItemOf(catalog)),
-        ...worldSectionsOf(catalog.shard)
     });
 };
 
-const criteriaOf = (catalog: LevelCatalog): Parse => {
-    const criteriaList = listOf(criterionOf(catalog), MAX_CRITERIA, "entries");
-    return (value, path) => {
-        const entries = criteriaList(value, path);
-        const allPassive = entries.length > 0 && entries.every((entry) => (entry as {
-            passive?: boolean;
-        }).passive === true);
-        return allPassive ? fail("every criteria entry is passive (at least one must not be)") : entries;
-    };
+const generationOf = (catalog: LevelCatalog) => {
+    const taskList = taskListOf(catalog);
+    return objectOf({
+        tasks: optional(objectOf({ required: optional(taskList), excluded: optional(taskList) })),
+        prefab_swaps: optional(prefabSwapsOf(catalog.shard)),
+        setpieces: rules(setPieceItemOf(catalog))
+    });
 };
 
 const shardOf: Parse = (value) =>
@@ -317,7 +304,8 @@ const configShapeOf = (shard: Shard) =>
             const custom = Object.entries(recordAt(value, path)).find(([, level]) => level !== "default");
             return custom ? fail(`only default settings are supported (${custom[0]})`) : value;
         }),
-        criteria: optional(criteriaOf(levelCatalogOf(shard)))
+        generation: optional(generationOf(levelCatalogOf(shard))),
+        filters: optional(listOf(filterOf(shard), MAX_FILTERS, "entries"))
     });
 
 const CONFIG_SHAPES: Record<Shard, Parse<Record<string, unknown>>> = {
@@ -341,12 +329,13 @@ function validated<T>(check: () => T): Validation<T> {
 
 function parseConfig(value: unknown): SeedfinderConfig {
     try {
-        const { shard, platform, criteria } = CONFIG_SHAPES[shardNamed(value)](value, ROOT);
+        const { shard, platform, generation, filters } = CONFIG_SHAPES[shardNamed(value)](value, ROOT);
         return {
             version: CONFIG_VERSION,
             shard: shard ?? DEFAULT_SHARD,
             platform: platform ?? DEFAULT_PLATFORM,
-            ...(criteria === undefined ? {} : { criteria })
+            ...(generation === undefined ? {} : { generation }),
+            ...(filters === undefined ? {} : { filters })
         } as SeedfinderConfig;
     } catch (error) {
         if (error instanceof ValidationError) fail(`config: ${error.message}`);
@@ -369,7 +358,7 @@ function creditsIn(value: unknown, context: string, min: number, max: number): n
 }
 
 /**
- * Validates against search format v1. `version`, `shard` and `platform` are filled in, every `settings` level must be
+ * Validates against search format v2. `version`, `shard` and `platform` are filled in, every `settings` level must be
  * `"default"` and `settings` is dropped; errors read like the finder's.
  */
 export function validateConfig(config: unknown): Validation<SeedfinderConfig> {

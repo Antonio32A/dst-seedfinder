@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes config.schema.json (JSON Schema 2020-12 for search config v1, docs/config.md) from the caps the finder
+"""Writes config.schema.json (JSON Schema 2020-12 for search config v2, docs/config.md) from the caps the finder
 enforces (seedfinder/filters/), the names of scripts/catalog/catalog.json (forest) and of the caves sidecar caves.json.
 `-` prints it instead. Fails when the caps table of docs/config.md (its rows in the order of WEBSITE_CAPS) or the website's caps disagree with the
 finder.
@@ -32,7 +32,7 @@ SHARDS = ("forest", "caves")
 DEFAULT_SHARD = "forest"
 MAX_INTEGER = 4294967295
 MAX_DISTANCE = 1000000
-WEBSITE_CAPS = {"entries": "MAX_CRITERIA", "rules": "MAX_RULES_PER_SECTION", "prefab ids": "MAX_PREFAB_IDS",
+WEBSITE_CAPS = {"entries": "MAX_FILTERS", "rules": "MAX_RULES_PER_SECTION", "prefab ids": "MAX_PREFAB_IDS",
                 "set pieces": "MAX_SET_PIECES_PER_RULE", "tasks": "MAX_TASKS_PER_LIST", "stops": "MAX_ROUTE_STOPS",
                 "tiles": "MAX_TILE_NAMES"}
 
@@ -151,12 +151,13 @@ def definitions(catalog):
                              "to": ref("prefabs"), "max": ref("distance"),
                              "order": {"enum": list(ORDERS), "default": "any"}, **metric_fields()},
                             ("from", "visit", "max")),
-        "entry": closed({"passive": {"type": "boolean", "default": False,
-                                     "description": "Only decided on candidates of the entries that aren't passive."},
-                         "tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"), "setpieces": setpiece_items("setPieceRule", "setPieceGroup"),
-                         "counts": rules("countRule"), "distances": rules("distanceRule"), "tiles": rules("tileRule"),
-                         "bridges": rules("bridgeRule"), "routes": rules("routeRule")},
-                        description="All sections and all rules must hold (AND)."),
+        "generation": closed({"tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"),
+                              "setpieces": setpiece_items("setPieceRule", "setPieceGroup")},
+                             description="The level table: a seed is a candidate when all its sections and rules hold "
+                                         "(AND)."),
+        "filter": closed({"counts": rules("countRule"), "distances": rules("distanceRule"), "tiles": rules("tileRule"),
+                          "bridges": rules("bridgeRule"), "routes": rules("routeRule")},
+                         description="World rules: all sections and all rules must hold (AND)."),
     }
 
 
@@ -193,31 +194,30 @@ def cave_definitions():
                                  "to": ref("cavePrefabs"), "max": ref("distance"),
                                  "order": {"enum": list(ORDERS), "default": "any"}, **metric_fields("pillars")},
                                 ("from", "visit", "max")),
-        "caveEntry": closed({"passive": {"type": "boolean", "default": False,
-                                         "description": "Only decided on candidates of the entries that aren't "
-                                                        "passive."},
-                             "tasks": ref("caveTasks"), "prefab_swaps": ref("cavePrefabSwaps"),
-                             "setpieces": setpiece_items("caveSetPieceRule", "caveSetPieceGroup"), "counts": rules("caveCountRule"),
-                             "distances": rules("caveDistanceRule"), "tiles": rules("tileRule"),
-                             "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
-                            description="All sections and all rules must hold (AND). Counts, distances and routes "
-                                        "use the caves' prefabs, and `pillars` lets a distance use the tentacle "
-                                        "pillar links."),
+        "caveGeneration": closed({"tasks": ref("caveTasks"), "prefab_swaps": ref("cavePrefabSwaps"),
+                                  "setpieces": setpiece_items("caveSetPieceRule", "caveSetPieceGroup")},
+                                 description="The caves' level table: a seed is a candidate when all its sections and "
+                                             "rules hold (AND)."),
+        "caveFilter": closed({"counts": rules("caveCountRule"), "distances": rules("caveDistanceRule"),
+                              "tiles": rules("tileRule"), "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
+                             description="World rules: all sections and all rules must hold (AND). Counts, distances "
+                                         "and routes use the caves' prefabs, and `pillars` lets a distance use the "
+                                         "tentacle pillar links."),
     }
 
 
 def schema(catalog):
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "DST seed finder search config v1",
+        "title": "DST seed finder search config v2",
         "description": f"Generated by scripts/gen/gen_schema.py from scripts/catalog/catalog.json (game build "
                        f"{catalog['game_build']}) and the caves sidecar; see docs/config.md.",
         "$comment": "Not expressible here and checked by the finder: repeated object keys, integers written with a "
-                    "fraction (20.0), route visit stops that share a prefab id with each other or with from/to, and "
-                    "a criteria list whose entries are all passive. The --shard flag of the finder overrides `shard`.",
-        **closed({"version": {"const": 1},
+                    "fraction (20.0), and route visit stops that share a prefab id with each other or with from/to. The "
+                    "--shard flag of the finder overrides `shard`.",
+        **closed({"version": {"const": 2},
                   "shard": {"description": "The shard whose worlds are searched: the forest (the overworld) or the "
-                                           "caves. The caves shard's criteria use its own tasks and set pieces.",
+                                           "caves. The caves shard's sections use its own tasks, set pieces and prefabs.",
                             "enum": list(SHARDS), "default": DEFAULT_SHARD},
                   "platform": {"description": "The OS hosting the world. The level table (tasks, prefab_swaps, "
                                               "setpieces) is the same on both; counts, distances, tiles, bridges "
@@ -225,10 +225,13 @@ def schema(catalog):
                                "enum": list(PLATFORMS), "default": DEFAULT_PLATFORM},
                   "settings": {"description": "Reserved: only default settings.", "type": "object",
                                "additionalProperties": {"const": "default"}},
-                  "criteria": {"description": "Alternatives (OR).", "type": "array", "maxItems": CAPS["entries"]}}),
+                  "generation": {"description": "The level table, shared by every filter: only the worlds of the "
+                                                "seeds it accepts are generated."},
+                  "filters": {"description": "Alternatives (OR) on the generated worlds.", "type": "array",
+                              "maxItems": CAPS["entries"]}}),
         "if": {"required": ["shard"], "properties": {"shard": {"const": "caves"}}},
-        "then": {"properties": {"criteria": {"items": ref("caveEntry")}}},
-        "else": {"properties": {"criteria": {"items": ref("entry")}}},
+        "then": {"properties": {"generation": ref("caveGeneration"), "filters": {"items": ref("caveFilter")}}},
+        "else": {"properties": {"generation": ref("generation"), "filters": {"items": ref("filter")}}},
         "$defs": {**definitions(catalog), **cave_definitions()},
     }
 

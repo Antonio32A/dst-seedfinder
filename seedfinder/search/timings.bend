@@ -1,27 +1,24 @@
 import Base
-import ../filters/shard_search.bend as ShardSearch
 import ../filters/evaluate.bend as Evaluate
 import ../filters/rules.bend as Rules
 import ../filters/world.bend as FilterWorld
 import ../filters/par.bend as Par
-import ./common.bend as SearchCommon
 
-# `world find --verbose-timings` (docs/config.md section 8): where the search spends its time, per option (criteria
-# entry). Each option's level table is checked on its own over every prefiltered seed, and each rule of an option is
-# checked on all the worlds of a round at once, between two clock reads, so the search runs slower than without it.
+# `world find --verbose-timings` (docs/config.md section 8): where the search spends its time, per option (`filters`
+# entry). Each rule of an option is checked on all the worlds of a round at once, between two clock reads, so the
+# search runs slower than without it.
 
 # The ms of one rule of an option, labelled as its witness is (`section`, `index`).
 type Rule is Data:
   Rule{section: String, index: U32, ms: Nat}
 
-# One option: the ms its level table took over the prefiltered seeds and how many passed it, the worlds its rules were
-# checked on, and its rules.
+# One option: the worlds its rules were checked on, and its rules.
 type Option is Data:
-  Option{prefilter_ms: Nat, passed: Nat, worlds: Nat, rules: List<&2, Rule>}
+  Option{worlds: Nat, rules: List<&2, Rule>}
 
-# The seeds the options' level tables went over, the ms of the search's own prefilter (the level tables of the options
-# that pick the candidates), of the world generation (the CPU stages and the waits for KK passes) and of the hits'
-# witnesses and level tables, and the options in entry order.
+# The seeds the prefilter went over, the ms of the prefilter (the level table of `generation`), of the world generation
+# (the CPU stages and the waits for KK passes) and of the hits' witnesses and level tables, and the options in filter
+# order.
 type Timings is Data:
   Timings{seeds: Nat, prefilter_ms: Nat, generation_ms: Nat, hits_ms: Nat, options: List<&2, Option>}
 
@@ -52,45 +49,17 @@ def started_options(laters: List<&2, Rules.Later>) -> List<&2, Option>:
     case Nil{}:
       Nil{}
     case Con{+later, rest}:
-      Option{0n, 0n, 0n, job_rules(Evaluate.jobs_of(later))} <> started_options(rest)
+      Option{0n, job_rules(Evaluate.jobs_of(later))} <> started_options(rest)
 
 # Nothing timed yet, for the options with parts B-E `laters`.
 def started(+laters: List<&2, Rules.Later>) -> Timings:
   Timings{0n, 0n, 0n, 0n, started_options(laters)}
 
-def counted(+depth: Nat, +lo: U32, +n: Nat, +levels: ShardSearch.Levels) -> Nat:
-  match depth:
-    case 0n:
-      ShardSearch.count_leaf(levels, lo, n)
-    case 1n+d:
-      +half = Nat.div(n, 2n)
-      a b = counted(d, lo, half, levels) counted(d, (lo + U32.from_nat(half) : U32), Nat.sub(n, half), levels)
-      Nat.add(a, b)
-
-def prefiltered_options(entries: List<&2, ShardSearch.Levels>, options: List<&2, Option>, +lo: U32, +len: Nat) -> IO(List<&2, Option>):
-  match entries options:
-    case Con{+levels, rest} Con{Option{+ms, +passed, +worlds, +rules}, more}:
-      do IO<List<&2, Option>>:
-        +t0 : Nat <- IO.now()
-        +n : Nat = counted(SearchCommon.search_depth(), lo, len, levels)
-        +t1 : Nat <- IO.now()
-        after : List<&2, Option> <- prefiltered_options(rest, more, lo, len)
-        return Option{Nat.add(ms, Nat.sub(t1, t0)), Nat.add(passed, n), worlds, rules} <> after
-    case _ _:
-      IO.pure(List<&2, Option>, Nil{})
-
-# Each option's level table over the seeds lo..lo+len-1 on its own (`entries`: ShardSearch.each_entry), timed.
-def prefiltered(+t: Timings, +entries: List<&2, ShardSearch.Levels>, +lo: U32, +len: Nat) -> IO(Timings):
+# After the prefilter went over `len` more seeds in `ms`.
+def with_prefilter(+t: Timings, +len: Nat, +ms: Nat) -> Timings:
   match t:
     case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
-      do IO<Timings>:
-        after : List<&2, Option> <- prefiltered_options(entries, options, lo, len)
-        return Timings{Nat.add(seeds, len), prefilter_ms, generation_ms, hits_ms, after}
-
-def with_prefilter(+t: Timings, +ms: Nat) -> Timings:
-  match t:
-    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
-      Timings{seeds, Nat.add(prefilter_ms, ms), generation_ms, hits_ms, options}
+      Timings{Nat.add(seeds, len), Nat.add(prefilter_ms, ms), generation_ms, hits_ms, options}
 
 def with_generation(+t: Timings, +ms: Nat) -> Timings:
   match t:
@@ -102,10 +71,9 @@ def with_hits(+t: Timings, +ms: Nat) -> Timings:
     case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
       Timings{seeds, prefilter_ms, generation_ms, Nat.add(hits_ms, ms), options}
 
-# A world being decided: the world (None when there is nothing to check), whether the level table of its seed
-# satisfies each option not checked yet, and the option that matched it.
+# A world being decided: the world (None when there is nothing to check) and the option that matched it.
 type Open is Data:
-  Open{world: Maybe<&2, FilterWorld.World>, flags: List<&2, Bool>, found: Maybe<&2, U32>}
+  Open{world: Maybe<&2, FilterWorld.World>, found: Maybe<&2, U32>}
 
 def holds_on(job: Evaluate.Job, m: Maybe<&2, FilterWorld.World>) -> Bool:
   match m:
@@ -152,13 +120,10 @@ def timed_rules(jobs: List<&2, Evaluate.Job>, rules: List<&2, Rule>, +worlds: Li
     case _ _:
       IO.pure(Ran, Ran{Nil{}, passed})
 
-def first_flag(+flags: List<&2, Bool>) -> Bool:
-  Maybe.default(&2, Bool, List.head(&2, Bool, flags), False{})
-
 def checked_world(+o: Open) -> Maybe<&2, FilterWorld.World>:
   match o:
-    case Open{+world, +flags, None{}}:
-      Bool.pick(Maybe<&2, FilterWorld.World>, first_flag(flags), world, None{})
+    case Open{+world, None{}}:
+      world
     case _:
       None{}
 
@@ -197,11 +162,11 @@ def matched(+found: Maybe<&2, U32>, +hit: Bool, +index: U32) -> Maybe<&2, U32>:
     case Some{+i}:
       Some{i}
 
-# The worlds after option `index`: matched where it was checked and held, its flag dropped.
+# The worlds after option `index`: matched where it was checked and held.
 def stepped(opens: List<&2, Open>, +checked: List<&2, Maybe<&2, FilterWorld.World>>, +held: List<&2, Bool>, +index: U32) -> List<&2, Open>:
   match opens checked held:
-    case Con{Open{+world, +flags, +found}, rest} Con{+m, ms} Con{+ok, oks}:
-      Open{world, List.drop(&2, Bool, flags, 1n), matched(found, is_some(m) && ok, index)} <> stepped(rest, ms, oks, index)
+    case Con{Open{+world, +found}, rest} Con{+m, ms} Con{+ok, oks}:
+      Open{world, matched(found, is_some(m) && ok, index)} <> stepped(rest, ms, oks, index)
     case _ _ _:
       Nil{}
 
@@ -224,16 +189,16 @@ def option_before(+o: Option, +got: Decided) -> Decided:
     case Decided{+options, +opens}:
       Decided{o <> options, opens}
 
-# The options one after the other on the worlds no earlier option matched and whose level table they pass: the timed
-# options, and the worlds with the option that matched each.
+# The options one after the other on the worlds no earlier option matched: the timed options, and the worlds with the
+# option that matched each.
 def judged_options(laters: List<&2, Rules.Later>, options: List<&2, Option>, +index: U32, +opens: List<&2, Open>) -> IO(Decided):
   match laters options:
-    case Con{+later, ls} Con{Option{+prefilter_ms, +passed, +worlds, +rules}, os}:
+    case Con{+later, ls} Con{Option{+worlds, +rules}, os}:
       +checked = checked_worlds(opens)
       do IO<Decided>:
         +got : Ran <- timed_rules(Evaluate.jobs_of(later), rules, checked, all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
         +after : Decided <- judged_options(ls, os, (index + 1 : U32), stepped(opens, checked, held_of(got), index))
-        return option_before(Option{prefilter_ms, passed, Nat.add(worlds, checks(checked)), rules_of(got)}, after)
+        return option_before(Option{Nat.add(worlds, checks(checked)), rules_of(got)}, after)
     case _ _:
       IO.pure(Decided, Decided{Nil{}, opens})
 
@@ -268,9 +233,8 @@ def rules_json(rules: List<&2, Rule>) -> List<&2, String>:
 
 def option_json(+o: Option) -> String:
   match o:
-    case Option{+prefilter_ms, +passed, +worlds, +rules}:
-      "{\"prefilter_ms\":" ++ Nat.show(prefilter_ms) ++ ",\"passed\":" ++ Nat.show(passed) ++ ",\"worlds\":" ++ Nat.show(worlds)
-        ++ ",\"rules\":[" ++ String.join(rules_json(rules), ",") ++ "]}"
+    case Option{+worlds, +rules}:
+      "{\"worlds\":" ++ Nat.show(worlds) ++ ",\"rules\":[" ++ String.join(rules_json(rules), ",") ++ "]}"
 
 def options_json(options: List<&2, Option>) -> List<&2, String>:
   match options:

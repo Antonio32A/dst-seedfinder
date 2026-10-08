@@ -44,45 +44,45 @@ def world_search(+depth: Nat, +lo: U32, +n: Nat, +criteria: List<&2, CaveConfig.
       a b = world_search(d, lo, half, criteria, cap) world_search(d, (lo + U32.from_nat(half) : U32), Nat.sub(n, half), criteria, cap)
       SearchCommon.combine(a, b)
 
-def hit_fields(+entries: List<&2, CaveConfig.Criteria>, +seed: U32) -> String:
-  "\"entry\":" ++ U32.show(CaveConfig.first_match(entries, seed)) ++ ",\"level\":" ++ CaveSummary.summary_json(seed) ++ ",\"results\":[]"
+# A level-table hit's fields: without world rules, the first filter matches every candidate.
+def hit_fields(+seed: U32) -> String:
+  "\"entry\":0,\"level\":" ++ CaveSummary.summary_json(seed) ++ ",\"results\":[]"
 
-def hits_of(+entries: List<&2, CaveConfig.Criteria>, hits: List<&2, U32>) -> List<&2, SearchReport.Hit>:
+def hits_of(hits: List<&2, U32>) -> List<&2, SearchReport.Hit>:
   match hits:
     case Nil{}:
       Nil{}
     case Con{+seed, rest}:
-      SearchReport.Hit{seed, hit_fields(entries, seed)} <> hits_of(entries, rest)
+      SearchReport.Hit{seed, hit_fields(seed)} <> hits_of(rest)
 
-def report(+q: Args.Query, +entries: List<&2, CaveConfig.Criteria>, +scan: SearchScan.Scan) -> IO(Unit):
+def report(+q: Args.Query, +scan: SearchScan.Scan) -> IO(Unit):
   match q:
     case Args.Query{+start, +total, _, _, json, _, +platform, _, _, _}:
       match scan:
         case SearchScan.Scan{_, +left, _, +found, +hits, +code, _}:
-          SearchReport.print_hits_report(json, U32.is_ne(platform, 2), hits_of(entries, hits), start, SearchReport.scanned_of(code, hits, start, total, left), found, code)
+          SearchReport.print_hits_report(json, U32.is_ne(platform, 2), hits_of(hits), start, SearchReport.scanned_of(code, hits, start, total, left), found, code)
 
 # SearchScan.next_round over CaveConfig criteria.
 def next_round(
-  timings: Bool, +t: Timings.Timings, +entries: List<&2, ShardSearch.Levels>, +from: U32, +len: Nat, +criteria: List<&2, CaveConfig.Criteria>, +room: U32
+  timings: Bool, +t: Timings.Timings, +from: U32, +len: Nat, +criteria: List<&2, CaveConfig.Criteria>, +room: U32
 ) -> IO(SearchScan.Round):
   match timings:
     case False{}:
       IO.pure(SearchScan.Round, SearchScan.round_of(world_search(SearchCommon.search_depth(), from, len, criteria, room), t))
     case True{}:
       do IO<SearchScan.Round>:
-        +counted : Timings.Timings <- Timings.prefiltered(t, entries, from, len)
         +t0 : Nat <- IO.now()
-        +r : SearchScan.Round = SearchScan.round_of(world_search(SearchCommon.search_depth(), from, len, criteria, room), counted)
+        +r : SearchScan.Round = SearchScan.round_of(world_search(SearchCommon.search_depth(), from, len, criteria, room), t)
         +t1 : Nat <- IO.now()
-        return SearchScan.prefiltered_by(r, Nat.sub(t1, t0))
+        return SearchScan.prefiltered_by(r, len, Nat.sub(t1, t0))
 
 def world_rounds(
-  k: Nat, +round: SearchScan.Round, +scan: SearchScan.Scan, +q: Args.Query, +entries: List<&2, CaveConfig.Criteria>,
-  +criteria: List<&2, CaveConfig.Criteria>, +started: Nat, +ticked: Nat, +points: List<&2, Speed.Point>
+  k: Nat, +round: SearchScan.Round, +scan: SearchScan.Scan, +q: Args.Query, +criteria: List<&2, CaveConfig.Criteria>,
+  +started: Nat, +ticked: Nat, +points: List<&2, Speed.Point>
 ) -> IO(Unit):
   match k:
     case 0n:
-      report(q, entries, scan)
+      report(q, scan)
     case 1n+p:
       match round scan:
         case SearchScan.Round{+count, +got, +t} SearchScan.Scan{_, _, _, _, _, +code, _}:
@@ -97,24 +97,24 @@ def world_rounds(
                     IO.print_err(SearchScan.progress_of(after, total, Nat.sub(now, started)))
                     IO.print_err(Speed.line(ticks))
                     Timings.print_if(timings, t, Nat.sub(now, started))
-                    +next : SearchScan.Round <- next_round(timings, t, ShardSearch.each_entry(ShardSearch.CaveLevels{entries}), SearchScan.next_seed_of(after), SearchScan.round_len_of(after), criteria, SearchScan.room_of(after, limit))
-                    world_rounds(p, next, after, q, entries, criteria, started, now, ticks)
+                    +next : SearchScan.Round <- next_round(timings, t, SearchScan.next_seed_of(after), SearchScan.round_len_of(after), criteria, SearchScan.room_of(after, limit))
+                    world_rounds(p, next, after, q, criteria, started, now, ticks)
             case _:
-              report(q, entries, scan)
+              report(q, scan)
 
 def level_rounds(+q: Args.Query, +config: CaveConfig.Config) -> IO(Unit):
   match q config:
-    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _, +timings} CaveConfig.Config{+windows, +entries, +laters, +scanned}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _, +timings} CaveConfig.Config{+windows, +level, +laters}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         world_rounds(SearchScan.round_fuel(), SearchScan.Round{0, Nil{}, Timings.started(laters)}, SearchScan.Scan{start, total, SearchScan.min_round(), 0, Nil{}, 0, 0n},
-          Args.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}, timings}, entries, scanned, started, started, Speed.started())
+          Args.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}, timings}, [level], started, started, Speed.started())
 
 # world find on the caves shard: the level table scan, or (with parts B-E) the search over caves worlds generated in
 # memory, or with --worlds DIR over pre-generated caves world dumps.
 def run_query(+q: Args.Query, +config: CaveConfig.Config) -> IO(Unit):
   match q config:
-    case Args.Query{_, _, _, _, _, _, _, None{}, _, _} CaveConfig.Config{_, _, +laters, _}:
+    case Args.Query{_, _, _, _, _, _, _, None{}, _, _} CaveConfig.Config{_, _, +laters}:
       Bool.pick(IO(Unit), SearchScan.any_rules(laters), SearchGenerated.run(q, ShardSearch.of_caves(config)), level_rounds(q, config))
-    case Args.Query{_, _, _, _, _, _, _, Some{+dir}, _, _} CaveConfig.Config{_, _, +laters, _}:
+    case Args.Query{_, _, _, _, _, _, _, Some{+dir}, _, _} CaveConfig.Config{_, _, +laters}:
       Bool.pick(IO(Unit), SearchScan.any_rules(laters), SearchWorlds.run(q, ShardSearch.of_caves(config), dir), level_rounds(q, config))

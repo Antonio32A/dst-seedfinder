@@ -1,6 +1,5 @@
 import Base
 import ../level/summary.bend as LevelSummary
-import ../filters/config.bend as Config
 
 def world_line(+seed: U32) -> String:
   U32.show(seed) ++ " " ++ LevelSummary.summary_json(LevelSummary.summary(seed))
@@ -30,26 +29,20 @@ def position_json(+start: U32, +scanned: Nat, +code: U32) -> String:
   +following = Bool.pick(String, U32.is_eq(code, 2) || Nat.is_eq(scanned, seed_space()), "null", U32.show(next))
   "\"scanned\":" ++ Nat.show(scanned) ++ ",\"last_scanned\":" ++ last ++ ",\"next_seed\":" ++ following
 
-def entry_json(entries: List<&2, Config.Criteria>, +seed: U32) -> String:
-  match entries:
-    case Nil{}:
-      "null"
-    case _:
-      U32.show(Config.first_match(entries, seed))
-
-def hit_fields(+entries: List<&2, Config.Criteria>, +seed: U32) -> String:
-  "\"entry\":" ++ entry_json(entries, seed) ++ ",\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
+# A level-table hit's fields: without world rules, the first filter matches every candidate.
+def hit_fields(+seed: U32) -> String:
+  "\"entry\":0,\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
 
 # A hit: its seed and the fields of its JSON object after the seed.
 type Hit is Data:
   Hit{seed: U32, fields: String}
 
-def hits_of(+entries: List<&2, Config.Criteria>, hits: List<&2, U32>) -> List<&2, Hit>:
+def hits_of(hits: List<&2, U32>) -> List<&2, Hit>:
   match hits:
     case Nil{}:
       Nil{}
     case Con{+seed, rest}:
-      Hit{seed, hit_fields(entries, seed)} <> hits_of(entries, rest)
+      Hit{seed, hit_fields(seed)} <> hits_of(rest)
 
 def hits_json(hits: List<&2, Hit>) -> List<&2, String>:
   match hits:
@@ -93,9 +86,9 @@ def print_hits_report(
         exit_status(found)
 
 def print_report(
-  json: Bool, windows: Bool, +entries: List<&2, Config.Criteria>, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
+  json: Bool, windows: Bool, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
 ) -> IO(Unit):
-  print_hits_report(json, windows, hits_of(entries, hits), start, scanned, found, code)
+  print_hits_report(json, windows, hits_of(hits), start, scanned, found, code)
 
 def json_escaped(+code: U32) -> String:
   Bool.pick(String, U32.is_eq(code, 34) || U32.is_eq(code, 92), SCon{Chr{92}, SCon{Chr{code}, SNil{}}},

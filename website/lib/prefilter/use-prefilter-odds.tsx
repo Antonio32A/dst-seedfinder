@@ -32,7 +32,7 @@ interface ProviderProps {
 
 /**
  * The odds are measured on a sample of seeds. Once asked for, they follow the config: the level-table filter's share is
- * measured again shortly after each change.
+ * measured again shortly after each change to its world generation (the world filters don't change it).
  */
 export function PrefilterOddsProvider({ config, threads, supported, children }: ProviderProps) {
     const [enabled, setEnabled] = useState(false);
@@ -41,7 +41,7 @@ export function PrefilterOddsProvider({ config, threads, supported, children }: 
     const [error, setError] = useState<string | null>(null);
     const [latest, setLatest] = useState<PrefilterOdds | null>(null);
     const [byShard, setByShard] = useState<Partial<Record<Shard, PrefilterOdds>>>({});
-    const configKey = JSON.stringify(config);
+    const configKey = JSON.stringify({ ...config, filters: undefined });
 
     const startRun = useEffectEvent(() => {
         const handle = runPrefilterOdds(config, threads, setProgress);

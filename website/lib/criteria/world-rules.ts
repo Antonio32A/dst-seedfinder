@@ -3,11 +3,11 @@ import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import {
     type BridgeRule,
     type CountRule,
-    type Criterion,
     DEFAULT_LINKS,
     DEFAULT_METRIC,
     DEFAULT_ROUTE_ORDER,
     type DistanceRule,
+    type Filter,
     LINKS_KEY,
     MAX_DISTANCE,
     MAX_PREFAB_IDS,
@@ -238,7 +238,7 @@ const routeRule = (row: RouteRow, shard: Shard): RouteRule[] => {
     ];
 };
 
-export function worldSections(rows: WorldRows, shard: Shard): Pick<Criterion, "counts" | "distances" | "tiles" | "bridges" | "routes"> {
+export function worldSections(rows: WorldRows, shard: Shard): Filter {
     return {
         counts: nonEmpty(rows.counts.flatMap((row) => countRule(row, shard))),
         distances: nonEmpty(rows.distances.flatMap((row) => distanceRule(row, shard))),
@@ -349,13 +349,13 @@ function routeRowOf(value: unknown, shard: Shard): RouteRow[] {
 const rowsOf = <T>(value: unknown, shard: Shard, parse: (item: unknown, shard: Shard) => T[]): T[] =>
     asArray(value).slice(0, MAX_RULES_PER_SECTION).flatMap((item) => parse(item, shard));
 
-export function worldRowsOf(criterion: Record<string, unknown>, shard: Shard): WorldRows {
+export function worldRowsOf(filter: Record<string, unknown>, shard: Shard): WorldRows {
     return {
-        counts: rowsOf(criterion.counts, shard, countRowOf),
-        distances: rowsOf(criterion.distances, shard, distanceRowOf),
-        tiles: rowsOf(criterion.tiles, shard, tileRowOf),
-        bridges: rowsOf(criterion.bridges, shard, bridgeRowOf),
-        routes: rowsOf(criterion.routes, shard, routeRowOf)
+        counts: rowsOf(filter.counts, shard, countRowOf),
+        distances: rowsOf(filter.distances, shard, distanceRowOf),
+        tiles: rowsOf(filter.tiles, shard, tileRowOf),
+        bridges: rowsOf(filter.bridges, shard, bridgeRowOf),
+        routes: rowsOf(filter.routes, shard, routeRowOf)
     };
 }
 

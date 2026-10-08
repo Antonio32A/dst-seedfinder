@@ -10,67 +10,40 @@ type Levels is Data:
   ForestLevels{criteria: List<&2, Config.Criteria>}
   CaveLevels{criteria: List<&2, CaveConfig.Criteria>}
 
-# A compiled search config of either shard as the world search sees it: the platform, the shard, the part A criteria of
-# every entry and their parts B-E (in the same order), and the part A criteria of the entries that pick the candidates.
+# A compiled search config of either shard as the world search sees it: the platform, the shard, the part A criteria
+# of `generation` that pick the candidates, and the parts B-E of every filter.
 type Search is Data:
-  Search{windows: Bool, caves: Bool, entries: Levels, laters: List<&2, Rules.Later>, scanned: Levels}
+  Search{windows: Bool, caves: Bool, level: Levels, laters: List<&2, Rules.Later>}
 
 def of_forest(+config: Config.Config) -> Search:
   match config:
-    case Config.Config{+windows, +criteria, +laters, _, +scanned}:
-      Search{windows, False{}, ForestLevels{criteria}, laters, ForestLevels{scanned}}
+    case Config.Config{+windows, +level, +laters, _}:
+      Search{windows, False{}, ForestLevels{[level]}, laters}
 
 def of_caves(+config: CaveConfig.Config) -> Search:
   match config:
-    case CaveConfig.Config{+windows, +criteria, +laters, +scanned}:
-      Search{windows, True{}, CaveLevels{criteria}, laters, CaveLevels{scanned}}
+    case CaveConfig.Config{+windows, +level, +laters}:
+      Search{windows, True{}, CaveLevels{[level]}, laters}
 
 def windows(+search: Search) -> Bool:
   match search:
-    case Search{+windows, _, _, _, _}:
+    case Search{+windows, _, _, _}:
       windows
 
 def caves(+search: Search) -> Bool:
   match search:
-    case Search{_, +caves, _, _, _}:
+    case Search{_, +caves, _, _}:
       caves
 
 def laters(+search: Search) -> List<&2, Rules.Later>:
   match search:
-    case Search{_, _, _, +laters, _}:
+    case Search{_, _, _, +laters}:
       laters
 
-def scanned(+search: Search) -> Levels:
+def level(+search: Search) -> Levels:
   match search:
-    case Search{_, _, _, _, +scanned}:
-      scanned
-
-def entries(+search: Search) -> Levels:
-  match search:
-    case Search{_, _, +entries, _, _}:
-      entries
-
-def forest_flags(criteria: List<&2, Config.Criteria>, +seed: U32) -> List<&2, Bool>:
-  match criteria:
-    case Nil{}:
-      Nil{}
-    case Con{+c, rest}:
-      Config.matches([c], seed) <> forest_flags(rest, seed)
-
-def cave_flags(criteria: List<&2, CaveConfig.Criteria>, +seed: U32) -> List<&2, Bool>:
-  match criteria:
-    case Nil{}:
-      Nil{}
-    case Con{+c, rest}:
-      CaveConfig.matches([c], seed) <> cave_flags(rest, seed)
-
-# Whether the level table of `seed` satisfies each entry's part A, in entry order.
-def entry_flags(levels: Levels, +seed: U32) -> List<&2, Bool>:
-  match levels:
-    case ForestLevels{criteria}:
-      forest_flags(criteria, seed)
-    case CaveLevels{criteria}:
-      cave_flags(criteria, seed)
+    case Search{_, _, +level, _}:
+      level
 
 # The level table of `seed` as JSON, as `world show` prints it.
 def summary_json(+caves: Bool, +seed: U32) -> String:
@@ -97,55 +70,3 @@ def candidates_leaf(levels: Levels, +lo: U32, n: Nat) -> List<&2, U32>:
       forest_leaf(n, lo, Config.local_criteria(criteria), Nil{})
     case CaveLevels{criteria}:
       cave_leaf(n, lo, CaveConfig.local_criteria(criteria), Nil{})
-
-# Whether the config has no criteria entries, so that every world matches.
-def is_unfiltered(+search: Search) -> Bool:
-  match search:
-    case Search{_, _, ForestLevels{criteria}, _, _}:
-      List.is_empty(&2, Config.Criteria, criteria)
-    case Search{_, _, CaveLevels{criteria}, _, _}:
-      List.is_empty(&2, CaveConfig.Criteria, criteria)
-
-def forest_entries(criteria: List<&2, Config.Criteria>) -> List<&2, Levels>:
-  match criteria:
-    case Nil{}:
-      Nil{}
-    case Con{+c, rest}:
-      ForestLevels{[c]} <> forest_entries(rest)
-
-def cave_entries(criteria: List<&2, CaveConfig.Criteria>) -> List<&2, Levels>:
-  match criteria:
-    case Nil{}:
-      Nil{}
-    case Con{+c, rest}:
-      CaveLevels{[c]} <> cave_entries(rest)
-
-# The part A criteria of each entry on its own, in entry order.
-def each_entry(levels: Levels) -> List<&2, Levels>:
-  match levels:
-    case ForestLevels{criteria}:
-      forest_entries(criteria)
-    case CaveLevels{criteria}:
-      cave_entries(criteria)
-
-def forest_count(n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +count: Nat) -> Nat:
-  match n:
-    case 0n:
-      count
-    case 1n+p:
-      forest_count(p, (seed + 1 : U32), criteria, Bool.pick(Nat, Config.matches(criteria, seed), Nat.add(count, 1n), count))
-
-def cave_count(n: Nat, +seed: U32, +criteria: List<&2, CaveConfig.Criteria>, +count: Nat) -> Nat:
-  match n:
-    case 0n:
-      count
-    case 1n+p:
-      cave_count(p, (seed + 1 : U32), criteria, Bool.pick(Nat, CaveConfig.matches(criteria, seed), Nat.add(count, 1n), count))
-
-# How many of the seeds lo..lo+n-1 have a level table that satisfies some of the criteria, on one thread.
-def count_leaf(levels: Levels, +lo: U32, n: Nat) -> Nat:
-  match levels:
-    case ForestLevels{criteria}:
-      forest_count(n, lo, Config.local_criteria(criteria), 0n)
-    case CaveLevels{criteria}:
-      cave_count(n, lo, CaveConfig.local_criteria(criteria), 0n)

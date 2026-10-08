@@ -138,7 +138,7 @@ export default function LiveSearch({ job, live, stopping, onStop, ...results }: 
                     {rows.length > 0 && <LiveStats rows={rows}/>}
                     {live.status === "running" && progress?.speeds && <SearchSpeeds speeds={progress.speeds}/>}
                     {live.status === "running" && progress?.timings &&
-                            <SearchTimings timings={progress.timings} config={job.config}/>}
+                            <SearchTimings timings={progress.timings}/>}
                     {live.offline && <p className="hint">Connection lost, reconnecting...</p>}
                 </div>
                 <JobResults job={shown} {...results} />

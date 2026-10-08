@@ -5,6 +5,7 @@ import {
     type SeedfinderConfig,
     type Shard
 } from "@/lib/config/seedfinder-config";
+import { upgradeConfig } from "@/lib/config/upgrade-config";
 import { validateConfig } from "@/lib/config/validate-config";
 import { decodeShareParam, encodeShareParam } from "@/lib/criteria/search-state";
 import { clamp } from "@/lib/criteria/state-helpers";
@@ -77,6 +78,6 @@ export function pickedMapPath(platform: Platform, seed: string, shard: Shard): {
 
 /** On the map's platform and shard, since `world eval` refuses a config for another. */
 export function parseMapConfig(share: string, platform: Platform, shard: Shard = DEFAULT_SHARD): MapConfig {
-    const checked = validateConfig(decodeShareParam(share));
+    const checked = validateConfig(upgradeConfig(decodeShareParam(share)));
     return checked.ok ? { config: { ...checked.value, platform, shard } } : { error: checked.error };
 }

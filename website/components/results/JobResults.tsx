@@ -261,10 +261,10 @@ function SearchSummary({ job, search, onCopy, further }: JobResultsProps & { sea
                         <p className="muted">{emptyText}</p>
                 ) : (
                         <HitList hits={hits} platform={job.config.platform ?? DEFAULT_PLATFORM} config={job.config}
-                                 showOption={(job.config.criteria?.length ?? 0) > 1} onCopy={onCopy}/>
+                                 showOption={(job.config.filters?.length ?? 0) > 1} onCopy={onCopy}/>
                 )}
                 {canContinue && <SearchFurther startSeed={nextSeed} further={further}/>}
-                {search.timings && <SearchTimings timings={search.timings} config={job.config}/>}
+                {search.timings && <SearchTimings timings={search.timings}/>}
             </div>
     );
 }

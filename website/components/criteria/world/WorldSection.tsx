@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { MAX_RULES_PER_SECTION, type Shard } from "@/lib/config/seedfinder-config";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import {
-    MAP_SIZE_TILES,
     NEW_WORLD_ROW,
     type WorldRows,
     type WorldSection as WorldSectionKey
@@ -70,40 +69,34 @@ function RowList<S extends WorldSectionKey>({ section, rows, onChange }: {
 }
 
 export default function WorldSection({ shard, rows, onChange }: WorldSectionProps) {
+    const picked = SECTIONS.filter(({ id }) => rows[id].length > 0);
     const full = SECTIONS.filter(({ id }) => rows[id].length >= MAX_RULES_PER_SECTION);
     const add = (section: WorldSectionKey) =>
             onChange({ [section]: [...rows[section], NEW_WORLD_ROW[section](shard)] });
 
     return (
             <WorldShardProvider value={shard}>
-                <div className="subsection world-area">
-                    <h4 className="subsection__title">
-                        World details <span className="tag tag--accent">slow</span>
-                    </h4>
-                    <p className="muted small">
-                        These require every world to be fully generated, so you should set up some filters for biomes,
-                        resources or set pieces to find worlds faster. 
-                    </p>
-                    {SECTIONS.filter(({ id }) => rows[id].length > 0).map(({ id, title }) => (
-                            <div key={id} className="world-area__section">
-                                <h5 className="world-area__title">{title}</h5>
-                                <RowList section={id} rows={rows[id]}
-                                         onChange={(changed) => onChange({ [id]: changed })}/>
-                            </div>
+                {picked.length === 0 &&
+                        <p className="hint">Click on any of the buttons to add something to search for.</p>}
+                {picked.map(({ id, title }) => (
+                        <div key={id} className="world-area__section">
+                            <h5 className="world-area__title">{title}</h5>
+                            <RowList section={id} rows={rows[id]}
+                                     onChange={(changed) => onChange({ [id]: changed })}/>
+                        </div>
+                ))}
+                <p className="world-area__add">
+                    {SECTIONS.map(({ id, add: label }) => (
+                            <button key={id} type="button" className="link-button"
+                                    disabled={rows[id].length >= MAX_RULES_PER_SECTION} onClick={() => add(id)}>
+                                {label}
+                            </button>
                     ))}
-                    <p className="world-area__add">
-                        {SECTIONS.map(({ id, add: label }) => (
-                                <button key={id} type="button" className="link-button"
-                                        disabled={rows[id].length >= MAX_RULES_PER_SECTION} onClick={() => add(id)}>
-                                    {label}
-                                </button>
-                        ))}
-                    </p>
-                    {full.length > 0 &&
-                            <p className="hint">{full.map(({ title }) => title).join(", ")}:
-                                max {MAX_RULES_PER_SECTION} per
-                                option.</p>}
-                </div>
+                </p>
+                {full.length > 0 &&
+                        <p className="hint">{full.map(({ title }) => title).join(", ")}:
+                            max {MAX_RULES_PER_SECTION} per
+                            option.</p>}
             </WorldShardProvider>
     );
 }

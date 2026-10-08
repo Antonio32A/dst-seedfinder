@@ -53,7 +53,7 @@ export function showPrefabs(shown: ReadonlySet<string>, prefabs: readonly string
  * `search` name, in any of its options.
  */
 export function defaultShown(search?: SeedfinderConfig, shard: Shard = "forest"): Set<string> {
-    const named = (search?.criteria ?? []).flatMap(({ counts = [], distances = [], routes = [] }) => [
+    const named = (search?.filters ?? []).flatMap(({ counts = [], distances = [], routes = [] }) => [
         ...counts.flatMap(({ prefab, near }) => [prefab, near?.prefab]),
         ...distances.flatMap(({ from, to }) => [from, to]),
         ...routes.flatMap(({ from, visit, to }) => [from, ...visit, to])

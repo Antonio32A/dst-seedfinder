@@ -4,9 +4,17 @@
     gap: 16px;
 }
 
+.search > .section-title {
+    margin-bottom: 0;
+}
+
 .issues {
     list-style: none;
-    margin: 12px 0 0;
+    margin: 0;
+}
+
+.issues > .notice:first-child {
+    margin-top: 0;
 }
 
 .search__row {

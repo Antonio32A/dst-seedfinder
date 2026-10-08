@@ -2,15 +2,15 @@
 
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import type { LevelCatalog } from "@/lib/catalog/level-catalog";
-import type { CriteriaGroup } from "@/lib/criteria/search-state";
+import type { GenerationPicks } from "@/lib/criteria/search-state";
 import { withEntry } from "@/lib/criteria/state-helpers";
 
 const ANY = "";
 
 interface ResourceSectionProps {
     catalog: LevelCatalog;
-    swaps: CriteriaGroup["swaps"];
-    onChange: (swaps: CriteriaGroup["swaps"]) => void;
+    swaps: GenerationPicks["swaps"];
+    onChange: (swaps: GenerationPicks["swaps"]) => void;
 }
 
 export default function ResourceSection({ catalog, swaps, onChange }: ResourceSectionProps) {

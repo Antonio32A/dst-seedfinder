@@ -1,4 +1,4 @@
-# Search config (format v1)
+# Search config (format v2)
 
 The search config JSON that the website writes and `seedfinder world find --config` reads, and the finder's output.
 Scope: the forest shard (preset `SURVIVAL_TOGETHER`) and the caves shard (preset `DST_CAVE`),
@@ -11,32 +11,24 @@ game scripts and the finder's caps (§ 6). Never edit it by hand.
 ## 1. Top level
 
 ```json
-{"version": 1, "shard": "forest", "platform": "windows", "settings": {}, "criteria": [ {entry}, {entry} ]}
+{"version": 2, "shard": "forest", "platform": "windows", "settings": {}, "generation": {..}, "filters": [ {filter}, {filter} ]}
 ```
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `version` | integer | `1` | Must be `1`. |
+| `version` | integer | `2` | Must be `2`. |
 | `shard` | `"forest"` \| `"caves"` | `"forest"` | The world that is searched (see **Shard** below). |
 | `platform` | `"windows"` \| `"linux"` | `"windows"` | The OS of the host that generates the world (the dedicated server). |
 | `settings` | object | `{}` | Reserved. Every value must be `"default"` (any key). |
-| `criteria` | list of entries, ≤ 8 | `[]` | Alternatives (**OR**). A seed matches when any entry holds and it is a candidate of an entry that isn't passive (see below). Missing or `[]` matches every seed. |
+| `generation` | object | `{}` | The level table (part A): the optional sections `tasks`, `prefab_swaps` and `setpieces` (§ 4 A). A seed is a **candidate** when it holds. `{}` holds for every seed. |
+| `filters` | list of filters, ≤ 25 | `[]` | Alternatives (**OR**) on the candidates' worlds. A filter is an object with the optional sections `counts`, `distances`, `tiles`, `bridges` and `routes` (§ 4 B–F). Missing or `[]` accepts every candidate. |
 
-An **entry** is an object with the optional sections `tasks`, `prefab_swaps`, `setpieces`, `counts`, `distances`,
-`tiles`, `bridges`, `routes`, and the optional flag `passive` (`true` or `false`, default `false`). An entry holds when **all**
-its sections hold and, within a section, all its rules hold (**AND**); a `setpieces` group holds when any of its rules
-holds (**OR**, § 4 A). `{}` holds for every seed.
-
-**Passive entries.** A seed is a **candidate** when the level table (part A) of some entry that isn't passive holds.
-Only candidates can match, and a candidate matches the first entry, passive or not, that holds on it. So a passive
-entry never makes a seed worth deciding by itself: it's decided only on seeds that other entries already need. That
-makes it free to add a world filter as a "while you're at it" check without turning the search into one that generates
-every world. E.g. `[{"passive": true, "distances": [dragonfly near spawn]}, {"setpieces": [5 canes], "counts": [..]}]`
-generates only the worlds of 5-cane seeds, and reports entry 0 on those that also have the dragonfly near spawn. A
-passive entry needs no level-table section at all. At least one entry must not be passive. A passive entry with world
-rules still makes the search generate the world of every candidate, also of candidates whose other entries are
-level-table-only (without it, those would be decided without a world): cheap when candidates are rare. List a passive
-entry before the ones it rides along with to have it reported as `entry` on seeds where both hold.
+A seed matches when it is a candidate and some filter holds on its world (or there are no filters). A section holds
+when **all** its rules hold (**AND**), and so does a filter or `generation` when all its sections hold; a `setpieces`
+group holds when any of its rules holds (**OR**, § 4 A). `{}` holds for every world. The hit reports the first filter
+that holds (`entry`, § 8). So `generation` is shared by every filter: it is what makes the search fast (only
+candidates' worlds are generated), and the filters only say what to look for in those worlds. With no filter that has
+a rule, and no `placed` names (§ 4 A), the search never generates a world.
 
 **Shard.** `shard` picks the world that is searched: `"forest"` (the overworld, the default) or `"caves"`. A cave
 world is a separate `GenerateNewWorld` with its own seed, so a caves search scans cave seeds. The shard decides the
@@ -55,7 +47,7 @@ So:
   caves' Linux worlds are checked against the real game (301 worlds); its Windows worlds are generated the same way
   but not checked yet.
 
-Windows is the primary platform, hence the default: a v1 config without `platform` is a Windows config. The value is
+Windows is the primary platform, hence the default: a config without `platform` is a Windows config. The value is
 case-sensitive, and there is no "any platform" value. A finder that can't generate a platform's worlds rejects a
 config that needs them (§ 7) rather than answering from the other platform.
 
@@ -103,7 +95,7 @@ keys (`rock`, `sculpture`, ...) are not ids. The UI expands a group into its id 
 
 ## 4. Sections
 
-### A. Level table
+### A. Level table (`generation`)
 
 **`tasks`** `{"required"?: task list, "excluded"?: task list}`: every `required` task is among the world's chosen
 tasks, and no `excluded` task is. The 10 main-land required tasks and the 5 moon tasks are always chosen. Only the 10
@@ -129,19 +121,19 @@ names per rule):
   room for it, a second copy lands in a room that already has one, or the room's `ReserveSpace` finds no spot for its
   layout (the server log's `Warning! Could not find a spot for MooseNest in node ...`). Only the attempt that produced
   the world counts. Most dropped pieces are big ones (`MooseNest`, `Rotted Base`, `Beefalo Farm`, `Maxwell*`,
-  `CaveEntrance`, `ResurrectionStone`, `WormholeGrass`); a boon rarely is. A rule with `placed` names makes its entry
-  need the generated world on the config's platform: the level table only checks `count ≥ min` for those names (a
+  `CaveEntrance`, `ResurrectionStone`, `WormholeGrass`); a boon rarely is. A rule with `placed` names makes the search
+  need the generated world on the config's platform, and every filter checks it: the level table only checks `count ≥ min` for those names (a
   world can't place more than it plans), the world decides the bound, and the result is a world witness (§ 8). A world
   dump without a `PLAN` section ([world-dump.md](world-dump.md)) can't decide it: `world find --worlds` counts it as a
   missing dump, and `world eval` stops with an error.
 - **Groups.** A `setpieces` item can also be a group `{"any": [rule, ...], "total"?: bound}` (1 to 16 rules of the form
   above, no nested groups, no other keys). It holds when at least one of its rules holds (**OR**) and, with `total`, the
   sum of `count(name)` over every name of every rule (each in its rule's tasks, as written) is within `total`; the
-  entry's other items must all hold. E.g. `[{"any": [{"required": {"MooseNest": 1}}, {"required": {"Chessy_1": 1}}]},
+  other items must all hold. E.g. `[{"any": [{"required": {"MooseNest": 1}}, {"required": {"Chessy_1": 1}}]},
   {"required": {"Level4Boon": 1}}]` is (MooseNest or Chessy_1) and Level4Boon, and `{"any": [{"required": {"MiscBoon":
   0}}, {"required": {"Level4Boon": 0}}], "total": 5}` is at least 5 of MiscBoon and Level4Boon together (a cane's
   boons). A group counts as one rule of the section, and its index is its position in `setpieces`. A group with `placed`
-  names in any of its rules makes its entry need the generated world: the level table checks every rule with only the
+  names in any of its rules makes the search need the generated world: the level table checks every rule with only the
   minimum of its `placed` names (and only the minimum of `total`), and the world decides the group (a rule holds when
   its bounds hold on the level table and its `placed` names on the world; `total` counts the placed copies of `placed`
   names).
@@ -257,8 +249,8 @@ default `false` ignores wormholes.
 12 directed links (12 in 213 of the 301 real worlds), each a free edge from the entry pillar to the exit one and
 chainable like wormholes. A pillar link never leaves its group. Everything
 else of `wormholes` holds with the pillars as the link ends: both metrics, the witnesses' `pillars` jump lists, and the
-default `false`, which ignores the links. A caves entry that says `wormholes` is a config error (the key is unknown
-there), as is `pillars` in a forest entry.
+default `false`, which ignores the links. A caves rule that says `wormholes` is a config error (the key is unknown
+there), as is `pillars` in a forest rule.
 
 **The start of the caves.** The forest's rules start from the `multiplayer_portal`. A player gets into the caves down
 one of the 10 `cave_exit`s (the stairs, each paired with a forest cave entrance), so the caves' rules start from
@@ -279,8 +271,8 @@ The finder rejects a config over any cap with a config error.
 
 | What | Cap |
 |---|---|
-| `criteria` entries (alternatives) | 25 |
-| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per entry, and per `setpieces` group (min 1) | 16 |
+| `filters` (alternatives) | 25 |
+| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per filter, and per `setpieces` group (min 1) | 16 |
 | prefab ids per prefab set (`prefab`, `from`, `to`, `near.prefab`, each `visit` stop) | 16 |
 | set piece names per `setpieces[].required` (and per rule of a group) | 16 |
 | task ids per task list (`tasks.required`, `tasks.excluded`, `setpieces[].tasks`) | 25 |
@@ -293,7 +285,7 @@ A list is counted as written, before duplicates are removed.
 
 A config error exits with status 2 and prints one line on stderr: `config: <message>`. With `--json`, it prints
 `{"error": "config: <message>"}` on stdout instead. `<path>` is a JS-style path from the root, e.g.
-`criteria[0].routes[1].visit[2]` or `criteria[0].setpieces[0].required["Sleeping Spider"]`; the root itself is `the
+`filters[0].routes[1].visit[2]` or `generation.setpieces[0].required["Sleeping Spider"]`; the root itself is `the
 config`. When several errors exist, which one is reported is unspecified. The UI shows the message as is and must not
 parse it: it validates with the schema and the caps first.
 
@@ -302,9 +294,9 @@ parse it: it validates with the schema and the caps first.
 | file can't be read | `cannot read <file>: <reason>` |
 | not JSON (also `NaN`, `Infinity`) | `malformed JSON: <detail>` |
 | wrong type (also `null`) | `<path> must be an object` / `must be a list` / `must be a string` / `must be true or false` |
-| unknown key (e.g. the removed `through`) | `unknown key "<key>" in <path>` |
+| unknown key (e.g. the removed `through`, or v1's `criteria`) | `unknown key "<key>" in <path>` |
 | repeated key | `duplicate key "<key>" in <path>` |
-| `version` not 1 | `unsupported version <value>` |
+| `version` not 2 | `unsupported version <value>` |
 | `platform` not `"windows"` or `"linux"` (any other value, also a non-string) | `unknown platform <value> (windows or linux)`, e.g. `unknown platform "macos" (windows or linux)` |
 | non-default setting | `only default settings are supported (<key>)` |
 | missing required field | `<path>.<key> is required` |
@@ -320,14 +312,13 @@ parse it: it validates with the schema and the caps first.
 | `shard` not `"forest"` or `"caves"` | `unknown shard <value> (forest or caves)`, e.g. `unknown shard "nether" (forest or caves)` |
 | `--shard` not `forest` or `caves` | `--shard must be forest or caves, got "<value>"` (a usage error, exit 2) |
 | unknown set piece | `unknown set piece "<name>" in <path>` |
-| `placed` name not in `required` | `<path> names "<name>", which isn't in required`, e.g. `criteria[0].setpieces[0].placed names "Chessy_1", which isn't in required` |
+| `placed` name not in `required` | `<path> names "<name>", which isn't in required`, e.g. `generation.setpieces[0].placed names "Chessy_1", which isn't in required` |
 | repeated `placed` name | `<path> names "<name>" twice` |
 | unknown tile | `unknown tile "<name>" in <path>` |
 | non-land tile | `tile "<name>" in <path> is not a land tile` |
 | bad prefab swap | `unknown prefab swap "<category>": <value> in <path>` |
 | route stops overlap | `<path>: "<id>" is in both visit[<i>] and visit[<j>]` |
 | stop is an endpoint | `<path>: "<id>" is both a visit stop and the route's from/to` |
-| every entry is passive | `every criteria entry is passive (at least one must not be)` |
 
 Not expressible in the schema, so only the finder catches them: repeated keys, `20.0` for an integer (JSON Schema
 accepts it), overlapping route stops, and `placed` names that aren't keys of `required`.
@@ -354,36 +345,34 @@ stderr carries progress and isn't part of the contract, apart from two lines the
   (prefiltering), worlds generated (generation) and seeds decided (total), per second over the last 30 s and over
   the whole run. A rate below 100 has one decimal.
 - `timings {json}` with `--verbose-timings`, next to the speed line: where the search spent its time, per option
-  (criteria entry, in order). Each option's level table goes over every prefiltered seed on its own and each world
-  rule is checked on a round's worlds at once between two clock reads, so the search is slower with it.
+  (filter, in order). Each world rule is checked on a round's worlds at once between two clock reads, so the search is
+  slower with it.
 
 ```
 timings {"elapsed_ms": E, "seeds": S, "prefilter_ms": P, "generation_ms": G, "hits_ms": H,
-         "options": [{"prefilter_ms": P, "passed": N, "worlds": W, "rules": [{"section": "distances", "index": 0, "ms": M}]}]}
+         "options": [{"worlds": W, "rules": [{"section": "distances", "index": 0, "ms": M}]}]}
 ```
 
-`seeds` is how many seeds the options' level tables went over, `prefilter_ms` (top level) the ms of the search's own
-prefilter, `generation_ms` of generating the worlds (0 in a level-table search) and `hits_ms` of the witnesses and level
-tables of the hits (on the worlds). Per option, `prefilter_ms` and
-`passed` are the ms its level table took over the `seeds` and how many passed it, `worlds` the worlds its rules were
-checked on (those whose level table passes it and that no earlier option matched) and `rules` the ms of each rule, in
-witness order.
+`seeds` is how many seeds the prefilter (the level table of `generation`) went over, `prefilter_ms` its ms,
+`generation_ms` the ms of generating the worlds (0 in a level-table search) and `hits_ms` of the witnesses and level
+tables of the hits (on the worlds). Per option, `worlds` is the worlds its rules were checked on (those that no
+earlier option matched) and `rules` the ms of each rule, in witness order.
 
 **Line mode.** Every hit prints as `<seed> {json}` on stdout, in scan order. Each is printed once it and every
 earlier seed are decided. The last line is `done {json}`:
 
 ```
-<seed> {"entry": <int|null>, "level": {level table}, "results": [witness, ...]}
+<seed> {"entry": <int>, "level": {level table}, "results": [witness, ...]}
 done {"scanned": C, "last_scanned": L, "next_seed": X, "hits": H, "stopped": "limit"|"time"|"end"}
 ```
 
-- `entry`: the index of the first matching criteria entry, or `null` when `criteria` is empty.
+- `entry`: the index of the first filter that holds (`0` when `filters` is empty).
 - `level`: the level table, exactly as `seedfinder world show` prints it:
   `{"prefab_swaps": {"grass": .., "twigs": .., "berries": ..}, "tasks": [{"task", "set_pieces", "random_set_pieces"}, ...]}`.
   Tasks are in chosen order, and pieces in placement order.
-- `results`: one witness per `setpieces` rule or group with `placed` names and per rule of that entry's `counts`, `tiles`,
-  `distances`, `bridges` and `routes`, in that order. So it's `[]` when the entry has only level-table sections.
-  Level-table facts are in `level`.
+- `results`: one witness per `setpieces` rule or group with `placed` names (of `generation`) and per rule of that
+  filter's `counts`, `tiles`, `distances`, `bridges` and `routes`, in that order. So it's `[]` without `placed` names
+  and filter rules. Level-table facts are in `level`.
 - Consumers ignore unknown fields.
 - `scanned`: the first C seeds of the scan order are decided. `last_scanned` is the C-th one (`null` if C = 0), and
   `next_seed` the one after it (`null` once all 2^32 seeds are scanned). With `stopped: "limit"`, `last_scanned` is
@@ -424,10 +413,10 @@ The outputs are for seed 1 on Linux.
 Magic meadow, 2–8 misc boons and no Level4Boon.
 
 ```json
-{"criteria": [{"tasks": {"required": ["Killer bees!"], "excluded": ["Mole Colony Rocks"]},
-               "prefab_swaps": {"twigs": "twiggy trees"},
-               "setpieces": [{"tasks": ["Magic meadow"], "required": {"MooseNest": 1}},
-                             {"required": {"MiscBoon": [2, 8], "Level4Boon": [0, 0]}}]}]}
+{"generation": {"tasks": {"required": ["Killer bees!"], "excluded": ["Mole Colony Rocks"]},
+                "prefab_swaps": {"twigs": "twiggy trees"},
+                "setpieces": [{"tasks": ["Magic meadow"], "required": {"MooseNest": 1}},
+                              {"required": {"MiscBoon": [2, 8], "Level4Boon": [0, 0]}}]}}
 ```
 
 **Caves level table** (`"shard": "caves"`): an extra Broken Altar and the cave jungle without the spider land, twiggy
@@ -436,9 +425,9 @@ hit lists the 33 required and the 8 picked optional tasks:
 
 ```json
 {"shard": "caves",
- "criteria": [{"tasks": {"required": ["MoreAltars", "CaveJungle"], "excluded": ["SpiderLand"]},
-               "prefab_swaps": {"twigs": "twiggy trees"},
-               "setpieces": [{"required": {"MiscBoon": [1, 3], "Ice Hounds": 1}}]}]}
+ "generation": {"tasks": {"required": ["MoreAltars", "CaveJungle"], "excluded": ["SpiderLand"]},
+                "prefab_swaps": {"twigs": "twiggy trees"},
+                "setpieces": [{"required": {"MiscBoon": [1, 3], "Ice Hounds": 1}}]}}
 ```
 
 **Pig King close to spawn, walking** (a `distances` rule). "Within 150 tiles" is written as 600 units:
@@ -480,7 +469,7 @@ On cave seed 1 the shortest way is 387.113 units, through the two Atrium pillars
 long" is a `bridges` rule with a `min` of 1000 units:
 
 ```json
-{"shard": "caves", "platform": "windows", "criteria": [{"bridges": [{"min": 1000}]}]}
+{"shard": "caves", "platform": "windows", "filters": [{"bridges": [{"min": 1000}]}]}
 ```
 
 Cave seed 3232625793 matches: the vents background room `BG_89` was left in the far corner, 1241.781 units (310 tiles)
@@ -499,7 +488,7 @@ from the vents room it links to, and its turf runs back to it. Its witness:
 {"prefab": ["rook", "knight", "bishop"], "min": 6}
 ```
 
-**Round trip** (entry 0 matches seed 1). The hit and done lines of a search over seed 1 alone (trimmed):
+**Round trip** (filter 0 matches seed 1). The hit and done lines of a search over seed 1 alone (trimmed):
 
 ```
 1 {"entry":0,"level":{...},"results":[{"section":"routes","index":0,"ok":true,"length":1583.73,
@@ -511,12 +500,21 @@ from the vents room it links to, and its turf runs back to it. Its witness:
 done {"scanned": 1, "last_scanned": 1, "next_seed": null, "hits": 1, "stopped": "end"}
 ```
 
-**Two alternatives**: entry 0 needs Killer bees, a Chessy_1, 20 beefalo, the Pig King within 500
-walking units, grass next to birchnut, and a short round trip. Entry 1 needs juicy berries and all 3 sculptures
-within 600 units of spawn. A seed matches either.
+**Two alternatives**: `generation` needs 5 misc boons and Level4Boons together (a cane's boons). Filter 0 needs the
+Pig King within 500 walking units and grass next to birchnut, filter 1 a sculpture within 600 units of spawn.
+A seed with the boons matches when either holds on its world, and only the worlds of seeds with the boons are
+generated:
+
+```json
+{"generation": {"setpieces": [{"any": [{"required": {"MiscBoon": 0}}, {"required": {"Level4Boon": 0}}], "total": 5}]},
+ "filters": [{"distances": [{"from": "multiplayer_portal", "to": "pigking", "max": 500, "metric": "walk"}],
+              "counts": [{"prefab": "grass", "min": 1, "near": {"prefab": "deciduoustree", "within": 8}}]},
+             {"distances": [{"from": "multiplayer_portal", "to": ["sculpture_rook", "sculpture_knight", "sculpture_bishop"],
+                             "max": 600}]}]}
+```
 
 **Invalid**: e.g. `"prefab": "clockwork"` gives
-`config: unknown prefab "clockwork" in criteria[0].counts[0].prefab (a catalog group name: list its prefab ids)`,
-`"through": "land"` gives `config: unknown key "through" in criteria[0].tiles[0]`, 7 stops give
-`config: criteria[0].routes[0].visit has 7 stops (at most 6)`, `"platform": "Windows"` gives
+`config: unknown prefab "clockwork" in filters[0].counts[0].prefab (a catalog group name: list its prefab ids)`,
+`"through": "land"` gives `config: unknown key "through" in filters[0].tiles[0]`, 7 stops give
+`config: filters[0].routes[0].visit has 7 stops (at most 6)`, `"platform": "Windows"` gives
 `config: unknown platform "Windows" (windows or linux)`.

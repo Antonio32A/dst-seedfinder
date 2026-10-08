@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import type { Criterion, SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import type { Filter, SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { describeWitness } from "@/lib/jobs/witness-text";
 import { type EvalLoad, evaluateWorld } from "@/lib/world-map/search/evaluate-world";
 import type { MapCanvas } from "@/lib/world-map/canvas/map-canvas";
@@ -19,15 +19,15 @@ interface WitnessPanelProps {
 
 interface WitnessChecksProps {
     evaluation: WorldEval;
-    criterion: Criterion | undefined;
+    filter: Filter | undefined;
     world: GeneratedWorld;
     map: MapCanvas | null;
 }
 
-function WitnessChecks({ evaluation, criterion, world, map }: WitnessChecksProps) {
+function WitnessChecks({ evaluation, filter, world, map }: WitnessChecksProps) {
     const titleId = useId();
     const { matched, entry, entries, witnesses } = evaluation;
-    const shapes = useMemo(() => witnessShapes(witnesses, criterion, world), [witnesses, criterion, world]);
+    const shapes = useMemo(() => witnessShapes(witnesses, filter, world), [witnesses, filter, world]);
 
     useEffect(() => {
         map?.witnesses(shapes);
@@ -84,7 +84,7 @@ export default function WitnessPanel({ shared, world, bytes, map }: WitnessPanel
                         <p className="notice notice--error" role="alert">{error}</p>
                 ) : load.status === "ready" ? (
                         <WitnessChecks evaluation={load.evaluation}
-                                       criterion={config?.criteria?.[load.evaluation.entry]}
+                                       filter={config?.filters?.[load.evaluation.entry]}
                                        world={world} map={map}/>
                 ) : (
                         <p className="hint" role="status">Checking the search on this world...</p>

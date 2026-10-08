@@ -25,8 +25,8 @@ import ../filters/rules.bend as Rules
 # - takes the answers of every pass that finished (a marker sent after them ends the take, so no round waits for a
 #   pass), hands them back to their slots, harvests the decided seeds, refills the part-A scan and gives the free slots
 #   the next candidates in scan order.
-# A seed is decided on its world as `world find --worlds` does (the first entry whose part A and parts B-E hold; a
-# seed without a world never matches), and decided seeds are released in scan order, so the hits are those of a
+# A seed is decided on its world as `world find --worlds` does (the first filter whose parts B-E hold; a seed without
+# a world never matches), and decided seeds are released in scan order, so the hits are those of a
 # sequential scan whatever the slot or thread count.
 
 # A slot: free, a seed with a CPU stage to run, waiting for its KK pass, with its pass's answer back, one of the
@@ -243,7 +243,7 @@ def elapsed(+ctx: Ctx, +now: Nat) -> Nat:
 def criteria_of(+ctx: Ctx) -> ShardSearch.Levels:
   match ctx:
     case Ctx{_, _, _, _, _, +config, _, _, _, _, _}:
-      ShardSearch.scanned(config)
+      ShardSearch.level(config)
 
 def slots_of(+ctx: Ctx) -> U32:
   match ctx:
@@ -712,21 +712,16 @@ def refilled_now(timed: Bool, +sc: Scan, +criteria: ShardSearch.Levels, +wanted:
     case False{}:
       refill(sc, criteria, wanted)
 
-def chunk_seeds(+sc: Scan) -> U32 & Nat:
+def chunk_seeds(+sc: Scan) -> Nat:
   match sc:
-    case Scan{+next, +left, +size, _}:
-      (next, lesser(size, left))
+    case Scan{_, +left, +size, _}:
+      lesser(size, left)
 
 # The scan and timings after a --verbose-timings refill.
 type Refilled is Data:
   Refilled{scan: Scan, timings: Timings.Timings}
 
-def counted_chunk(+t: Timings.Timings, +entries: List<&2, ShardSearch.Levels>, chunk: U32 & Nat) -> IO(Timings.Timings):
-  (+lo, +len) = chunk
-  Timings.prefiltered(t, entries, lo, len)
-
-# refill with --verbose-timings: each chunk first goes through every option's level table on its own, then through the
-# scan's own, timed.
+# refill with --verbose-timings: each chunk's scan timed.
 def timed_refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +ctx: Ctx, +t: Timings.Timings) -> IO(Refilled):
   match n:
     case 0n:
@@ -739,11 +734,10 @@ def timed_refilled(n: Nat, go: Bool, +sc: Scan, +budget: Nat, +ctx: Ctx, +t: Tim
           +wanted = U32.to_nat(slots_of(ctx))
           +rest = Nat.sub(budget, chunk_of(sc))
           do IO<Refilled>:
-            +counted : Timings.Timings <- counted_chunk(t, ShardSearch.each_entry(ShardSearch.entries(config_of(ctx))), chunk_seeds(sc))
             +t0 : Nat <- IO.now()
             +next : Scan = scanned_chunk(sc, criteria_of(ctx), wanted)
             +t1 : Nat <- IO.now()
-            timed_refilled(p, short(next, rest, wanted), next, rest, ctx, Timings.with_prefilter(counted, Nat.sub(t1, t0)))
+            timed_refilled(p, short(next, rest, wanted), next, rest, ctx, Timings.with_prefilter(t, chunk_seeds(sc), Nat.sub(t1, t0)))
 
 def covered(+sc: Scan, +ctx: Ctx) -> Nat:
   match sc ctx:
@@ -1024,7 +1018,7 @@ def split(xs: List<&1, Slot>, +config: ShardSearch.Search, acc: List<&1, Slot>, 
     case Con{x, rest}:
       match x:
         case Built{+seed, +world}:
-          split(rest, config, Unjudged{seed} <> acc, Timings.Open{world, ShardSearch.entry_flags(ShardSearch.entries(config), seed), None{}} <> opens, seed <> seeds)
+          split(rest, config, Unjudged{seed} <> acc, Timings.Open{world, None{}} <> opens, seed <> seeds)
         case other:
           split(rest, config, other <> acc, opens, seeds)
 

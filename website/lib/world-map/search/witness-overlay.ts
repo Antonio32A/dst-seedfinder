@@ -1,4 +1,4 @@
-import { type Criterion, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
+import { type Filter, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
 import type { Witness, WitnessInstance, WormholeJump } from "@/lib/jobs/job-result";
 import type { WorldPoint } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
@@ -107,11 +107,11 @@ export function witnessShape(witness: Witness): WitnessShape {
 /** A count without `near` lists no instances, so its marks are the world's instances of its rule's prefabs. */
 export function witnessShapes(
     witnesses: Witness[],
-    criterion: Criterion | undefined,
+    filter: Filter | undefined,
     world: Pick<GeneratedWorld, "prefabs">
 ): WitnessShape[] {
     return witnesses.map((witness) => {
-        const rule = criterion?.counts?.[witness.index];
+        const rule = filter?.counts?.[witness.index];
         const plain = witness.section === "counts" && witness.total === undefined;
         if (!plain || rule === undefined) return witnessShape(witness);
         const names = new Set([rule.prefab].flat());

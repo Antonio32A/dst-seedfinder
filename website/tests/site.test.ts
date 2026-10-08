@@ -74,7 +74,7 @@ describe("every response carries the security headers", () => {
     });
 
     it("on a world map with a search, which serves the app", async () => {
-        const response = await api(`/map/linux/1?c=${encodeShareParam({ version: 1, platform: "windows" })}`);
+        const response = await api(`/map/linux/1?c=${encodeShareParam({ version: 2, platform: "windows" })}`);
         expect(response.status).toBe(200);
         expect(await response.text()).toContain("DST Seedfinder");
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);

@@ -62,12 +62,12 @@ def round_len(+stop: U32, +size: Nat, +left: Nat) -> Nat:
   +whole = Nat.is_le(left, Nat.add(size, Nat.div(size, 2n)))
   Bool.pick(Nat, U32.is_zero(stop), Bool.pick(Nat, whole, left, size), 0n)
 
-def report(+q: Args.Query, +entries: List<&2, Config.Criteria>, +scan: Scan) -> IO(Unit):
+def report(+q: Args.Query, +scan: Scan) -> IO(Unit):
   match q:
     case Args.Query{+start, +total, _, _, json, _, +platform, _, _, _}:
       match scan:
         case Scan{_, +left, _, +found, +hits, +code, _}:
-          SearchReport.print_report(json, U32.is_ne(platform, 2), entries, hits, start, SearchReport.scanned_of(code, hits, start, total, left), found, code)
+          SearchReport.print_report(json, U32.is_ne(platform, 2), hits, start, SearchReport.scanned_of(code, hits, start, total, left), found, code)
 
 def advance(
   +scan: Scan, +count: U32, got: List<&2, U32>, +limit: U32, +time_ms: Nat, +elapsed: Nat, +round_ms: Nat
@@ -119,38 +119,37 @@ def round_of(found: U32 & List<&2, U32>, +t: Timings.Timings) -> Round:
   (+count, +hits) = found
   Round{count, hits, t}
 
-def prefiltered_by(+r: Round, +ms: Nat) -> Round:
+def prefiltered_by(+r: Round, +len: Nat, +ms: Nat) -> Round:
   match r:
     case Round{+count, +hits, +t}:
-      Round{count, hits, Timings.with_prefilter(t, ms)}
+      Round{count, hits, Timings.with_prefilter(t, len, ms)}
 
 def round_timings(+r: Round) -> Timings.Timings:
   match r:
     case Round{_, _, +t}:
       t
 
-# The next round's scan; with --verbose-timings each option's level table first goes over its seeds on its own.
+# The next round's scan, timed with --verbose-timings.
 def next_round(
-  timings: Bool, +t: Timings.Timings, +entries: List<&2, ShardSearch.Levels>, +from: U32, +len: Nat, +criteria: List<&2, Config.Criteria>, +room: U32
+  timings: Bool, +t: Timings.Timings, +from: U32, +len: Nat, +criteria: List<&2, Config.Criteria>, +room: U32
 ) -> IO(Round):
   match timings:
     case False{}:
       IO.pure(Round, round_of(world_search(SearchCommon.search_depth(), from, len, criteria, room), t))
     case True{}:
       do IO<Round>:
-        +counted : Timings.Timings <- Timings.prefiltered(t, entries, from, len)
         +t0 : Nat <- IO.now()
-        +r : Round = round_of(world_search(SearchCommon.search_depth(), from, len, criteria, room), counted)
+        +r : Round = round_of(world_search(SearchCommon.search_depth(), from, len, criteria, room), t)
         +t1 : Nat <- IO.now()
-        return prefiltered_by(r, Nat.sub(t1, t0))
+        return prefiltered_by(r, len, Nat.sub(t1, t0))
 
 def world_rounds(
-  k: Nat, +round: Round, +scan: Scan, +q: Args.Query, +entries: List<&2, Config.Criteria>,
-  +criteria: List<&2, Config.Criteria>, +started: Nat, +ticked: Nat, +points: List<&2, Speed.Point>
+  k: Nat, +round: Round, +scan: Scan, +q: Args.Query, +criteria: List<&2, Config.Criteria>, +started: Nat,
+  +ticked: Nat, +points: List<&2, Speed.Point>
 ) -> IO(Unit):
   match k:
     case 0n:
-      report(q, entries, scan)
+      report(q, scan)
     case 1n+p:
       match round scan:
         case Round{+count, +got, +t} Scan{_, _, _, _, _, +code, _}:
@@ -165,18 +164,18 @@ def world_rounds(
                     IO.print_err(progress_of(after, total, Nat.sub(now, started)))
                     IO.print_err(Speed.line(ticks))
                     Timings.print_if(timings, t, Nat.sub(now, started))
-                    +next : Round <- next_round(timings, t, ShardSearch.each_entry(ShardSearch.ForestLevels{entries}), next_seed_of(after), round_len_of(after), criteria, room_of(after, limit))
-                    world_rounds(p, next, after, q, entries, criteria, started, now, ticks)
+                    +next : Round <- next_round(timings, t, next_seed_of(after), round_len_of(after), criteria, room_of(after, limit))
+                    world_rounds(p, next, after, q, criteria, started, now, ticks)
             case _:
-              report(q, entries, scan)
+              report(q, scan)
 
 def level_rounds(+q: Args.Query, +config: Config.Config) -> IO(Unit):
   match q config:
-    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _, +timings} Config.Config{+windows, +entries, +laters, _, +scanned}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _, +timings} Config.Config{+windows, +level, +laters, _}:
       do IO<Unit>:
         +started : Nat <- IO.now()
         world_rounds(round_fuel(), Round{0, Nil{}, Timings.started(laters)}, Scan{start, total, min_round(), 0, Nil{}, 0, 0n},
-          Args.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}, timings}, entries, scanned, started, started, Speed.started())
+          Args.Query{start, total, limit, time_ms, json, None{}, Bool.pick(U32, windows, 1, 2), None{}, True{}, timings}, [level], started, started, Speed.started())
 
 def any_rules(laters: List<&2, Rules.Later>) -> Bool:
   match laters:
@@ -187,15 +186,15 @@ def any_rules(laters: List<&2, Rules.Later>) -> Bool:
 
 def with_worlds(worlds: Maybe<&2, String>, +q: Args.Query, +config: Config.Config) -> IO(Unit):
   match worlds config:
-    case None{} Config.Config{_, _, +laters, _, _}:
+    case None{} Config.Config{_, _, +laters, _}:
       Bool.pick(IO(Unit), any_rules(laters), SearchGenerated.run(q, ShardSearch.of_forest(config)), level_rounds(q, config))
-    case Some{+dir} Config.Config{_, _, +laters, _, _}:
+    case Some{+dir} Config.Config{_, _, +laters, _}:
       Bool.pick(IO(Unit), any_rules(laters), SearchWorlds.run(q, ShardSearch.of_forest(config), dir), level_rounds(q, config))
 
 def with_platform(+config: Config.Config, +platform: U32) -> Config.Config:
   match config:
-    case Config.Config{+windows, +criteria, +laters, +unsupported, +scanned}:
-      Config.Config{Bool.pick(Bool, U32.is_zero(platform), windows, U32.is_eq(platform, 1)), criteria, laters, unsupported, scanned}
+    case Config.Config{+windows, +level, +laters, +unsupported}:
+      Config.Config{Bool.pick(Bool, U32.is_zero(platform), windows, U32.is_eq(platform, 1)), level, laters, unsupported}
 
 # world find: the level-table scan, or (with parts B-E) the search over worlds generated in memory, or with
 # --worlds DIR over pre-generated world dumps. --platform overrides the config's platform.

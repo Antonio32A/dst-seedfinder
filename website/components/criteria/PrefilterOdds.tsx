@@ -14,7 +14,7 @@ export default function PrefilterOdds() {
                     <button type="button" disabled={!supported || running || latest !== null}
                             title={supported ? undefined : UNSUPPORTED}
                             onClick={calculate}>
-                        {running && latest === null ? `Calculating... ${Math.round(progress * 100)}%` : "Calculate prefilter odds"}
+                        {running && latest === null ? `Calculating... ${Math.round(progress * 100)}%` : "Estimate Seeds"}
                     </button>
                     {latest !== null && (
                             <p className="prefilter__total" aria-live="polite">

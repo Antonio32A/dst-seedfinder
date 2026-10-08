@@ -4,13 +4,13 @@ import { useState } from "react";
 import HelpTip from "@/components/ui/HelpTip";
 import type { LevelCatalog } from "@/lib/catalog/level-catalog";
 import { MAX_RULES_PER_SECTION } from "@/lib/config/seedfinder-config";
-import { type CriteriaGroup, newPieceGroup, newRule } from "@/lib/criteria/search-state";
+import { type GenerationPicks, newPieceGroup, newRule } from "@/lib/criteria/search-state";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import SetPieceGroupCard, { GROUP_HINT } from "./SetPieceGroupCard";
 import SetPiecePicker from "./SetPiecePicker";
 import SetPieceRuleRow from "./SetPieceRuleRow";
 
-type SetPieces = Pick<CriteriaGroup, "rules" | "pieceGroups">;
+type SetPieces = Pick<GenerationPicks, "rules" | "pieceGroups">;
 
 const SECTION = "section";
 

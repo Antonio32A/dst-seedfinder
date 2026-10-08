@@ -9,11 +9,11 @@ import ./parse.bend as Parse
 import ./rules.bend as Rules
 import ./level_checks.bend as LevelChecks
 
-# A world filter (README.md "world find"): criteria are alternatives, a seed matches when one holds.
+# The level-table part of a world filter (README.md "world find"): a seed is a candidate when its criteria hold.
 # Task sets are masks over data/world_catalog.bend task ids; a rule bounds how many times a set piece
 # (world_catalog piece id) is planned in the rule's tasks (only its minimum for a `placed` name, whose bound the world
-# decides). Every rule of an entry must hold, and each of its setpieces groups needs one of its rules' lists to hold
-# and the sum of all its rules' counts within its total (only its minimum when the group has `placed` names).
+# decides). Every rule must hold, and each setpieces group needs one of its rules' lists to hold and the sum of all
+# its rules' counts within its total (only its minimum when the group has `placed` names).
 type Rule is Data:
   Rule{piece: U32, tasks: U32, low: U32, high: U32}
 
@@ -23,12 +23,12 @@ type Group is Data:
 type Criteria is Data:
   Criteria{required: U32, excluded: U32, swap_care: U32, swap_want: U32, rules: List<&2, Rule>, groups: List<&2, Group>}
 
-# A compiled config: the platform the worlds are generated on (windows unless "linux"), the part A criteria of the
-# entries, their parts B-E (in the same order), the first "not supported by this binary yet" message when an entry
-# has a counts, distances, tiles, bridges or routes key, and the part A criteria that make a seed a candidate (those of the
-# entries that are not passive; anything when there are no entries).
+# A compiled config: the platform the worlds are generated on (windows unless "linux"), the part A criteria of
+# `generation` (they make a seed a candidate), the parts B-E of each `filters` entry with the world rules of the
+# generation's `placed` names (one entry with only those when there are no filters), and the first "not supported by
+# this binary yet" message when the config has world rules.
 type Config is Data:
-  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, Rules.Later>, unsupported: Maybe<&2, String>, scanned: List<&2, Criteria>}
+  Config{windows: Bool, level: Criteria, filters: List<&2, Rules.Later>, unsupported: Maybe<&2, String>}
 
 def every_task() -> U32:
   33554431
@@ -39,18 +39,10 @@ def unbounded() -> U32:
 def anything() -> Criteria:
   Criteria{0, 0, 0, 0, Nil{}, Nil{}}
 
-# The search criteria of a config: an empty criteria list matches every seed.
-def or_anything(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
-  match criteria:
-    case Nil{}:
-      [anything()]
-    case _:
-      criteria
-
 def is_member(names: List<&2, String>, +name: String) -> Bool:
   Parse.is_member(names, name)
 
-# The parts B-E of an entry without counts, distances, tiles, bridges or routes rules.
+# The parts B-E of a filter without world rules.
 def no_later() -> Rules.Later:
   Rules.nothing_later()
 
@@ -330,51 +322,84 @@ def placed_rules(items: List<&2, Json.Json>, +index: U32) -> List<&2, Rules.Plac
 def later_parts() -> List<&2, String>:
   ["counts", "distances", "tiles", "bridges", "routes"]
 
-def first_later(+fields: List<&2, Json.Json>, sections: List<&2, String>, +placed: List<&2, Rules.Placed>, +path: String) -> Maybe<&2, String>:
+def placed_message(+placed: List<&2, Rules.Placed>) -> Maybe<&2, String>:
+  match placed:
+    case Nil{}:
+      None{}
+    case Con{Rules.Placed{+index, _, _}, _}:
+      Some{"config: " ++ Parse.indexed("generation.setpieces", index) ++ ".placed is not supported by this binary yet (it needs the generated world)"}
+    case Con{Rules.AnyPlaced{+index, _, _}, _}:
+      Some{"config: " ++ Parse.indexed("generation.setpieces", index) ++ ".any has placed names, which this binary doesn't support yet (they need the generated world)"}
+
+def section_message(+fields: List<&2, Json.Json>, sections: List<&2, String>, +path: String) -> Maybe<&2, String>:
   match sections:
     case Nil{}:
-      match placed:
-        case Nil{}:
-          None{}
-        case Con{Rules.Placed{+index, _, _}, _}:
-          Some{"config: " ++ Parse.indexed(path ++ ".setpieces", index) ++ ".placed is not supported by this binary yet (it needs the generated world)"}
-        case Con{Rules.AnyPlaced{+index, _, _}, _}:
-          Some{"config: " ++ Parse.indexed(path ++ ".setpieces", index) ++ ".any has placed names, which this binary doesn't support yet (they need the generated world)"}
+      None{}
     case Con{+section, rest}:
       Bool.pick(Maybe<&2, String>, Maybe.is_some(&2, Json.Json, Parse.field(fields, section)),
-        Some{"config: " ++ path ++ "." ++ section ++ " is not supported by this binary yet (only tasks, prefab_swaps and setpieces are)"},
-        first_later(fields, rest, placed, path))
+        Some{"config: " ++ path ++ "." ++ section ++ " is not supported by this binary yet (only generation is)"},
+        section_message(fields, rest, path))
 
-# One parsed criteria entry: its part A, its world rules, the message for a finder without worlds when it has a
-# counts, distances, tiles, bridges or routes key or `placed` names, and whether it is passive (only decided on
-# candidates of other entries).
-type Entry is Data:
-  Entry{level: Criteria, later: Rules.Later, unsupported: Maybe<&2, String>, passive: Bool}
+def first_message(first: Maybe<&2, String>, other: Maybe<&2, String>) -> Maybe<&2, String>:
+  match first:
+    case None{}:
+      other
+    case Some{+message}:
+      Some{message}
 
-def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
-  do Result<&1, &1, U32 & String, Entry>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "bridges", "routes"], path)
-    +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
-    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
-    +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
-    rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
-    groups : List<&2, Group> <- groups_of(listed, 0, path ++ ".setpieces")
-    +placed : List<&2, Rules.Placed> = placed_rules(listed, 0)
-    later : Rules.Later <- Rules.later_of(fields, path, False{}, placed)
-    +required : U32 <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
-    +excluded : U32 <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
-    +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}, later, first_later(fields, later_parts(), placed, path), passive}
+def filters_message(items: List<&2, Json.Json>, +index: U32) -> Maybe<&2, String>:
+  match items:
+    case Nil{}:
+      None{}
+    case Con{Json.JObj{+fields}, rest}:
+      first_message(section_message(fields, later_parts(), Parse.indexed("filters", index)), filters_message(rest, (index + 1 : U32)))
+    case Con{_, rest}:
+      filters_message(rest, (index + 1 : U32))
 
-def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
+# The parsed `generation`: its part A and the world rules of its `placed` names.
+type Generation is Data:
+  Generation{level: Criteria, placed: List<&2, Rules.Placed>}
+
+def generation_of(json: Json.Json) -> Result<&1, &1, U32 & String, Generation>:
+  do Result<&1, &1, U32 & String, Generation>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["tasks", "prefab_swaps", "setpieces"], "generation")
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), "generation.setpieces")
+    +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", "generation.setpieces")
+    rules : List<&2, Rule> <- rules_of(listed, 0, "generation.setpieces", Nil{})
+    groups : List<&2, Group> <- groups_of(listed, 0, "generation.setpieces")
+    +required : U32 <- task_rule("required", Parse.field(fields, "tasks"), "generation.tasks")
+    +excluded : U32 <- task_rule("excluded", Parse.field(fields, "tasks"), "generation.tasks")
+    +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), "generation.prefab_swaps")
+    return Generation{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}, placed_rules(listed, 0)}
+
+def filter_of(json: Json.Json, +placed: List<&2, Rules.Placed>, +path: String) -> Result<&1, &1, U32 & String, Rules.Later>:
+  do Result<&1, &1, U32 & String, Rules.Later>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, later_parts(), path)
+    Rules.later_of(fields, path, False{}, placed)
+
+def filter_list(items: List<&2, Json.Json>, +placed: List<&2, Rules.Placed>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
-      do Result<&1, &1, U32 & String, List<&2, Entry>>:
-        head : Entry <- entry_of(item, Parse.indexed("criteria", index))
-        tail : List<&2, Entry> <- entry_list(rest, (index + 1 : U32))
+      do Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
+        head : Rules.Later <- filter_of(item, placed, Parse.indexed("filters", index))
+        tail : List<&2, Rules.Later> <- filter_list(rest, placed, (index + 1 : U32))
         return head <> tail
+
+def or_unfiltered(filters: List<&2, Rules.Later>, +placed: List<&2, Rules.Placed>) -> List<&2, Rules.Later>:
+  match filters:
+    case Nil{}:
+      [Rules.Later{placed, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}]
+    case _:
+      filters
+
+def config_from(+windows: Bool, generation: Generation, +listed: List<&2, Json.Json>) -> Result<&1, &1, U32 & String, Config>:
+  match generation:
+    case Generation{level, +placed}:
+      do Result<&1, &1, U32 & String, Config>:
+        filters : List<&2, Rules.Later> <- filter_list(listed, placed, 0)
+        return Config{windows, level, or_unfiltered(filters, placed), first_message(filters_message(listed, 0), placed_message(placed))}
 
 def is_default(json: Json.Json) -> Bool:
   match json:
@@ -400,10 +425,10 @@ def default_settings(entries: List<&2, Json.Json>) -> Result<&1, &1, U32 & Strin
         ok : Unit <- default_setting(entry)
         default_settings(rest)
 
-def is_one(json: Json.Json) -> Bool:
+def is_current(json: Json.Json) -> Bool:
   match json:
     case Json.JNum{n}:
-      U32.is_eq(n, 1)
+      U32.is_eq(n, 2)
     case _:
       False{}
 
@@ -412,7 +437,7 @@ def supported_version(m: Maybe<&2, Json.Json>) -> Result<&1, &1, U32 & String, U
     case None{}:
       Done{Unit{}}
     case Some{+json}:
-      Bool.pick(Result<&1, &1, U32 & String, Unit>, is_one(json), Done{Unit{}}, Fail{Parse.failure("unsupported version " ++ Json.dump(json))})
+      Bool.pick(Result<&1, &1, U32 & String, Unit>, is_current(json), Done{Unit{}}, Fail{Parse.failure("unsupported version " ++ Json.dump(json))})
 
 def platform_of(m: Maybe<&2, Json.Json>) -> Result<&1, &1, U32 & String, Bool>:
   match m:
@@ -457,69 +482,29 @@ def parsed_shard(r: Result<&1, &1, U32 & String, Json.Json>) -> U32:
 def shard_named(+text: String) -> U32:
   parsed_shard(Json.parse(text))
 
-def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
-  match entries:
-    case Nil{}:
-      Nil{}
-    case Con{Entry{level, _, _, _}, rest}:
-      level <> levels_of(rest)
-
-def laters_of(entries: List<&2, Entry>) -> List<&2, Rules.Later>:
-  match entries:
-    case Nil{}:
-      Nil{}
-    case Con{Entry{_, later, _, _}, rest}:
-      later <> laters_of(rest)
-
-def unsupported_of(entries: List<&2, Entry>) -> Maybe<&2, String>:
-  match entries:
-    case Nil{}:
-      None{}
-    case Con{Entry{_, _, Some{message}, _}, _}:
-      Some{message}
-    case Con{_, rest}:
-      unsupported_of(rest)
-
-def active_levels(entries: List<&2, Entry>) -> List<&2, Criteria>:
-  match entries:
-    case Nil{}:
-      Nil{}
-    case Con{Entry{level, _, _, False{}}, rest}:
-      level <> active_levels(rest)
-    case Con{_, rest}:
-      active_levels(rest)
-
-def some_active(+entries: List<&2, Entry>) -> Result<&1, &1, U32 & String, Unit>:
-  Bool.pick(Result<&1, &1, U32 & String, Unit>, List.is_empty(&2, Entry, entries) || Bool.not(List.is_empty(&2, Criteria, active_levels(entries))), Done{Unit{}},
-    Fail{Parse.failure("every criteria entry is passive (at least one must not be)")})
-
-def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
-  Config{windows, levels_of(entries), laters_of(entries), unsupported_of(entries), or_anything(active_levels(entries))}
-
-# Compiles the JSON text of a search config (docs/config.md) into its platform, the part A criteria and
-# parts B-E of every entry.
+# Compiles the JSON text of a search config (docs/config.md) into its platform, the part A criteria of `generation`
+# and the parts B-E of every filter.
 def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
   do Result<&1, &1, U32 & String, Config>:
     json : Json.Json <- Json.parse(text)
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "criteria", "shard"], "the config")
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "generation", "filters", "shard"], "the config")
     +windows : Bool <- platform_of(Parse.field(fields, "platform"))
     supported : Unit <- supported_version(Parse.field(fields, "version"))
     shard : U32 <- shard_of(Parse.field(fields, "shard"))
     settings : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "settings"), "settings")
     defaults : Unit <- default_settings(settings)
-    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "criteria"), "criteria")
-    listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "criteria")
-    +entries : List<&2, Entry> <- entry_list(listed, 0)
-    active : Unit <- some_active(entries)
-    return config_from(windows, entries)
+    generation : Generation <- generation_of(Maybe.default(&2, Json.Json, Parse.field(fields, "generation"), Json.JObj{Nil{}}))
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "filters"), "filters")
+    +listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "filters")
+    config_from(windows, generation, listed)
 
-# A config for a finder that only knows part A: the message when some entry has a counts/distances/tiles/bridges/routes key
-# or `placed` names.
+# A config for a finder that only knows part A: the message when a filter has a counts/distances/tiles/bridges/routes
+# key or `generation` has `placed` names.
 def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
   match config:
-    case Config{_, _, _, None{}, _}:
+    case Config{_, _, _, None{}}:
       Done{config}
-    case Config{_, _, _, Some{+message}, _}:
+    case Config{_, _, _, Some{+message}}:
       Fail{(2, message)}
 
 def tasks_hold(+c: Criteria, +chosen: U32, +swaps: U32) -> Bool:
@@ -775,14 +760,6 @@ def prefix_stage(+criteria: List<&2, Criteria>, p: LevelPrefix.Prefix) -> Bool:
 # Stages bail out early: tasks and prefab swaps, then AddSetPeices counts, then ChooseSetPieces.
 def matches(+criteria: List<&2, Criteria>, +seed: U32) -> Bool:
   prefix_stage(criteria, LevelPrefix.prefix(seed))
-
-# Index of the first criteria entry that holds for the seed (the number of entries when none does).
-def first_match(criteria: List<&2, Criteria>, +seed: U32) -> U32:
-  match criteria:
-    case Nil{}:
-      0
-    case Con{+c, rest}:
-      Bool.pick(U32, matches([c], seed), 0, (1 + first_match(rest, seed) : U32))
 
 def local_rules(rules: List<&2, Rule>) -> List<&2, Rule>:
   match rules:

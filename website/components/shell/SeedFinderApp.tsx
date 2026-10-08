@@ -24,12 +24,11 @@ import {
     decodeShareParam,
     DEFAULT_WANTED,
     defaultState,
+    droppedNotice,
     fromSeedfinderConfig,
-    hasCustomSettings,
-    isEmptyGroup,
+    isEmptySearch,
     type Preset,
     type SearchState,
-    SETTINGS_DROPPED_NOTICE,
     STORAGE_KEY,
     switchShard,
     toSeedfinderConfig,
@@ -107,7 +106,8 @@ export default function SeedFinderApp() {
         const stored = readStored();
         const initial = (shared ? decodeShareParam(shared) : null) ?? stored?.config;
         if (initial) setState(fromSeedfinderConfig(initial)); // eslint-disable-line react-hooks/set-state-in-effect
-        if (hasCustomSettings(initial)) notify(`Search loaded. ${SETTINGS_DROPPED_NOTICE}`);
+        const dropped = droppedNotice(initial);
+        if (dropped) notify(`Search loaded. ${dropped}`);
         const logicalCores = Math.max(1, navigator.hardwareConcurrency || 1);
         const supported = canRunSeedfinder();
         setCores(logicalCores);
@@ -142,7 +142,7 @@ export default function SeedFinderApp() {
     };
 
     const pickPreset = (preset: Preset) => {
-        if (state.groups.every(isEmptyGroup)) setState({ ...preset.build(), platform: state.platform });
+        if (isEmptySearch(state)) setState({ ...preset.build(), platform: state.platform });
         else setPendingPreset(preset);
     };
 

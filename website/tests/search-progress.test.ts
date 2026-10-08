@@ -5,8 +5,8 @@ import { parseSpeedLine, SpeedMeter } from "../lib/jobs/search-speed";
 import { inRealTime, parseTimingsLine, sumTimings } from "../lib/jobs/search-timings";
 
 const TIMINGS = 'timings {"elapsed_ms":41441,"seeds":65536,"prefilter_ms":12,"generation_ms":16789,"hits_ms":4413,"options":['
-    + '{"prefilter_ms":12,"passed":32846,"worlds":223,"rules":[{"section":"distances","index":0,"ms":2895}]},'
-    + '{"prefilter_ms":17,"passed":65536,"worlds":56,"rules":[{"section":"counts","index":0,"ms":4}]}]}';
+    + '{"worlds":223,"rules":[{"section":"distances","index":0,"ms":2895}]},'
+    + '{"worlds":56,"rules":[{"section":"counts","index":0,"ms":4}]}]}';
 
 describe("the finder's speed line", () => {
     it("reads both windows", () => {
@@ -58,8 +58,6 @@ describe("the timings line", () => {
         const twice = sumTimings([timings!, timings!]);
         expect(twice?.seeds).toBe(131072);
         expect(twice?.options[0]).toEqual({
-            prefilter_ms: 24,
-            passed: 65692,
             worlds: 446,
             rules: [{ section: "distances", index: 0, ms: 5790 }]
         });

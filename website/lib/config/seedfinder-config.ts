@@ -1,12 +1,12 @@
 import type { SwapCategory } from "@/lib/catalog/level-types";
 
-export const CONFIG_VERSION = 1;
+export const CONFIG_VERSION = 2;
 
 export const MAX_UINT32 = 4_294_967_295;
 export const MAX_DISTANCE = 1_000_000;
 export const WORLD_UNITS_PER_TILE = 4;
 
-export const MAX_CRITERIA = 25;
+export const MAX_FILTERS = 25;
 export const MAX_RULES_PER_SECTION = 16;
 export const MAX_PREFAB_IDS = 16;
 export const MAX_SET_PIECES_PER_RULE = 16;
@@ -122,11 +122,15 @@ export interface RouteRule extends TravelFields {
     order?: RouteOrder;
 }
 
-export interface Criterion {
-    passive?: boolean;
+/** The level table: only the worlds of the seeds it accepts are generated. */
+export interface Generation {
     tasks?: TaskFilter;
     prefab_swaps?: PrefabSwaps;
     setpieces?: SetPieceItem[];
+}
+
+/** Rules checked on a generated world. */
+export interface Filter {
     counts?: CountRule[];
     distances?: DistanceRule[];
     tiles?: TileRule[];
@@ -134,11 +138,13 @@ export interface Criterion {
     routes?: RouteRule[];
 }
 
+/** A seed matches when `generation` holds and, with filters, any of them holds on its world. */
 export interface SeedfinderConfig {
     version: typeof CONFIG_VERSION;
     shard?: Shard;
     platform?: Platform;
-    criteria?: Criterion[];
+    generation?: Generation;
+    filters?: Filter[];
 }
 
 /** `timings` runs the search with `--verbose-timings`. */

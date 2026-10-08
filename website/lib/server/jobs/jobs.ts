@@ -1,4 +1,5 @@
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import { upgradeConfig } from "@/lib/config/upgrade-config";
 import { unitsToCredits } from "@/lib/jobs/credits";
 import {
     ACTIVE_JOB_STATUSES,
@@ -51,7 +52,7 @@ export function toJobView(row: JobRow): JobView {
     return {
         id: row.id,
         status: row.status,
-        config: JSON.parse(row.config) as SeedfinderConfig,
+        config: upgradeConfig(JSON.parse(row.config)) as SeedfinderConfig,
         wanted: row.wanted,
         maxCost: unitsToCredits(row.max_cost),
         cost: row.cost === null ? null : unitsToCredits(row.cost),

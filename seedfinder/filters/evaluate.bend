@@ -7,8 +7,8 @@ import ./bridges.bend as Bridges
 import ./level_checks.bend as LevelChecks
 import ../level/summary.bend as LevelSummary
 
-# One config evaluated on one world (evaluate.py): per criteria entry the results of its sections in the order
-# tasks, prefab_swaps, setpieces, then its world rules: the setpieces rules' `placed` names, counts, tiles, distances,
+# One config evaluated on one world (evaluate.py): per filter the results of `generation`'s sections in the order
+# tasks, prefab_swaps, setpieces, then the filter's world rules: the setpieces rules' `placed` names, counts, tiles, distances,
 # bridges, routes; the world rules run in parallel.
 
 type Job is Data:

@@ -12,8 +12,8 @@ import ../cli/args.bend as Args
 import ../cli/files.bend as Files
 
 # seedfinder world eval --config CONFIG.json --world WORLD.dstw [--json] [--fast]: one config on one dumped world,
-# printed as its level table (from the seed) and the witnesses of docs/config.md section 8. Exit 0 when
-# some entry matches, 1 when none does or the world gave up, 2 on a config or input error.
+# printed as its level table (from the seed) and the witnesses of docs/config.md section 8, per filter. Exit 0 when
+# some filter matches, 1 when none does or the world gave up, 2 on a config or input error.
 
 def usage() -> String:
   "usage: seedfinder world eval --config CONFIG.json --world WORLD.dstw [--json] [--fast]"
@@ -32,12 +32,12 @@ def evaluated_step(+outcomes: List<&2, Evaluate.Outcome>, +i: U32, e: Evaluated)
 def level_outcomes_of(+caves: Bool, +shown: LevelChecks.Shown, +seed: U32) -> List<&2, Evaluate.Outcome>:
   Bool.pick(List<&2, Evaluate.Outcome>, caves, CaveEvaluate.level_outcomes(shown, seed), Evaluate.level_outcomes(shown, LevelSummary.summary(seed)))
 
-def entries_loop(shown: List<&2, LevelChecks.Shown>, laters: List<&2, Rules.Later>, stop: Bool, +world: FilterWorld.World, +caves: Bool, +seed: U32, +fast: Bool, +i: U32, +e: Evaluated) -> Evaluated:
-  match shown laters stop:
-    case Con{+sh, ss} Con{+later, ls} False{}:
-      +outcomes = Evaluate.entry_outcomes_from(level_outcomes_of(caves, sh, seed), later, world, fast)
-      entries_loop(ss, ls, fast && Evaluate.holds(outcomes), world, caves, seed, fast, (i + 1 : U32), evaluated_step(outcomes, i, e))
-    case _ _ _:
+def entries_loop(+shown: LevelChecks.Shown, laters: List<&2, Rules.Later>, stop: Bool, +world: FilterWorld.World, +caves: Bool, +seed: U32, +fast: Bool, +i: U32, +e: Evaluated) -> Evaluated:
+  match laters stop:
+    case Con{+later, ls} False{}:
+      +outcomes = Evaluate.entry_outcomes_from(level_outcomes_of(caves, shown, seed), later, world, fast)
+      entries_loop(shown, ls, fast && Evaluate.holds(outcomes), world, caves, seed, fast, (i + 1 : U32), evaluated_step(outcomes, i, e))
+    case _ _:
       e
 
 def matched_json(matched: List<&2, U32>) -> List<&2, String>:
@@ -47,11 +47,10 @@ def matched_json(matched: List<&2, U32>) -> List<&2, String>:
     case Con{+i, rest}:
       U32.show(i) <> matched_json(rest)
 
-def outcome_line(+seed: U32, +windows: Bool, +empty: Bool, e: Evaluated) -> String:
+def outcome_line(+seed: U32, +windows: Bool, e: Evaluated) -> String:
   match e:
     case Evaluated{+entries, +matched}:
-      +match_all = empty || Bool.not(List.is_empty(&2, U32, matched))
-      U32.show(seed) ++ " {\"platform\":\"" ++ Bool.pick(String, windows, "windows", "linux") ++ "\",\"match\":" ++ Bool.pick(String, match_all, "true", "false")
+      U32.show(seed) ++ " {\"platform\":\"" ++ Bool.pick(String, windows, "windows", "linux") ++ "\",\"match\":" ++ Bool.pick(String, List.is_empty(&2, U32, matched), "false", "true")
         ++ ",\"entries\":[" ++ String.join(entries, ",") ++ "],\"matched_entries\":[" ++ String.join(matched_json(matched), ",") ++ "]}"
 
 def line_matches(+line: String) -> Bool:
@@ -82,7 +81,7 @@ def evaluate_world(+config: ShardSearch.Search, +text: String, loaded: FilterWor
           Bool.pick(IO(Unit), platform_mismatch(ShardSearch.windows(config), platform), IO.die(Unit, 2, platform_message(ShardSearch.windows(config))),
             Bool.pick(IO(Unit), graph_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no topology (GRPH section), which bridges rules need; regenerate it"),
               Bool.pick(IO(Unit), plan_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no level plan (PLAN section), which setpieces rules with placed names need; regenerate it"),
-                print_outcome(outcome_line(seed, ShardSearch.windows(config), ShardSearch.is_unfiltered(config),
+                print_outcome(outcome_line(seed, ShardSearch.windows(config),
                   entries_loop(LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))))
     case FilterWorld.GaveUp{+seed}:
       IO.die(Unit, 1, "evaluate: seed " ++ path ++ ": world generation did not finish (seed " ++ U32.show(seed) ++ "); no match")

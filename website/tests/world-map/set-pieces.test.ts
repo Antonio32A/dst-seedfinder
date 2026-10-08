@@ -50,23 +50,21 @@ describe("the set pieces a map shows", () => {
     it("starts with none without a search, or with a search that names none", () => {
         expect([...defaultShownSetPieces()]).toEqual([]);
         expect([...defaultShownSetPieces({
-            version: 1,
-            criteria: [{ counts: [{ prefab: "pigking", min: 1 }] }]
+            version: 2,
+            filters: [{ counts: [{ prefab: "pigking", min: 1 }] }]
         })]).toEqual([]);
     });
 
-    it("shows every set piece the search's set piece rules name, in every option", () => {
+    it("shows every set piece the search's set piece rules name, in groups too", () => {
         const search: SeedfinderConfig = {
-            version: 1,
-            criteria: [
-                {
-                    setpieces: [
-                        { tasks: ["Magic meadow"], required: { MooseNest: 1 } },
-                        { required: { MiscBoon: [2, 8], Level4Boon: [0, 0] } }
-                    ]
-                },
-                { passive: true, setpieces: [{ required: { WormholeGrass: 2 } }, {}] }
-            ]
+            version: 2,
+            generation: {
+                setpieces: [
+                    { tasks: ["Magic meadow"], required: { MooseNest: 1 } },
+                    { required: { MiscBoon: [2, 8], Level4Boon: [0, 0] } },
+                    { any: [{ required: { WormholeGrass: 2 } }, {}] }
+                ]
+            }
         };
         expect([...defaultShownSetPieces(search)].sort()).toEqual(["Level4Boon", "MiscBoon", "MooseNest", "WormholeGrass"]);
     });

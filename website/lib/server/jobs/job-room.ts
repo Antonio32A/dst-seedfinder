@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import type { Platform } from "@/lib/config/seedfinder-config";
+import { upgradeConfig } from "@/lib/config/upgrade-config";
 import { chargeUnits, MAX_DOLLARS_PER_HOUR, timeLimitSeconds } from "@/lib/jobs/credits";
 import {
     type FinishedJobStatus,
@@ -259,7 +260,7 @@ export class JobRoom extends DurableObject<Cloudflare.Env> {
         if (refusal !== null) return refusal;
         if ((this.state as RoomState).received > 0) return text(409, "The search already started.");
         if ((this.state as RoomState).status === "starting") await this.begin();
-        return text(200, this.spec.config, { "Content-Type": "application/json" });
+        return text(200, JSON.stringify(upgradeConfig(JSON.parse(this.spec.config))), { "Content-Type": "application/json" });
     }
 
     /** `POST /api/runner/<id>`. The chunk with `X-Exit` ends the search. */

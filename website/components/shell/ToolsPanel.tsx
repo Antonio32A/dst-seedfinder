@@ -4,15 +4,9 @@ import { useState } from "react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { copyText } from "@/lib/client/clipboard";
 import type { SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import { upgradeConfig } from "@/lib/config/upgrade-config";
 import { validateConfig } from "@/lib/config/validate-config";
-import {
-    encodeShareParam,
-    fromSeedfinderConfig,
-    hasCustomSettings,
-    type SearchState,
-    SETTINGS_DROPPED_NOTICE,
-    upgradeConfig
-} from "@/lib/criteria/search-state";
+import { droppedNotice, encodeShareParam, fromSeedfinderConfig, type SearchState } from "@/lib/criteria/search-state";
 
 interface ToolsPanelProps {
     config: SeedfinderConfig;
@@ -51,7 +45,8 @@ export default function ToolsPanel({ config, onImport, onReset, onCopy, onNotify
         onImport(fromSeedfinderConfig(checked.value));
         setPasted("");
         setImportError("");
-        onNotify(hasCustomSettings(parsed) ? `Config imported. ${SETTINGS_DROPPED_NOTICE}` : "Config imported.");
+        const dropped = droppedNotice(parsed);
+        onNotify(dropped ? `Config imported. ${dropped}` : "Config imported.");
     };
 
     return (
@@ -102,7 +97,7 @@ export default function ToolsPanel({ config, onImport, onReset, onCopy, onNotify
                             Import a config
                         </label>
                         <textarea id="import-json" value={pasted} onChange={(event) => setPasted(event.target.value)}
-                                  placeholder='{"criteria": [...]}' spellCheck={false}/>
+                                  placeholder='{"generation": {...}, "filters": [...]}' spellCheck={false}/>
                         <p>
                             <button type="button" className="link-button" disabled={pasted.trim() === ""}
                                     onClick={importConfig}>

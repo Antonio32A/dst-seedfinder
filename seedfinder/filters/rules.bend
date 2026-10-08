@@ -7,8 +7,8 @@ import ./parse.bend as Parse
 import ./level_checks.bend as LevelChecks
 import ../data/search_vocab.bend as SearchVocab
 
-# The world rules of a criteria entry (docs/config.md section 4): the `placed` names of its setpieces rules and its
-# parts B-E. A prefab set is a list of distinct data/search_vocab.bend prefab ids in first-occurrence order; a tile set
+# The world rules of a filter (docs/config.md section 4): the `placed` names of `generation`'s setpieces rules and the
+# filter's parts B-E. A prefab set is a list of distinct data/search_vocab.bend prefab ids in first-occurrence order; a tile set
 # is a list of vocabulary tile ids.
 type Metric is Data:
   Metric{walk: Bool, wormholes: Bool, caves: Bool}
@@ -51,8 +51,8 @@ def placed_index(+rule: Placed) -> U32:
     case AnyPlaced{+index, _, _}:
       index
 
-# The world rules of one criteria entry: the setpieces rules with `placed` names, then the counts, distances, tiles,
-# bridges and routes rules.
+# The world rules of one filter: `generation`'s setpieces rules with `placed` names, then the filter's counts,
+# distances, tiles, bridges and routes rules.
 type Later is Data:
   Later{setpieces: List<&2, Placed>, counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, bridges: List<&2, Bridge>, routes: List<&2, Route>}
 

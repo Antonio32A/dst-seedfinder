@@ -2,10 +2,11 @@ import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
 import type { SetPieceKind, SwapCategory } from "@/lib/catalog/level-types";
 import {
     CONFIG_VERSION,
-    type Criterion,
     DEFAULT_PLATFORM,
     DEFAULT_SHARD,
-    MAX_CRITERIA,
+    type Filter,
+    type Generation,
+    MAX_FILTERS,
     MAX_RULES_PER_SECTION,
     type Platform,
     PLATFORMS,
@@ -18,8 +19,9 @@ import {
     SHARDS,
     WORLD_UNITS_PER_TILE
 } from "@/lib/config/seedfinder-config";
+import { dropsLevelTables, upgradeConfig } from "@/lib/config/upgrade-config";
 import { validateConfig } from "@/lib/config/validate-config";
-import { asRecord, isRecord } from "@/lib/records";
+import { asRecord } from "@/lib/records";
 import { asArray, asStrings, clamp, newKey, nonEmpty } from "./state-helpers";
 import {
     NEW_WORLD_ROW,
@@ -57,19 +59,24 @@ export interface PieceGroup {
     max: number;
 }
 
-export interface CriteriaGroup extends WorldRows {
-    key: string;
-    passive: boolean;
+/** The picks decided from the seed alone, before its world is generated: they pick the worlds to generate. */
+export interface GenerationPicks {
     biomes: Record<string, BiomeChoice>;
     swaps: Partial<Record<SwapCategory, string>>;
     rules: PieceRule[];
     pieceGroups: PieceGroup[];
 }
 
+/** World details checked on a generated world; a world matches when any filter holds. */
+export interface WorldFilter extends WorldRows {
+    key: string;
+}
+
 export interface SearchState {
     shard: Shard;
     platform: Platform;
-    groups: CriteriaGroup[];
+    generation: GenerationPicks;
+    filters: WorldFilter[];
 }
 
 export interface Issue {
@@ -89,6 +96,8 @@ export const DEFAULT_WANTED = 1;
 export const STORAGE_KEY = "dst-seedfinder:search:v1";
 
 export const SETTINGS_DROPPED_NOTICE = "Custom world settings were dropped, only default settings are supported.";
+export const LEVEL_TABLES_DROPPED_NOTICE =
+    "Its options had different biomes, resources or set pieces, so only the first option's were kept.";
 
 export const COUNT_MODES: { id: CountMode; label: string }[] = [
     { id: "atLeast", label: "At least" },
@@ -120,25 +129,21 @@ const REQUIREMENT: Record<CountMode, (count: Pick<PieceRule, "min" | "max">) => 
     none: () => [0, 0]
 };
 
-/** `passive` groups only check seeds the other groups already pick. */
-export function emptyGroup(passive = false): CriteriaGroup {
-    return {
-        key: newKey(),
-        passive,
-        biomes: {},
-        swaps: {},
-        rules: [],
-        pieceGroups: [],
-        counts: [],
-        distances: [],
-        tiles: [],
-        bridges: [],
-        routes: []
-    };
+export function emptyGeneration(): GenerationPicks {
+    return { biomes: {}, swaps: {}, rules: [], pieceGroups: [] };
+}
+
+export function emptyFilter(): WorldFilter {
+    return { key: newKey(), counts: [], distances: [], tiles: [], bridges: [], routes: [] };
 }
 
 export function defaultState(): SearchState {
-    return { shard: DEFAULT_SHARD, platform: DEFAULT_PLATFORM, groups: [emptyGroup()] };
+    return {
+        shard: DEFAULT_SHARD,
+        platform: DEFAULT_PLATFORM,
+        generation: emptyGeneration(),
+        filters: [emptyFilter()]
+    };
 }
 
 export function newRule(pieceId: string, catalog: LevelCatalog): PieceRule {
@@ -234,38 +239,39 @@ function pieceGroupItem(pieceGroup: PieceGroup, catalog: LevelCatalog): SetPiece
     };
 }
 
-function setPieceItems(group: CriteriaGroup, catalog: LevelCatalog): SetPieceItem[] {
-    const anyOf = group.pieceGroups
+function setPieceItems(generation: GenerationPicks, catalog: LevelCatalog): SetPieceItem[] {
+    const anyOf = generation.pieceGroups
         .filter((pieceGroup) => pieceGroup.rules.length > 0)
         .map((pieceGroup) => pieceGroupItem(pieceGroup, catalog));
-    return [...rulesToSetPieces(group.rules, catalog), ...anyOf];
+    return [...rulesToSetPieces(generation.rules, catalog), ...anyOf];
 }
 
-function biomesWith(group: CriteriaGroup, choice: BiomeChoice, catalog: LevelCatalog): string[] {
-    return catalog.optionalTaskIds.filter((id) => group.biomes[id] === choice);
+function biomesWith(generation: GenerationPicks, choice: BiomeChoice, catalog: LevelCatalog): string[] {
+    return catalog.optionalTaskIds.filter((id) => generation.biomes[id] === choice);
 }
 
-function groupToCriterion(group: CriteriaGroup, catalog: LevelCatalog): Criterion | undefined {
-    const sections = compact<Criterion>({
+function toGeneration(generation: GenerationPicks, catalog: LevelCatalog): Generation | undefined {
+    return compact<Generation>({
         tasks: compact({
-            required: nonEmpty(biomesWith(group, "include", catalog)),
-            excluded: nonEmpty(biomesWith(group, "exclude", catalog))
+            required: nonEmpty(biomesWith(generation, "include", catalog)),
+            excluded: nonEmpty(biomesWith(generation, "exclude", catalog))
         }),
-        prefab_swaps: compact(group.swaps),
-        setpieces: nonEmpty(setPieceItems(group, catalog)),
-        ...worldSections(group, catalog.shard)
+        prefab_swaps: compact(generation.swaps),
+        setpieces: nonEmpty(setPieceItems(generation, catalog))
     });
-    return sections && { passive: group.passive, ...sections };
 }
 
 export function toSeedfinderConfig(state: SearchState): SeedfinderConfig {
     const catalog = levelCatalogOf(state.shard);
-    const criteria = nonEmpty(state.groups.flatMap((group) => groupToCriterion(group, catalog) ?? []));
+    const generation = toGeneration(state.generation, catalog);
+    const filters = nonEmpty(state.filters.flatMap((filter) =>
+        compact<Filter>(worldSections(filter, state.shard)) ?? []));
     return {
         version: CONFIG_VERSION,
         shard: state.shard,
         platform: state.platform,
-        ...(criteria ? { criteria } : {})
+        ...(generation ? { generation } : {}),
+        ...(filters ? { filters } : {})
     };
 }
 
@@ -308,8 +314,8 @@ function itemToPieceGroup(item: unknown, catalog: LevelCatalog): PieceGroup {
 const itemsToRules = (items: unknown[], catalog: LevelCatalog) =>
     items.flatMap((item) => entryToRules(item, catalog)).slice(0, MAX_RULES_PER_SECTION);
 
-function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGroup {
-    const record = asRecord(criterion);
+function generationPicksOf(generation: unknown, catalog: LevelCatalog): GenerationPicks {
+    const record = asRecord(generation);
     const items = asArray(record.setpieces).slice(0, MAX_RULES_PER_SECTION);
     const tasks = asRecord(record.tasks);
     const swaps = asRecord(record.prefab_swaps);
@@ -318,8 +324,6 @@ function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGr
             .filter((id) => catalog.optionalTaskIds.includes(id))
             .map((id) => [id, choice] as const);
     return {
-        key: newKey(),
-        passive: record.passive === true,
         biomes: Object.fromEntries([
             ...biomeEntries(tasks.required, "include"),
             ...biomeEntries(tasks.excluded, "exclude")
@@ -333,22 +337,22 @@ function criterionToGroup(criterion: unknown, catalog: LevelCatalog): CriteriaGr
         pieceGroups: items
             .filter(isGroupItem)
             .map((item) => itemToPieceGroup(item, catalog))
-            .filter((pieceGroup) => pieceGroup.rules.length > 0),
-        ...worldRowsOf(record, catalog.shard)
+            .filter((pieceGroup) => pieceGroup.rules.length > 0)
     };
 }
 
+/** Reads a config of any format version (upgradeConfig). */
 export function fromSeedfinderConfig(config: unknown): SearchState {
-    const record = asRecord(config);
+    const record = asRecord(upgradeConfig(config));
     const shard = SHARDS.find((candidate) => candidate === record.shard) ?? DEFAULT_SHARD;
-    const catalog = levelCatalogOf(shard);
-    const groups = asArray(record.criteria)
-        .slice(0, MAX_CRITERIA)
-        .map((criterion) => criterionToGroup(criterion, catalog));
+    const filters = asArray(record.filters)
+        .slice(0, MAX_FILTERS)
+        .map((filter): WorldFilter => ({ key: newKey(), ...worldRowsOf(asRecord(filter), shard) }));
     return {
         shard,
         platform: PLATFORMS.find((platform) => platform === record.platform) ?? DEFAULT_PLATFORM,
-        groups: groups.length > 0 ? groups : [emptyGroup()]
+        generation: generationPicksOf(record.generation, levelCatalogOf(shard)),
+        filters: filters.length > 0 ? filters : [emptyFilter()]
     };
 }
 
@@ -356,9 +360,40 @@ export function hasCustomSettings(config: unknown): boolean {
     return Object.values(asRecord(asRecord(config).settings)).some((level) => level !== "default");
 }
 
-export function upgradeConfig(config: unknown): unknown {
-    if (!isRecord(config)) return config;
-    return { version: CONFIG_VERSION, ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== "settings")) };
+/** What loading the config leaves out, as a notice (empty when nothing). */
+export function droppedNotice(config: unknown): string {
+    return [
+        hasCustomSettings(config) ? SETTINGS_DROPPED_NOTICE : "",
+        dropsLevelTables(config) ? LEVEL_TABLES_DROPPED_NOTICE : ""
+    ].filter(Boolean).join(" ");
+}
+
+function movedGeneration(generation: GenerationPicks, shard: Shard): { generation: GenerationPicks; dropped: number } {
+    const to = levelCatalogOf(shard);
+    let dropped = 0;
+    const swaps = Object.fromEntries(
+        Object.entries(generation.swaps).filter(([category, variant]) => to.swaps.some((swap) =>
+            swap.id === category && swap.options.some((option) => option.id === variant)))
+    );
+    const moveRules = (rules: PieceRule[]) => {
+        const kept = rules.filter((rule) => to.setPieceById.has(rule.pieceId));
+        dropped += rules.length - kept.length + kept.filter((rule) => rule.ensurePlaced && shard !== "forest").length;
+        return kept.map((rule) => ({
+            ...rule,
+            scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id)),
+            ensurePlaced: rule.ensurePlaced && shard === "forest"
+        }));
+    };
+    const rules = moveRules(generation.rules);
+    const pieceGroups = generation.pieceGroups
+        .map((pieceGroup) => ({ ...pieceGroup, rules: moveRules(pieceGroup.rules) }))
+        .filter((pieceGroup) => pieceGroup.rules.length > 0);
+    const biomes = Object.fromEntries(
+        Object.entries(generation.biomes).filter(([id]) => to.optionalTaskIds.includes(id))
+    );
+    dropped += Object.keys(generation.swaps).length - Object.keys(swaps).length;
+    dropped += Object.keys(generation.biomes).length - Object.keys(biomes).length;
+    return { generation: { swaps, biomes, rules, pieceGroups }, dropped };
 }
 
 /**
@@ -368,65 +403,36 @@ export function upgradeConfig(config: unknown): unknown {
  */
 export function switchShard(state: SearchState, shard: Shard): { state: SearchState; dropped: number } {
     if (state.shard === shard) return { state, dropped: 0 };
-    const to = levelCatalogOf(shard);
-    let dropped = 0;
-    const groups = state.groups.map((group): CriteriaGroup => {
-        const swaps = Object.fromEntries(
-            Object.entries(group.swaps).filter(([category, variant]) => to.swaps.some((swap) =>
-                swap.id === category && swap.options.some((option) => option.id === variant)))
-        );
-        const moveRules = (rules: PieceRule[]) => {
-            const kept = rules.filter((rule) => to.setPieceById.has(rule.pieceId));
-            dropped += rules.length - kept.length + kept.filter((rule) => rule.ensurePlaced && shard !== "forest").length;
-            return kept.map((rule) => ({
-                ...rule,
-                scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id)),
-                ensurePlaced: rule.ensurePlaced && shard === "forest"
-            }));
-        };
-        const rules = moveRules(group.rules);
-        const pieceGroups = group.pieceGroups
-            .map((pieceGroup) => ({ ...pieceGroup, rules: moveRules(pieceGroup.rules) }))
-            .filter((pieceGroup) => pieceGroup.rules.length > 0);
-        const biomes = Object.fromEntries(
-            Object.entries(group.biomes).filter(([id]) => to.optionalTaskIds.includes(id))
-        );
-        dropped += Object.keys(group.swaps).length - Object.keys(swaps).length;
-        dropped += Object.keys(group.biomes).length - Object.keys(biomes).length;
-        const world = worldRowsFor(group, state.shard, shard);
+    const moved = movedGeneration(state.generation, shard);
+    let dropped = moved.dropped;
+    const filters = state.filters.map((filter): WorldFilter => {
+        const world = worldRowsFor(filter, state.shard, shard);
         dropped += world.dropped;
-        return {
-            ...group,
-            swaps,
-            biomes,
-            rules,
-            pieceGroups,
-            ...world.rows
-        };
+        return { ...filter, ...world.rows };
     });
-    return { state: { ...state, shard, groups }, dropped };
+    return { state: { ...state, shard, generation: moved.generation, filters }, dropped };
 }
 
 /** A total match ignores its set pieces' own counts. */
-const groupedRules = (group: CriteriaGroup) =>
-    group.pieceGroups.flatMap((pieceGroup) => pieceGroup.match === "any"
+const groupedRules = (generation: GenerationPicks) =>
+    generation.pieceGroups.flatMap((pieceGroup) => pieceGroup.match === "any"
         ? pieceGroup.rules
         : pieceGroup.rules.map((rule): PieceRule => ({ ...rule, mode: "between", min: 0 })));
 
-const levelTableChoices = (group: CriteriaGroup) =>
-    Object.keys(group.biomes).length + Object.keys(group.swaps).length + group.rules.length
-    + groupedRules(group).length;
+const generationChoices = (generation: GenerationPicks) =>
+    Object.keys(generation.biomes).length + Object.keys(generation.swaps).length + generation.rules.length
+    + groupedRules(generation).length;
 
-export function isEmptyGroup(group: CriteriaGroup): boolean {
-    return levelTableChoices(group) + worldRowCount(group) === 0;
+export function isEmptySearch(state: SearchState): boolean {
+    return generationChoices(state.generation) === 0 && state.filters.every((filter) => worldRowCount(filter) === 0);
 }
 
-type GroupCheck = (group: CriteriaGroup, catalog: LevelCatalog) => Issue[];
+type GenerationCheck = (generation: GenerationPicks, catalog: LevelCatalog) => Issue[];
 
 const tooManyBiomes =
-    (choice: BiomeChoice, label: string): GroupCheck =>
-        (group, catalog) =>
-            biomesWith(group, choice, catalog).length > catalog.optionalPicked
+    (choice: BiomeChoice, label: string): GenerationCheck =>
+        (generation, catalog) =>
+            biomesWith(generation, choice, catalog).length > catalog.optionalPicked
                 ? [{
                     severity: "error",
                     message: `more than ${catalog.optionalPicked} biomes are "${label}", but a world only has ${catalog.optionalPicked}.`
@@ -435,17 +441,17 @@ const tooManyBiomes =
 
 /** A set piece group only needs one of its picks, so a pick in one that can never match is just a warning. */
 const ruleIssues =
-    (check: (rule: PieceRule, name: string, catalog: LevelCatalog) => Issue | undefined): GroupCheck =>
-        (group, catalog) => {
+    (check: (rule: PieceRule, name: string, catalog: LevelCatalog) => Issue | undefined): GenerationCheck =>
+        (generation, catalog) => {
             const issuesOf = (rule: PieceRule) =>
                 check(rule, catalog.setPieceById.get(rule.pieceId)?.name ?? rule.pieceId, catalog) ?? [];
             return [
-                ...group.rules.flatMap(issuesOf),
-                ...groupedRules(group).flatMap(issuesOf).map((issue): Issue => ({ ...issue, severity: "warning" }))
+                ...generation.rules.flatMap(issuesOf),
+                ...groupedRules(generation).flatMap(issuesOf).map((issue): Issue => ({ ...issue, severity: "warning" }))
             ];
         };
 
-const GROUP_CHECKS: GroupCheck[] = [
+const GENERATION_CHECKS: GenerationCheck[] = [
     tooManyBiomes("include", "Must have"),
     tooManyBiomes("exclude", "Must not have"),
     ruleIssues((rule, name, catalog) => {
@@ -464,9 +470,9 @@ const GROUP_CHECKS: GroupCheck[] = [
             ? { severity: "error", message: `${name} is in every world, so "None" can never match.` }
             : undefined
     ),
-    (group, catalog) => {
+    (generation, catalog) => {
         const leastPerPiece = new Map<string, number>();
-        for (const rule of group.rules) {
+        for (const rule of generation.rules) {
             if (rule.mode !== "none") leastPerPiece.set(rule.pieceId, Math.max(leastPerPiece.get(rule.pieceId) ?? 0, effectiveRule(rule, catalog).min));
         }
         return Object.entries(KIND_TOTALS).flatMap(([kind, { most, noun }]): Issue[] => {
@@ -480,47 +486,42 @@ const GROUP_CHECKS: GroupCheck[] = [
             }] : [];
         });
     },
-    (group) =>
-        group.pieceGroups.some((pieceGroup) => pieceGroup.rules.length === 0)
+    (generation) =>
+        generation.pieceGroups.some((pieceGroup) => pieceGroup.rules.length === 0)
             ? [{ severity: "warning", message: "a set piece group has no set pieces, so it's ignored." }]
-            : [],
-    (group) =>
-        !group.passive && worldRowCount(group) > 0 && levelTableChoices(group) === 0
-            ? [{
-                severity: "warning",
-                message: "only world details are picked, so every seed's world gets generated. Add a biome, resource or set piece to speed it up."
-            }]
-            : [],
-    (group, catalog) => worldIssues(group, catalog.shard)
+            : []
 ];
+
+const capitalized = (message: string) => message.charAt(0).toUpperCase() + message.slice(1);
+
+function filterIssues(state: SearchState): Issue[] {
+    const multiple = state.filters.length > 1;
+    return state.filters.flatMap((filter, index) => {
+        const label = (message: string) => (multiple ? `Option ${index + 1}: ${message}` : capitalized(message));
+        const empty: Issue[] = multiple && worldRowCount(filter) === 0
+            ? [{ severity: "warning", message: "nothing picked, so it's ignored." }]
+            : [];
+        return [...empty, ...worldIssues(filter, state.shard)]
+            .map((issue) => ({ ...issue, message: label(issue.message) }));
+    });
+}
+
+function coverageIssues(state: SearchState): Issue[] {
+    if (generationChoices(state.generation) > 0) return [];
+    return state.filters.some((filter) => worldRowCount(filter) > 0)
+        ? [{
+            severity: "warning",
+            message: "Only world filters are picked, so every seed's world gets generated. Add a biome, resource or set piece to speed it up."
+        }]
+        : [{ severity: "warning", message: "Nothing picked yet, so every world matches." }];
+}
 
 /** An error means the search can never match. */
 export function validateSearch(state: SearchState): Issue[] {
     const catalog = levelCatalogOf(state.shard);
-    const multiple = state.groups.length > 1;
-    const perGroup = state.groups.flatMap((group, index) => {
-        const label = (message: string) => (multiple ? `Option ${index + 1}: ${message}` : message.charAt(0).toUpperCase() + message.slice(1));
-        const emptyWarning: Issue[] =
-            multiple && isEmptyGroup(group) ? [{
-                severity: "warning",
-                message: "nothing picked, so it's ignored."
-            }] : [];
-        const issues = [...emptyWarning, ...GROUP_CHECKS.flatMap((check) => check(group, catalog))];
-        return issues.map((issue) => ({ ...issue, message: label(issue.message) }));
-    });
-    const picked = state.groups.filter((group) => !isEmptyGroup(group));
-    const nothing: Issue[] = picked.length === 0 ? [{
-        severity: "warning",
-        message: "Nothing picked yet, so every world matches."
-    }] : [];
-    const allPassive: Issue[] =
-        picked.length > 0 && picked.every((group) => group.passive)
-            ? [{
-                severity: "error",
-                message: "Every option is passive. At least one option has to pick the seeds the passive ones are checked on."
-            }]
-            : [];
-    const issues = [...nothing, ...allPassive, ...perGroup];
+    const generation = GENERATION_CHECKS.flatMap((check) => check(state.generation, catalog))
+        .map((issue) => ({ ...issue, message: capitalized(issue.message) }));
+    const issues = [...coverageIssues(state), ...generation, ...filterIssues(state)];
     if (issues.some((issue) => issue.severity === "error")) return issues;
     const checked = validateConfig(toSeedfinderConfig(state));
     return checked.ok ? issues : [...issues, {
@@ -545,8 +546,13 @@ export function decodeShareParam(param: string): unknown {
     }
 }
 
-function presetState(shard: Shard, ...groups: Partial<CriteriaGroup>[]): SearchState {
-    return { shard, platform: DEFAULT_PLATFORM, groups: groups.map((group) => ({ ...emptyGroup(), ...group })) };
+function presetState(shard: Shard, generation: Partial<GenerationPicks>, filter: Partial<WorldRows> = {}): SearchState {
+    return {
+        shard,
+        platform: DEFAULT_PLATFORM,
+        generation: { ...emptyGeneration(), ...generation },
+        filters: [{ ...emptyFilter(), ...filter }]
+    };
 }
 
 const atLeast = (shard: Shard, pieceId: string, min: number): PieceRule => ({
@@ -561,20 +567,22 @@ const FOREST_PRESETS: Preset[] = [
         id: "walking-cane",
         name: "Guaranteed Walking Cane",
         description: "World will contain a walking cane.",
-        build: () => presetState("forest", {
-            rules: [atLeast("forest", "MiscBoon", 5)],
-            counts: [{ ...NEW_WORLD_ROW.counts("forest"), prefabs: ["cane"] }]
-        })
+        build: () => presetState(
+            "forest",
+            { rules: [atLeast("forest", "MiscBoon", 5)] },
+            { counts: [{ ...NEW_WORLD_ROW.counts("forest"), prefabs: ["cane"] }] }
+        )
     },
     {
         id: "dark-sword-at-spawn",
         name: "Dark Sword at spawn",
         description: "Dark Sword within 15 tiles of the world spawn. Will take a few minutes.",
         build: () =>
-            presetState("forest", {
-                rules: [atLeast("forest", "Level4Boon", 4)],
-                distances: [{ ...NEW_WORLD_ROW.distances("forest"), to: ["nightsword"], max: tiles(15) }]
-            })
+            presetState(
+                "forest",
+                { rules: [atLeast("forest", "Level4Boon", 4)] },
+                { distances: [{ ...NEW_WORLD_ROW.distances("forest"), to: ["nightsword"], max: tiles(15) }] }
+            )
     },
     {
         id: "twiggy-juicy",
@@ -596,7 +604,7 @@ const CAVE_PRESETS: Preset[] = [
         name: "Ancient Guardian within 75 tiles (walking)",
         description: "The Ancient Guardian within 75 tiles of walking from the stairs, counting the jumps through Big Tentacles. Will take a few minutes.",
         build: () =>
-            presetState("caves", {
+            presetState("caves", {}, {
                 distances: [{
                     ...NEW_WORLD_ROW.distances("caves"),
                     to: ["minotaur_spawner"],
@@ -611,7 +619,7 @@ const CAVE_PRESETS: Preset[] = [
         name: "Atrium Gateway at spawn",
         description: "The Ancient Gateway within 20 tiles of walking from the stairs, without the tentacles. This is usually a bugged world. This is a very rare world so it may take a few hours.",
         build: () =>
-            presetState("caves", {
+            presetState("caves", {}, {
                 distances: [{
                     ...NEW_WORLD_ROW.distances("caves"),
                     to: ["atrium_gate"],

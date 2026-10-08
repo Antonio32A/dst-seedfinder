@@ -13,10 +13,10 @@ import ./timings.bend as Timings
 
 # `world find --worlds DIR` for configs with parts B-E: the scan of search.py over pre-generated worlds. Part A
 # selects candidates chunk by chunk; each candidate's DIR/<seed>.dstw decides it (a missing dump counts as a world
-# that gave up, i.e. no match, and is reported on stderr). A seed matches when an entry's part A and all its parts
-# B-E hold; the first such entry is the hit's entry and its B-E witnesses are the results. A dump without the topology
-# (no GRPH section) counts as missing too when an entry has a bridges rule, and one without the level plan (no PLAN
-# section) when an entry has a setpieces rule with `placed` names.
+# that gave up, i.e. no match, and is reported on stderr). A candidate matches when all parts B-E of a filter hold;
+# the first such filter is the hit's entry and its B-E witnesses are the results. A dump without the topology (no
+# GRPH section) counts as missing too when a filter has a bridges rule, and one without the level plan (no PLAN
+# section) when `generation` has a setpieces rule with `placed` names.
 
 # The per-run constants: start seed, seeds in the scan, hit limit, time limit, output mode, config, folder, start time
 # and whether to time the options (--verbose-timings).
@@ -43,24 +43,17 @@ def outcomes_of(skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -> L
     case False{}:
       Evaluate.parallel_jobs(world, Evaluate.jobs_of(later))
 
-def later_holds(level: Bool, +world: FilterWorld.World, +later: Rules.Later) -> Bool:
-  match level:
-    case True{}:
-      Evaluate.parallel_holds(world, Evaluate.jobs_of(later))
-    case False{}:
-      False{}
-
 def entry_verdict(+seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
   Hit{"\"entry\":" ++ U32.show(index) ++ ",\"level\":" ++ ShardSearch.summary_json(caves, seed) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
 
-def first_entry(flags: List<&2, Bool>, laters: List<&2, Rules.Later>, found: Bool, +world: FilterWorld.World, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
-  match flags laters found:
-    case _ _ True{}:
+def first_entry(laters: List<&2, Rules.Later>, found: Bool, +world: FilterWorld.World, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
+  match laters found:
+    case _ True{}:
       entry_verdict(seed, caves, (index - 1 : U32), outcomes)
-    case Con{+level, cs} Con{+later, ls} False{}:
-      +found = later_holds(level, world, later)
-      first_entry(cs, ls, found, world, seed, caves, (index + 1 : U32), outcomes_of(Bool.not(found), world, later))
-    case _ _ _:
+    case Con{+later, ls} False{}:
+      +found = Evaluate.parallel_holds(world, Evaluate.jobs_of(later))
+      first_entry(ls, found, world, seed, caves, (index + 1 : U32), outcomes_of(Bool.not(found), world, later))
+    case _ _:
       Miss{}
 
 def later_at(+laters: List<&2, Rules.Later>, +index: U32) -> Rules.Later:
@@ -70,7 +63,7 @@ def later_at(+laters: List<&2, Rules.Later>, +index: U32) -> Rules.Later:
 # none did).
 def open_verdict(+o: Timings.Open, +config: ShardSearch.Search, +seed: U32, +otherwise: Verdict) -> Verdict:
   match o:
-    case Timings.Open{Some{+world}, _, Some{+index}}:
+    case Timings.Open{Some{+world}, Some{+index}}:
       entry_verdict(seed, ShardSearch.caves(config), index, Evaluate.parallel_jobs(world, Evaluate.jobs_of(later_at(ShardSearch.laters(config), index))))
     case _:
       otherwise
@@ -102,7 +95,7 @@ def world_verdict(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +con
   match loaded:
     case Done{FilterWorld.Generated{+world, +platform}}:
       Bool.pick(Verdict, usable(config, platform, world),
-        first_entry(ShardSearch.entry_flags(ShardSearch.entries(config), seed), ShardSearch.laters(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
+        first_entry(ShardSearch.laters(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
     case Done{FilterWorld.GaveUp{_}}:
       Miss{}
     case Fail{_}:
@@ -266,7 +259,7 @@ def chunk_candidates(+len: Nat, +lo: U32, +levels: ShardSearch.Levels) -> U32 & 
 def criteria_of(+ctx: Ctx) -> ShardSearch.Levels:
   match ctx:
     case Ctx{_, _, _, _, _, +config, _, _, _}:
-      ShardSearch.scanned(config)
+      ShardSearch.level(config)
 
 def candidates(got: U32 & List<&2, U32>) -> List<&2, U32>:
   (count, seeds) = got
@@ -380,7 +373,7 @@ def opens_of(loaded: List<&2, Loaded>, +config: ShardSearch.Search) -> List<&2, 
     case Nil{}:
       Nil{}
     case Con{Loaded{+seed, +world, _}, rest}:
-      Timings.Open{world, ShardSearch.entry_flags(ShardSearch.entries(config), seed), None{}} <> opens_of(rest, config)
+      Timings.Open{world, None{}} <> opens_of(rest, config)
 
 def matches_of(loaded: List<&2, Loaded>, +opens: List<&2, Timings.Open>) -> List<&2, Matched>:
   match loaded opens:
@@ -422,14 +415,10 @@ def batch_pace(+b: Batch) -> Pace:
     case Batch{_, +p}:
       p
 
-def scan_chunk(+h: Hunt) -> U32 & Nat:
+def scan_chunk(+h: Hunt) -> Nat:
   match h:
-    case Hunt{+next, +left, _, _, _, _, _, _}:
-      (next, Nat.min(chunk_size(), left))
-
-def counted_chunk(+t: Timings.Timings, +ctx: Ctx, chunk: U32 & Nat) -> IO(Timings.Timings):
-  (+lo, +len) = chunk
-  Timings.prefiltered(t, ShardSearch.each_entry(ShardSearch.entries(ctx_config(ctx))), lo, len)
+    case Hunt{_, +left, _, _, _, _, _, _}:
+      Nat.min(chunk_size(), left)
 
 # The scan and the pace after a refill.
 type Refilled is Data:
@@ -445,19 +434,17 @@ def refilled_pace(+r: Refilled) -> Pace:
     case Refilled{_, +p}:
       p
 
-# The next chunk's candidates, with --verbose-timings each option's level table first over the chunk on its own and
-# the scan's own timed.
+# The next chunk's candidates, with --verbose-timings the scan timed.
 def timed_refill(timed: Bool, +h: Hunt, +p: Pace, +now: Nat, +ctx: Ctx) -> IO(Refilled):
   match timed:
     case False{}:
       IO.pure(Refilled, Refilled{refilled(h, now, ctx), p})
     case True{}:
       do IO<Refilled>:
-        +counted : Timings.Timings <- counted_chunk(pace_timings(p), ctx, scan_chunk(h))
         +t0 : Nat <- IO.now()
         +after : Hunt = refilled(h, now, ctx)
         +t1 : Nat <- IO.now()
-        return Refilled{after, with_pace_timings(p, Timings.with_prefilter(counted, Nat.sub(t1, t0)))}
+        return Refilled{after, with_pace_timings(p, Timings.with_prefilter(pace_timings(p), scan_chunk(h), Nat.sub(t1, t0)))}
 
 def scanning(+h: Hunt, +now: Nat, +ctx: Ctx) -> Bool:
   match h:

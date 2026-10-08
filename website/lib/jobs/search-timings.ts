@@ -7,20 +7,15 @@ export interface RuleTiming {
     ms: number;
 }
 
-/**
- * One option (criteria entry): the ms its level table took over every prefiltered seed and how many seeds passed it,
- * then the worlds its rules were checked on and the ms of each rule.
- */
+/** One option (world filter): the worlds its rules were checked on and the ms of each rule. */
 export interface OptionTiming {
-    prefilter_ms: number;
-    passed: number;
     worlds: number;
     rules: RuleTiming[];
 }
 
 /**
  * The finder's `timings {...}` line (`world find --verbose-timings`), summed over the runs of a search: `seeds` is how
- * many seeds every option's level table went over, `hits_ms` the time spent on the found seeds' witnesses.
+ * many seeds the world generation picks went over, `hits_ms` the time spent on the found seeds' witnesses.
  */
 export interface SearchTimings {
     elapsed_ms: number;
@@ -45,12 +40,7 @@ const rule = (raw: unknown): RuleTiming => {
 
 const option = (raw: unknown): OptionTiming => {
     const fields = asRecord(raw);
-    return {
-        prefilter_ms: count(fields.prefilter_ms),
-        passed: count(fields.passed),
-        worlds: count(fields.worlds),
-        rules: listOf(fields.rules, rule)
-    };
+    return { worlds: count(fields.worlds), rules: listOf(fields.rules, rule) };
 };
 
 /** Never throws; `null` when the value isn't a timings object. */
@@ -84,8 +74,6 @@ const addRules = (a: RuleTiming[], b: RuleTiming[]): RuleTiming[] =>
 
 const addOptions = (a: OptionTiming[], b: OptionTiming[]): OptionTiming[] =>
     (a.length >= b.length ? a : b).map((_, index) => ({
-        prefilter_ms: (a[index]?.prefilter_ms ?? 0) + (b[index]?.prefilter_ms ?? 0),
-        passed: (a[index]?.passed ?? 0) + (b[index]?.passed ?? 0),
         worlds: (a[index]?.worlds ?? 0) + (b[index]?.worlds ?? 0),
         rules: addRules(a[index]?.rules ?? [], b[index]?.rules ?? [])
     }));
@@ -115,7 +103,6 @@ export function inRealTime(timings: SearchTimings, elapsedMs: number): SearchTim
         hits_ms: scale(timings.hits_ms),
         options: timings.options.map((option) => ({
             ...option,
-            prefilter_ms: scale(option.prefilter_ms),
             rules: option.rules.map((rule) => ({ ...rule, ms: scale(rule.ms) }))
         }))
     };

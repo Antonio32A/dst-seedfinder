@@ -25,11 +25,10 @@ type Group is Data:
 type Criteria is Data:
   Criteria{required: TaskSet, excluded: TaskSet, swap_care: U32, swap_want: U32, rules: List<&2, Rule>, groups: List<&2, Group>}
 
-# A compiled caves config: the platform for the report, the part A criteria of the entries, their parts B-E (in the same
-# order) and the part A criteria that make a seed a candidate (those of the entries that are not passive; anything when
-# there are no entries).
+# A compiled caves config: the platform for the report, the part A criteria of `generation` (they make a seed a
+# candidate) and the parts B-E of each `filters` entry (one without rules when there are no filters).
 type Config is Data:
-  Config{windows: Bool, criteria: List<&2, Criteria>, later: List<&2, Rules.Later>, scanned: List<&2, Criteria>}
+  Config{windows: Bool, level: Criteria, filters: List<&2, Rules.Later>}
 
 def every_task() -> TaskSet:
   TaskSet{4294967295, 4294967295}
@@ -205,85 +204,48 @@ def groups_of(items: List<&2, Json.Json>, +index: U32, +path: String) -> Result<
         others : List<&2, Group> <- groups_of(rest, (index + 1 : U32), path)
         maybe_group(Config.is_group(item), item, Parse.indexed(path, index), others)
 
-type Entry is Data:
-  Entry{level: Criteria, later: Rules.Later, passive: Bool}
+def generation_of(json: Json.Json) -> Result<&1, &1, U32 & String, Criteria>:
+  do Result<&1, &1, U32 & String, Criteria>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["tasks", "prefab_swaps", "setpieces"], "generation")
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), "generation.setpieces")
+    +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", "generation.setpieces")
+    rules : List<&2, Rule> <- rules_of(listed, 0, "generation.setpieces", Nil{})
+    groups : List<&2, Group> <- groups_of(listed, 0, "generation.setpieces")
+    required : TaskSet <- task_rule("required", Parse.field(fields, "tasks"), "generation.tasks")
+    excluded : TaskSet <- task_rule("excluded", Parse.field(fields, "tasks"), "generation.tasks")
+    +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), "generation.prefab_swaps")
+    return Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}
 
-def entry_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Entry>:
-  do Result<&1, &1, U32 & String, Entry>:
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["passive", "tasks", "prefab_swaps", "setpieces", "counts", "distances", "tiles", "bridges", "routes"], path)
-    +passive : Bool <- Parse.optional_flag(Parse.field(fields, "passive"), path ++ ".passive")
-    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "setpieces"), path ++ ".setpieces")
-    +listed : List<&2, Json.Json> <- Parse.capped(items, 16, "rules", path ++ ".setpieces")
-    rules : List<&2, Rule> <- rules_of(listed, 0, path ++ ".setpieces", Nil{})
-    groups : List<&2, Group> <- groups_of(listed, 0, path ++ ".setpieces")
-    later : Rules.Later <- Rules.later_of(fields, path, True{}, Nil{})
-    required : TaskSet <- task_rule("required", Parse.field(fields, "tasks"), path ++ ".tasks")
-    excluded : TaskSet <- task_rule("excluded", Parse.field(fields, "tasks"), path ++ ".tasks")
-    +swaps : U32 <- swaps_of(Parse.field(fields, "prefab_swaps"), path ++ ".prefab_swaps")
-    return Entry{Criteria{required, excluded, (swaps .&. 255 : U32), (swaps >> 8n : U32), rules, groups}, later, passive}
+def filter_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Rules.Later>:
+  do Result<&1, &1, U32 & String, Rules.Later>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, Config.later_parts(), path)
+    Rules.later_of(fields, path, True{}, Nil{})
 
-def entry_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Entry>>:
+def filter_list(items: List<&2, Json.Json>, +index: U32) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match items:
     case Nil{}:
       Done{Nil{}}
     case Con{item, rest}:
-      do Result<&1, &1, U32 & String, List<&2, Entry>>:
-        head : Entry <- entry_of(item, Parse.indexed("criteria", index))
-        tail : List<&2, Entry> <- entry_list(rest, (index + 1 : U32))
+      do Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
+        head : Rules.Later <- filter_of(item, Parse.indexed("filters", index))
+        tail : List<&2, Rules.Later> <- filter_list(rest, (index + 1 : U32))
         return head <> tail
-
-def levels_of(entries: List<&2, Entry>) -> List<&2, Criteria>:
-  match entries:
-    case Nil{}:
-      Nil{}
-    case Con{Entry{level, _, _}, rest}:
-      level <> levels_of(rest)
-
-def laters_of(entries: List<&2, Entry>) -> List<&2, Rules.Later>:
-  match entries:
-    case Nil{}:
-      Nil{}
-    case Con{Entry{_, later, _}, rest}:
-      later <> laters_of(rest)
-
-def active_levels(entries: List<&2, Entry>) -> List<&2, Criteria>:
-  match entries:
-    case Nil{}:
-      Nil{}
-    case Con{Entry{level, _, False{}}, rest}:
-      level <> active_levels(rest)
-    case Con{_, rest}:
-      active_levels(rest)
-
-def some_active(+entries: List<&2, Entry>) -> Result<&1, &1, U32 & String, Unit>:
-  Bool.pick(Result<&1, &1, U32 & String, Unit>, List.is_empty(&2, Entry, entries) || Bool.not(List.is_empty(&2, Criteria, active_levels(entries))), Done{Unit{}},
-    Fail{Parse.failure("every criteria entry is passive (at least one must not be)")})
-
-def or_anything(criteria: List<&2, Criteria>) -> List<&2, Criteria>:
-  match criteria:
-    case Nil{}:
-      [anything()]
-    case _:
-      criteria
-
-def config_from(+windows: Bool, +entries: List<&2, Entry>) -> Config:
-  Config{windows, levels_of(entries), laters_of(entries), or_anything(active_levels(entries))}
 
 # Compiles the JSON text of a search config (docs/config.md) for the caves shard.
 def config_of(+text: String) -> Result<&1, &1, U32 & String, Config>:
   do Result<&1, &1, U32 & String, Config>:
     json : Json.Json <- Json.parse(text)
-    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "criteria", "shard"], "the config")
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["version", "platform", "settings", "generation", "filters", "shard"], "the config")
     +windows : Bool <- Config.platform_of(Parse.field(fields, "platform"))
     supported : Unit <- Config.supported_version(Parse.field(fields, "version"))
     shard : U32 <- Config.shard_of(Parse.field(fields, "shard"))
     settings : List<&2, Json.Json> <- Parse.optional_fields(Parse.field(fields, "settings"), "settings")
     defaults : Unit <- Config.default_settings(settings)
-    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "criteria"), "criteria")
-    listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "criteria")
-    +entries : List<&2, Entry> <- entry_list(listed, 0)
-    active : Unit <- some_active(entries)
-    return config_from(windows, entries)
+    level : Criteria <- generation_of(Maybe.default(&2, Json.Json, Parse.field(fields, "generation"), Json.JObj{Nil{}}))
+    items : List<&2, Json.Json> <- Parse.optional_items(Parse.field(fields, "filters"), "filters")
+    listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "filters")
+    filters : List<&2, Rules.Later> <- filter_list(listed, 0)
+    return Config{windows, level, Config.or_unfiltered(filters, Nil{})}
 
 def tasks_hold(+c: Criteria, +lo: U32, +hi: U32, +swaps: U32) -> Bool:
   match c:
@@ -463,14 +425,6 @@ def prefix_gate(+criteria: List<&2, Criteria>, +c: CavePrefix.Chosen) -> Bool:
 # Stages bail out early: tasks and prefab swaps, then AddSetPeices' outcome, then ChooseSetPieces.
 def matches(+criteria: List<&2, Criteria>, +seed: U32) -> Bool:
   prefix_gate(criteria, CavePrefix.chosen(seed))
-
-# Index of the first criteria entry that holds for the seed (the number of entries when none does).
-def first_match(criteria: List<&2, Criteria>, +seed: U32) -> U32:
-  match criteria:
-    case Nil{}:
-      0
-    case Con{+c, rest}:
-      Bool.pick(U32, matches([c], seed), 0, (1 + first_match(rest, seed) : U32))
 
 def local_rules(rules: List<&2, Rule>) -> List<&2, Rule>:
   match rules:

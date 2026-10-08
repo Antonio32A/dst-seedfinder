@@ -5,7 +5,7 @@ import ../level/summary.bend as LevelSummary
 import ../level/prefix.bend as LevelPrefix
 import ../data/world_catalog.bend as WorldCatalog
 
-# Part A of a criteria entry in config order (for the witnesses of criteria.py check_tasks, check_swaps and
+# Part A of a config's `generation` in config order (for the witnesses of criteria.py check_tasks, check_swaps and
 # check_setpieces), read back from a config that filters/config.bend already accepted.
 type Swap is Data:
   Swap{category: String, variant: String}
@@ -144,37 +144,28 @@ def items_of(m: Maybe<&2, Json.Json>) -> List<&2, Json.Json>:
     case _:
       Nil{}
 
-def shown_entry(fields: List<&2, Json.Json>) -> Shown:
+def shown_generation(fields: List<&2, Json.Json>) -> Shown:
   +all = fields
   +tasks = fields_of(Parse.field(all, "tasks"))
   Shown{listed(Parse.field(tasks, "required")), listed(Parse.field(tasks, "excluded")), swaps_of(fields_of(Parse.field(all, "prefab_swaps"))),
     pieces_of(items_of(Parse.field(all, "setpieces")))}
 
-def shown_entries(items: List<&2, Json.Json>) -> List<&2, Shown>:
-  match items:
-    case Con{Json.JObj{+fields}, rest}:
-      shown_entry(fields) <> shown_entries(rest)
-    case Con{_, rest}:
-      shown_entries(rest)
-    case Nil{}:
-      Nil{}
-
-def shown_of_json(json: Json.Json) -> List<&2, Shown>:
+def shown_of_json(json: Json.Json) -> Shown:
   match json:
     case Json.JObj{+fields}:
-      shown_entries(items_of(Parse.field(fields, "criteria")))
+      shown_generation(fields_of(Parse.field(fields, "generation")))
     case _:
-      Nil{}
+      shown_generation(Nil{})
 
-def shown_or_none(r: Result<&1, &1, U32 & String, Json.Json>) -> List<&2, Shown>:
+def shown_or_none(r: Result<&1, &1, U32 & String, Json.Json>) -> Shown:
   match r:
     case Done{json}:
       shown_of_json(json)
     case Fail{_}:
-      Nil{}
+      shown_generation(Nil{})
 
-# Part A of every entry of a valid config text, in config order.
-def shown_of(+text: String) -> List<&2, Shown>:
+# Part A of a valid config text, in config order.
+def shown_of(+text: String) -> Shown:
   shown_or_none(Json.parse(text))
 
 # One chosen task of a level table: its name and every set piece placed in it (set_pieces then random_set_pieces).

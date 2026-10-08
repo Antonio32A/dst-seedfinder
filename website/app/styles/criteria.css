@@ -19,10 +19,6 @@
     margin: 0;
 }
 
-.group__passive {
-    margin-top: 10px;
-}
-
 .or-divider {
     display: flex;
     align-items: center;
@@ -46,6 +42,15 @@
 
 .subsection {
     margin-top: 25px;
+}
+
+.framed > :first-child,
+.framed > :first-child > :first-child {
+    margin-top: 0;
+}
+
+.framed > :last-child {
+    margin-bottom: 0;
 }
 
 .subsection__title {
@@ -171,12 +176,6 @@
 .chip-group__label {
     font-size: 0.8em;
     color: var(--muted);
-}
-
-.world-area {
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 2px dashed var(--accent);
 }
 
 .world-area__title {
