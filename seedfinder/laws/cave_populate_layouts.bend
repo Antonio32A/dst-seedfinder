@@ -2,11 +2,8 @@ import Base
 import ../rng/pcg.bend as Pcg
 import ../f64/repr.bend as F64Repr
 import ../populate/layout.bend as PopulateLayout
-import ../populate/counts.bend as PopulateCounts
 
-# Lane R (caves population layouts) laws. Goldens: the real game Lua under DST's PCG32 (count and prefabdata closures called
-# with math.random counted, object_layout.ConvertLayoutToEntitylist of the caves' layouts): each law is followed by its
-# proof def of the same name.
+# Goldens: the real game Lua under DST's PCG32 (object_layout.ConvertLayoutToEntitylist of the caves' layouts).
 
 def word_fold(+h: U32, +w: U32) -> U32:
   (h * 31 + w : U32)

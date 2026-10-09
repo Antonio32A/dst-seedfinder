@@ -35,10 +35,10 @@ import ./topology.bend as Topology
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
 # rounds: `step` does one bounded stage transition; at a KK pass the job waits for a layout engine (gen/layout.bend):
 # `layout` hands over the pass, `laid` resumes with its positions, `advance` runs the pass on this thread (trace) and
-# `advance_io` through GenLayout.solve (gen). At land_done the ocean stage (M10's ocean/ocean.bend) decides whether the
+# `advance_io` through GenLayout.solve (gen). At land_done the ocean stage (ocean/ocean.bend) decides whether the
 # attempt is the world.
 
-# What the ocean stage starts from at land_done (M10's Ocean.run input): the tile grid, the RNG, the land entities (newest
+# What the ocean stage starts from at land_done (Ocean.run's input): the tile grid, the RNG, the land entities (newest
 # first), the finished story (required prefabs, topology), the map size, the land's placed layouts (when recorded),
 # GetRoads' polylines (tile world units), the savedata topology (gen/topology.bend) and the level plan's task set pieces
 # with whether the land placed them.

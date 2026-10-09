@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes data/strings.bend: every constant string of the story, layout, distribute and ocean data, with its Lua 5.1
 luaS_hash (the TString hash Lua uses for table keys) and bytes. `-` prints the module instead of writing it; without
-arguments it also writes the sidecar out/strings.json (id, string, hash) used by lane S tests and M2 fuzzing."""
+arguments it also writes the sidecar out/strings.json (id, string, hash) used by the string table tests and fuzzing."""
 import json
 import sys
 from pathlib import Path

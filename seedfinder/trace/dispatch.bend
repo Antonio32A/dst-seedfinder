@@ -1,9 +1,9 @@
 import Base
-import ./m0.bend as M0
-import ./lane_n.bend as LaneN
-import ./lane_s.bend as LaneS
-import ./lane_g.bend as LaneG
-import ./lane_f.bend as LaneF
+import ./crand.bend as TraceCrand
+import ./map.bend as TraceMap
+import ../worldsim/layout/trace.bend as LayoutTrace
+import ../worldsim/voronoi/trace.bend as VoronoiTrace
+import ../storygen/trace.bend as StoryTrace
 import ../gen/trace.bend as GenTrace
 import ../gen/cave_trace.bend as CaveTrace
 
@@ -12,47 +12,47 @@ import ../gen/cave_trace.bend as CaveTrace
 def unknown(+stage: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   Fail{(2, "trace: unknown stage \"" ++ stage ++ "\"")}
 
-def via_f(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def via_map(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:
     case True{}:
-      Done{LaneF.run(stage, seed, windows, input)}
+      Done{TraceMap.run(stage, seed, windows, input)}
     case False{}:
       unknown(stage)
 
-def via_g(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def via_story(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:
     case True{}:
-      Done{LaneG.run(stage, seed, windows, input)}
+      Done{StoryTrace.run(seed, input)}
     case False{}:
-      via_f(LaneF.handles(stage), stage, seed, windows, input)
+      via_map(TraceMap.handles(stage), stage, seed, windows, input)
 
-def via_s(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def via_voronoi(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:
     case True{}:
-      Done{LaneS.run(stage, seed, windows, input)}
+      Done{VoronoiTrace.run(stage, seed, windows, input)}
     case False{}:
-      via_g(LaneG.handles(stage), stage, seed, windows, input)
+      via_story(String.eq(stage, "storygen"), stage, seed, windows, input)
 
-def via_n(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def via_layout(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:
     case True{}:
-      Done{LaneN.run(stage, seed, windows, input)}
+      Done{LayoutTrace.run(stage, seed, windows, input)}
     case False{}:
-      via_s(LaneS.handles(stage), stage, seed, windows, input)
+      via_voronoi(VoronoiTrace.handles(stage), stage, seed, windows, input)
 
-def via_m0(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
+def via_crand(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:
     case True{}:
-      Done{M0.run(stage, seed, windows, input)}
+      Done{TraceCrand.run(stage, seed, windows, input)}
     case False{}:
-      via_n(LaneN.handles(stage), stage, seed, windows, input)
+      via_layout(LayoutTrace.handles(stage), stage, seed, windows, input)
 
 def via_gen(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:
     case True{}:
       Done{GenTrace.run(stage, seed, windows, input)}
     case False{}:
-      via_m0(M0.handles(stage), stage, seed, windows, input)
+      via_crand(TraceCrand.handles(stage), stage, seed, windows, input)
 
 def via_cave(owned: Bool, +stage: String, +seed: U32, +windows: Bool, +input: String) -> Result<&1, &1, U32 & String, List<&2, String>>:
   match owned:

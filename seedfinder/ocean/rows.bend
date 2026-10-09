@@ -3,7 +3,7 @@ import ../trace/canon.bend as Canon
 import ../worldsim/grid.bend as Grid
 import ../worldsim/tiles/input.bend as TileInput
 
-# The ocean trace stages' inputs, read back from lane G's oracle `ocean` records, and the
+# The ocean trace stages' inputs, read back from the oracle's `ocean` records, and the
 # `odig` record they print.
 
 def cell_of(+tiles: String, +flags: String) -> U32:

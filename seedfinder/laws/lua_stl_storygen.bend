@@ -9,10 +9,7 @@ import ../stl/heap.bend as Heap
 import ../stl/sort.bend as StlSort
 import ../storygen/order.bend as StoryOrder
 import ../storygen/mem.bend as StoryMem
-import ../data/strings.bend as Strings
 
-# Lane S (story, Lua and data) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: tiny U32 golden values, each probed alone first.
 # Golden values: stock Lua 5.1.5, lua-dst, g++, the Windows game exe, C doubles.
 
 law lua_strhash_short:
@@ -113,7 +110,7 @@ law storygen_unit_weight_half:
 def storygen_unit_weight_half():
   {==}
 
-# M12: storygen's persistent array after word writes and a 32-word block write (the block replaces every word of its
+# Storygen's persistent array after word writes and a 32-word block write (the block replaces every word of its
 # aligned range, here 1056..1087: 1057 comes from the block, 1070 is cleared, 2000 is outside and kept).
 law storygen_mem_block:
   {(StoryMem.get(StoryMem.set_block(StoryMem.set(StoryMem.set(StoryMem.empty(), 2000, 7), 1070, 9), 1056, 5n, StoryMem.block(5n, [4, 5, 6])), 1057)
@@ -121,24 +118,4 @@ law storygen_mem_block:
     + (StoryMem.get(StoryMem.set_block(StoryMem.set(StoryMem.set(StoryMem.empty(), 2000, 7), 1070, 9), 1056, 5n, StoryMem.block(5n, [4, 5, 6])), 2000) * 100) : U32) == 705 : U32}
 
 def storygen_mem_block():
-  {==}
-
-# The data tables decode across a chunk boundary (rows 31 and 32 of the string table, each with the luaS_hash of its
-# bytes), and a row past the table's end is empty.
-law data_rows_across_chunks:
-  {[Strings.name(31), Strings.name(32)] == ["BGBadlands", "BGDeciduous"] : List<&2, String>}
-
-def data_rows_across_chunks():
-  {==}
-
-law data_row_hashes:
-  {[Strings.hash(31), Strings.hash(32)] == [StrHash.hash_string("BGBadlands"), StrHash.hash_string("BGDeciduous")] : List<&2, U32>}
-
-def data_row_hashes():
-  {==}
-
-law data_row_past_end:
-  {Strings.strings(Strings.strings_count()) == Nil{} : List<&2, U32>}
-
-def data_row_past_end():
   {==}

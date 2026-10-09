@@ -9,7 +9,7 @@ import ../worldsim/tiles/world.bend as TileWorld
 import ./graph.bend as GenGraph
 import ./tags.bend as GenTags
 
-# The committed map as the tile stages read it (TileWorld.World, the input of M8's tile code): the Klei node of every site
+# The committed map as the tile stages read it (TileWorld.World, the input of the tile code): the Klei node of every site
 # and the cells of the ConvertToTileMap build, with the double points DrawVoronoiEdge rasterises.
 
 def pig_of(+id: String) -> U32:

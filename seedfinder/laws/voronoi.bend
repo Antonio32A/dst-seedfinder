@@ -1,13 +1,10 @@
 import Base
-import ../f64/word.bend as F64Word
 import ../f64/repr.bend as F64Repr
 import ../worldsim/voronoi/ctypes.bend as VoronoiTypes
 import ../worldsim/voronoi/predicates.bend as VoronoiPredicates
 import ../worldsim/voronoi/exact.bend as VoronoiExact
 import ../worldsim/voronoi/lazy.bend as VoronoiLazy
 
-# Lane N (Voronoi, M6) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: tiny U32 golden values, each probed alone first.
 # Golden values: Boost 1.52.
 
 # robust_cross_product(3, 4, 5, 7) = 3 * 7 - 4 * 5.

@@ -4,11 +4,7 @@ import ../f64/arith.bend as F64Arith
 import ../f64/cmp.bend as F64Cmp
 import ../f64/hypot.bend as F64Hypot
 import ../f64/random.bend as F64Random
-import ../worldsim/layout/space.bend as LayoutSpace
-import ../worldsim/layout/kk.bend as KK
 
-# Lane N (numeric) laws. Each law is followed by its proof def of the same name, in this file.
-# Rules: tiny U32 golden values, each probed alone first.
 # Golden values: x86-64 SSE2 and glibc.
 
 law f64_add_one_two:
@@ -201,58 +197,4 @@ law f64_ulp_cmp_less:
   {F64Cmp.ulp_cmp(F64Repr.one(), F64Repr.F64{1072693248, 5}, 4) == LT{} : Cmp}
 
 def f64_ulp_cmp_less():
-  {==}
-
-# Kamada-Kawai pieces (M5): golden values from the Boost 1.52 formulas in IEEE double. The three-vertex example is the
-# path 0-1-2 at (10, 20), (13, 24.5), (30, 21), moving vertex 1.
-
-law kk_coef_three_hops:
-  {KK.coef_of(3) == KK.Coef{F64Repr.F64{1077805056, 0}, F64Repr.F64{1069314503, 477218588}, F64Repr.F64{1074440874, 2863311530}} : KK.Coef}
-
-def kk_coef_three_hops():
-  {==}
-
-law kk_norm_three_four:
-  {KK.norm(F64Repr.F64{1074266112, 0}, F64Repr.F64{3222274048, 0}) == F64Repr.F64{1075052544, 0} : F64Repr.F64}
-
-def kk_norm_three_four():
-  {==}
-
-law kk_partial_three_vertices:
-  {KK.partial(LayoutSpace.Vec{F64Repr.F64{1076494336, 0}, F64Repr.F64{1077444608, 0}}, LayoutSpace.Vec{F64Repr.F64{1077805056, 0}, F64Repr.F64{1077215232, 0}},
-    KK.coef_of(1)) == KK.Partial{F64Repr.F64{3223114332, 552011888}, F64Repr.F64{1073200203, 3738984782},
-    F64Repr.F64{1076976455, 797611798}} : KK.Partial}
-
-def kk_partial_three_vertices():
-  {==}
-
-law kk_hessian_three_second:
-  {KK.hess_add(LayoutSpace.Vec{F64Repr.F64{1076494336, 0}, F64Repr.F64{1077444608, 0}}, LayoutSpace.Vec{F64Repr.F64{1077805056, 0}, F64Repr.F64{1077215232, 0}},
-    KK.coef_of(1), [0 : U32*1n], F64Repr.F64{1076976455, 797611798}, F64Repr.F64{3218205897, 2826368612},
-    F64Repr.F64{1072385773, 3805434401}, F64Repr.F64{1072385773, 3805434401}, F64Repr.F64{1071355586, 3516022054})
-    == KK.Hess{[0 : U32*1n], F64Repr.F64{1072056749, 3993396824}, F64Repr.F64{1072147126, 3069034035}, F64Repr.F64{1072147126, 3069034035},
-    F64Repr.F64{1072438138, 21909520}} : KK.Hess}
-
-def kk_hessian_three_second():
-  {==}
-
-law kk_newton_three:
-  {KK.solved(LayoutSpace.Vec{F64Repr.F64{3223552318, 3029923221}, F64Repr.F64{3221402173, 3916593033}},
-    LayoutSpace.Vec{F64Repr.F64{1076494336, 0}, F64Repr.F64{1077444608, 0}}, F64Repr.F64{1072056749, 3993396824}, F64Repr.F64{1072147126, 3069034035},
-    F64Repr.F64{1072147126, 3069034035}, F64Repr.F64{1072438138, 21909520})
-    == LayoutSpace.Vec{F64Repr.F64{1079878576, 2371297139}, F64Repr.F64{3226393662, 198426450}} : LayoutSpace.Vec}
-
-def kk_newton_three():
-  {==}
-
-law kk_global_close:
-  {KK.global_done(F64Repr.half(), 3, F64Repr.F64{1071645720, 2473901162}) == KK.Global{True{}, 4, F64Repr.half()} : KK.Global}
-
-def kk_global_close():
-  {==}
-
-law kk_global_capped:
-  {KK.global_done(F64Repr.half(), 100, F64Repr.one()) == KK.Global{True{}, 0, F64Repr.one()} : KK.Global}
-
-def kk_global_capped():
   {==}

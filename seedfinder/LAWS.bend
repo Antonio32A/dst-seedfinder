@@ -11,6 +11,7 @@ import ./search/report.bend as SearchReport
 import ./filters/rules.bend as Rules
 import ./filters/level_checks.bend as LevelChecks
 import ./level/choose.bend as LevelChoose
+import ./filters/json.bend as Json
 
 # Golden values below come from the reference harness (the real worldgen Lua under DST's PCG32),
 # which matches set pieces dumped from the game (builds 747465 and 756039) for seeds 1..1000.
@@ -370,3 +371,15 @@ law crand_windows_shuffle:
 def crand_windows_shuffle():
   {==}
 
+# Python's json.loads number grammar.
+law json_number_grammar_accepts_exponent:
+  {Json.is_number_end(Json.number_state("-0.5e+3", 0)) == True{} : Bool}
+
+def json_number_grammar_accepts_exponent():
+  {==}
+
+law json_number_grammar_rejects_leading_zero:
+  {Json.number_state("01", 0) == 9 : U32}
+
+def json_number_grammar_rejects_leading_zero():
+  {==}

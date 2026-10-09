@@ -3,7 +3,7 @@ import ../rng/pcg.bend as Pcg
 import ../rng/crand.bend as CRand
 import ./canon.bend as Canon
 
-# Trace stages of the M0 skeleton. `crand`: for every `gpfs` record of the input (an oracle points.txt, or the
+# The `crand` trace stage: for every `gpfs` record of the input (an oracle points.txt, or the
 # records a diff script picked from it), GetPointsForSite's random_shuffle replayed from the record's `before`
 # counter and `n`: the `gpfs` record with the counter after the shuffle, and one `gpfs_perm` record per position.
 

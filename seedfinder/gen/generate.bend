@@ -321,7 +321,7 @@ def tile_world_built(+s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List
     case VoronoiBuilder.Built{_, _, d}:
       tile_world_cells(s, k, w, sites, polys, GenWorld.cells(d, sites, w, w))
 
-# The TileWorld.World of ConvertToTileMap's build (M8's tile input).
+# The TileWorld.World of ConvertToTileMap's build (the tile stages' input).
 def tile_world(+s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, cells: VoronoiPolygon.Cells) -> TileWorld.World:
   match cells:
     case VoronoiPolygon.Cells{built, polys, +n}:

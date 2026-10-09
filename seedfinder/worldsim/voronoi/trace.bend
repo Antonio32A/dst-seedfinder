@@ -6,7 +6,7 @@ import ../voronoi/builder.bend as VoronoiBuilder
 import ../voronoi/polygon.bend as VoronoiPolygon
 import ../voronoi/records.bend as VoronoiRecords
 
-# Trace stages `voronoi` and `polygons` (lane N, M6). The input (written from the oracle's graph, voronoi and
+# Trace stages `voronoi` and `polygons`. The input (written from the oracle's graph, voronoi and
 # polygons dumps) lists, per Voronoi call of an attempt:
 #   tblock a g at op w h size b      op = pass (BuildVoronoi of the sites as given), commit (Commit from the sites
 #                                    before it, in a w x h world) or tilemap (ConvertToTileMap's ScaleAndCenter to

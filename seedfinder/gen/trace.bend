@@ -24,7 +24,7 @@ import ./job.bend as GenJob
 import ../filters/dump.bend as FilterDump
 
 # The `gen` trace stage: forest_map.Generate from the seed alone, every attempt, through the job state machine
-# (gen/job.bend) with M10's ocean between attempts. On entering each job stage it prints the oracle's records of what
+# (gen/job.bend) with the ocean between attempts. On entering each job stage it prints the oracle's records of what
 # that stage's data determines (recomputing the intermediate maps from it with the same pure stage functions):
 # storygen `attempt call lua child link` (to WorldGen_Commit), graph `vertex outedge` (k counts the out-edges of the
 # whole graph), the last KK run's `kkpos` of each pass, `poly ppt pnb` and `digest` (i=0, the diff drops the call

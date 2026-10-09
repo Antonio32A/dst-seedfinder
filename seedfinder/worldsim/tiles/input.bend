@@ -5,8 +5,8 @@ import ../../f64/repr.bend as F64Repr
 import ./table.bend as TileTable
 import ./world.bend as TileWorld
 
-# The tile stages' inputs read back from lane G's oracle `tileinput` records: the committed map of one attempt as a
-# TileWorld.World, plus record helpers shared by lane G's trace stages.
+# The tile stages' inputs read back from the oracle's `tileinput` records: the committed map of one attempt as a
+# TileWorld.World, plus record helpers shared by the map trace stages.
 
 def hex_value(+code: U32) -> U32:
   Bool.pick(U32, (code >= 97 : U32), (code - 87 : U32), (code - 48 : U32))
@@ -236,7 +236,7 @@ def world_parts(+map: List<&2, String>, +raw: TileTable.Tree<Raw>, +sites: List<
     TileTable.from_list(~List<&2, U32>, adjacency, Nil{}), edges, cells,
     TileTable.from_list(~TileWorld.Cell, cells_by_site(U32.to_nat(count), 0, cells), no_cell())}
 
-# The World of attempt `a` from lane G's `tileinput` records.
+# The World of attempt `a` from the `tileinput` records.
 def world_of(+a: String, +lines: List<&2, String>) -> TileWorld.World:
   +map = first_fields(of_attempt("tmap", a, lines))
   +raw = TileTable.from_list(~Raw, raws(of_attempt("tnode", a, lines)), no_raw())

@@ -15,9 +15,8 @@ import ../worldsim/tiles/input.bend as TileInput
 import ../populate/trace.bend as PopulateTrace
 import ../ocean/trace.bend as OceanTrace
 
-# Lane G (grid) trace stages: `handles` names the stages this file owns, `run` returns their canonical
-# records. Only lane G edits this file.
-# Input: the `tileinput` records of lane G's oracle stage.
+# The map trace stages (site tiles, tiles, populate and ocean): `handles` names them, `run` returns their canonical
+# records. Input: the oracle's `tileinput` records.
 
 def is_populate(+stage: String) -> Bool:
   String.eq(stage, "populate") || String.eq(stage, "pvoronoi")
@@ -202,7 +201,7 @@ def run_grid_or_land(populate: Bool, +stage: String, +seed: U32, +windows: Bool,
     case False{}:
       run_stage(String.eq(stage, "sitetiles"), seed, windows, lines)
 
-def run_lane(ocean: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def run_ocean_or_land(ocean: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match ocean:
     case True{}:
       OceanTrace.run(stage, seed, windows, lines)
@@ -210,4 +209,4 @@ def run_lane(ocean: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: Li
       run_grid_or_land(is_populate(stage), stage, seed, windows, lines)
 
 def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
-  run_lane(OceanTrace.handles(stage), stage, seed, windows, String.split(input, '\n'))
+  run_ocean_or_land(OceanTrace.handles(stage), stage, seed, windows, String.split(input, '\n'))

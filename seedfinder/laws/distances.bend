@@ -4,6 +4,43 @@ import ../filters/walk.bend as Walk
 import ../filters/metric.bend as Metric
 import ../filters/walking.bend as Walking
 import ../filters/anchor.bend as Anchor
+import ../filters/straight.bend as Straight
+import ../f64/repr.bend as F64Repr
+
+# Golden values: Python (world.py tile_coordinate, numpy distances as IEEE bits).
+
+# world.py tile_coordinate(-512, 425) = 85, (283.99, 425) = 283, (284, 425) = 284 (x in hundredths).
+law anchor_tile_coordinate_left:
+  {Anchor.tile_coordinate(4294916096, 425) == 85 : U32}
+
+def anchor_tile_coordinate_left():
+  {==}
+
+law anchor_tile_coordinate_edge:
+  {Anchor.tile_coordinate(28399, 425) == 283 : U32}
+
+def anchor_tile_coordinate_edge():
+  {==}
+
+# One diagonal step (4*sqrt 2 = 5.65685...) is longer than 5.6568 (q1 = floor(0.6568 * 2^32)).
+law walk_diagonal_above_rational:
+  {Walk.compare(Walk.Length{0, 0, 0, 1}, Walk.Length{5, 2820934520, 0, 0}) == 2 : U32}
+
+def walk_diagonal_above_rational():
+  {==}
+
+law walk_same_diagonals_compare_rational:
+  {Walk.compare(Walk.Length{8, 0, 0, 3}, Walk.Length{8, 0, 1, 3}) == 0 : U32}
+
+def walk_same_diagonals_compare_rational():
+  {==}
+
+# numpy sqrt((46 - -512)^2 + (402 - -120)^2) = 764.0994699644805 (portal to pigking on world 1).
+law straight_distance_portal_pigking:
+  {Straight.distance(FilterWorld.Inst{0, 0, F64Repr.F64{1078394880, 0}, F64Repr.F64{1081679872, 0}, 4600, 40200, 3}, FilterWorld.Inst{1, 0, F64Repr.F64{3229614080, 0}, F64Repr.F64{3227385856, 0}, 4294916096, 4294955296, 3}) == F64Repr.F64{1082646731, 3068699398} : F64Repr.F64}
+
+def straight_distance_portal_pigking():
+  {==}
 
 # Bounded walk relaxations (Walking.relax) on a 6 x 4 world, land (6) but for the water (1):
 #   y0  L L L L L L

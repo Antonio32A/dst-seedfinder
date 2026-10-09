@@ -16,7 +16,7 @@ files=(LAWS.bend laws/*.bend)
 status=0
 
 for file in "${files[@]}"; do
-    if ! grep -qx "import \./${file} as [A-Za-z]*" PROOF.bend; then
+    if ! grep -qx "import \./${file} as [A-Za-z0-9]*" PROOF.bend; then
         echo "proof: PROOF.bend does not import $file"
         status=1
     fi
@@ -75,7 +75,7 @@ for i in "${!files[@]}"; do
         note="over budget (${secs_budget} s, ${mb_budget} MB)"
     fi
 
-    printf '%-16s %7.1f s %6d MB  %s\n' "${files[$i]}" "$wall" "$mb" "${note:-ok}"
+    printf '%-36s %7.1f s %6d MB  %s\n' "${files[$i]}" "$wall" "$mb" "${note:-ok}"
     if (( held != 0 )); then
         sed 's/^/    /' "$logs/$i.out" | tail -20
     fi

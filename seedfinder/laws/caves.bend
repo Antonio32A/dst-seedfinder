@@ -23,9 +23,8 @@ import ../ocean/post.bend as OceanPost
 import ../data/ocean_post.bend as OceanPostData
 import ../filters/dump.bend as FilterDump
 import ../post/archive.bend as Archive
-import ../data/cave_story.bend as CaveStory
 
-# Caves laws. The golden values are the real caves worlds of builds 747465 and 756039 (scripts/groundtruth, seed 1 of
+# The golden values are the real caves worlds of builds 747465 and 756039 (scripts/groundtruth, seed 1 of
 # build/groundtruth/data/worlds_caves): the level table decodes byte for byte into the dumped tasks and set pieces,
 # and the draw counts are the dump's rng_checkpoints (choose_tasks 21).
 
@@ -276,8 +275,6 @@ def cave_pillar_link_needs_its_exit():
 def edge_grid() -> Grid.Grid:
   Grid.put(Grid.put(Grid.put(Grid.put(Grid.new(7, 5, Grid.cell(6, 0)), 0, Grid.cell(1, 0)), 3, Grid.cell(128, 0)), 31, Grid.cell(10497, 0)), 34, Grid.cell(10498, 0))
 
-# The land bits made with the packed tiles of a 7 x 5 grid (a partial top word, tile 31 on the word boundary) are
-# those of the packed tile list.
 def fused_land(+packed: SaveData.Packed) -> List<&2, U32>:
   match packed:
     case SaveData.Packed{_, +land}:

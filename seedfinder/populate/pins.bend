@@ -2,8 +2,9 @@ import Base
 import ../data/closures.bend as Closures
 
 # The hand-ported closures, each pinned to the game code it ports: the id in data/closures.bend and the fingerprint
-# of that closure variant. A regeneration that renumbers or changes a closure breaks the pin (LawsG.ported_closures_line_up)
-# instead of leaving the port to count 0 silently. Rows: scripts/gen/closure_pins.py.
+# of that closure variant. A regeneration that renumbers or changes a closure breaks the pin
+# (LawsWorldGeneration.ported_closures_line_up) instead of leaving the port to count 0 silently. Rows:
+# scripts/gen/closure_pins.py.
 type Pin is Data:
   Pin{id: U32, fingerprint: U32}
 
