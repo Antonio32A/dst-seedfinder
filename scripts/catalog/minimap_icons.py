@@ -52,6 +52,7 @@ def main():
     if not os.path.isdir(scripts_dir(args.build)):
         sys.exit("no game scripts for build %d: run scripts/setup.sh with its install" % args.build)
     table = run_extractor(args.build)
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w") as f:
         json.dump(table, f, indent=1, sort_keys=True)
         f.write("\n")

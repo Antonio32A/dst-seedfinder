@@ -57,7 +57,8 @@ describe("every response carries the security headers", () => {
         "/map/windows/caves/1",
         "/map/windows/756039/1",
         "/map/windows/forest/756039/1",
-        "/map/windows/caves/756039/1"
+        "/map/windows/caves/756039/1",
+        "/map/windows/caves/757748/1"
     ])("on the world map %s, which serves the app", async (path) => {
         const response = await api(path);
         expect(response.status).toBe(200);
@@ -69,8 +70,7 @@ describe("every response carries the security headers", () => {
     });
 
     it.each([
-        ["/map/windows/123/1", "There&#x27;s no build &quot;123&quot;. Use 756039."],
-        ["/map/windows/caves/757748/1", "Build 757748 has no caves yet."]
+        ["/map/windows/123/1", "There&#x27;s no build &quot;123&quot;. Use 756039 or 757748."]
     ])("on the world map %s, which says it isn't one", async (path, error) => {
         const response = await api(path);
         expect(response.status).toBe(200);

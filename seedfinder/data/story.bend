@@ -174,6 +174,18 @@ def half_threshold(+build: Builds.Build) -> U32:
     case Builds.Build{+number}:
       half_threshold_of_number(number)
 
+def start_takes_link_tags_of_number(+number: U32) -> Bool:
+  match number:
+    case 757748:
+      B757748Story.start_takes_link_tags()
+    case _:
+      B756039Story.start_takes_link_tags()
+
+def start_takes_link_tags(+build: Builds.Build) -> Bool:
+  match build:
+    case Builds.Build{+number}:
+      start_takes_link_tags_of_number(number)
+
 def bg_impassable_room_of_number(+number: U32) -> U32:
   match number:
     case 757748:

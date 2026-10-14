@@ -59,10 +59,28 @@ def run_tags(+build: Builds.Build, tags: List<&2, U32>, +s: StoryGraph.St, +node
     case Con{+tag, rest}:
       run_tags(build, rest, run_tag(build, s, node, tag), node)
 
+def mark_used(+s: StoryGraph.St, +tag: U32) -> StoryGraph.St:
+  StoryGraph.put(s, StoryGraph.s_tags_used(), (StoryGraph.get(s, StoryGraph.s_tags_used()) .|. (1 << U32.to_nat(tag) : U32) : U32))
+
+def cave_fires(+build: Builds.Build, +s: StoryGraph.St, +tag: U32) -> Bool:
+  U32.is_zero((StoryGraph.get(s, StoryGraph.s_tags_used()) .&. (1 << U32.to_nat(tag) : U32) : U32)) || U32.is_zero(CaveStory.tag_once(build, tag))
+
 def cave_item(fires: Bool, +s: StoryGraph.St, +node: U32, +tag: U32) -> StoryGraph.St:
   match fires:
     case True{}:
-      StoryGraph.put(StoryGraph.add_extra(s, node, 3, tag), StoryGraph.s_tags_used(), (StoryGraph.get(s, StoryGraph.s_tags_used()) .|. (1 << U32.to_nat(tag) : U32) : U32))
+      mark_used(StoryGraph.add_extra(s, node, 3, tag), tag)
+    case False{}:
+      s
+
+def cave_static_chosen(+build: Builds.Build, +g: StoryGraph.Got, +node: U32, +tag: U32) -> StoryGraph.St:
+  match g:
+    case StoryGraph.Got{+k, +s}:
+      StoryGraph.add_extra(s, node, 4, CaveStory.tag_static_layout(build, tag, (k - 1 : U32)))
+
+def cave_static(+build: Builds.Build, fires: Bool, +s: StoryGraph.St, +node: U32, +tag: U32) -> StoryGraph.St:
+  match fires:
+    case True{}:
+      cave_static_chosen(build, StoryGraph.upto(mark_used(s, tag), CaveStory.tag_static_count(build, tag)), node, tag)
     case False{}:
       s
 
@@ -71,7 +89,9 @@ def cave_tag_of(+build: Builds.Build, kind: U32, +s: StoryGraph.St, +node: U32, 
     case 2:
       StoryGraph.add_global(s, tag, g, node)
     case 3:
-      cave_item(U32.is_zero((StoryGraph.get(s, StoryGraph.s_tags_used()) .&. (1 << U32.to_nat(tag) : U32) : U32)) || U32.is_zero(CaveStory.tag_once(build, tag)), s, node, tag)
+      cave_item(cave_fires(build, s, tag), s, node, tag)
+    case 4:
+      cave_static(build, cave_fires(build, s, tag), s, node, tag)
     case _:
       s
 
@@ -79,7 +99,8 @@ def cave_tag(+build: Builds.Build, +s: StoryGraph.St, +node: U32, +g: U32, +tag:
   cave_tag_of(build, CaveStory.tag_kind(build, tag), s, node, g, tag)
 
 # A caves room's tags in ipairs order: a GLOBALTAG result is recorded for the task's graph g, an ITEM result (once per
-# story when one-shot) in terrain_contents_extra as the caves tag id.
+# story when one-shot) in terrain_contents_extra as the caves tag id, a STATIC result (BatBossCave_Spawner, once per
+# story) as the layout its math.random(n) picks.
 def cave_tags(+build: Builds.Build, tags: List<&2, U32>, +s: StoryGraph.St, +node: U32, +g: U32) -> StoryGraph.St:
   match tags:
     case Nil{}:

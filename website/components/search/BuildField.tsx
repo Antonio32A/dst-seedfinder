@@ -1,6 +1,5 @@
 "use client";
 
-import Select from "@/components/ui/Select";
 import { buildLabel, gameBuildOf } from "@/lib/config/builds";
 import { type GameBuild, WEBSITE_BUILDS } from "@/lib/config/game-builds";
 
@@ -13,13 +12,18 @@ interface BuildFieldProps {
 export default function BuildField({ build, onChange }: BuildFieldProps) {
     const builds = WEBSITE_BUILDS.includes(build) ? WEBSITE_BUILDS : [...WEBSITE_BUILDS, build];
     return (
-            <div className="build-field">
-                <Select
-                        label="Game build"
-                        options={builds.map((option) => ({ id: String(option), label: buildLabel(option) }))}
+            <label className="build-field">
+                <span className="seg__legend">Build</span>
+                <select
                         value={String(build)}
-                        onChange={(id) => onChange(gameBuildOf(Number(id)) ?? build)}
-                />
-            </div>
+                        onChange={(event) => onChange(gameBuildOf(Number(event.target.value)) ?? build)}
+                >
+                    {builds.map((option) => (
+                            <option key={option} value={String(option)}>
+                                {buildLabel(option)}
+                            </option>
+                    ))}
+                </select>
+            </label>
     );
 }

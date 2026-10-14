@@ -9,11 +9,13 @@ The tables are unions of the forest and the caves. Everything the forest reaches
 caves; what only the caves reach follows, in the same kind of order (strings, rooms, layouts sorted by bytes; closures by
 first source site; weights sorted).
 """
+import json
 import sys
 from functools import lru_cache
 from pathlib import Path
 
 import blob
+import registry
 
 sys.path.insert(0, str(blob.GEN))
 from gen_world_catalog import LITERAL_ORDER  # noqa: E402
@@ -202,10 +204,10 @@ def _site_key(site):
     return path, int(lines.split("-")[0])
 
 
-def _merge_closures(sidecars):
+def _merge_closures(out, sidecars):
     merged = {}
     for name in sidecars:
-        for c in blob.sidecar(name)["closures"]:
+        for c in json.loads((out / name).read_text())["closures"]:
             entry = merged.setdefault(c["key"], {"key": c["key"], "body": c["body"], "upvalues": c["upvalues"],
                                                  "globals": c["globals"], "sites": set(), "contexts": set()})
             entry["sites"].update(c["sites"])
@@ -213,18 +215,33 @@ def _merge_closures(sidecars):
     return merged
 
 
-@lru_cache(maxsize=None)
-def closures():
-    """Every closure variant (distinct body + upvalues), the forest's first ordered by first source site, then those
-    only the caves reach in the same order. A closure both reach keeps its forest id and its forest sites and
-    contexts; the caves' ones are in cave_sites and cave_contexts."""
-    forest = _merge_closures(("story.json", "layouts.json", "ocean.json"))
-    caves = _merge_closures(("story_caves.json", "layouts_caves.json"))
+def _closure_variants(out):
+    forest = _merge_closures(out, ("story.json", "layouts.json", "ocean.json"))
+    caves = _merge_closures(out, ("story_caves.json", "layouts_caves.json"))
 
     def order(entries):
         return sorted(entries, key=lambda e: (min(_site_key(s) for s in e["sites"]), e["key"]))
 
-    ordered = order(forest.values()) + order(e for k, e in caves.items() if k not in forest)
+    return forest, caves, order(forest.values()) + order(e for k, e in caves.items() if k not in forest)
+
+
+@lru_cache(maxsize=None)
+def closures():
+    """Every closure variant (distinct body + upvalues), the forest's first ordered by first source site, then those
+    only the caves reach in the same order. A closure both reach keeps its forest id and its forest sites and
+    contexts; the caves' ones are in cave_sites and cave_contexts.
+
+    The ids are the first registered build's (its sidecars are generated first): a later build keeps them for every
+    variant it shares with that build, so the hand ports keyed by closure id (seedfinder/populate/) hold for every
+    build, and numbers its new variants after them in the same order."""
+    forest, caves, ordered = _closure_variants(blob.out_dir())
+    first = registry.builds()[0]["number"]
+    if first != blob.build():
+        known = [e["key"] for e in _closure_variants(blob.out_dir().parent / str(first))[2]]
+        gone = set(known) - {e["key"] for e in ordered}
+        assert not gone, f"build {blob.build()} lacks {len(gone)} closure variants of build {first}, so ids would move"
+        rank = {key: i for i, key in enumerate(known)}
+        ordered = sorted(ordered, key=lambda e: rank.get(e["key"], len(known)))
     for i, e in enumerate(ordered):
         cave = caves.get(e["key"])
         e["id"] = i

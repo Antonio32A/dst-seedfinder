@@ -9,6 +9,7 @@ import ./laws/cave_populate_closures.bend as LawsCavePopulateClosures
 import ./laws/cave_populate_layouts.bend as LawsCavePopulateLayouts
 import ./laws/cave_world.bend as LawsCaveWorld
 import ./laws/caves.bend as LawsCaves
+import ./laws/caves_757748.bend as LawsCaves757748
 import ./laws/data_tables.bend as LawsDataTables
 import ./laws/distances.bend as LawsDistances
 import ./laws/f64.bend as LawsF64

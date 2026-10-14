@@ -9,7 +9,9 @@ const catalogFile = (shard, file) => path.join("scripts", "catalog", String(late
 const catalogPath = process.argv[2] ?? path.join(root, catalogFile("forest", "catalog.json"));
 const outPath = path.join(root, "website", "lib", "catalog", "world.ts");
 const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
-const caveCatalog = JSON.parse(readFileSync(path.join(root, catalogFile("caves", "cave_catalog.json")), "utf8"));
+const caveCatalogOf = (build) => JSON.parse(readFileSync(path.join(root, "scripts", "catalog", String(build), "cave_catalog.json"), "utf8"));
+const caveCatalogs = new Map([...new Set(registry.builds.map((build) => build.catalog.caves))].sort((a, b) => a - b).map((build) => [build, caveCatalogOf(build)]));
+const caveCatalog = caveCatalogs.get(latest.catalog.caves);
 const textures = JSON.parse(readFileSync(path.join(root, "scripts", "catalog", "map_textures.json"), "utf8"));
 const iconRects = JSON.parse(readFileSync(path.join(root, "website", "public", "world-map", textures.iconSheet.rects), "utf8")).icons;
 const textureUrl = (file) => `/world-map/${file}`;
@@ -44,10 +46,10 @@ const CAVE_ANCHORS = [
 
 const missingAnchors = [
     ...ANCHORS.filter(([id]) => !catalog.prefabs.some((prefab) => prefab.id === id)),
-    ...CAVE_ANCHORS.filter(([id]) => !caveCatalog.prefabs.some((prefab) => prefab.id === id)),
+    ...[...caveCatalogs.values()].flatMap((cave) => CAVE_ANCHORS.filter(([id]) => !cave.prefabs.some((prefab) => prefab.id === id))),
 ];
 if (missingAnchors.length > 0) throw new Error(`anchors missing from the catalog: ${missingAnchors.join(", ")}`);
-const groups = [...new Set([...catalog.prefabs, ...caveCatalog.prefabs].map((prefab) => prefab.group))];
+const groups = [...new Set([catalog, ...caveCatalogs.values()].flatMap((shard) => shard.prefabs).map((prefab) => prefab.group))];
 const orderedGroups = [...GROUP_ORDER.filter((group) => groups.includes(group)), ...groups.filter((group) => !GROUP_ORDER.includes(group))];
 
 const titleCase = (name) => name.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -173,6 +175,12 @@ export interface MapTile {
     oceanMinimapColor?: [r: number, g: number, b: number];
 }
 
+export interface CaveCatalog {
+    prefabs: WorldPrefab[];
+    sampleWorlds: number;
+    landTiles: LandTile[];
+}
+
 export interface NamedAnchor {
     id: string;
     label: string;
@@ -205,20 +213,23 @@ ${rows(ANCHORS.map(([id, label]) => ({ id, label })))}
 
 export const PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(PREFABS.map((prefab) => [prefab.id, prefab]));
 
-/** The caves shard's prefabs: what its sampled worlds and its rooms and layouts can contain. */
-export const CAVE_PREFABS: WorldPrefab[] = [
-${rows(caveCatalog.prefabs.map(prefabRow))}
+${[...caveCatalogs].map(([build, cave]) => `/** Build ${build}'s caves catalog: what its sampled worlds and its rooms and layouts can contain. */
+const CAVE_PREFABS_${build}: WorldPrefab[] = [
+${rows(cave.prefabs.map(prefabRow))}
 ];
 
-export const CAVE_PREFAB_BY_ID: ReadonlyMap<string, WorldPrefab> = new Map(CAVE_PREFABS.map((prefab) => [prefab.id, prefab]));
-
-/** How many real cave worlds the caves' prefab counts and tiles come from. */
-export const CAVE_SAMPLE_WORLDS = ${caveCatalog.worlds.total};
-
-/** The caves' land tiles; \`inDefaultWorlds\` marks the ones the sampled cave worlds have. */
-export const CAVE_LAND_TILES: LandTile[] = [
-${rows(caveCatalog.tiles.filter((tile) => tile.land).map(caveLandTileRow))}
+/** The caves' land tiles in build ${build}'s caves catalog; \`inDefaultWorlds\` marks the ones its sampled worlds have. */
+const CAVE_LAND_TILES_${build}: LandTile[] = [
+${rows(cave.tiles.filter((tile) => tile.land).map(caveLandTileRow))}
 ];
+`).join("\n")}
+/**
+ * Each caves catalog builds.json uses, by the build whose catalog it is: its prefabs, how many real cave worlds their
+ * counts and tiles come from, and its land tiles.
+ */
+export const CAVE_CATALOGS: Record<${[...caveCatalogs.keys()].join(" | ")}, CaveCatalog> = {
+${[...caveCatalogs].map(([build, cave]) => `${INDENT}${build}: { prefabs: CAVE_PREFABS_${build}, sampleWorlds: ${cave.worlds.total}, landTiles: CAVE_LAND_TILES_${build} }`).join(",\n")}
+};
 
 export const CAVE_ANCHORS: NamedAnchor[] = [
 ${rows(CAVE_ANCHORS.map(([id, label]) => ({ id, label })))}

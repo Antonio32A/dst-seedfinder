@@ -195,12 +195,19 @@ def main():
         ca_layer_rows.append([u for layer in (ca or {}).get("translate", [])
                               for u in (layer["tile"], layer["item_count"], ca_item[layer["item"]])])
 
+    static_layouts = {t["tag"]: [ids.layout_index(r["first"]["value"]) for r in t["results"]]
+                      for t in blob.sidecar("layouts_caves.json")["maptags"]
+                      if any(r["first"].get("kind") == "STATIC" for r in t["results"])}
     tag_rows, tag_text = [], []
     for t in tags:
         first, second = t["first"], t["second"]
-        assert first.get("kind") in TAG_KINDS, t
-        value = first.get("value")
-        tag_rows.append([TAG_KINDS[first.get("kind")], 1 if first and not second else 0])
+        kind = first.get("kind")
+        assert kind in TAG_KINDS, t
+        assert (kind == "STATIC") == (t["tag"] in static_layouts), t
+        candidates = static_layouts.get(t["tag"], [])
+        value = first.get("value") if not candidates else None
+        tag_rows.append([TAG_KINDS[kind], 1 if first and not second else 0]
+                        + ([len(candidates)] + candidates if candidates else []))
         tag_text.append(blob.text(value if isinstance(value, str) else ""))
 
     task_tag_rows = [[tag_id[x] for x in t["room_tags"]] for t in tasks]
@@ -251,9 +258,11 @@ def main():
                                              "item_count, items[1] as a ca_items index) triples.")
     m.table("ca_items", [blob.text(n) for n in ca_names], "Row i: a RunCA layer's first item prefab (Blob.text).")
     m.table("tag_names", [blob.text(t["tag"]) for t in tags], "Row tag: the tag name (Blob.text).")
-    m.table("tag_values", tag_text, "Row tag: the value the map tag function returns (Blob.text, empty when none).")
-    m.table("tags", tag_rows, "Row tag: kind of the first call (0 none, 1 TAG, 2 GLOBALTAG, 3 ITEM), 1 when a second "
-                              "call on the same tagdata returns nothing.")
+    m.table("tag_values", tag_text, "Row tag: the value the map tag function returns (Blob.text, empty when none "
+                                    "or a STATIC tag's random layout).")
+    m.table("tags", tag_rows, "Row tag: kind of the first call (0 none, 1 TAG, 2 GLOBALTAG, 3 ITEM, 4 STATIC), 1 when a "
+                              "second call on the same tagdata returns nothing; a STATIC tag then has n and its n "
+                              "layouts (data/layouts.bend), the k-th for math.random(n) = k.")
     m.table("tasks", task_rows, "Row task: kind (0 required, 1 optional), room_bg (tile), background_room, "
                                 "cove room (Blank when unset), entrance_room (NONE when none or a list), 1 when the "
                                 "entrance is a list, cove_room_chance, cove_room_max_edges, crosslink_factor, "
@@ -295,6 +304,8 @@ def main():
         accessors.append(f"def {name}(+i: U32) -> U32:\n  {table}_at(i, {column})\n")
     accessors.append("def task_cove_threshold(+i: U32) -> U32:\n  Blob.word(tasks(i), 12)\n")
     accessors.append("def start_room(+k: U32) -> U32:\n  start_rooms_at(0, k)\n")
+    accessors.append("def tag_static_count(+i: U32) -> U32:\n  tags_at(i, 2)\n")
+    accessors.append("def tag_static_layout(+i: U32, +k: U32) -> U32:\n  tags_at(i, (3 + k : U32))\n")
     for name, table in (("room_name", "room_names"), ("ca_item_name", "ca_items"), ("tag_name", "tag_names"), ("tag_value", "tag_values")):
         accessors.append(f"def {name}(+i: U32) -> String:\n  Blob.text({table}(i))\n")
     m.code("\n".join(accessors))

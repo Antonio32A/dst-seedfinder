@@ -148,6 +148,16 @@ class WriteMapTextures(unittest.TestCase):
         icon = read_icons(self.game_dir, ["a.png"])["a.png"]
         np.testing.assert_array_equal(icon.levels[0], atlas_region(self.atlas1, 0, -32, 64, -32, 64))
 
+    def test_an_icon_the_install_lacks_comes_from_the_first_extra_install_that_has_it(self):
+        newer = self.enterContext(tempfile.TemporaryDirectory())
+        atlas = [pixels ^ 5 for pixels in noisy_mips(64)]
+        write_atlas(newer, "minimap/minimap_data1.xml", "atlas1.tex", 64,
+                    {"c.png": (4.5, 11.5, 20.5, 27.5), "a.png": (0, 4, 0, 4)}, atlas)
+        write_atlas(newer, "minimap/minimap_data2.xml", "atlas2.tex", 64, {}, noisy_mips(64))
+        icons = read_icons(self.game_dir, ["a.png", "c.png"], [newer])
+        np.testing.assert_array_equal(icons["a.png"].levels[0], atlas_region(self.atlas1, 0, -32, 64, -32, 64))
+        np.testing.assert_array_equal(icons["c.png"].levels[0], atlas_region(atlas, 0, -32, 64, -32, 64))
+
     def test_an_icon_keeps_the_atlas_own_mips_of_its_gutter_widened_region_and_its_own_rect(self):
         icon = read_icons(self.game_dir, ["a.png", "b.png"])["a.png"]
         self.assertEqual(len(icon.levels), SHEET_MIPS)

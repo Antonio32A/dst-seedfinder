@@ -2,8 +2,8 @@ import Base
 import ../data/closures.bend as Closures
 import ../data/builds.bend as Builds
 
-# The hand-ported closures, each pinned to the game code it ports: the id in data/closures.bend and the fingerprint
-# of that closure variant. A regeneration that renumbers or changes a closure breaks the pin
+# The hand-ported closures, each pinned to the game code it ports: the id in data/closures.bend (the same in every
+# build) and the fingerprint of that closure variant. A regeneration that renumbers or changes a closure breaks the pin
 # (LawsWorldGeneration.ported_closures_line_up) instead of leaving the port to count 0 silently. Rows:
 # scripts/gen/closure_pins.py.
 type Pin is Data:
@@ -151,3 +151,11 @@ def ported() -> List<&2, Pin>:
 
 def every_ported_closure_is_pinned(+build: Builds.Build) -> Bool:
   all_pinned(build, U32.to_nat(Closures.closure_count(build)), ported(), 0)
+
+# The pins line up and cover every ported closure in each of the builds.
+def hold_in(numbers: List<&2, U32>) -> Bool:
+  match numbers:
+    case Nil{}:
+      True{}
+    case Con{+number, rest}:
+      line_up(Builds.Build{number}, ported()) && every_ported_closure_is_pinned(Builds.Build{number}) && hold_in(rest)

@@ -3,10 +3,8 @@ import type { GameBuild } from "@/lib/config/game-builds";
 import type { Shard } from "@/lib/config/seedfinder-config";
 import {
     CAVE_ANCHORS,
-    CAVE_LAND_TILES,
-    CAVE_PREFAB_BY_ID,
-    CAVE_PREFABS,
-    CAVE_SAMPLE_WORLDS,
+    CAVE_CATALOGS,
+    type CaveCatalog,
     LAND_TILES,
     type LandTile,
     NAMED_ANCHORS,
@@ -44,9 +42,24 @@ const groupsOf = (prefabs: readonly WorldPrefab[]): PrefabGroup[] =>
         prefabs: prefabs.filter((prefab) => prefab.group === id).map((prefab) => prefab.id)
     })).filter((group) => group.prefabs.length > 0);
 
-const CATALOGS: Record<CatalogBuild, Record<Shard, ShardCatalog>> = {
-    756039: {
-        forest: {
+const caveCatalog = ({ prefabs, sampleWorlds, landTiles }: CaveCatalog): ShardCatalog => ({
+    prefabs,
+    byId: new Map(prefabs.map((prefab) => [prefab.id, prefab])),
+    groups: groupsOf(prefabs),
+    anchors: CAVE_ANCHORS,
+    landTiles,
+    sampleWorlds,
+    spawn: "cave_exit",
+    links: {
+        noun: "tentacle pillar",
+        plural: "tentacle pillars",
+        prefabs: ["tentacle_pillar", "tentacle_pillar_atrium"]
+    }
+});
+
+const CATALOGS: { [S in Shard]: Record<CatalogBuild<S>, ShardCatalog> } = {
+    forest: {
+        756039: {
             prefabs: PREFABS,
             byId: PREFAB_BY_ID,
             groups: groupsOf(PREFABS),
@@ -55,27 +68,16 @@ const CATALOGS: Record<CatalogBuild, Record<Shard, ShardCatalog>> = {
             sampleWorlds: SAMPLE_WORLDS,
             spawn: "multiplayer_portal",
             links: { noun: "wormhole", plural: "wormholes", prefabs: ["wormhole"] }
-        },
-        caves: {
-            prefabs: CAVE_PREFABS,
-            byId: CAVE_PREFAB_BY_ID,
-            groups: groupsOf(CAVE_PREFABS),
-            anchors: CAVE_ANCHORS,
-            landTiles: CAVE_LAND_TILES,
-            sampleWorlds: CAVE_SAMPLE_WORLDS,
-            spawn: "cave_exit",
-            links: {
-                noun: "tentacle pillar",
-                plural: "tentacle pillars",
-                prefabs: ["tentacle_pillar", "tentacle_pillar_atrium"]
-            }
         }
-    }
+    },
+    caves: Object.fromEntries(
+        Object.entries(CAVE_CATALOGS).map(([build, cave]) => [build, caveCatalog(cave)])
+    ) as Record<keyof typeof CAVE_CATALOGS, ShardCatalog>
 };
 
 /**
  * The prefabs a shard's worlds can contain in the build, with their display names, groups and map icons, and what its
  * world filters start from.
  */
-export const shardCatalog = (shard: Shard, build: GameBuild): ShardCatalog =>
-    CATALOGS[catalogBuild(build, shard)][shard];
+export const shardCatalog = <S extends Shard>(shard: S, build: GameBuild): ShardCatalog =>
+    CATALOGS[shard][catalogBuild(build, shard)];

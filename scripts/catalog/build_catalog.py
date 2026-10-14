@@ -330,7 +330,8 @@ def load_atlases():
     atlases = {"minimap": {}, "inventory": {}}
     if not os.path.isdir(GAME_DIR):
         return atlases
-    for xml in (os.path.join(GAME_DIR, "data", path) for path in map_textures.MINIMAP_ATLASES):
+    for xml in (path for path in (os.path.join(GAME_DIR, "data", atlas) for atlas in map_textures.MINIMAP_ATLASES)
+                if os.path.exists(path)):
         root = ET.parse(xml).getroot()
         tex = root.find("Texture").get("filename")
         for el in root.iter("Element"):

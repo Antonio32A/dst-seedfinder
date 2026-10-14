@@ -39,6 +39,10 @@ python3 scripts/catalog/build_catalog.py --shard caves
 python3 scripts/catalog/map_textures.py && node scripts/gen/gen_website_catalog.mjs
 ```
 
+Build 757748 (the beta) has its own caves catalog, made the same way with `--build 757748` and `DST_GAME` on the beta's
+Linux server (its worlds have the Big Bat Cave, `batbosscave`, and the Ancient Gateway's centre marker); its icons need
+`map_textures.py --extra-game <that install>`.
+
 ## Tiles on the map
 
 Each of `tiles[]` carries what the website's map needs to draw it as the game's map screen does. The game draws one
@@ -72,7 +76,8 @@ records what each tells its `MiniMapEntity`: the last icon, priority and draw-ov
 python3 scripts/catalog/minimap_icons.py
 ```
 
-`build_catalog.py` resolves the icon name in the atlases the game loads, `minimap_data1.xml` then `minimap_data2.xml`
+`build_catalog.py` resolves the icon name in the atlases the game loads, `minimap_data1.xml`, `minimap_data2.xml` then
+`minimap_data3.xml` (from build 757748 on)
 (`minimap_data.xml` is legacy: the game never loads it, and its rects differ). `icons.minimap.match` says where the
 icon came from:
 
@@ -141,7 +146,9 @@ right; `iconSheet.levels` of the manifest (and `world.ts`) gives each one's regi
 (`world.ts` `icon.priority`), not per icon.
 
 It needs the game install (`DST_GAME` overrides the path) and reads the catalogs, so rerun it after
-`build_catalog.py`, then regenerate `world.ts`:
+`build_catalog.py`, then regenerate `world.ts`. When a newer build's catalog has icons the install lacks (757748's
+caves have `batbosscave.png`, which only the beta's atlases hold), name that build's install with `--extra-game DIR`:
+icons come from `DST_GAME`'s atlases first, then from the extra installs.
 
 ```sh
 python3 scripts/catalog/map_textures.py && node scripts/gen/gen_website_catalog.mjs

@@ -3,13 +3,14 @@ import ../data/rooms.bend as Rooms
 import ../data/tasks.bend as Tasks
 import ../data/gen_tags.bend as GenTagsData
 import ../data/cave_story.bend as CaveStory
+import ../data/story.bend as StoryData
 import ../storygen/graph.bend as StoryGraph
 import ../storygen/catalog.bend as StoryCatalog
 import ../data/builds.bend as Builds
 
 # Graph:ApplyPoisonTag (network.lua): a node's tags are its room's tags (MapTags passes these three through as TAG)
-# plus its task's room_tags; the synthetic blanks (blocker, LOOP_BLANK_SUB, REGION_LINK_SUB) carry RoadPoison and
-# ForceDisconnected. Bits: 2 ForceConnected, 4 RoadPoison (SetSiteFlags), 8 ForceDisconnected (ClearNodeLinks).
+# plus its task's room_tags, and on builds whose START node takes the tags of the node it links to, that node's; the
+# synthetic blanks (blocker, LOOP_BLANK_SUB, REGION_LINK_SUB) carry RoadPoison and ForceDisconnected. Bits: 2 ForceConnected, 4 RoadPoison (SetSiteFlags), 8 ForceDisconnected (ClearNodeLinks).
 
 def has(xs: List<&2, U32>, +v: U32) -> Bool:
   match xs:
@@ -41,12 +42,27 @@ def task_bits(+build: Builds.Build, task: Bool, +id: U32) -> U32:
 def synthetic(+kind: U32) -> Bool:
   U32.is_eq(kind, StoryGraph.id_blocker()) || U32.is_eq(kind, StoryGraph.id_loop_sub()) || U32.is_eq(kind, StoryGraph.id_region_sub())
 
-# The poison bits of story node n.
-def poison(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> U32:
+# Whether story node n is a START node that takes the tags of the node it links to (its first edge's other node, a room
+# node of the start task).
+def takes_link_tags(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> Bool:
+  U32.is_eq(StoryGraph.nf(s, n, StoryGraph.f_kind()), StoryGraph.id_start()) && StoryData.start_takes_link_tags(build)
+
+def own_poison(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> U32:
   +room = StoryGraph.nf(s, n, StoryGraph.f_room())
   +g = StoryGraph.nf(s, n, StoryGraph.f_graph())
   +task = task_bits(build, U32.is_eq(StoryGraph.gf(s, g, StoryGraph.g_kind()), StoryGraph.k_task()), StoryGraph.gf(s, g, StoryGraph.g_part()))
   (room_bits(build, U32.is_eq(room, StoryGraph.none()), room) .|. task .|. bit(synthetic(StoryGraph.nf(s, n, StoryGraph.f_kind())), 12) : U32)
+
+def link_bits(+build: Builds.Build, takes: Bool, +s: StoryGraph.St, +n: U32) -> U32:
+  match takes:
+    case True{}:
+      own_poison(build, s, StoryGraph.nf(s, n, StoryGraph.f_first_other()))
+    case False{}:
+      0
+
+# The poison bits of story node n.
+def poison(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> U32:
+  (own_poison(build, s, n) .|. link_bits(build, takes_link_tags(build, s, n), s, n) : U32)
 
 # SetSiteFlags(id, flags) of story node n.
 def site_flags(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> U32:
@@ -104,6 +120,13 @@ def room_tag_ids(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> List<&2, U
 def room_node_names(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> List<&2, String>:
   array_union(result_names(build, room_tag_ids(build, s, n)), task_tag_names(build, s, n))
 
+def start_names(+build: Builds.Build, takes: Bool, +s: StoryGraph.St, +n: U32) -> List<&2, String>:
+  match takes:
+    case True{}:
+      array_union(room_node_names(build, s, StoryGraph.nf(s, n, StoryGraph.f_first_other())), tag_names(build, room_tag_ids(build, s, n)))
+    case False{}:
+      tag_names(build, room_tag_ids(build, s, n))
+
 def cave_names_of(+build: Builds.Build, kind: U32, +s: StoryGraph.St, +n: U32) -> List<&2, String>:
   match kind:
     case 0:
@@ -113,7 +136,7 @@ def cave_names_of(+build: Builds.Build, kind: U32, +s: StoryGraph.St, +n: U32) -
     case 2:
       room_node_names(build, s, n)
     case 3:
-      tag_names(build, room_tag_ids(build, s, n))
+      start_names(build, takes_link_tags(build, s, n), s, n)
     case 4:
       array_union(synthetic_tags(), task_tag_names(build, s, n))
     case 5:
@@ -122,6 +145,7 @@ def cave_names_of(+build: Builds.Build, kind: U32, +s: StoryGraph.St, +n: U32) -
       Nil{}
 
 # node.data.tags of a caves story node: a room's TAG results and its task's room_tags (Story:GenerateNodesFromTask,
-# AddBGNodes, AddCoveNodes), the START node's own room tags, the blanks' RoadPoison and ForceDisconnected.
+# AddBGNodes, AddCoveNodes), the START node's own room tags (after the linked node's tags when the build's START node
+# takes them), the blanks' RoadPoison and ForceDisconnected.
 def cave_tag_names(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> List<&2, String>:
   cave_names_of(build, StoryGraph.nf(s, n, StoryGraph.f_kind()), s, n)

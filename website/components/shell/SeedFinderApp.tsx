@@ -42,9 +42,9 @@ import { clamp } from "@/lib/criteria/state-helpers";
 import { DEFAULT_MAX_COST, isValidMaxCost } from "@/lib/jobs/credits";
 import Intro from "./Intro";
 import Presets from "./Presets";
-import ShardSwitch from "./ShardSwitch";
 import SiteHeader from "./SiteHeader";
 import ToolsPanel from "./ToolsPanel";
+import WorldSwitch from "./WorldSwitch";
 
 interface StoredSearch {
     config: unknown;
@@ -167,7 +167,12 @@ export default function SeedFinderApp() {
                 <SiteHeader account={account}/>
                 <main className="content">
                     <Intro/>
-                    <ShardSwitch shard={state.shard} onChange={changeShard}/>
+                    <WorldSwitch
+                            shard={state.shard}
+                            onShardChange={changeShard}
+                            build={state.build}
+                            onBuildChange={changeBuild}
+                    />
                     <Presets shard={state.shard} onPick={pickPreset}/>
                     <PrefilterOddsProvider config={config} threads={threads} supported={browserSupported === true}>
                         <CriteriaEditor state={state} onChange={setState}/>
@@ -177,8 +182,6 @@ export default function SeedFinderApp() {
                             issues={issues}
                             platform={state.platform}
                             onPlatformChange={(platform) => setState((current) => ({ ...current, platform }))}
-                            build={state.build}
-                            onBuildChange={changeBuild}
                             wanted={wanted}
                             onWantedChange={setWanted}
                             target={target}

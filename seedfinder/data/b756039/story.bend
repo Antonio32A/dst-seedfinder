@@ -99,6 +99,10 @@ def legacy_impassable_last() -> U32:
 def half_threshold() -> U32:
   2147483648
 
+# Story:_AddPlayerStartNode sets the START node's tags to ArrayUnion(linked node's tags, its room's tags).
+def start_takes_link_tags() -> Bool:
+  False{}
+
 # Rooms storygen names directly: SeperateStoryByBlanks' and LinkRegions' graph backgrounds.
 def bg_impassable_room() -> U32:
   4

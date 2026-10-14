@@ -27,7 +27,8 @@ describe("the map route", () => {
         ["linux/forest/756039/1234", world({})],
         ["linux/caves/756039/1234", world({ shard: "caves" })],
         ["linux/757748/1234", world({ build: 757748 })],
-        ["linux/forest/757748/0007", world({ build: 757748, seed: 7 })]
+        ["linux/forest/757748/0007", world({ build: 757748, seed: 7 })],
+        ["linux/caves/757748/1234", world({ shard: "caves", build: 757748 })]
     ])("opens %s", (path, expected) => {
         expect(route(path)).toEqual(expected);
     });
@@ -39,11 +40,7 @@ describe("the map route", () => {
     });
 
     it.each(["linux/123/1234", "linux/caves/1/1234", "linux/abc/1234", "linux/forest/-1/1234", "linux/forest/caves/1"])("refuses the unknown build of %s", (path) => {
-        expect(route(path)).toEqual({ error: expect.stringMatching(/^There's no build "[^"]+"\. Use 756039\.$/) });
-    });
-
-    it("refuses the caves of a build that has none", () => {
-        expect(route("linux/caves/757748/1234")).toEqual({ error: "Build 757748 has no caves yet." });
+        expect(route(path)).toEqual({ error: expect.stringMatching(/^There's no build "[^"]+"\. Use 756039 or 757748\.$/) });
     });
 
     it.each(["linux/caves", "linux/756039/1234/5", "linux/caves/756039/1/2"])("refuses %s, which isn't a map", (path) => {
@@ -104,16 +101,13 @@ describe("the map route", () => {
         ["linux", "caves", 756039, "1234", "/map/linux/caves/756039/1234"],
         ["linux", "forest", 756039, " 42 ", "/map/linux/756039/42"],
         ["windows", "caves", 756039, "0007", "/map/windows/caves/756039/7"],
-        ["windows", "forest", 757748, "4294967295", "/map/windows/757748/4294967295"]
+        ["windows", "forest", 757748, "4294967295", "/map/windows/757748/4294967295"],
+        ["windows", "caves", 757748, "1", "/map/windows/caves/757748/1"]
     ] as const)("opens the picked %s %s %s seed %j at its map", (platform, shard, build, seed, path) => {
         expect(pickedMapPath(platform, seed, shard, build)).toEqual({ path });
     });
 
     it.each(["", "-1", "4294967296", "1.5", "12 34", "abc"])("refuses to open the picked seed %j", (seed) => {
         expect(pickedMapPath("windows", seed, "forest", 756039)).toEqual({ error: expect.stringMatching(/seed/) });
-    });
-
-    it("refuses to open the caves of a build that has none", () => {
-        expect(pickedMapPath("windows", "1", "caves", 757748)).toEqual({ error: "Build 757748 has no caves yet." });
     });
 });

@@ -71,6 +71,7 @@ PREFAB_NAMES.update({
     "archive_orchestrina_small": "Ancient Orchestrina (small)",
     "archive_pillar": "Archives Pillar",
     "archive_security_waypoint": "Ancient Guard waypoint (marker)",
+    "atriummarker_gate_center": "Ancient Gateway centre (marker)",
     "archive_switch_base": "Ornate Pedestal base",
     "atrium_fence": "Ancient Fence",
     "atrium_statue_facing": "Ancient Statue (facing)",
@@ -260,7 +261,7 @@ GROUPS.update(_group("pigtorch wall_hay wall_wood wall_stone cookpot meatrack me
                      "winterometer birdtrap", "structures"))
 
 GROUPS.update(_group("cave_exit cave_hole tentacle_pillar tentacle_pillar_atrium", "spawn & travel"))
-GROUPS.update(_group("minotaur_spawner daywalkerspawningground toadstool_cap", "bosses & spawners"))
+GROUPS.update(_group("minotaur_spawner daywalkerspawningground toadstool_cap batbosscave", "bosses & spawners"))
 GROUPS.update(_group("bishop_nightmare bishop_nightmare_spawner knight_nightmare_spawner rook_nightmare_spawner "
                      "chessjunk_spawner", "clockwork"))
 GROUPS.update(_group("archive_cookpot archive_lockbox_dispencer archive_moon_statue archive_orchestrina_main "
@@ -284,7 +285,7 @@ GROUPS.update(_group("ruins_bowl ruins_chair ruins_chipbowl ruins_plate ruins_ru
                      "atrium_fence archive_pillar archive_chandelier archive_switch_base skeleton_notplayer_1 "
                      "skeleton_notplayer_2 rabbithouse", "structures"))
 GROUPS.update(_group("ancient_altar_spawner ancient_altar_broken_spawner archive_ambient_sfx archive_security_waypoint "
-                     "cavelight cavelight_atrium cavelight_small cavelight_tiny cavelightmoon cavelightmoon_small "
+                     "atriummarker_gate_center cavelight cavelight_atrium cavelight_small cavelight_tiny cavelightmoon cavelightmoon_small "
                      "cavelightmoon_tiny fissure fissure_lower", "markers"))
 
 GROUPS.update(_group("twigs flint rocks goldnugget moonglass moonrocknugget marble cutgrass log singingshell_octave3 "
@@ -294,7 +295,8 @@ GROUPS.update(_group("playing_card", "set-piece loot"))
 # Prefabs of the caves worlds with neither a minimap nor an inventory icon: the map draws them as dots.
 NO_IMAGE = set(
     "archive_ambient_sfx archive_centipede_husk archive_chandelier archive_orchestrina_small "
-    "archive_security_desk archive_security_waypoint archive_switch_base atrium_fence bishop_nightmare "
+    "archive_security_desk archive_security_waypoint archive_switch_base atrium_fence atriummarker_gate_center "
+    "bishop_nightmare "
     "bishop_nightmare_spawner blue_mushroom brokenwall_ruins carrot_planted cave_fern cave_fern_withered "
     "cave_vent_mite_spawner cavelight cavelight_atrium cavelight_small cavelight_tiny cavelightmoon "
     "cavelightmoon_small cavelightmoon_tiny daywalkerspawningground firehound fissure fissure_lower flower_evil "

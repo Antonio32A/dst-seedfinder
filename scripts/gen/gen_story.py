@@ -2,7 +2,8 @@
 """Writes data/story.bend from out/story.json, out/layouts.json and out/storygen.json: the tables storygen/ needs on
 top of data/rooms.bend and data/tasks.bend. The set piece names of data/world_catalog.bend's level.set_pieces keys and
 random set piece codes as string ids and layouts, each room's tags as rows of data/rooms.bend's maptags table, the
-tile values IsImpassableTile accepts, and exact math.random() thresholds. `-` prints the module instead."""
+tile values IsImpassableTile accepts, exact math.random() thresholds, and whether the START node takes the tags of the
+node it links to (map/storygen.lua). `-` prints the module instead."""
 import re
 import sys
 from pathlib import Path
@@ -48,6 +49,17 @@ def count_closure_rows(story):
     return [count_closure_row(c) if c["key"] in used else [] for c in ids.closures()]
 
 
+START_TAG_UNION = "start_node_data.data.tags = ArrayUnion(randomStartNode.data.tags, start_node_data.data.tags)"
+
+
+def start_takes_link_tags():
+    """Whether Story:_AddPlayerStartNode gives the START node the tags of the node it links to."""
+    source = (blob.scripts_dir() / "map" / "storygen.lua").read_text()
+    uses = source.count("randomStartNode.data.tags")
+    assert uses == source.count(START_TAG_UNION) <= 1, "the START node's tags changed in map/storygen.lua"
+    return uses == 1
+
+
 def maptag_index():
     return {t["tag"]: i for i, t in enumerate(ids.maptags())}
 
@@ -85,6 +97,8 @@ def main():
     m.const("legacy_impassable_last", LEGACY_IMPASSABLE[1])
     m.comment("math.random() < 0.5 holds exactly when the PCG output is below this.")
     m.const("half_threshold", blob.random_threshold(0.5))
+    m.comment("Story:_AddPlayerStartNode sets the START node's tags to ArrayUnion(linked node's tags, its room's tags).")
+    m.const("start_takes_link_tags", "True{}" if start_takes_link_tags() else "False{}", "Bool")
     m.comment("Rooms storygen names directly: SeperateStoryByBlanks' and LinkRegions' graph backgrounds.")
     m.const("bg_impassable_room", ids.room_index("BGImpassable"))
     m.const("region_link_room", ids.room_index("MoonIsland_Meadows"))

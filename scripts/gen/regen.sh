@@ -5,7 +5,8 @@
 # from B's game files (build/deps/builds/B/, filled by scripts/setup.sh) into scripts/gen/out/B/ (lua-dst, the host C++
 # toolchain and the game binaries), and the generators stage B's modules in build/gen/data/B/. gen_builds.py then
 # writes seedfinder/data/ from the staged modules: the ones every build shares, the per-build copies in b<build>/ with
-# their dispatch modules, and builds.bend. The schema and cave-vocab.ts come from the latest build.
+# their dispatch modules, and builds.bend. The schema and cave-vocab.ts come from the latest build; every build's caves
+# level table (cave-vocab.ts) has to be the latest's.
 # --check regenerates into a temp dir and fails if anything differs: a sidecar present in scripts/gen/out/B/, any file
 # of seedfinder/data/ (stray or missing ones too), game-builds.ts, the schema or cave-vocab.ts.
 set -euo pipefail
@@ -86,6 +87,7 @@ for build in $builds; do
     for script in "${generators[@]}"; do
         python3 $gen/$script
     done
+    python3 $gen/gen_cave_vocab.py - > "$GEN_DATA/cave-vocab.ts"
 
     for file in "$GEN_OUT"/*; do
         name="$gen/out/$build/$(basename "$file")"
@@ -100,6 +102,13 @@ for build in $builds; do
             status=1
         fi
     done
+done
+
+for build in $builds; do
+    if ! cmp -s "$staging/$build/cave-vocab.ts" "$staging/$latest/cave-vocab.ts"; then
+        echo "regen.sh: the caves level table of build $build differs from build $latest's, which the website uses for every build (website/lib/catalog/level-catalog.ts)" >&2
+        status=1
+    fi
 done
 
 python3 $gen/gen_builds.py --staging "$staging" --root "$target"

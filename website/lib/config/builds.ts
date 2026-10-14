@@ -5,7 +5,7 @@ import type { Shard } from "./seedfinder-config";
 
 export type GameBuildEntry = (typeof GAME_BUILDS)[number];
 /** The build whose catalog a build's shard uses. */
-export type CatalogBuild = GameBuildEntry["catalog"][Shard];
+export type CatalogBuild<S extends Shard = Shard> = GameBuildEntry["catalog"][S];
 
 const ENTRIES: ReadonlyMap<unknown, GameBuildEntry> = new Map(GAME_BUILDS.map((entry) => [entry.number, entry]));
 
@@ -14,12 +14,18 @@ export const gameBuildOf = (value: unknown): GameBuild | undefined => ENTRIES.ge
 
 export const buildEntry = (build: GameBuild): GameBuildEntry => ENTRIES.get(build)!;
 
-export const buildLabel = (build: GameBuild): string => buildEntry(build).label;
+/** The build's number, tagged "latest" or with its channel when that isn't a release. */
+export const buildLabel = (build: GameBuild): string => {
+    const { channel } = buildEntry(build);
+    const tag = build === LATEST_BUILD ? "latest" : channel === "release" ? undefined : channel;
+    return tag ? `${build} (${tag})` : String(build);
+};
 
 export const hasShard = (build: GameBuild, shard: Shard): boolean =>
     (buildEntry(build).shards as readonly Shard[]).includes(shard);
 
-export const catalogBuild = (build: GameBuild, shard: Shard): CatalogBuild => buildEntry(build).catalog[shard];
+export const catalogBuild = <S extends Shard>(build: GameBuild, shard: S): CatalogBuild<S> =>
+    buildEntry(build).catalog[shard];
 
 /** The registered build that generated a world, or the latest when it names none. */
 export const generatedBy = ({ gameBuild }: { gameBuild?: number }): GameBuild => gameBuildOf(gameBuild) ?? LATEST_BUILD;

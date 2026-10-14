@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes the textures the website's world map draws with to website/public/world-map/ (README.md).
 
-usage: python3 map_textures.py [--catalog CATALOG ...] [--out DIR] [--manifest FILE]
+usage: python3 map_textures.py [--catalog CATALOG ...] [--out DIR] [--manifest FILE] [--extra-game DIR ...]
 """
 import argparse
 import collections
@@ -27,7 +27,7 @@ GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/s
 MAP_EDGE = "levels/tiles/map_edge.tex"
 MAP_EDGE_ATLAS = "levels/tiles/map_edge.xml"
 MINIMAP_PAPER = "images/minimap_paper.tex"
-MINIMAP_ATLASES = ["minimap/minimap_data1.xml", "minimap/minimap_data2.xml"]
+MINIMAP_ATLASES = ["minimap/minimap_data1.xml", "minimap/minimap_data2.xml", "minimap/minimap_data3.xml"]
 NOISE_TEXTURE = "levels/textures/%s.tex"
 ROAD_TEXTURES = ["roadedge", "square", "roadcorner", "roadendcap", "roadnoise", "pathnoise"]
 ROAD_TEXTURE = "images/%s.tex"
@@ -82,9 +82,10 @@ def land_colour(game_dir, noise):
 
 
 def minimap_elements(game_dir):
-    """Element name -> (atlas texture, u1, u2, v1, v2). The first atlas to name an element wins, as in the game."""
+    """Element name -> (atlas texture, u1, u2, v1, v2). The first atlas to name an element wins, as in the game; builds
+    before 757748 have no minimap_data3.xml."""
     elements = {}
-    for atlas in MINIMAP_ATLASES:
+    for atlas in (atlas for atlas in MINIMAP_ATLASES if os.path.exists(os.path.join(game_dir, "data", atlas))):
         root = ET.parse(os.path.join(game_dir, "data", atlas)).getroot()
         texture = os.path.join(os.path.dirname(atlas), root.find("Texture").get("filename"))
         for element in root.iter("Element"):
@@ -101,27 +102,34 @@ def aligned_span(low, high):
     return (CELL_ALIGN * math.floor((low - ICON_GUTTER) / CELL_ALIGN), CELL_ALIGN * math.ceil((high + ICON_GUTTER) / CELL_ALIGN))
 
 
-def read_icons(game_dir, names):
+def read_icons(game_dir, names, extra_games=()):
     """Name -> Icon: each element's cell of atlas texels at each of SHEET_MIPS mip levels, and its rect (x, y, w, h)
-    inside level 0's cell.
+    inside level 0's cell. An element game_dir's atlases lack comes from the first of extra_games (the installs of newer
+    builds) that has it.
 
     The cell is the rect plus ICON_GUTTER texels on every side, widened to CELL_ALIGN, so each level is the atlas' own
     mip (the game samples those, which are not a box filter of level 0) and a bilinear tap reaching ICON_GUTTER texels
     sees what the game sees. Texels stay premultiplied, as the atlas stores them. The atlas' rows run bottom first, so
     they are flipped to read top first like the PNG. Atlas rects sit on half texels: a 63 wide rect spans 64 texels.
     """
-    elements = minimap_elements(game_dir)
-    atlases = {texture: [read_texture(game_dir, texture, mip) for mip in range(SHEET_MIPS)]
-               for texture in {elements[name][0] for name in names}}
+    installs = [(install, minimap_elements(install)) for install in (game_dir, *extra_games)]
+    elements = {}
+    for name in names:
+        found = [(install, known[name]) for install, known in installs if name in known]
+        if not found:
+            sys.exit("no minimap atlas has the icon %s (pass the install of a build that has it with --extra-game)" % name)
+        elements[name] = found[0]
+    atlases = {(install, element[0]): [read_texture(install, element[0], mip) for mip in range(SHEET_MIPS)]
+               for install, element in elements.values()}
     icons = {}
     for name in names:
-        texture, u1, u2, v1, v2 = elements[name]
-        height, width = atlases[texture][0].shape[:2]
+        install, (texture, u1, u2, v1, v2) = elements[name]
+        height, width = atlases[install, texture][0].shape[:2]
         x0, x1, y0, y1 = u1 * width, u2 * width, v1 * height, v2 * height
         left, right = aligned_span(x0, x1)
         top, bottom = aligned_span(y0, y1)
         levels = []
-        for mip, pixels in enumerate(atlases[texture]):
+        for mip, pixels in enumerate(atlases[install, texture]):
             t, b, l, r = top >> mip, bottom >> mip, left >> mip, right >> mip
             level_height, level_width = pixels.shape[:2]
             inside = pixels[max(t, 0):min(b, level_height), max(l, 0):min(r, level_width)]
@@ -168,10 +176,10 @@ def stack_levels(levels):
     return strip, regions
 
 
-def write_map_textures(game_dir, noises, icon_names, out_dir):
+def write_map_textures(game_dir, noises, icon_names, out_dir, extra_games=()):
     """Writes every texture as `<stem>.<content hash>.<extension>`, removes the other files in out_dir, and returns the
-    manifest of the files written, relative to out_dir."""
-    levels, rects = pack_icons(read_icons(game_dir, icon_names))
+    manifest of the files written, relative to out_dir. Icons game_dir lacks come from extra_games (read_icons)."""
+    levels, rects = pack_icons(read_icons(game_dir, icon_names, extra_games))
     sheet, regions = stack_levels(levels)
     images = {"noise/" + name: read_texture(game_dir, NOISE_TEXTURE % name)[:, :, :3] for name in noises}
     images.update({"road/" + name: read_texture(game_dir, ROAD_TEXTURE % name) for name in ROAD_TEXTURES})
@@ -207,6 +215,8 @@ def main():
                     help="a catalog whose textures to write; by default every catalog a build of builds.json uses")
     ap.add_argument("--out", default=os.path.join(ROOT, "website/public/world-map"))
     ap.add_argument("--manifest", default=os.path.join(HERE, "map_textures.json"))
+    ap.add_argument("--extra-game", action="append", default=[],
+                    help="the install of a newer build, for the minimap icons of its catalogs that DST_GAME lacks")
     args = ap.parse_args()
     if not os.path.isdir(GAME_DIR):
         sys.exit("no game install at %s (set DST_GAME)" % GAME_DIR)
@@ -219,7 +229,7 @@ def main():
     noises = sorted({tile["minimap_noise"] for catalog in catalogs for tile in catalog["tiles"] if tile.get("minimap_noise")})
     icon_names = sorted({prefab["icons"]["minimap"]["element"] for catalog in catalogs for prefab in catalog["prefabs"]
                          if "minimap" in prefab["icons"]})
-    manifest = write_map_textures(GAME_DIR, noises, icon_names, args.out)
+    manifest = write_map_textures(GAME_DIR, noises, icon_names, args.out, args.extra_game)
     with open(args.manifest, "w") as f:
         json.dump(manifest, f, indent=1, sort_keys=True)
         f.write("\n")

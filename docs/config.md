@@ -41,10 +41,10 @@ forest|caves` flag (on `world find`, `world show`, `world dump`, `gen` and `setp
 the way `--platform` overrides `platform`. An unknown shard is an error, in the config and in the flag.
 
 **Build.** `build` picks the game build whose world generation the finder reproduces. It decides the vocabulary
-(§ 3) and which shards exist: a build without the caves shard (757748) rejects `"shard": "caves"`. The finder's
-`--build NUMBER` flag (on `world find`, `world show`, `world odds`, `world eval`, `world dump`, `gen` and `setpiece`)
-overrides the config's `build`; without a config the finder runs the latest build (756039). An unknown build is an
-error, in the config and in the flag.
+(§ 3) and which shards exist (every registered build has both; one without the caves shard would reject
+`"shard": "caves"`). The finder's `--build NUMBER` flag (on `world find`, `world show`, `world odds`, `world eval`,
+`world dump`, `gen` and `setpiece`) overrides the config's `build`; without a config the finder runs the latest build
+(756039). An unknown build is an error, in the config and in the flag.
 
 **Migration.** Format 3 only adds the required `build`. A config of format 1 or 2 was written for build 756039: set
 `"version": 3` and `"build": 756039` (and reshape a format 1 config as the website does). The finder rejects formats

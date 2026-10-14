@@ -31,6 +31,8 @@ describe("the build registry", () => {
         expect(levelCatalogOf("forest", 757748)).toBe(levelCatalogOf("forest", 756039));
         expect(levelCatalogOf("caves", 757748)).toBe(levelCatalogOf("caves", 756039));
         expect(shardCatalog("forest", 757748)).toBe(shardCatalog("forest", 756039));
+        expect(shardCatalog("caves", 757748).byId.has("batbosscave")).toBe(true);
+        expect(shardCatalog("caves", 756039).byId.has("batbosscave")).toBe(false);
         expect(levelCatalogOf(undefined, 756039).shard).toBe("forest");
     });
 });
@@ -69,8 +71,7 @@ describe("validating a config's version and build", () => {
         [{ version: 3 }, "build is required (a game build: 756039 or 757748)"],
         [{}, "build is required (a game build: 756039 or 757748)"],
         [{ version: 3, build: 123 }, "unknown build 123 (756039 or 757748)"],
-        [{ version: 3, build: "756039" }, "unknown build \"756039\" (756039 or 757748)"],
-        [{ version: 3, build: 757748, shard: "caves" }, "build 757748 does not support the caves shard yet"]
+        [{ version: 3, build: "756039" }, "unknown build \"756039\" (756039 or 757748)"]
     ])("refuses %j like the finder", (config, error) => {
         expect(validateConfig(config)).toEqual({ ok: false, error: `config: ${error}` });
     });
@@ -83,6 +84,10 @@ describe("validating a config's version and build", () => {
         expect(validateConfig({ build: 756039, shard: "caves" })).toEqual({
             ok: true,
             value: { ...V3, shard: "caves", platform: "windows" }
+        });
+        expect(validateConfig({ version: 3, build: 757748, shard: "caves" })).toEqual({
+            ok: true,
+            value: { version: 3, build: 757748, shard: "caves", platform: "windows" }
         });
     });
 
@@ -201,7 +206,6 @@ describe("a map preview", () => {
 
     it.each([
         ["/og/map/linux/123/1234.png", /no build/],
-        ["/og/map/linux/caves/757748/1234.png", /no caves/],
         ["/og/map/linux/abc.png", /seed/],
         ["/og/map/linux/1234.jpg", /no map preview/]
     ])("is refused at %s", (path, error) => {

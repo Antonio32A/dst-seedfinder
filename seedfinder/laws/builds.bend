@@ -41,17 +41,27 @@ law build_flag_names_a_registered_build:
 def build_flag_names_a_registered_build():
   {==}
 
-# Without a config, a command runs the --build flag's build, else the latest; the caves shard needs a build that has it.
+# Without a config, a command runs the --build flag's build, else the latest, on either shard.
 law build_without_config:
   {(Args.build_for(None{}, True{}), Args.build_for(Some{Builds.Build{757748}}, False{}), Args.build_for(Some{Builds.Build{757748}}, True{}))
-    == (Done{Builds.latest()}, Done{Builds.Build{757748}}, Fail{(2, "build 757748 does not support the caves shard yet")})
+    == (Done{Builds.latest()}, Done{Builds.Build{757748}}, Done{Builds.Build{757748}})
     : Result<&1, &1, U32 & String, Builds.Build> & Result<&1, &1, U32 & String, Builds.Build> & Result<&1, &1, U32 & String, Builds.Build>}
 
 def build_without_config():
   {==}
 
-law caves_config_needs_a_build_with_caves:
-  {CaveConfig.config_of("{\"version\": 3, \"build\": 757748, \"shard\": \"caves\"}", None{}) == Fail{(2, "config: build 757748 does not support the caves shard yet")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+def all_have_caves(numbers: List<&2, U32>) -> Bool:
+  match numbers:
+    case Nil{}:
+      True{}
+    case Con{+n, rest}:
+      Builds.has_caves(Builds.Build{n}) && all_have_caves(rest)
 
-def caves_config_needs_a_build_with_caves():
+# Every registered build has the caves shard; one without it (an unregistered number here) is refused by name.
+law caves_need_a_build_with_caves:
+  {(all_have_caves(Builds.numbers()), Args.build_for(Some{Builds.Build{1}}, True{}), CaveConfig.with_caves(Builds.Build{1}))
+    == (True{}, Fail{(2, "build 1 does not support the caves shard yet")}, Fail{(2, "config: build 1 does not support the caves shard yet")})
+    : Bool & Result<&1, &1, U32 & String, Builds.Build> & Result<&1, &1, U32 & String, Builds.Build>}
+
+def caves_need_a_build_with_caves():
   {==}

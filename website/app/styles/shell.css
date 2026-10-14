@@ -210,3 +210,23 @@ html:not(.dark) .theme-toggle__icon--dark {
         padding: 20px;
     }
 }
+
+.world-switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 20px;
+}
+
+.build-field,
+.build-field > span {
+    display: block;
+}
+
+.build-field select {
+    display: block;
+    border-color: var(--border);
+    padding: 4px 28px 4px 10px;
+    font-size: 0.9em;
+    background-position: calc(100% - 14px), calc(100% - 9px);
+}

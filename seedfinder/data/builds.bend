@@ -36,6 +36,8 @@ def has_caves_of_number(+number: U32) -> Bool:
   match number:
     case 756039:
       True{}
+    case 757748:
+      True{}
     case _:
       False{}
 

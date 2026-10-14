@@ -71,8 +71,8 @@ build/seedfinder -- world dump 123456 --platform linux --build 757748 -o 123456.
 - `--platform windows|linux`: overrides the config's `platform`.
 - `--build NUMBER`: the game build the worlds are generated for, one of `builds.json`; overrides the config's `build`.
   Without a config it defaults to the latest build. Also on `world show`, `world odds`, `world eval`, `world dump`,
-  `gen`, `setpiece` and the trace binary. A build without the caves shard rejects `--shard caves` (`build 757748 does
-  not support the caves shard yet`).
+  `gen`, `setpiece` and the trace binary. Every registered build has both shards; a build without the caves shard
+  would reject `--shard caves` (`build <n> does not support the caves shard yet`).
 - `--shard forest|caves`: overrides the config's `shard` (default forest); also on `world show`, `world dump`, `gen` and
   `setpiece`. The caves shard has the level table (`world find`, `world show`, `setpiece find|show`) and its whole
   worldgen (`gen`, `world dump`, see below). A caves config's world sections (`counts`, `distances`, `tiles`, `bridges`, `routes`)
@@ -205,7 +205,10 @@ by the VC9 `random_shuffle` over `rand()` with RAND_MAX 0x7fff and MSVCR90's `po
 1. `DST_GAME=<install> scripts/setup.sh`: extracts the install's scripts into `build/deps/builds/<build>/`.
 2. Add the build to `builds.json` with `"website": false` (and the shards it supports).
 3. `scripts/gen/regen.sh`: identical module copies are shared. When a module that must stay single differs, regen
-   names it: split it into a per-build module and thread `+build: Builds.Build` to its callers.
+   names it: split it into a per-build module and thread `+build: Builds.Build` to its callers. Closure ids are the
+   first registered build's in every build (a new closure variant takes the next free id), so the hand ports of
+   `populate/` keep their ids; a new room count or layout area closure fails the pins law until it is ported. regen
+   also fails when the build's caves level table differs from the latest build's, which the website uses for every build.
 4. `scripts/groundtruth/run_worldgen.sh` with `DST_GAME` on the new install, into `build/groundtruth/<build>/`; then
    the compare scripts with `--build <build>`, and `world dump --build <build>` against its dumps.
 5. `scripts/proof.sh -j 3`. When its worlds differ from the previous build's, add a golden law pinned to the build.

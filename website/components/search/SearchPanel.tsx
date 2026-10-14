@@ -7,14 +7,12 @@ import TaggedToggle from "@/components/ui/TaggedToggle";
 import { type LocalSearchRequest, MEMORY_PER_THREAD_MB, type SearchTarget } from "@/lib/browser-search/local-search";
 import { ApiError, createJob, loginUrl, type SessionUser } from "@/lib/client/api-client";
 import type { Account } from "@/lib/client/use-account";
-import type { GameBuild } from "@/lib/config/game-builds";
 import { DEFAULT_START_SEED, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
 import { validateJobRequest } from "@/lib/config/validate-config";
 import { type Issue, WANTED_OPTIONS } from "@/lib/criteria/search-state";
 import { creditsToUnits, formatCredits, notEnoughCredits } from "@/lib/jobs/credits";
 import { MAX_ACTIVE_SEARCHES } from "@/lib/jobs/job-events";
 import { SEED_SPACE } from "@/lib/jobs/job-result";
-import BuildField from "./BuildField";
 import MaxCostField from "./MaxCostField";
 import PlatformField from "./PlatformField";
 
@@ -32,8 +30,6 @@ interface SearchPanelProps {
     issues: Issue[];
     platform: Platform;
     onPlatformChange: (platform: Platform) => void;
-    build: GameBuild;
-    onBuildChange: (build: GameBuild) => void;
     target: SearchTarget;
     onTargetChange: (target: SearchTarget) => void;
     wanted: number;
@@ -168,8 +164,6 @@ export default function SearchPanel({
                                         issues,
                                         platform,
                                         onPlatformChange,
-                                        build,
-                                        onBuildChange,
                                         target,
                                         onTargetChange,
                                         wanted,
@@ -282,7 +276,6 @@ export default function SearchPanel({
                 </div>
                 <div className="search__row search__row--end">
                     <PlatformField platform={platform} onChange={onPlatformChange}/>
-                    <BuildField build={build} onChange={onBuildChange}/>
                     <TaggedToggle checked={timings} onChange={setTimings} tag="slow" hint={TIMINGS_HINT}>
                         Timings
                     </TaggedToggle>

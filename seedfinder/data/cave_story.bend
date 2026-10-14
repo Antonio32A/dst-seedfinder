@@ -1650,6 +1650,30 @@ def start_room(+build: Builds.Build, +k: U32) -> U32:
     case Builds.Build{+number}:
       start_room_of_number(number, k)
 
+def tag_static_count_of_number(+number: U32, +i: U32) -> U32:
+  match number:
+    case 757748:
+      B757748CaveStory.tag_static_count(i)
+    case _:
+      B756039CaveStory.tag_static_count(i)
+
+def tag_static_count(+build: Builds.Build, +i: U32) -> U32:
+  match build:
+    case Builds.Build{+number}:
+      tag_static_count_of_number(number, i)
+
+def tag_static_layout_of_number(+number: U32, +i: U32, +k: U32) -> U32:
+  match number:
+    case 757748:
+      B757748CaveStory.tag_static_layout(i, k)
+    case _:
+      B756039CaveStory.tag_static_layout(i, k)
+
+def tag_static_layout(+build: Builds.Build, +i: U32, +k: U32) -> U32:
+  match build:
+    case Builds.Build{+number}:
+      tag_static_layout_of_number(number, i, k)
+
 def room_name_of_number(+number: U32, +i: U32) -> String:
   match number:
     case 757748:

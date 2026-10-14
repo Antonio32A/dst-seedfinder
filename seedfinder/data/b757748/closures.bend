@@ -132,30 +132,30 @@ import ../blob.bend as Blob
 # 124: map/maptags.lua:35-37 function(tagdata) return "GLOBALTAG", "MazeEntrance" end
 # 125: map/maptags.lua:38-40 function(tagdata) return "GLOBALTAG", "Labyrinth" end
 # 126: map/maptags.lua:41-43 function(tagdata) return "GLOBALTAG", "LabyrinthEntrance" end
-# 127: map/maptags.lua:162-173 function(tagdata, level) if tagdata["BatBossCave_Spawner"] == false then return end tagdata["BatBossCave_Spawner"] = false if level ~= nil and level.override...
-# 128: map/maptags.lua:175-181 function(tagdata) if tagdata["Hutch_Fishbowl"] == false then return end tagdata["Hutch_Fishbowl"] = false return "ITEM", "hutch_fishbowl" end
-# 129: map/maptags.lua:197-197 function(tagdata) return "TAG", "Nightmare" end
-# 130: map/maptags.lua:198-198 function(tagdata) return "TAG", "Atrium" end
-# 131: map/maptags.lua:206-206 function(tagdata) return "TAG", "GrottoWarEntrance" end
-# 132: map/maptags.lua:207-207 function(tagdata) return "TAG", "fumarolearea" end
-# 133: map/maze_layouts.lua:7-7 function(area) return nil end
-# 134: map/maze_layouts.lua:8-9 function(area) return PickSomeWithDups( 0.25 * area , {"rocks"}) end
-# 135: map/maze_layouts.lua:14-18 function() if math.random() < 0.2 then return {"archive_centipede_husk"} end end
-# 136: map/maze_layouts.lua:20-24 function() if math.random() < 0.5 then return {"archive_ambient_sfx"} end end
-# 137: map/maze_layouts.lua:26-35 function(area, data) if math.random() < 0.2 then return {{ prefab = "archive_cookpot", x = data.x, y = data.y, properties = {data = {additems = {"refined_dus...
-# 138: map/maze_layouts.lua:37-41 function() if math.random() < 0.08 then return { "dustmothden" } end end
-# 139: map/maze_layouts.lua:43-47 function() if math.random() < 0.25 then return { "dustmothden" } end end
-# 140: map/pointsofinterest.lua:49-49 function() return { "mushtree_tall_stump", "mushtree_tall_stump", "mushtree_tall_stump", } end
-# 141: map/protected_resources.lua:54-54 function() return JoinArrays(PickSomeWithDups(10, {"wormlight_plant"}), PickSomeWithDups(3, {"worm_spawner"})) end
-# 142: map/rooms/cave/ruins.lua:132-132 function() return math.random(2) - 1 end
-# 143: map/rooms/cave/ruins.lua:188-188 function() return math.random() < 0.25 and 1 or 0 end
-# 144: map/rooms/cave/ruins.lua:215-215 function() return math.random(2,3) end
-# 145: map/rooms/cave/vents.lua:19-30 function RandomRockTreeState() if math.random() < TUNING.TREE_ROCK.BOULDER_GEN_CHANCE then local roll = math.random() if roll > 2/3 then return { boulder = t...  [TUNING.TREE_ROCK.BOULDER_GEN_CHANCE=0.3333333333333333, TUNING.TREE_ROCK.MINE_LOW=2, TUNING.TREE_ROCK.MINE_MED=4]
-# 146: map/rooms/cave/vents.lua:32-41 function RandomVentRockState() local roll = math.random() if roll > 2/3 then return { workable = { workleft = TUNING.CAVE_VENTS.MINE_MED }, set_loot_table = ...  [TUNING.CAVE_VENTS.MINE_LOW=2, TUNING.CAVE_VENTS.MINE_MED=4]
-# 147: map/tasks/caves.lua:203-203 function() return 2 + math.random(2) end
-# 148: map/tasks/caves.lua:204-204 function() return 1 + math.random(2) end
-# 149: map/tasks/ruins.lua:114-114 function() return 4+math.random(2) end
-# 150: map/tasks/ruins.lua:211-211 function() return math.random(3,4) end
+# 127: map/maptags.lua:175-181 function(tagdata) if tagdata["Hutch_Fishbowl"] == false then return end tagdata["Hutch_Fishbowl"] = false return "ITEM", "hutch_fishbowl" end
+# 128: map/maptags.lua:197-197 function(tagdata) return "TAG", "Nightmare" end
+# 129: map/maptags.lua:198-198 function(tagdata) return "TAG", "Atrium" end
+# 130: map/maptags.lua:206-206 function(tagdata) return "TAG", "GrottoWarEntrance" end
+# 131: map/maptags.lua:207-207 function(tagdata) return "TAG", "fumarolearea" end
+# 132: map/maze_layouts.lua:7-7 function(area) return nil end
+# 133: map/maze_layouts.lua:8-9 function(area) return PickSomeWithDups( 0.25 * area , {"rocks"}) end
+# 134: map/maze_layouts.lua:14-18 function() if math.random() < 0.2 then return {"archive_centipede_husk"} end end
+# 135: map/maze_layouts.lua:20-24 function() if math.random() < 0.5 then return {"archive_ambient_sfx"} end end
+# 136: map/maze_layouts.lua:26-35 function(area, data) if math.random() < 0.2 then return {{ prefab = "archive_cookpot", x = data.x, y = data.y, properties = {data = {additems = {"refined_dus...
+# 137: map/maze_layouts.lua:37-41 function() if math.random() < 0.08 then return { "dustmothden" } end end
+# 138: map/maze_layouts.lua:43-47 function() if math.random() < 0.25 then return { "dustmothden" } end end
+# 139: map/pointsofinterest.lua:49-49 function() return { "mushtree_tall_stump", "mushtree_tall_stump", "mushtree_tall_stump", } end
+# 140: map/protected_resources.lua:54-54 function() return JoinArrays(PickSomeWithDups(10, {"wormlight_plant"}), PickSomeWithDups(3, {"worm_spawner"})) end
+# 141: map/rooms/cave/ruins.lua:132-132 function() return math.random(2) - 1 end
+# 142: map/rooms/cave/ruins.lua:188-188 function() return math.random() < 0.25 and 1 or 0 end
+# 143: map/rooms/cave/ruins.lua:215-215 function() return math.random(2,3) end
+# 144: map/rooms/cave/vents.lua:19-30 function RandomRockTreeState() if math.random() < TUNING.TREE_ROCK.BOULDER_GEN_CHANCE then local roll = math.random() if roll > 2/3 then return { boulder = t...  [TUNING.TREE_ROCK.BOULDER_GEN_CHANCE=0.3333333333333333, TUNING.TREE_ROCK.MINE_LOW=2, TUNING.TREE_ROCK.MINE_MED=4]
+# 145: map/rooms/cave/vents.lua:32-41 function RandomVentRockState() local roll = math.random() if roll > 2/3 then return { workable = { workleft = TUNING.CAVE_VENTS.MINE_MED }, set_loot_table = ...  [TUNING.CAVE_VENTS.MINE_LOW=2, TUNING.CAVE_VENTS.MINE_MED=4]
+# 146: map/tasks/caves.lua:203-203 function() return 2 + math.random(2) end
+# 147: map/tasks/caves.lua:204-204 function() return 1 + math.random(2) end
+# 148: map/tasks/ruins.lua:114-114 function() return 4+math.random(2) end
+# 149: map/tasks/ruins.lua:211-211 function() return math.random(3,4) end
+# 150: map/maptags.lua:162-173 function(tagdata, level) if tagdata["BatBossCave_Spawner"] == false then return end tagdata["BatBossCave_Spawner"] = false if level ~= nil and level.override...
 
 # Row id: the categories of the contexts it appears in.
 def closure_categories_count() -> U32:
@@ -172,7 +172,7 @@ def closure_categories_chunk(+c: U32) -> List<&2, String>:
     case 3:
       ["𐀁", "𐀁", "𐀀", "𐀀", "𐀀", "𐀀", "𐀀", "𐀀", "𐀀", "𐀀", "𐀀", "𐀀", "𐀆", "𐀆", "𐀆", "𐀆", "𐀆", "𐀆", "𐀆", "𐀆", "𐀆", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀅", "𐀅", "𐀅", "𐀅", "𐀅"]
     case 4:
-      ["𐀅", "𐀅", "𐀅", "𐀅", "𐀅", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀁", "𐀁", "𐀁", "𐀁", "𐀁", "𐀀", "𐀀", "𐀀", "𐀀"]
+      ["𐀅", "𐀅", "𐀅", "𐀅", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀂", "𐀁", "𐀁", "𐀁", "𐀁", "𐀁", "𐀀", "𐀀", "𐀀", "𐀀", "𐀅"]
     case _:
       Nil{}
 
@@ -443,52 +443,52 @@ def closure_fingerprint(+id: U32) -> U32:
     case 126:
       4243177509
     case 127:
-      2231671638
-    case 128:
       2705590005
-    case 129:
+    case 128:
       1422956464
-    case 130:
+    case 129:
       170235245
-    case 131:
+    case 130:
       229666548
-    case 132:
+    case 131:
       2834526597
-    case 133:
+    case 132:
       1695747383
-    case 134:
+    case 133:
       4226768656
-    case 135:
+    case 134:
       3448157450
-    case 136:
+    case 135:
       2681572488
-    case 137:
+    case 136:
       4015825677
-    case 138:
+    case 137:
       2137454257
-    case 139:
+    case 138:
       3760957056
-    case 140:
+    case 139:
       2520797282
-    case 141:
+    case 140:
       2415982983
-    case 142:
+    case 141:
       2481868297
-    case 143:
+    case 142:
       4256983687
-    case 144:
+    case 143:
       2025470634
-    case 145:
+    case 144:
       836593942
-    case 146:
+    case 145:
       1380369169
-    case 147:
+    case 146:
       2820874360
-    case 148:
+    case 147:
       1025722455
-    case 149:
+    case 148:
       2488372164
-    case 150:
+    case 149:
       2192518684
+    case 150:
+      2231671638
     case _:
       0

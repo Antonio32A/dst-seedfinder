@@ -137,7 +137,7 @@ def tag_names_chunk(+c: U32) -> List<&2, String>:
 def tag_names(+i: U32) -> List<&2, U32>:
   Blob.row(tag_names_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
-# Row tag: the value the map tag function returns (Blob.text, empty when none).
+# Row tag: the value the map tag function returns (Blob.text, empty when none or a STATIC tag's random layout).
 def tag_values_count() -> U32:
   16
 
@@ -151,7 +151,7 @@ def tag_values_chunk(+c: U32) -> List<&2, String>:
 def tag_values(+i: U32) -> List<&2, U32>:
   Blob.row(tag_values_chunk((i >> 5n : U32)), (i .&. 31 : U32))
 
-# Row tag: kind of the first call (0 none, 1 TAG, 2 GLOBALTAG, 3 ITEM), 1 when a second call on the same tagdata returns nothing.
+# Row tag: kind of the first call (0 none, 1 TAG, 2 GLOBALTAG, 3 ITEM, 4 STATIC), 1 when a second call on the same tagdata returns nothing; a STATIC tag then has n and its n layouts (data/layouts.bend), the k-th for math.random(n) = k.
 def tags_count() -> U32:
   16
 
@@ -725,6 +725,12 @@ def task_cove_threshold(+i: U32) -> U32:
 
 def start_room(+k: U32) -> U32:
   start_rooms_at(0, k)
+
+def tag_static_count(+i: U32) -> U32:
+  tags_at(i, 2)
+
+def tag_static_layout(+i: U32, +k: U32) -> U32:
+  tags_at(i, (3 + k : U32))
 
 def room_name(+i: U32) -> String:
   Blob.text(room_names(i))

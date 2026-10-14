@@ -99,8 +99,11 @@ shards take their prefabs, tasks and set pieces from the catalog its entry names
 
 ## Prefab catalog
 
-`lib/catalog/world.ts` is generated from the latest build's catalog (`scripts/catalog/756039/catalog.json`, the one
-`builds.json` names). Regenerate it from the repository root after the catalog changes:
+`lib/catalog/world.ts` is generated from the latest build's forest catalog (`scripts/catalog/756039/catalog.json`, the
+one `builds.json` names) and every caves catalog `builds.json` names (`CAVE_CATALOGS`, by the build that made it).
+`lib/catalog/shard-catalog.ts` and `level-catalog.ts` find a build's shard through its entry's `catalog`; the caves
+level table is the latest build's for every build (`scripts/gen/regen.sh` checks that they agree). Regenerate it from
+the repository root after the catalog changes:
 
 ```sh
 node scripts/gen/gen_website_catalog.mjs

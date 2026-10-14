@@ -184,17 +184,12 @@ def tiles_noise_eighths_mid():
   {==}
 
 # The closures that counts.bend and layout.bend port by hand are found by id, and an unknown id counts 0: each port is
-# pinned to the fingerprint of the game code it ports, so a regeneration that renumbers or edits a closure fails here.
+# pinned to the fingerprint of the game code it ports, so a regeneration that renumbers or edits a closure, in any
+# registered build, fails here.
 law ported_closures_line_up:
-  {PopulatePins.line_up(Builds.Build{756039}, PopulatePins.ported()) == True{} : Bool}
+  {PopulatePins.hold_in(Builds.numbers()) == True{} : Bool}
 
 def ported_closures_line_up():
-  {==}
-
-law ported_closures_are_all_pinned:
-  {PopulatePins.every_ported_closure_is_pinned(Builds.Build{756039}) == True{} : Bool}
-
-def ported_closures_are_all_pinned():
   {==}
 
 # DetectDisconnect goldens: the count of the real caves shard's attempts matches for seeds 1..120 (the game's engine call
