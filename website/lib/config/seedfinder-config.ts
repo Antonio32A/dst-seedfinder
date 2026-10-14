@@ -1,6 +1,11 @@
 import type { SwapCategory } from "@/lib/catalog/level-types";
+import type { GameBuild } from "./game-builds";
 
-export const CONFIG_VERSION = 2;
+export const CONFIG_VERSION = 3;
+/** The format versions written before builds: the finder refuses them, the site upgrades them. */
+export const LEGACY_CONFIG_VERSIONS: readonly unknown[] = [1, 2];
+/** The build every config of a legacy format version was written for. */
+export const LEGACY_CONFIG_BUILD: GameBuild = 756039;
 
 export const MAX_UINT32 = 4_294_967_295;
 export const MAX_DISTANCE = 1_000_000;
@@ -148,6 +153,7 @@ export const optionName = (filter: { name?: string } | undefined, index: number)
 /** A seed matches when `generation` holds and, with filters, any of them holds on its world. */
 export interface SeedfinderConfig {
     version: typeof CONFIG_VERSION;
+    build: GameBuild;
     shard?: Shard;
     platform?: Platform;
     generation?: Generation;

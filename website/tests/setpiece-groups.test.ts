@@ -15,7 +15,7 @@ import {
 import { parseWitnesses } from "@/lib/jobs/job-result";
 import { describeWitness } from "@/lib/jobs/witness-text";
 
-const forest = levelCatalogOf("forest");
+const forest = levelCatalogOf("forest", 756039);
 
 const grouped = (...rules: PieceRule[]) => ({ ...newPieceGroup(), rules });
 
@@ -69,7 +69,7 @@ describe("a set piece group", () => {
     });
 
     it("keeps its caves set pieces on a switch to the caves and drops the others", () => {
-        const caves = levelCatalogOf("caves");
+        const caves = levelCatalogOf("caves", 756039);
         const shared = [...caves.setPieceById.keys()].find((id) => forest.setPieceById.has(id));
         expect(shared).toBeDefined();
         const search = defaultState();
@@ -85,7 +85,7 @@ describe("a set piece group", () => {
 });
 
 describe("validating groups like the finder", () => {
-    const config = (item: unknown) => ({ generation: { setpieces: [item] } });
+    const config = (item: unknown) => ({ version: 3, build: 756039, generation: { setpieces: [item] } });
 
     it("takes 1 to 16 rules and nothing else", () => {
         expect(validateConfig(config({ any: [{ required: { MooseNest: 1 } }] })).ok).toBe(true);
@@ -166,7 +166,7 @@ describe("a set piece group with a total", () => {
     });
 
     it("is validated like a set piece bound", () => {
-        const config = (item: unknown) => ({ generation: { setpieces: [item] } });
+        const config = (item: unknown) => ({ version: 3, build: 756039, generation: { setpieces: [item] } });
         expect(validateConfig(config({ any: [{}], total: [1] }))).toEqual({
             ok: false,
             error: "config: generation.setpieces[0].total must be an integer in 0..4294967295 or [min, max]"

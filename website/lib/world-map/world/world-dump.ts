@@ -1,3 +1,4 @@
+import type { GameBuild } from "@/lib/config/game-builds";
 import type { Platform, Shard } from "@/lib/config/seedfinder-config";
 
 const MAGIC = "DSTW";
@@ -6,8 +7,8 @@ const VERSION = 3;
 export const DUMP_PATH = "/world.dstw";
 export const CRASHED_LINE = /^dump .*\boutcome=crashed\b/;
 
-export const dumpArgs = (seed: number, platform: Platform, shard: Shard) =>
-    ["world", "dump", String(seed), "--platform", platform, "--shard", shard, "-o", DUMP_PATH];
+export const dumpArgs = (seed: number, platform: Platform, shard: Shard, build: GameBuild) =>
+    ["world", "dump", String(seed), "--platform", platform, "--shard", shard, "--build", String(build), "-o", DUMP_PATH];
 
 export const DUMP_PLATFORMS = ["unknown", "windows", "linux"] as const;
 export type DumpPlatform = (typeof DUMP_PLATFORMS)[number];

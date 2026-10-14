@@ -4,6 +4,7 @@ import ./parse.bend as Parse
 import ../level/summary.bend as LevelSummary
 import ../level/prefix.bend as LevelPrefix
 import ../data/world_catalog.bend as WorldCatalog
+import ../data/builds.bend as Builds
 
 # Part A of a config's `generation` in config order (for the witnesses of criteria.py check_tasks, check_swaps and
 # check_setpieces), read back from a config that filters/config.bend already accepted.
@@ -172,34 +173,34 @@ def shown_of(+text: String) -> Shown:
 type Placed is Data:
   Placed{task: String, pieces: List<&2, String>}
 
-def piece_names(entries: List<&2, U32>, +task: U32) -> List<&2, String>:
+def piece_names(+build: Builds.Build, entries: List<&2, U32>, +task: U32) -> List<&2, String>:
   match entries:
     case Nil{}:
       Nil{}
     case Con{+entry, rest}:
-      +tail = piece_names(rest, task)
-      Bool.pick(List<&2, String>, U32.is_eq((((entry >> 6n) >> U32.to_nat(task)) .&. 1 : U32), 1), WorldCatalog.key_name((entry .&. 63 : U32)) <> tail, tail)
+      +tail = piece_names(build, rest, task)
+      Bool.pick(List<&2, String>, U32.is_eq((((entry >> 6n) >> U32.to_nat(task)) .&. 1 : U32), 1), WorldCatalog.key_name(build, (entry .&. 63 : U32)) <> tail, tail)
 
-def special_names(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, String>:
+def special_names(+build: Builds.Build, n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, String>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      +tail = special_names(p, codes, tasks, task, (k + 1 : U32))
-      Bool.pick(List<&2, String>, U32.is_eq(LevelPrefix.field5(tasks, k), task), WorldCatalog.special_name(LevelPrefix.field5(codes, k)) <> tail, tail)
+      +tail = special_names(build, p, codes, tasks, task, (k + 1 : U32))
+      Bool.pick(List<&2, String>, U32.is_eq(LevelPrefix.field5(tasks, k), task), WorldCatalog.special_name(build, LevelPrefix.field5(codes, k)) <> tail, tail)
 
-def placed_tasks(n: Nat, +s: LevelSummary.Summary, +c: U32) -> List<&2, Placed>:
+def placed_tasks(+build: Builds.Build, n: Nat, +s: LevelSummary.Summary, +c: U32) -> List<&2, Placed>:
   match n s:
     case 0n _:
       Nil{}
     case 1n+p LevelSummary.Summary{_, +lo, +entries, +codes, +tasks, +count, _}:
-      +task = LevelPrefix.chosen_task(lo, c)
-      Placed{WorldCatalog.task_name(task), List.append(&2, String, piece_names(entries, task), special_names(U32.to_nat(count), codes, tasks, task, 0))}
-        <> placed_tasks(p, s, (c + 1 : U32))
+      +task = LevelPrefix.chosen_task(build, lo, c)
+      Placed{WorldCatalog.task_name(build, task), List.append(&2, String, piece_names(build, entries, task), special_names(build, U32.to_nat(count), codes, tasks, task, 0))}
+        <> placed_tasks(build, p, s, (c + 1 : U32))
 
 # The chosen tasks of a level table in chosen order, with their placed set pieces.
-def placed(+s: LevelSummary.Summary) -> List<&2, Placed>:
-  placed_tasks(LevelSummary.chosen_count(), s, 0)
+def placed(+build: Builds.Build, +s: LevelSummary.Summary) -> List<&2, Placed>:
+  placed_tasks(build, LevelSummary.chosen_count(), s, 0)
 
 def task_names(placed: List<&2, Placed>) -> List<&2, String>:
   match placed:

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# usage: run_worlds.sh [seeds-file] [jobs]
+# usage: run_worlds.sh [seeds-file] [jobs] [work-dir]
 # Runs the worldsim emulator for every seed in seeds-file (default seeds.txt) that has no summary yet,
-# reduces each world.json to worlds/<seed>.json and deletes the raw output.
+# reduces each world.json to <work-dir>/worlds/<seed>.json (work-dir defaults to build/catalog) and deletes the raw
+# output.
 set -uo pipefail
 
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
-work="$(cd "$here/../.." && pwd)/build/catalog"
+work="${3:-$(cd "$here/../.." && pwd)/build/catalog}"
 worldsim="${WORLDSIM_DIR:?set WORLDSIM_DIR to the worldsim emulator}"
 seeds="${1:-$here/seeds.txt}"
 jobs="${2:-8}"

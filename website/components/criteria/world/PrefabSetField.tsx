@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { setChips } from "@/lib/catalog/prefab-sets";
 import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import PrefabPicker, { type Blocked } from "./PrefabPicker";
-import { useWorldShard } from "./WorldShard";
+import { useWorldKind } from "./WorldKind";
 
 interface PrefabSetFieldProps {
     label: string;
@@ -21,10 +21,10 @@ export default function PrefabSetField({
                                            blocked = () => undefined,
                                            autoOpen = false
                                        }: PrefabSetFieldProps) {
-    const shard = useWorldShard();
+    const { shard, build } = useWorldKind();
     const [picking, setPicking] = useState(autoOpen && ids.length === 0);
     const opener = useRef<HTMLButtonElement>(null);
-    const anchors = shardCatalog(shard).anchors.filter((anchor) => !blocked(anchor.id));
+    const anchors = shardCatalog(shard, build).anchors.filter((anchor) => !blocked(anchor.id));
 
     const close = () => {
         setPicking(false);
@@ -35,7 +35,7 @@ export default function PrefabSetField({
             <div className="prefab-set" role="group" aria-label={label}>
                 <span className="field-label">{label}</span>
                 <span className="set-chips">
-        {setChips(ids, shard).map((chip) => (
+        {setChips(ids, shard, build).map((chip) => (
                 <span key={chip.ids.join()} className="set-chip">
             {chip.label}
                     <button type="button" className="set-chip__remove" aria-label={`Remove ${chip.label} from ${label}`}

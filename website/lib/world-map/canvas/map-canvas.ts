@@ -1,3 +1,4 @@
+import { generatedBy } from "@/lib/config/builds";
 import { type EntityLayer, SPAWN } from "@/lib/world-map/legend/entity-layer";
 import { instancesOf } from "@/lib/world-map/legend/prefab-search";
 import type { WitnessShape } from "@/lib/world-map/search/witness-overlay";
@@ -240,7 +241,7 @@ export function mountMapCanvas(
         },
         witnesses: (shapes) => {
             overlay?.dispose();
-            overlay = createWitnessRenderer(gl, shapes, world.shard);
+            overlay = createWitnessRenderer(gl, shapes, world.shard, generatedBy(world));
             redraw();
         },
         dispose: () => {

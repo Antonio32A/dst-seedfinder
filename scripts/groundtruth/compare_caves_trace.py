@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Compares the caves stages of the trace binary with the probes of the real Linux cave worlds and names the first stage that differs.
 
-usage: compare_caves_trace.py TRACE_BINARY [SEEDS] [--worlds DIR] [--jobs N] [--first-attempts] [--draws] [--engine-probes DIR]
+usage: compare_caves_trace.py TRACE_BINARY [SEEDS] [--build BUILD] [--worlds DIR] [--jobs N] [--first-attempts] [--draws] [--engine-probes DIR]
 
-Every attempt of every seed is one `TRACE_BINARY trace SEED --stage cavegen --platform linux [--draws POSITION]` run. The
+Every attempt of every seed is one `TRACE_BINARY trace SEED --stage cavegen --platform linux --build BUILD [--draws POSITION]` run. The
 first attempt starts from the seed's level table; attempt k > 1 starts at the position of the PCG32 stream at the real
 attempt's `generate_begin` checkpoint (its third field, which counts the engine's draws too), so every attempt is checked
 on its own. The records of the run (seedfinder/gen/cave_trace.bend) are compared with the world JSON's probes of that
@@ -39,8 +39,9 @@ call's `after` and the second's `before`.
            start/stop, call by call over all attempts of the seed (a capture of a world that was run several times
            is read as its first run)
 
-SEEDS: `1-120` (default) or `1,5,9`. WORLDS: the world JSONs of scripts/groundtruth/run_worldgen.sh (default
-build/groundtruth/data/worlds_caves).
+SEEDS: `1-120` (default) or `1,5,9`. BUILD: the game build (default the latest of builds.json), passed to the binary as
+--build. WORLDS: the world JSONs of scripts/groundtruth/run_worldgen.sh (default the build's ground truth,
+build/groundtruth/<BUILD>/data/worlds_caves of the main checkout, or $GT_ROOT/<BUILD>/...).
 """
 import argparse
 import concurrent.futures
@@ -54,7 +55,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from compare_common import CAVE_WORLDS, attempts_of_seeds  # noqa: E402
+from compare_common import attempts_of_seeds, cave_worlds, latest_build  # noqa: E402
 
 FNV_OFFSET = 0xCBF29CE484222325
 FNV_PRIME = 0x100000001B3
@@ -116,8 +117,8 @@ def parse(stdout):
     return records
 
 
-def run_trace(binary, seed, position):
-    cmd = [binary, "trace", str(seed), "--stage", "cavegen", "--platform", "linux"]
+def run_trace(binary, seed, position, build):
+    cmd = [binary, "trace", str(seed), "--stage", "cavegen", "--platform", "linux", "--build", str(build)]
     if position:
         cmd += ["--draws", str(position)]
     done = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
@@ -343,10 +344,10 @@ def check_engine(seed, ported, engine_dir, draws):
     return problems
 
 
-def check(binary, world, attempt, want_draws):
+def check(binary, world, attempt, want_draws, build):
     real = Real(world, attempt)
     begin = real.begin()
-    records, error = run_trace(binary, world["seed"], begin[2] if attempt > 1 else 0)
+    records, error = run_trace(binary, world["seed"], begin[2] if attempt > 1 else 0, build)
     problems = {}
     draws = Draws()
     if not records.get("cverdict"):
@@ -384,19 +385,20 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("binary")
     ap.add_argument("seeds", nargs="?", default="1-120")
-    ap.add_argument("--worlds", default=str(CAVE_WORLDS))
+    ap.add_argument("--build", type=int, default=latest_build())
+    ap.add_argument("--worlds")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--first-attempts", action="store_true", help="only the first attempt of every seed")
     ap.add_argument("--draws", action="store_true", help="check and tabulate the random-draw counts")
     ap.add_argument("--engine-probes", help="folder of <seed>/engine_probe.jsonl captures (with --draws)")
     args = ap.parse_args()
-    work = attempts_of_seeds(args.seeds, args.worlds, args.first_attempts)
+    work = attempts_of_seeds(args.seeds, args.worlds or cave_worlds(args.build, "linux"), args.first_attempts)
     worlds = {world["seed"]: world for world, _ in work}
     failed = 0
     total = Draws()
     ported = defaultdict(dict)
     with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
-        futures = [pool.submit(check, args.binary, world, attempt, args.draws) for world, attempt in work]
+        futures = [pool.submit(check, args.binary, world, attempt, args.draws, args.build) for world, attempt in work]
         for future in concurrent.futures.as_completed(futures):
             seed, attempt, problems, draws, calls = future.result()
             total.merge(draws)

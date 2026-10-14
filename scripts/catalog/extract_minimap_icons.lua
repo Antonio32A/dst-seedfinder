@@ -1,7 +1,8 @@
 -- Runs each prefab constructor as the master simulation under harness stubs and prints, as JSON, the icon, priority and
 -- draw-over-fog flag its MiniMapEntity was last given.
 local HERE = arg[0]:match("^(.*)/[^/]*$") or "."
-local GS = HERE .. "/../../build/deps/game-scripts"
+local GS = arg[1] == "--build" and (HERE .. "/../../build/deps/builds/" .. arg[2] .. "/scripts")
+    or (HERE .. "/../../build/deps/game-scripts")
 package.path = GS .. "/?.lua;" .. package.path
 print = function() end
 

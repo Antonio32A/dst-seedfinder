@@ -1,6 +1,7 @@
 import Base
 import ./LAWS.bend as Laws
 import ./laws/bridges.bend as LawsBridges
+import ./laws/builds.bend as LawsBuilds
 import ./laws/cave_growing_tree.bend as LawsCaveGrowingTree
 import ./laws/cave_kernels.bend as LawsCaveKernels
 import ./laws/cave_maze_passes.bend as LawsCaveMazePasses

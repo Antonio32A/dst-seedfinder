@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Compares the seedfinder's caves worldgen up to the tile map right before the mazes with the real Linux cave worlds.
 
-usage: compare_caves_land.py BINARY [SEEDS] [--worlds DIR] [--jobs N] [--first-attempts] [--label LABEL]
+usage: compare_caves_land.py BINARY [SEEDS] [--build BUILD] [--worlds DIR] [--jobs N] [--first-attempts] [--label LABEL]
 
-Every attempt of every seed is one `BINARY -- gen SEED --shard caves --platform linux --dump 3` run. The first attempt
+Every attempt of every seed is one `BINARY -- gen SEED --shard caves --platform linux --build BUILD --dump 3`
+run. The first attempt
 starts from the seed's level table; attempt k > 1 starts at the position of the PCG32 stream at the real attempt's
 generate_begin (the third field of the `generate_begin` rng_checkpoints entry, which counts the engine's draws too), so
 every attempt is checked on its own. The tile map of the run must equal the world JSON's tiles probe of that attempt
@@ -11,8 +12,9 @@ every attempt is checked on its own. The tile map of the run must equal the worl
 node types, links and tags. The Labyrinth and Maze global tags of every attempt must equal the node lists of its
 RunMaze and GetPointsForMetaMaze calls.
 
-SEEDS: `1-120` (default) or `1,5,9`. WORLDS: the world JSONs of scripts/groundtruth/run_worldgen.sh (default
-build/groundtruth/data/worlds_caves).
+SEEDS: `1-120` (default) or `1,5,9`. BUILD: the game build (default the latest of builds.json), passed to the binary as
+--build. WORLDS: the world JSONs of scripts/groundtruth/run_worldgen.sh (default the build's ground truth,
+build/groundtruth/<BUILD>/data/worlds_caves of the main checkout, or $GT_ROOT/<BUILD>/...).
 """
 import argparse
 import concurrent.futures
@@ -23,7 +25,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from compare_common import CAVE_WORLDS, attempts_of_seeds  # noqa: E402
+from compare_common import attempts_of_seeds, cave_worlds, latest_build  # noqa: E402
 
 POISON_BITS = {"ForceConnected": 2, "RoadPoison": 4, "ForceDisconnected": 8}
 
@@ -32,8 +34,9 @@ def start_positions(world):
     return [c[2] if len(c) > 2 else c[1] for c in world["rng_checkpoints"] if c[0] == "generate_begin"]
 
 
-def run(binary, seed, position):
-    cmd = [binary, "--threads", "2", "--", "gen", str(seed), "--shard", "caves", "--platform", "linux", "--dump", "3"]
+def run(binary, seed, position, build):
+    cmd = [binary, "--threads", "2", "--", "gen", str(seed), "--shard", "caves", "--platform", "linux", "--build", str(build),
+           "--dump", "3"]
     if position:
         cmd += ["--draws", str(position)]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=1800).stdout
@@ -88,10 +91,10 @@ def globals_problems(world, attempt, story):
     return problems
 
 
-def check(binary, world, attempt, label):
+def check(binary, world, attempt, label, build):
     seed = world["seed"]
     position = start_positions(world)[attempt - 1] if attempt > 1 else 0
-    found = parse(run(binary, seed, position))
+    found = parse(run(binary, seed, position, build))
     want = tiles_probe(world, attempt, label)
     if "tiles" not in found or want is None:
         return seed, attempt, ["no tiles record"]
@@ -107,15 +110,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("binary")
     ap.add_argument("seeds", nargs="?", default="1-120")
-    ap.add_argument("--worlds", default=str(CAVE_WORLDS))
+    ap.add_argument("--build", type=int, default=latest_build())
+    ap.add_argument("--worlds")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--first-attempts", action="store_true", help="only the first attempt of every seed")
     ap.add_argument("--label", default="before_mazes")
     args = ap.parse_args()
-    work = attempts_of_seeds(args.seeds, args.worlds, args.first_attempts)
+    work = attempts_of_seeds(args.seeds, args.worlds or cave_worlds(args.build, "linux"), args.first_attempts)
     failed = 0
     with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
-        futures = [pool.submit(check, args.binary, world, attempt, args.label) for world, attempt in work]
+        futures = [pool.submit(check, args.binary, world, attempt, args.label, args.build) for world, attempt in work]
         for future in concurrent.futures.as_completed(futures):
             seed, attempt, problems = future.result()
             failed += bool(problems)

@@ -8,6 +8,7 @@ import ../rng/pcg.bend as Pcg
 import ../populate/entities.bend as Entities
 import ../storygen/catalog.bend as StoryCatalog
 import ./tags.bend as GenTags
+import ../data/builds.bend as Builds
 
 # The text records `seedfinder gen --shard caves` prints on request: the story graph of an attempt as one JSON line and
 # its tile map as run-length pairs (`tiles`, row-major with x fastest, `tile*count` runs joined by commas), the formats of the real
@@ -61,16 +62,16 @@ def quoted_all(names: List<&2, String>) -> List<&2, String>:
     case Con{+name, rest}:
       Canon.quoted(name) <> quoted_all(rest)
 
-def node_json(+s: StoryGraph.St, +n: U32) -> String:
-  "[" ++ Canon.quoted(StoryGraph.node_name(s, n)) ++ "," ++ U32.show(StoryGraph.nf(s, n, StoryGraph.f_type())) ++ "," ++ U32.show(GenTags.poison(s, n))
-    ++ ",[" ++ String.join(quoted_all(GenTags.cave_tag_names(s, n)), ",") ++ "]]"
+def node_json(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> String:
+  "[" ++ Canon.quoted(StoryGraph.node_name(build, s, n)) ++ "," ++ U32.show(StoryGraph.nf(s, n, StoryGraph.f_type())) ++ "," ++ U32.show(GenTags.poison(build, s, n))
+    ++ ",[" ++ String.join(quoted_all(GenTags.cave_tag_names(build, s, n)), ",") ++ "]]"
 
-def nodes_json(n: Nat, +s: StoryGraph.St, +i: U32) -> List<&2, String>:
+def nodes_json(+build: Builds.Build, n: Nat, +s: StoryGraph.St, +i: U32) -> List<&2, String>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      node_json(s, i) <> nodes_json(p, s, (i + 1 : U32))
+      node_json(build, s, i) <> nodes_json(build, p, s, (i + 1 : U32))
 
 def edge_json(+s: StoryGraph.St, +e: U32) -> String:
   +slot = (StoryGraph.edge_base() + (e * 2 : U32) : U32)
@@ -83,36 +84,36 @@ def edges_json(n: Nat, +s: StoryGraph.St, +e: U32) -> List<&2, String>:
     case 1n+p:
       edge_json(s, e) <> edges_json(p, s, (e + 1 : U32))
 
-def global_json(+s: StoryGraph.St, +k: U32) -> String:
+def global_json(+build: Builds.Build, +s: StoryGraph.St, +k: U32) -> String:
   +slot = (StoryGraph.global_base() + (k * 3 : U32) : U32)
-  "[" ++ Canon.quoted(CaveStory.tag_name(StoryGraph.get(s, slot))) ++ "," ++ Canon.quoted(StoryCatalog.task_name(StoryGraph.gf(s, StoryGraph.get(s, (slot + 1 : U32)), StoryGraph.g_part())))
-    ++ "," ++ Canon.quoted(StoryGraph.node_name(s, StoryGraph.get(s, (slot + 2 : U32)))) ++ "]"
+  "[" ++ Canon.quoted(CaveStory.tag_name(build, StoryGraph.get(s, slot))) ++ "," ++ Canon.quoted(StoryCatalog.task_name(build, StoryGraph.gf(s, StoryGraph.get(s, (slot + 1 : U32)), StoryGraph.g_part())))
+    ++ "," ++ Canon.quoted(StoryGraph.node_name(build, s, StoryGraph.get(s, (slot + 2 : U32)))) ++ "]"
 
-def globals_json(n: Nat, +s: StoryGraph.St, +k: U32) -> List<&2, String>:
+def globals_json(+build: Builds.Build, n: Nat, +s: StoryGraph.St, +k: U32) -> List<&2, String>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      global_json(s, k) <> globals_json(p, s, (k + 1 : U32))
+      global_json(build, s, k) <> globals_json(build, p, s, (k + 1 : U32))
 
 # The story graph of an attempt: every node as [id, NODE_TYPE, poison bits, tags] and every link or lock as a pair of
 # node indices, in creation order, and Story.GlobalTags as [tag, task, node id] in insertion order.
-def story_json(+seed: U32, +a: U32, +s: StoryGraph.St) -> String:
-  "{\"seed\":" ++ U32.show(seed) ++ ",\"attempt\":" ++ U32.show(a) ++ ",\"nodes\":[" ++ String.join(nodes_json(U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, 0), ",")
+def story_json(+build: Builds.Build, +seed: U32, +a: U32, +s: StoryGraph.St) -> String:
+  "{\"seed\":" ++ U32.show(seed) ++ ",\"attempt\":" ++ U32.show(a) ++ ",\"nodes\":[" ++ String.join(nodes_json(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, 0), ",")
     ++ "],\"edges\":[" ++ String.join(edges_json(U32.to_nat(StoryGraph.get(s, StoryGraph.s_edges())), s, 0), ",")
-    ++ "],\"globals\":[" ++ String.join(globals_json(U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, 0), ",") ++ "]}"
+    ++ "],\"globals\":[" ++ String.join(globals_json(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, 0), ",") ++ "]}"
 
-def entity_json(+e: Entities.Ent) -> String:
+def entity_json(+build: Builds.Build, +e: Entities.Ent) -> String:
   match e:
     case Entities.Ent{+prefab, _, _, _, _, +xk, +zk, _}:
-      "[" ++ Canon.quoted(Strings.name(prefab)) ++ "," ++ U32.show(xk) ++ "," ++ U32.show(zk) ++ "]"
+      "[" ++ Canon.quoted(Strings.name(build, prefab)) ++ "," ++ U32.show(xk) ++ "," ++ U32.show(zk) ++ "]"
 
-def entities_json(ents: List<&2, Entities.Ent>) -> List<&2, String>:
+def entities_json(+build: Builds.Build, ents: List<&2, Entities.Ent>) -> List<&2, String>:
   match ents:
     case Nil{}:
       Nil{}
     case Con{+e, rest}:
-      List.append(&2, String, entities_json(rest), [entity_json(e)])
+      List.append(&2, String, entities_json(build, rest), [entity_json(build, e)])
 
 def counters_json(marks: List<&2, Pcg.Rng>, +seed: U32) -> List<&2, String>:
   match marks:
@@ -124,6 +125,6 @@ def counters_json(marks: List<&2, Pcg.Rng>, +seed: U32) -> List<&2, String>:
 # The maze passes of an attempt as one JSON line: the stream counter right after each maze engine call in call order, the
 # counter after the passes, and the entities they added in insertion order as [prefab, x, z] with x and z in hundredths
 # (two's complement) of world units.
-def mazes_json(+seed: U32, +a: U32, +marks: List<&2, Pcg.Rng>, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>) -> String:
+def mazes_json(+build: Builds.Build, +seed: U32, +a: U32, +marks: List<&2, Pcg.Rng>, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>) -> String:
   "{\"seed\":" ++ U32.show(seed) ++ ",\"attempt\":" ++ U32.show(a) ++ ",\"marks\":[" ++ String.join(counters_json(marks, seed), ",")
-    ++ "],\"end\":" ++ U32.show(Pcg.counter(seed, rng)) ++ ",\"ents\":[" ++ String.join(entities_json(ents), ",") ++ "]}"
+    ++ "],\"end\":" ++ U32.show(Pcg.counter(seed, rng)) ++ ",\"ents\":[" ++ String.join(entities_json(build, ents), ",") ++ "]}"

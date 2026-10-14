@@ -20,6 +20,7 @@ import ./maze_lines.bend as MazeLines
 import ./maze_order.bend as MazeOrder
 import ./maze_place.bend as MazePlace
 import ./maze_tags.bend as MazeTags
+import ../data/builds.bend as Builds
 
 # The Maze pass of forest_map.Generate: per task with the `Maze` global tag, GetPointsForMetaMaze over the tagged nodes,
 # the cells sorted by their distance to the maze entrance, a layout placed on every cell (the archive's ends, key room
@@ -68,41 +69,41 @@ def restored(l: MazePlace.Laid, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
       MazeEnv.Pass{g, rng, ents, marks}
 
 # obj_layout.Place({xs[idx], ys[idx]}, MAZE_CELL_EXITS_INV[cell], add_fn, choices)
-def place_cell(+e: MazeEnv.Env, +m: Maze, +idx: U32, +cell: U32, +choices: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def place_cell(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, +idx: U32, +cell: U32, +choices: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{g, rng, +ents, +marks}:
-      restored(MazePlace.place(MazePlace.Spot{MazeEnv.swaps_of(e), MazeEnv.width_of(e), MazeOrder.x_of(MazeOrder.cell(found_of(m), idx)), MazeOrder.y_of(MazeOrder.cell(found_of(m), idx))},
+      restored(MazePlace.place(build, MazePlace.Spot{MazeEnv.swaps_of(e), MazeEnv.width_of(e), MazeOrder.x_of(MazeOrder.cell(found_of(m), idx)), MazeOrder.y_of(MazeOrder.cell(found_of(m), idx))},
         cell, choices, MazePlace.Laid{g, rng, ents}), marks)
 
 # Place(..., MAZE_CELL_EXITS_INV[math.abs(types[idx])], ...)
-def place_shape(+e: MazeEnv.Env, +m: Maze, +idx: U32, +choices: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  place_cell(e, m, idx, MazeOrder.magnitude(MazeOrder.key_of(MazeOrder.cell(found_of(m), idx))), choices, p)
+def place_shape(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, +idx: U32, +choices: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  place_cell(build, e, m, idx, MazeOrder.magnitude(MazeOrder.key_of(MazeOrder.cell(found_of(m), idx))), choices, p)
 
-def room_placed(rooms: Bool, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def room_placed(+build: Builds.Build, rooms: Bool, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match rooms:
     case True{}:
-      place_shape(e, m, idx, CaveStory.task_maze_rooms(task_of(m)), p)
+      place_shape(build, e, m, idx, CaveStory.task_maze_rooms(build, task_of(m)), p)
     case False{}:
-      place_shape(e, m, idx, CaveStory.task_maze_bosses(task_of(m)), p)
+      place_shape(build, e, m, idx, CaveStory.task_maze_bosses(build, task_of(m)), p)
 
 # A cell with types > 0 gets a `rooms` layout, one with types <= 0 a `bosses` layout.
-def room_or_boss(+e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  room_placed(MazeOrder.positive(MazeOrder.key_of(MazeOrder.cell(found_of(m), idx))), e, m, idx, p)
+def room_or_boss(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  room_placed(build, MazeOrder.positive(MazeOrder.key_of(MazeOrder.cell(found_of(m), idx))), e, m, idx, p)
 
-def room_if(on: Bool, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def room_if(+build: Builds.Build, on: Bool, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match on:
     case True{}:
-      room_or_boss(e, m, idx, p)
+      room_or_boss(build, e, m, idx, p)
     case False{}:
       p
 
 # `for idx = 1, #xs` placing rooms and bosses except at the skipped cells.
-def rooms_loop(n: Nat, +e: MazeEnv.Env, +m: Maze, +idx: U32, +skips: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def rooms_loop(+build: Builds.Build, n: Nat, +e: MazeEnv.Env, +m: Maze, +idx: U32, +skips: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match n:
     case 0n:
       p
     case 1n+q:
-      rooms_loop(q, e, m, (idx + 1 : U32), skips, room_if(Bool.not(StoryOrder.contains(skips, idx)), e, m, idx, p))
+      rooms_loop(build, q, e, m, (idx + 1 : U32), skips, room_if(build, Bool.not(StoryOrder.contains(skips, idx)), e, m, idx, p))
 
 def fi(+v: U32) -> F64Repr.F64:
   F64Repr.from_i32(v)
@@ -120,10 +121,10 @@ def seal_coordinate(+t: U32, +s: F64Repr.F64, +width: U32) -> F64Repr.F64:
     F64Arith.div(F64Arith.mul(F64Arith.div(F64Arith.sub(s, fi(t)), F64Repr.two()), Entities.tile_scale()), F64Repr.two()))
 
 # The two archive seals: rubble1 and rubble2 half way between the cell and the entrance.
-def seals(+e: MazeEnv.Env, +x: U32, +y: U32, +sx: F64Repr.F64, +sy: F64Repr.F64, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
+def seals(+build: Builds.Build, +e: MazeEnv.Env, +x: U32, +y: U32, +sx: F64Repr.F64, +sy: F64Repr.F64, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
   +px = seal_coordinate(x, sx, MazeEnv.width_of(e))
   +pz = seal_coordinate(y, sy, MazeEnv.width_of(e))
-  raw_entity(MazeEnv.prefab("rubble2"), px, pz, rng) <> raw_entity(MazeEnv.prefab("rubble1"), px, pz, rng) <> ents
+  raw_entity(MazeEnv.prefab(build, "rubble2"), px, pz, rng) <> raw_entity(MazeEnv.prefab(build, "rubble1"), px, pz, rng) <> ents
 
 def site_x(+s: TileWorld.Site) -> F64Repr.F64:
   match s:
@@ -136,21 +137,21 @@ def site_y(+s: TileWorld.Site) -> F64Repr.F64:
       F32Ops.to_f64(y)
 
 # The lines and seals from the cell nearest the entrance to the MazeEntrance site.
-def sealed_at(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +c: WorldCaveMaze.Found) -> MazeEnv.Pass:
+def sealed_at(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +c: WorldCaveMaze.Found) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{g, +rng, +ents, +marks}:
       MazeEnv.Pass{seal_lines(g, MazeOrder.x_of(c), MazeOrder.y_of(c), site_x(site_of(m)), site_y(site_of(m))), rng,
-        seals(e, MazeOrder.x_of(c), MazeOrder.y_of(c), site_x(site_of(m)), site_y(site_of(m)), rng, ents), marks}
+        seals(build, e, MazeOrder.x_of(c), MazeOrder.y_of(c), site_x(site_of(m)), site_y(site_of(m)), rng, ents), marks}
 
-def sealed(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze) -> MazeEnv.Pass:
-  sealed_at(p, e, m, MazeOrder.cell(found_of(m), StoryOrder.nth_or_last(order_of(m), 0, 0)))
+def sealed(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze) -> MazeEnv.Pass:
+  sealed_at(build, p, e, m, MazeOrder.cell(found_of(m), StoryOrder.nth_or_last(order_of(m), 0, 0)))
 
-def keyroom_placed(none: Bool, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def keyroom_placed(+build: Builds.Build, none: Bool, +e: MazeEnv.Env, +m: Maze, +idx: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match none:
     case True{}:
       p
     case False{}:
-      place_cell(e, m, idx, CaveStory.maze_cell_single_north(), CaveStory.task_maze_keyroom(task_of(m)), p)
+      place_cell(build, e, m, idx, CaveStory.maze_cell_single_north(build), CaveStory.task_maze_keyroom(build, task_of(m)), p)
 
 def redraw(again: Bool, +r: U32, rng: Pcg.Rng, +n: U32) -> U32 & Pcg.Rng:
   match again:
@@ -168,134 +169,134 @@ def reserved_pick(fuel: Nat, got: U32 & Pcg.Rng, +endidx: U32, +startidx: U32, +
       (+r, rng) = got
       reserved_pick(f, redraw(U32.is_eq(r, endidx) || U32.is_eq(r, startidx), r, rng, n), endidx, startidx, n)
 
-def reserved_done(got: U32 & Pcg.Rng, +e: MazeEnv.Env, +m: Maze, +endidx: U32, +startidx: U32, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
+def reserved_done(+build: Builds.Build, got: U32 & Pcg.Rng, +e: MazeEnv.Env, +m: Maze, +endidx: U32, +startidx: U32, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
   (+r, rng) = got
-  sealed(keyroom_placed(List.is_empty(&2, U32, CaveStory.task_maze_keyroom(task_of(m))), e, m, r,
-    rooms_loop(U32.to_nat(count_of(m)), e, m, 1, [r, endidx, startidx], MazeEnv.Pass{g, rng, ents, marks})), e, m)
+  sealed(build, keyroom_placed(build, List.is_empty(&2, U32, CaveStory.task_maze_keyroom(build, task_of(m))), e, m, r,
+    rooms_loop(build, U32.to_nat(count_of(m)), e, m, 1, [r, endidx, startidx], MazeEnv.Pass{g, rng, ents, marks})), e, m)
 
-def reserved_space(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +endidx: U32, +startidx: U32) -> MazeEnv.Pass:
+def reserved_space(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +endidx: U32, +startidx: U32) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{g, rng, +ents, +marks}:
-      reserved_done(reserved_pick(1024n, MathRandom.random_range(rng, 1, count_of(m)), endidx, startidx, count_of(m)), e, m, endidx, startidx, g, ents, marks)
+      reserved_done(build, reserved_pick(1024n, MathRandom.random_range(rng, 1, count_of(m)), endidx, startidx, count_of(m)), e, m, endidx, startidx, g, ents, marks)
 
-def archive_rest(more: Bool, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +endidx: U32, +startidx: U32) -> MazeEnv.Pass:
+def archive_rest(+build: Builds.Build, more: Bool, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +endidx: U32, +startidx: U32) -> MazeEnv.Pass:
   match more:
     case True{}:
-      reserved_space(p, e, m, endidx, startidx)
+      reserved_space(build, p, e, m, endidx, startidx)
     case False{}:
       p
 
-def archive_started(got: U32 & Pcg.Rng, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, +endidx: U32, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
+def archive_started(+build: Builds.Build, got: U32 & Pcg.Rng, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, +endidx: U32, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
   (+i, rng) = got
   +startidx = StoryOrder.nth_or_last(ends, (i - 1 : U32), 0)
-  archive_rest((2 < count_of(m) : U32), place_shape(e, m, startidx, CaveStory.task_maze_start(task_of(m)), MazeEnv.Pass{g, rng, ents, marks}), e, m, endidx, startidx)
+  archive_rest(build, (2 < count_of(m) : U32), place_shape(build, e, m, startidx, CaveStory.task_maze_start(build, task_of(m)), MazeEnv.Pass{g, rng, ents, marks}), e, m, endidx, startidx)
 
-def archive_start(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, +endidx: U32) -> MazeEnv.Pass:
+def archive_start(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, +endidx: U32) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{g, rng, +ents, +marks}:
-      archive_started(MathRandom.random_range(rng, 1, U32.from_nat(List.length(&2, U32, ends))), e, m, ends, endidx, g, ents, marks)
+      archive_started(build, MathRandom.random_range(rng, 1, U32.from_nat(List.length(&2, U32, ends))), e, m, ends, endidx, g, ents, marks)
 
-def archive_finished(got: U32 & Pcg.Rng, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
+def archive_finished(+build: Builds.Build, got: U32 & Pcg.Rng, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
   (+i, rng) = got
   +endidx = StoryOrder.nth_or_last(ends, (i - 1 : U32), 0)
-  archive_start(place_shape(e, m, endidx, CaveStory.task_maze_finish(task_of(m)), MazeEnv.Pass{g, rng, ents, marks}), e, m, MazeOrder.without_nth(ends, (i - 1 : U32)), endidx)
+  archive_start(build, place_shape(build, e, m, endidx, CaveStory.task_maze_finish(build, task_of(m)), MazeEnv.Pass{g, rng, ents, marks}), e, m, MazeOrder.without_nth(ends, (i - 1 : U32)), endidx)
 
-def archive_ends(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>) -> MazeEnv.Pass:
+def archive_ends(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{g, rng, +ents, +marks}:
-      archive_finished(MathRandom.random_range(rng, 1, U32.from_nat(List.length(&2, U32, ends))), e, m, ends, g, ents, marks)
+      archive_finished(build, MathRandom.random_range(rng, 1, U32.from_nat(List.length(&2, U32, ends))), e, m, ends, g, ents, marks)
 
 # The archive: finish and start on two of the dead ends, the key room, rooms and bosses elsewhere, the seal.
-def archive(+e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  archive_ends(p, e, m, MazeOrder.ends(order_of(m), found_of(m)))
+def archive(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  archive_ends(build, p, e, m, MazeOrder.ends(order_of(m), found_of(m)))
 
-def special_ends(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +first: U32, +last: U32) -> MazeEnv.Pass:
-  place_shape(e, m, last, CaveStory.task_maze_finish(task_of(m)), place_shape(e, m, first, CaveStory.task_maze_start(task_of(m)), p))
+def special_ends(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze, +first: U32, +last: U32) -> MazeEnv.Pass:
+  place_shape(build, e, m, last, CaveStory.task_maze_finish(build, task_of(m)), place_shape(build, e, m, first, CaveStory.task_maze_start(build, task_of(m)), p))
 
-def special_with(+e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  special_ends(rooms_loop(U32.to_nat(count_of(m)), e, m, 1, [StoryOrder.nth_or_last(ends, 0, 0), MazeOrder.last_of(ends)], p), e, m, StoryOrder.nth_or_last(ends, 0, 0), MazeOrder.last_of(ends))
+def special_with(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, +ends: List<&2, U32>, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  special_ends(build, rooms_loop(build, U32.to_nat(count_of(m)), e, m, 1, [StoryOrder.nth_or_last(ends, 0, 0), MazeOrder.last_of(ends)], p), e, m, StoryOrder.nth_or_last(ends, 0, 0), MazeOrder.last_of(ends))
 
 # The special mazes: start on the dead end nearest the entrance, finish on the farthest.
-def special(+e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  special_with(e, m, MazeOrder.ends(order_of(m), found_of(m)), p)
+def special(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  special_with(build, e, m, MazeOrder.ends(order_of(m), found_of(m)), p)
 
-def plain_with(+e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  rooms_loop(U32.to_nat(count_of(m)), e, m, 1, Nil{}, p)
+def plain_with(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  rooms_loop(build, U32.to_nat(count_of(m)), e, m, 1, Nil{}, p)
 
 # The plain mazes: the cell nearest the entrance becomes a FOUR_WAY.
-def plain(+e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  plain_with(e, with_found(m, MazeOrder.keyed(found_of(m), StoryOrder.nth_or_last(order_of(m), 0, 0), CaveStory.maze_cell_four_way())), p)
+def plain(+build: Builds.Build, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  plain_with(build, e, with_found(m, MazeOrder.keyed(found_of(m), StoryOrder.nth_or_last(order_of(m), 0, 0), CaveStory.maze_cell_four_way(build))), p)
 
-def by_special(special_maze: Bool, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def by_special(+build: Builds.Build, special_maze: Bool, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match special_maze:
     case True{}:
-      special(e, m, p)
+      special(build, e, m, p)
     case False{}:
-      plain(e, m, p)
+      plain(build, e, m, p)
 
-def by_kind(archive_maze: Bool, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def by_kind(+build: Builds.Build, archive_maze: Bool, +e: MazeEnv.Env, +m: Maze, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match archive_maze:
     case True{}:
-      archive(e, m, p)
+      archive(build, e, m, p)
     case False{}:
-      by_special(U32.is_eq(CaveStory.task_maze_kind(task_of(m)), CaveStory.maze_kind_special()), e, m, p)
+      by_special(build, U32.is_eq(CaveStory.task_maze_kind(build, task_of(m)), CaveStory.maze_kind_special(build)), e, m, p)
 
-def bridge_tile(+task: U32) -> U32:
-  Bool.pick(U32, Blob.is_none(CaveStory.task_maze_bridge_ground(task)), Enums.tile_brick(), CaveStory.task_maze_bridge_ground(task))
+def bridge_tile(+build: Builds.Build, +task: U32) -> U32:
+  Bool.pick(U32, Blob.is_none(CaveStory.task_maze_bridge_ground(build, task)), Enums.tile_brick(), CaveStory.task_maze_bridge_ground(build, task))
 
-def bridged(p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze) -> MazeEnv.Pass:
+def bridged(+build: Builds.Build, p: MazeEnv.Pass, +e: MazeEnv.Env, +m: Maze) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{g, rng, ents, marks}:
-      MazeEnv.Pass{MazeLines.bridge(entrances_of(m), g, e, bridge_tile(task_of(m))), rng, ents, marks}
+      MazeEnv.Pass{MazeLines.bridge(build, entrances_of(m), g, e, bridge_tile(build, task_of(m))), rng, ents, marks}
 
-def centred(+e: MazeEnv.Env, +task: U32, +found: List<&2, WorldCaveMaze.Found>, +entrances: List<&2, U32>, +site: TileWorld.Site, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def centred(+build: Builds.Build, +e: MazeEnv.Env, +task: U32, +found: List<&2, WorldCaveMaze.Found>, +entrances: List<&2, U32>, +site: TileWorld.Site, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match site:
     case TileWorld.Site{_, _, _, +cx, +cy, _}:
       +m = {Maze{task, found, MazeOrder.sorted(found, F32Ops.to_f64(cx), F32Ops.to_f64(cy)), site, entrances} : Maze}
-      bridged(by_kind(U32.is_eq(CaveStory.task_maze_kind(task), CaveStory.maze_kind_archive()), e, m, p), e, m)
+      bridged(build, by_kind(build, U32.is_eq(CaveStory.task_maze_kind(build, task), CaveStory.maze_kind_archive(build)), e, m, p), e, m)
 
-def measured(+e: MazeEnv.Env, +g: U32, +found: List<&2, WorldCaveMaze.Found>, p: MazeEnv.Pass) -> MazeEnv.Pass:
-  +entrances = MazeTags.nodes(MazeEnv.story_of(e), "MazeEntrance", g)
-  centred(e, StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part())), found, entrances,
+def measured(+build: Builds.Build, +e: MazeEnv.Env, +g: U32, +found: List<&2, WorldCaveMaze.Found>, p: MazeEnv.Pass) -> MazeEnv.Pass:
+  +entrances = MazeTags.nodes(build, MazeEnv.story_of(e), "MazeEntrance", g)
+  centred(build, e, StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part())), found, entrances,
     MazeEnv.site_of(e, StoryOrder.nth_or_last(entrances, 0, StoryGraph.none())), p)
 
-def found_pass(more: Bool, +e: MazeEnv.Env, +g: U32, +found: List<&2, WorldCaveMaze.Found>, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def found_pass(+build: Builds.Build, more: Bool, +e: MazeEnv.Env, +g: U32, +found: List<&2, WorldCaveMaze.Found>, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match more:
     case True{}:
-      measured(e, g, found, p)
+      measured(build, e, g, found, p)
     case False{}:
       p
 
-def mapped(m: WorldCaveMaze.Mapped, +e: MazeEnv.Env, +g: U32, grid: Grid.Grid, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
+def mapped(+build: Builds.Build, m: WorldCaveMaze.Mapped, +e: MazeEnv.Env, +g: U32, grid: Grid.Grid, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +marks: List<&2, Pcg.Rng>) -> MazeEnv.Pass:
   match m:
     case WorldCaveMaze.Mapped{+found, +rng}:
-      found_pass(Bool.not(List.is_empty(&2, WorldCaveMaze.Found, found)), e, g, found, MazeEnv.Pass{grid, rng, ents, rng <> before <> marks})
+      found_pass(build, Bool.not(List.is_empty(&2, WorldCaveMaze.Found, found)), e, g, found, MazeEnv.Pass{grid, rng, ents, rng <> before <> marks})
 
-def task_pass(+e: MazeEnv.Env, +g: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
+def task_pass(+build: Builds.Build, +e: MazeEnv.Env, +g: U32, p: MazeEnv.Pass) -> MazeEnv.Pass:
   match p:
     case MazeEnv.Pass{grid, +rng, +ents, +marks}:
-      mapped(WorldCaveMaze.meta_maze(MazeEnv.windows_of(e), CaveStory.task_maze_size(StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))),
-        MazeEnv.node_sites(MazeTags.nodes(MazeEnv.story_of(e), "Maze", g), e), rng), e, g, grid, rng, ents, marks)
+      mapped(build, WorldCaveMaze.meta_maze(MazeEnv.windows_of(e), CaveStory.task_maze_size(build, StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))),
+        MazeEnv.node_sites(MazeTags.nodes(build, MazeEnv.story_of(e), "Maze", g), e), rng), e, g, grid, rng, ents, marks)
 
 def built_after(got: MazeEnv.Pass & U32, +name: U32, +before: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
   (p, +after) = got
   (p, MazeEnv.built_with(name, before, after, built))
 
-def maze_name(+e: MazeEnv.Env, +g: U32) -> U32:
-  MazeEnv.prefab(CaveCatalog.task_name(StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))))
+def maze_name(+build: Builds.Build, +e: MazeEnv.Env, +g: U32) -> U32:
+  MazeEnv.prefab(build, CaveCatalog.task_name(build, StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))))
 
-def task_step(got: MazeEnv.Pass & U32, +e: MazeEnv.Env, +g: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+def task_step(+build: Builds.Build, got: MazeEnv.Pass & U32, +e: MazeEnv.Env, +g: U32, built: List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
   (q, +before) = got
-  built_after(MazeEnv.counted(task_pass(e, g, q)), maze_name(e, g), before, built)
+  built_after(MazeEnv.counted(task_pass(build, e, g, q)), maze_name(build, e, g), before, built)
 
-def tasks_loop(tasks: List<&2, U32>, +e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+def tasks_loop(+build: Builds.Build, tasks: List<&2, U32>, +e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
   match tasks:
     case Nil{}:
       got
     case Con{+g, rest}:
       (p, built) = got
-      tasks_loop(rest, e, task_step(MazeEnv.counted(p), e, g, built))
+      tasks_loop(build, rest, e, task_step(build, MazeEnv.counted(p), e, g, built))
 
 # `for task, nodes in pairs(GlobalTags["Maze"])`, with the mazes built (one per task, named after it) added to `built`.
-def run(+e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
-  tasks_loop(MazeTags.tasks(MazeEnv.story_of(e), "Maze"), e, got)
+def run(+build: Builds.Build, +e: MazeEnv.Env, got: MazeEnv.Pass & List<&2, MazeEnv.Built>) -> MazeEnv.Pass & List<&2, MazeEnv.Built>:
+  tasks_loop(build, MazeTags.tasks(build, MazeEnv.story_of(e), "Maze"), e, got)

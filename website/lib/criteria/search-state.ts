@@ -1,5 +1,7 @@
 import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
 import type { SetPieceKind, SwapCategory } from "@/lib/catalog/level-types";
+import { gameBuildOf } from "@/lib/config/builds";
+import { type GameBuild, LATEST_BUILD } from "@/lib/config/game-builds";
 import {
     CONFIG_VERSION,
     DEFAULT_PLATFORM,
@@ -27,6 +29,7 @@ import { asArray, asStrings, clamp, newKey, nonEmpty } from "./state-helpers";
 import {
     NEW_WORLD_ROW,
     worldIssues,
+    type WorldKind,
     worldRowCount,
     type WorldRows,
     worldRowsFor,
@@ -76,6 +79,7 @@ export interface WorldFilter extends WorldRows {
 
 export interface SearchState {
     shard: Shard;
+    build: GameBuild;
     platform: Platform;
     generation: GenerationPicks;
     filters: WorldFilter[];
@@ -142,6 +146,7 @@ export function emptyFilter(): WorldFilter {
 export function defaultState(): SearchState {
     return {
         shard: DEFAULT_SHARD,
+        build: LATEST_BUILD,
         platform: DEFAULT_PLATFORM,
         generation: emptyGeneration(),
         filters: [emptyFilter()]
@@ -264,7 +269,7 @@ function toGeneration(generation: GenerationPicks, catalog: LevelCatalog): Gener
 }
 
 export function toSeedfinderConfig(state: SearchState): SeedfinderConfig {
-    const catalog = levelCatalogOf(state.shard);
+    const catalog = levelCatalogOf(state.shard, state.build);
     const generation = toGeneration(state.generation, catalog);
     const filters = nonEmpty(state.filters.flatMap((filter) => {
         const sections = compact<Filter>(worldSections(filter, state.shard));
@@ -273,6 +278,7 @@ export function toSeedfinderConfig(state: SearchState): SeedfinderConfig {
     }));
     return {
         version: CONFIG_VERSION,
+        build: state.build,
         shard: state.shard,
         platform: state.platform,
         ...(generation ? { generation } : {}),
@@ -350,18 +356,20 @@ function generationPicksOf(generation: unknown, catalog: LevelCatalog): Generati
 export function fromSeedfinderConfig(config: unknown): SearchState {
     const record = asRecord(upgradeConfig(config));
     const shard = SHARDS.find((candidate) => candidate === record.shard) ?? DEFAULT_SHARD;
+    const build = gameBuildOf(record.build) ?? LATEST_BUILD;
     const filters = asArray(record.filters)
         .slice(0, MAX_FILTERS)
         .map(asRecord)
         .map((filter): WorldFilter => ({
             key: newKey(),
             name: typeof filter.name === "string" ? filter.name : "",
-            ...worldRowsOf(filter, shard)
+            ...worldRowsOf(filter, { shard, build })
         }));
     return {
         shard,
+        build,
         platform: PLATFORMS.find((platform) => platform === record.platform) ?? DEFAULT_PLATFORM,
-        generation: generationPicksOf(record.generation, levelCatalogOf(shard)),
+        generation: generationPicksOf(record.generation, levelCatalogOf(shard, build)),
         filters: filters.length > 0 ? filters : [emptyFilter()]
     };
 }
@@ -378,8 +386,11 @@ export function droppedNotice(config: unknown): string {
     ].filter(Boolean).join(" ");
 }
 
-function movedGeneration(generation: GenerationPicks, shard: Shard): { generation: GenerationPicks; dropped: number } {
-    const to = levelCatalogOf(shard);
+function movedGeneration(
+    generation: GenerationPicks,
+    to: LevelCatalog
+): { generation: GenerationPicks; dropped: number } {
+    const forest = to.shard === "forest";
     let dropped = 0;
     const swaps = Object.fromEntries(
         Object.entries(generation.swaps).filter(([category, variant]) => to.swaps.some((swap) =>
@@ -387,11 +398,11 @@ function movedGeneration(generation: GenerationPicks, shard: Shard): { generatio
     );
     const moveRules = (rules: PieceRule[]) => {
         const kept = rules.filter((rule) => to.setPieceById.has(rule.pieceId));
-        dropped += rules.length - kept.length + kept.filter((rule) => rule.ensurePlaced && shard !== "forest").length;
+        dropped += rules.length - kept.length + kept.filter((rule) => rule.ensurePlaced && !forest).length;
         return kept.map((rule) => ({
             ...rule,
             scopeTasks: rule.scopeTasks.filter((id) => to.taskById.has(id)),
-            ensurePlaced: rule.ensurePlaced && shard === "forest"
+            ensurePlaced: rule.ensurePlaced && forest
         }));
     };
     const rules = moveRules(generation.rules);
@@ -412,15 +423,26 @@ function movedGeneration(generation: GenerationPicks, shard: Shard): { generatio
  * the old shard are dropped. `dropped` counts what was lost.
  */
 export function switchShard(state: SearchState, shard: Shard): { state: SearchState; dropped: number } {
-    if (state.shard === shard) return { state, dropped: 0 };
-    const moved = movedGeneration(state.generation, shard);
+    return state.shard === shard ? { state, dropped: 0 } : movedSearch(state, shard, state.build);
+}
+
+/**
+ * The search on another build: every pick that also exists in that build's catalog stays, the others are dropped.
+ * `dropped` counts what was lost.
+ */
+export function switchBuild(state: SearchState, build: GameBuild): { state: SearchState; dropped: number } {
+    return state.build === build ? { state, dropped: 0 } : movedSearch(state, state.shard, build);
+}
+
+function movedSearch(state: SearchState, shard: Shard, build: GameBuild): { state: SearchState; dropped: number } {
+    const moved = movedGeneration(state.generation, levelCatalogOf(shard, build));
     let dropped = moved.dropped;
     const filters = state.filters.map((filter): WorldFilter => {
-        const world = worldRowsFor(filter, state.shard, shard);
+        const world = worldRowsFor(filter, state, { shard, build });
         dropped += world.dropped;
         return { ...filter, ...world.rows };
     });
-    return { state: { ...state, shard, generation: moved.generation, filters }, dropped };
+    return { state: { ...state, shard, build, generation: moved.generation, filters }, dropped };
 }
 
 /** A total match ignores its set pieces' own counts. */
@@ -512,7 +534,7 @@ function filterIssues(state: SearchState): Issue[] {
         const empty: Issue[] = multiple && worldRowCount(filter) === 0
             ? [{ severity: "warning", message: "nothing picked, so it's ignored." }]
             : [];
-        return [...empty, ...worldIssues(filter, state.shard)]
+        return [...empty, ...worldIssues(filter, state)]
             .map((issue) => ({ ...issue, message: label(issue.message) }));
     });
 }
@@ -529,7 +551,7 @@ function coverageIssues(state: SearchState): Issue[] {
 
 /** An error means the search can never match. */
 export function validateSearch(state: SearchState): Issue[] {
-    const catalog = levelCatalogOf(state.shard);
+    const catalog = levelCatalogOf(state.shard, state.build);
     const generation = GENERATION_CHECKS.flatMap((check) => check(state.generation, catalog))
         .map((issue) => ({ ...issue, message: capitalized(issue.message) }));
     const issues = [...coverageIssues(state), ...generation, ...filterIssues(state)];
@@ -560,6 +582,7 @@ export function decodeShareParam(param: string): unknown {
 function presetState(shard: Shard, generation: Partial<GenerationPicks>, filter: Partial<WorldRows> = {}): SearchState {
     return {
         shard,
+        build: LATEST_BUILD,
         platform: DEFAULT_PLATFORM,
         generation: { ...emptyGeneration(), ...generation },
         filters: [{ ...emptyFilter(), ...filter }]
@@ -567,11 +590,14 @@ function presetState(shard: Shard, generation: Partial<GenerationPicks>, filter:
 }
 
 const atLeast = (shard: Shard, pieceId: string, min: number): PieceRule => ({
-    ...newRule(pieceId, levelCatalogOf(shard)),
+    ...newRule(pieceId, levelCatalogOf(shard, LATEST_BUILD)),
     min
 });
 
 const tiles = (count: number) => count * WORLD_UNITS_PER_TILE;
+
+const LATEST_FOREST: WorldKind = { shard: "forest", build: LATEST_BUILD };
+const LATEST_CAVES: WorldKind = { shard: "caves", build: LATEST_BUILD };
 
 const FOREST_PRESETS: Preset[] = [
     {
@@ -581,7 +607,7 @@ const FOREST_PRESETS: Preset[] = [
         build: () => presetState(
             "forest",
             { rules: [atLeast("forest", "MiscBoon", 5)] },
-            { counts: [{ ...NEW_WORLD_ROW.counts("forest"), prefabs: ["cane"] }] }
+            { counts: [{ ...NEW_WORLD_ROW.counts(LATEST_FOREST), prefabs: ["cane"] }] }
         )
     },
     {
@@ -592,7 +618,7 @@ const FOREST_PRESETS: Preset[] = [
             presetState(
                 "forest",
                 { rules: [atLeast("forest", "Level4Boon", 4)] },
-                { distances: [{ ...NEW_WORLD_ROW.distances("forest"), to: ["nightsword"], max: tiles(15) }] }
+                { distances: [{ ...NEW_WORLD_ROW.distances(LATEST_FOREST), to: ["nightsword"], max: tiles(15) }] }
             )
     },
     {
@@ -617,7 +643,7 @@ const CAVE_PRESETS: Preset[] = [
         build: () =>
             presetState("caves", {}, {
                 distances: [{
-                    ...NEW_WORLD_ROW.distances("caves"),
+                    ...NEW_WORLD_ROW.distances(LATEST_CAVES),
                     to: ["minotaur_spawner"],
                     max: tiles(75),
                     metric: "walk",
@@ -632,7 +658,7 @@ const CAVE_PRESETS: Preset[] = [
         build: () =>
             presetState("caves", {}, {
                 distances: [{
-                    ...NEW_WORLD_ROW.distances("caves"),
+                    ...NEW_WORLD_ROW.distances(LATEST_CAVES),
                     to: ["atrium_gate"],
                     max: tiles(20),
                     metric: "walk"

@@ -12,6 +12,7 @@ import ./filters/rules.bend as Rules
 import ./filters/level_checks.bend as LevelChecks
 import ./level/choose.bend as LevelChoose
 import ./filters/json.bend as Json
+import ./data/builds.bend as Builds
 
 # Golden values below come from the reference harness (the real worldgen Lua under DST's PCG32),
 # which matches set pieces dumped from the game (builds 747465 and 756039) for seeds 1..1000.
@@ -43,25 +44,25 @@ def rare_cutoff_at():
   {==}
 
 law seed_0_pieces:
-  {LevelSetpieces.generate(0) == LevelSetpieces.Pieces{3, 0, 0, 1, 0, 16843265, 0} : LevelSetpieces.Pieces}
+  {LevelSetpieces.generate(Builds.Build{756039}, 0) == LevelSetpieces.Pieces{3, 0, 0, 1, 0, 16843265, 0} : LevelSetpieces.Pieces}
 
 def seed_0_pieces():
   {==}
 
 law seed_1_pieces:
-  {LevelSetpieces.generate(1) == LevelSetpieces.Pieces{3, 0, 1, 16777472, 33554688, 1, 1} : LevelSetpieces.Pieces}
+  {LevelSetpieces.generate(Builds.Build{756039}, 1) == LevelSetpieces.Pieces{3, 0, 1, 16777472, 33554688, 1, 1} : LevelSetpieces.Pieces}
 
 def seed_1_pieces():
   {==}
 
 law seed_2147483648_pieces:
-  {LevelSetpieces.generate(2147483648) == LevelSetpieces.Pieces{2, 9, 10, 257, 16777216, 256, 0} : LevelSetpieces.Pieces}
+  {LevelSetpieces.generate(Builds.Build{756039}, 2147483648) == LevelSetpieces.Pieces{2, 9, 10, 257, 16777216, 256, 0} : LevelSetpieces.Pieces}
 
 def seed_2147483648_pieces():
   {==}
 
 law seed_4294967295_pieces:
-  {LevelSetpieces.generate(4294967295) == LevelSetpieces.Pieces{4, 0, 7, 131072, 256, 65537, 0} : LevelSetpieces.Pieces}
+  {LevelSetpieces.generate(Builds.Build{756039}, 4294967295) == LevelSetpieces.Pieces{4, 0, 7, 131072, 256, 65537, 0} : LevelSetpieces.Pieces}
 
 def seed_4294967295_pieces():
   {==}
@@ -88,13 +89,13 @@ def world_seed_1_prefix():
 # MiscBoon WeaponBoon CookingBoon, PCG32 state after 41 draws), so the law
 # skips the prefix and AddSetPeices the laws above already pin.
 law world_seed_1_level_table:
-  {LevelSummary.summary_of(LevelChoose.choose(2, 426793026, LevelPrefix.chosen_tasks(426793026), LevelChoose.Added{LevelSetpieces.Pieces{3, 0, 1, 16777472, 33554688, 1, 1}, 1586631, 0, 6, Pcg.Rng{1208880263, 849893026}})) == LevelSummary.Summary{2, 426793026, [67108869, 1073741832, 4107, 802756, 1039, 67108871, 2321, 556099, 4149, 262170, 67108870, 2389378, 134217737, 2113, 16402, 524301, 4118], 606346272, 245803085, 6, False{}} : LevelSummary.Summary}
+  {LevelSummary.summary_of(LevelChoose.choose(Builds.Build{756039}, 2, 426793026, LevelPrefix.chosen_tasks(Builds.Build{756039}, 426793026), LevelChoose.Added{LevelSetpieces.Pieces{3, 0, 1, 16777472, 33554688, 1, 1}, 1586631, 0, 6, Pcg.Rng{1208880263, 849893026}})) == LevelSummary.Summary{2, 426793026, [67108869, 1073741832, 4107, 802756, 1039, 67108871, 2321, 556099, 4149, 262170, 67108870, 2389378, 134217737, 2113, 16402, 524301, 4118], 606346272, 245803085, 6, False{}} : LevelSummary.Summary}
 
 def world_seed_1_level_table():
   {==}
 
 law config_parses_every_section:
-  {Config.config_of("{\"version\": 2, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"generation\": {\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 8, 2, 2, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 2}], []}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"settings\": {\"boons\": \"default\", \"touchstone\": \"default\"}, \"generation\": {\"tasks\": {\"excluded\": [\"Squeltch\"]}, \"prefab_swaps\": {\"twigs\": \"twiggy trees\"}, \"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 8, 2, 2, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 2}], []}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_parses_every_section():
   {==}
@@ -102,7 +103,7 @@ def config_parses_every_section():
 # docs/config.md section A: a `placed` name keeps only its minimum in the level table and is bounded on the world, which
 # makes a world rule (one a finder without worlds can't decide).
 law config_reads_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}], []}, [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], []}], Some{"config: generation.setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}], []}, [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], []}], Some{"config: generation.setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_placed():
   {==}
@@ -116,79 +117,79 @@ def has_rules(laters: List<&2, Rules.Later>) -> List<&2, Bool>:
 
 def world_entries(compiled: Result<&1, &1, U32 & String, Config.Config>) -> List<&2, Bool>:
   match compiled:
-    case Done{Config.Config{_, _, laters, _, _}}:
+    case Done{Config.Config{_, _, _, laters, _, _}}:
       has_rules(laters)
     case Fail{_}:
       Nil{}
 
 # The world rules of `generation`'s `placed` names are checked by every filter.
 law config_placed_joins_every_filter:
-  {(world_entries(Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"MooseNest\"]}]}, \"filters\": [{}, {}]}")),
-    world_entries(Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": []}]}, \"filters\": [{}, {}]}")))
+  {(world_entries(Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"MooseNest\"]}]}, \"filters\": [{}, {}]}", None{})),
+    world_entries(Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": []}]}, \"filters\": [{}, {}]}", None{})))
     == ([True{}, True{}], [False{}, False{}]) : List<&2, Bool> & List<&2, Bool>}
 
 def config_placed_joins_every_filter():
   {==}
 
 law config_rejects_placed_outside_required:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"Chessy_1\"]}]}}") == Fail{(2, "config: generation.setpieces[0].placed names \"Chessy_1\", which isn't in required")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"Chessy_1\"]}]}}", None{}) == Fail{(2, "config: generation.setpieces[0].placed names \"Chessy_1\", which isn't in required")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_placed_outside_required():
   {==}
 
 law config_rejects_repeated_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"MooseNest\", \"MooseNest\"]}]}}") == Fail{(2, "config: generation.setpieces[0].placed names \"MooseNest\" twice")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"required\": {\"MooseNest\": 1}, \"placed\": [\"MooseNest\", \"MooseNest\"]}]}}", None{}) == Fail{(2, "config: generation.setpieces[0].placed names \"MooseNest\" twice")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_repeated_placed():
   {==}
 
 # docs/config.md section A: a group (`any`) is kept apart from the rules, as the rules of each of its members.
 law config_reads_group:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"Chessy_1\": 1}}, {\"any\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": 1}}, {\"required\": {\"Chessy_1\": [0, 0]}}]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 33554431, 1, 4294967295}], [Config.Group{[[Config.Rule{3, 32768, 1, 4294967295}], [Config.Rule{70, 33554431, 0, 0}]], None{}}]}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"required\": {\"Chessy_1\": 1}}, {\"any\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": 1}}, {\"required\": {\"Chessy_1\": [0, 0]}}]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 33554431, 1, 4294967295}], [Config.Group{[[Config.Rule{3, 32768, 1, 4294967295}], [Config.Rule{70, 33554431, 0, 0}]], None{}}]}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group():
   {==}
 
 # A group with `placed` names in one of its rules is one world rule, at the group's index.
 law config_reads_group_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": [1, 2]}, \"placed\": [\"MooseNest\"]}, {\"required\": {\"Chessy_1\": 1}}]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 1, 4294967295}], [Config.Rule{70, 33554431, 1, 4294967295}]], None{}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 1, None{}}]}, [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"Chessy_1", 1, None{}}]}, []}], None{}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": [1, 2]}, \"placed\": [\"MooseNest\"]}, {\"required\": {\"Chessy_1\": 1}}]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 1, 4294967295}], [Config.Rule{70, 33554431, 1, 4294967295}]], None{}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 1, None{}}]}, [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"Chessy_1", 1, None{}}]}, []}], None{}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_placed():
   {==}
 
 law config_rejects_empty_group:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": []}]}}") == Fail{(2, "config: generation.setpieces[0].any must not be empty")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": []}]}}", None{}) == Fail{(2, "config: generation.setpieces[0].any must not be empty")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_empty_group():
   {==}
 
 # A group's `total`; with `placed` names the level table keeps only its minimum and the world rule the whole bound.
 law config_reads_group_total:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}}, {\"tasks\": [\"Badlands\"], \"required\": {\"Chessy_1\": 0}}], \"total\": [2, 3]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}], [Config.Rule{70, 32768, 0, 4294967295}]], Some{LevelChecks.Total{2, Some{3}}}}]}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}}, {\"tasks\": [\"Badlands\"], \"required\": {\"Chessy_1\": 0}}], \"total\": [2, 3]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}], [Config.Rule{70, 32768, 0, 4294967295}]], Some{LevelChecks.Total{2, Some{3}}}}]}, [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_total():
   {==}
 
 law config_reads_group_total_placed:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}, \"placed\": [\"MooseNest\"]}], \"total\": [1, 2]}]}}") == Done{Config.Config{True{}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}]], Some{LevelChecks.Total{1, None{}}}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, [LevelChecks.Bounded{"MooseNest", 0, None{}}]}], Some{LevelChecks.Total{1, Some{2}}}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}, \"placed\": [\"MooseNest\"]}], \"total\": [1, 2]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}]], Some{LevelChecks.Total{1, None{}}}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, [LevelChecks.Bounded{"MooseNest", 0, None{}}]}], Some{LevelChecks.Total{1, Some{2}}}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_total_placed():
   {==}
 
 law config_rejects_bad_total:
-  {(Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{}], \"total\": [1]}]}}"), Config.config_of("{\"generation\": {\"setpieces\": [{\"total\": 1}]}}")) == (Fail{(2, "config: generation.setpieces[0].total must be an integer in 0..4294967295 or [min, max]")}, Fail{(2, "config: generation.setpieces[0].any must not be empty")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+  {(Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{}], \"total\": [1]}]}}", None{}), Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"total\": 1}]}}", None{})) == (Fail{(2, "config: generation.setpieces[0].total must be an integer in 0..4294967295 or [min, max]")}, Fail{(2, "config: generation.setpieces[0].any must not be empty")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_bad_total():
   {==}
 
 law config_rejects_nested_group:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"any\": [{}]}]}]}}") == Fail{(2, "config: unknown key \"any\" in generation.setpieces[0].any[0]")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"any\": [{}]}]}]}}", None{}) == Fail{(2, "config: unknown key \"any\" in generation.setpieces[0].any[0]")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_nested_group():
   {==}
 
 law config_rejects_group_with_rule_keys:
-  {Config.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{}], \"required\": {\"MooseNest\": 1}}]}}") == Fail{(2, "config: unknown key \"required\" in generation.setpieces[0]")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{}], \"required\": {\"MooseNest\": 1}}]}}", None{}) == Fail{(2, "config: unknown key \"required\" in generation.setpieces[0]")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_group_with_rule_keys():
   {==}
@@ -209,14 +210,14 @@ def totaled(+total: LevelChecks.Total) -> List<&2, Config.Criteria>:
 
 # A group holds when one of its rules' lists holds, and a list holds when all its rules do.
 law group_holds_on_any_alternative:
-  {(Config.matches(grouped([[never()], [always()]]), 4), Config.matches(grouped([[never()]]), 4), Config.matches(grouped([[always(), never()]]), 4)) == (True{}, False{}, False{}) : Bool & Bool & Bool}
+  {(Config.matches(Builds.Build{756039}, grouped([[never()], [always()]]), 4), Config.matches(Builds.Build{756039}, grouped([[never()]]), 4), Config.matches(Builds.Build{756039}, grouped([[always(), never()]]), 4)) == (True{}, False{}, False{}) : Bool & Bool & Bool}
 
 def group_holds_on_any_alternative():
   {==}
 
 # Seed 4 plans MooseNest 7 times and Chessy_1 never: a total sums every rule of every alternative, 7 + 7 + 0.
 law group_total_sums_rules:
-  {(Config.matches(totaled(LevelChecks.Total{14, Some{14}}), 4), Config.matches(totaled(LevelChecks.Total{15, None{}}), 4), Config.matches(totaled(LevelChecks.Total{0, Some{13}}), 4)) == (True{}, False{}, False{}) : Bool & Bool & Bool}
+  {(Config.matches(Builds.Build{756039}, totaled(LevelChecks.Total{14, Some{14}}), 4), Config.matches(Builds.Build{756039}, totaled(LevelChecks.Total{15, None{}}), 4), Config.matches(Builds.Build{756039}, totaled(LevelChecks.Total{0, Some{13}}), 4)) == (True{}, False{}, False{}) : Bool & Bool & Bool}
 
 def group_total_sums_rules():
   {==}
@@ -236,54 +237,85 @@ def group_level_total_witness():
   {==}
 
 law config_rejects_non_default_setting:
-  {Config.config_of("{\"settings\": {\"traps\": \"default\", \"boons\": \"insane\"}}") == Fail{(2, "config: only default settings are supported (boons)")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"settings\": {\"traps\": \"default\", \"boons\": \"insane\"}}", None{}) == Fail{(2, "config: only default settings are supported (boons)")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_non_default_setting():
   {==}
 
+# docs/config.md section 1: `version` is the format, 3; `build` (required) is a registered game build, which the
+# --build flag overrides.
 law config_rejects_unknown_version:
-  {Config.config_of("{\"version\": 1}") == Fail{(2, "config: unsupported version 1")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 4, \"build\": 756039}", None{}) == Fail{(2, "config: unsupported version 4")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_unknown_version():
   {==}
 
+law config_rejects_old_formats:
+  {(Config.config_of("{\"version\": 1, \"build\": 756039}", None{}), Config.config_of("{\"version\": 2}", None{}))
+    == (Fail{(2, "config: version 1 is an old config format: use version 3 and set \"build\" to a game build (756039 for configs written before builds)")},
+      Fail{(2, "config: version 2 is an old config format: use version 3 and set \"build\" to a game build (756039 for configs written before builds)")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+
+def config_rejects_old_formats():
+  {==}
+
+law config_requires_build:
+  {(Config.config_of("{\"version\": 3}", None{}), Config.config_of("{}", Some{Builds.Build{756039}}))
+    == (Fail{(2, "config: build is required (a game build: " ++ Builds.numbers_text() ++ ")")}, Fail{(2, "config: build is required (a game build: " ++ Builds.numbers_text() ++ ")")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+
+def config_requires_build():
+  {==}
+
+law config_rejects_unknown_build:
+  {(Config.config_of("{\"version\": 3, \"build\": 123}", None{}), Config.config_of("{\"build\": \"756039\"}", None{}))
+    == (Fail{(2, "config: unknown build 123 (" ++ Builds.numbers_text() ++ ")")}, Fail{(2, "config: unknown build \"756039\" (" ++ Builds.numbers_text() ++ ")")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+
+def config_rejects_unknown_build():
+  {==}
+
+law config_build_flag_overrides:
+  {(Config.config_of("{\"version\": 3, \"build\": 757748, \"platform\": \"linux\"}", None{}), Config.config_of("{\"version\": 3, \"build\": 757748, \"platform\": \"linux\"}", Some{Builds.Build{756039}}))
+    == (Done{Config.Config{False{}, Builds.Build{757748}, Config.anything(), [Config.no_later()], None{}, []}}, Done{Config.Config{False{}, Builds.Build{756039}, Config.anything(), [Config.no_later()], None{}, []}}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+
+def config_build_flag_overrides():
+  {==}
+
 law config_rejects_unknown_task:
-  {Config.config_of("{\"generation\": {\"tasks\": {\"required\": [\"Killer Bees\"]}}}") == Fail{(2, "config: unknown task \"Killer Bees\" in generation.tasks.required")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"tasks\": {\"required\": [\"Killer Bees\"]}}}", None{}) == Fail{(2, "config: unknown task \"Killer Bees\" in generation.tasks.required")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_unknown_task():
   {==}
 
 # Seed 4 does not choose the optional task "Killer bees!" (task id 10).
 law killer_bees_criteria_reject_seed_4:
-  {Config.matches([Config.Criteria{1024, 0, 0, 0, [], []}], 4) == False{} : Bool}
+  {Config.matches(Builds.Build{756039}, [Config.Criteria{1024, 0, 0, 0, [], []}], 4) == False{} : Bool}
 
 def killer_bees_criteria_reject_seed_4():
   {==}
 
 # docs/config.md section 7: repeated keys and integers past 4294967295 are config errors.
 law config_rejects_repeated_key:
-  {Config.config_of("{\"version\": 1, \"version\": 1}") == Fail{(2, "config: duplicate key \"version\" in the config")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 1, \"version\": 1}", None{}) == Fail{(2, "config: duplicate key \"version\" in the config")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_repeated_key():
   {==}
 
 law config_rejects_integer_past_u32:
-  {Config.config_of("{\"version\": 4294967297}") == Fail{(2, "config: unsupported version 4294967297")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 4294967297}", None{}) == Fail{(2, "config: unsupported version 4294967297")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_integer_past_u32():
   {==}
 
 law config_caps_entries:
-  {Config.config_of("{\"filters\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]}") == Fail{(2, "config: filters has 26 entries (at most 25)")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]}", None{}) == Fail{(2, "config: filters has 26 entries (at most 25)")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_caps_entries():
   {==}
 
 # docs/config.md section 1: a filter's `name` labels it and its hits, and has at most 40 characters.
 law config_reads_filter_names:
-  {(Config.config_of("{\"filters\": [{\"name\": \"abcdefghijklmnopqrstuvwxyzabcdefghijklmn\"}]}"), Config.config_of("{\"filters\": [{\"name\": \"abcdefghijklmnopqrstuvwxyzabcdefghijklmno\"}]}"),
-    Config.config_of("{\"filters\": [{\"name\": 1}]}"))
-    == (Done{Config.Config{True{}, Config.anything(), [Config.no_later()], None{}, ["abcdefghijklmnopqrstuvwxyzabcdefghijklmn"]}}, Fail{(2, "config: filters[0].name has 41 characters (at most 40)")},
+  {(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"name\": \"abcdefghijklmnopqrstuvwxyzabcdefghijklmn\"}]}", None{}), Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"name\": \"abcdefghijklmnopqrstuvwxyzabcdefghijklmno\"}]}", None{}),
+    Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"name\": 1}]}", None{}))
+    == (Done{Config.Config{True{}, Builds.Build{756039}, Config.anything(), [Config.no_later()], None{}, ["abcdefghijklmnopqrstuvwxyzabcdefghijklmn"]}}, Fail{(2, "config: filters[0].name has 41 characters (at most 40)")},
       Fail{(2, "config: filters[0].name must be a string")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_filter_names():
@@ -298,7 +330,7 @@ def hit_entry_names_its_filter():
   {==}
 
 law config_reads_linux_platform:
-  {Config.config_of("{\"platform\": \"linux\"}") == Done{Config.Config{False{}, Config.anything(), [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"platform\": \"linux\"}", None{}) == Done{Config.Config{False{}, Builds.Build{756039}, Config.anything(), [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_linux_platform():
   {==}
@@ -312,22 +344,22 @@ def level_table_only(compiled: Result<&1, &1, U32 & String, Config.Config>) -> R
 
 # docs/config.md section 1: `generation` is the one level table, every filter is world rules only, in order.
 law config_reads_filters:
-  {(world_entries(Config.config_of("{\"generation\": {\"tasks\": {\"excluded\": [\"Squeltch\"]}}, \"filters\": [{\"counts\": [{\"prefab\": \"pigking\"}]}, {}]}")),
-    level_table_only(Config.config_of("{\"filters\": [{}, {\"counts\": [{\"prefab\": \"pigking\"}]}]}")))
+  {(world_entries(Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"tasks\": {\"excluded\": [\"Squeltch\"]}}, \"filters\": [{\"counts\": [{\"prefab\": \"pigking\"}]}, {}]}", None{})),
+    level_table_only(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{}, {\"counts\": [{\"prefab\": \"pigking\"}]}]}", None{})))
     == ([True{}, False{}], Fail{(2, "config: filters[1].counts is not supported by this binary yet (only generation is)")}) : List<&2, Bool> & Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_filters():
   {==}
 
 law config_rejects_level_sections_in_filters:
-  {(Config.config_of("{\"filters\": [{\"tasks\": {\"required\": [\"Killer bees!\"]}}]}"), Config.config_of("{\"criteria\": []}"))
+  {(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"tasks\": {\"required\": [\"Killer bees!\"]}}]}", None{}), Config.config_of("{\"version\": 3, \"build\": 756039, \"criteria\": []}", None{}))
     == (Fail{(2, "config: unknown key \"tasks\" in filters[0]")}, Fail{(2, "config: unknown key \"criteria\" in the config")}) : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_level_sections_in_filters():
   {==}
 
 law config_rejects_unknown_platform:
-  {Config.config_of("{\"platform\": \"mac\"}") == Fail{(2, "config: unknown platform \"mac\" (windows or linux)")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"platform\": \"mac\"}", None{}) == Fail{(2, "config: unknown platform \"mac\" (windows or linux)")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_unknown_platform():
   {==}

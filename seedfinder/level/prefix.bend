@@ -2,6 +2,7 @@ import Base
 import ../rng/pcg.bend as Pcg
 import ../rng/lua_random.bend as LuaRandom
 import ../data/world_catalog.bend as WorldCatalog
+import ../data/builds.bend as Builds
 
 # The forest level table, i.e. everything worldgen_main.lua GenerateNew decides before
 # forest_map.Generate: prefab swaps, ChooseTasks, AddSetPeices and Level:ChooseSetPieces.
@@ -80,19 +81,19 @@ def prefix(+seed: U32) -> Prefix:
 def field5(+word: U32, +k: U32) -> U32:
   ((word >> U32.to_nat((k * 5 : U32))) .&. 31 : U32)
 
-def optional_task(+index: U32) -> U32:
-  Bool.pick(U32, (index < 6 : U32), field5(WorldCatalog.optional_tasks_0(), index), field5(WorldCatalog.optional_tasks_1(), (index - 6 : U32)))
+def optional_task(+build: Builds.Build, +index: U32) -> U32:
+  Bool.pick(U32, (index < 6 : U32), field5(WorldCatalog.optional_tasks_0(build), index), field5(WorldCatalog.optional_tasks_1(build), (index - 6 : U32)))
 
 def task_bit(+task: U32) -> U32:
   (1 << U32.to_nat(task) : U32)
 
-def chosen_optional(+lo: U32, +s: U32) -> U32:
-  task_bit(optional_task(((lo >> U32.to_nat((s * 4 : U32))) .&. 15 : U32)))
+def chosen_optional(+build: Builds.Build, +lo: U32, +s: U32) -> U32:
+  task_bit(optional_task(build, ((lo >> U32.to_nat((s * 4 : U32))) .&. 15 : U32)))
 
 # The 20 chosen tasks: required and moon tasks plus optional slots 0-4.
-def chosen_tasks(+lo: U32) -> U32:
-  (WorldCatalog.always_chosen() .|. chosen_optional(lo, 0) .|. chosen_optional(lo, 1) .|. chosen_optional(lo, 2)
-    .|. chosen_optional(lo, 3) .|. chosen_optional(lo, 4) : U32)
+def chosen_tasks(+build: Builds.Build, +lo: U32) -> U32:
+  (WorldCatalog.always_chosen(build) .|. chosen_optional(build, lo, 0) .|. chosen_optional(build, lo, 1) .|. chosen_optional(build, lo, 2)
+    .|. chosen_optional(build, lo, 3) .|. chosen_optional(build, lo, 4) : U32)
 
 # A nil among the first five optional slots makes ChooseTasks fail an assert.
 def has_nil_task(+lo: U32) -> Bool:
@@ -100,26 +101,26 @@ def has_nil_task(+lo: U32) -> Bool:
   Bool.not(U32.is_zero((x .&. (x >> 1n) .&. (x >> 2n) .&. (x >> 3n) .&. 69905 : U32)))
 
 # Task of placeable index p (GetTasksForLevelSetPieces order: required tasks, then optional slots).
-def placeable_task(+lo: U32, +p: U32) -> U32:
-  +required = Bool.pick(U32, (p < 6 : U32), field5(WorldCatalog.required_tasks_0(), p), field5(WorldCatalog.required_tasks_1(), (p - 6 : U32)))
-  +optional = optional_task(((lo >> U32.to_nat((((p - 10) .&. 7) * 4 : U32))) .&. 15 : U32))
+def placeable_task(+build: Builds.Build, +lo: U32, +p: U32) -> U32:
+  +required = Bool.pick(U32, (p < 6 : U32), field5(WorldCatalog.required_tasks_0(build), p), field5(WorldCatalog.required_tasks_1(build), (p - 6 : U32)))
+  +optional = optional_task(build, ((lo >> U32.to_nat((((p - 10) .&. 7) * 4 : U32))) .&. 15 : U32))
   Bool.pick(U32, (p < 10 : U32), required, optional)
 
 # Task at position c of chosen_tasks (required, moon, then optional slots).
-def chosen_task(+lo: U32, +c: U32) -> U32:
-  Bool.pick(U32, (c < 10 : U32), placeable_task(lo, c),
-    Bool.pick(U32, (c < 15 : U32), field5(WorldCatalog.moon_tasks(), (c - 10 : U32)), placeable_task(lo, (c - 5 : U32))))
+def chosen_task(+build: Builds.Build, +lo: U32, +c: U32) -> U32:
+  Bool.pick(U32, (c < 10 : U32), placeable_task(build, lo, c),
+    Bool.pick(U32, (c < 15 : U32), field5(WorldCatalog.moon_tasks(build), (c - 10 : U32)), placeable_task(build, lo, (c - 5 : U32))))
 
-def optional_background(+index: U32) -> U32:
-  ((WorldCatalog.optional_backgrounds() >> U32.to_nat((index * 3 : U32))) .&. 7 : U32)
+def optional_background(+build: Builds.Build, +index: U32) -> U32:
+  ((WorldCatalog.optional_backgrounds(build) >> U32.to_nat((index * 3 : U32))) .&. 7 : U32)
 
-def slot_in_area(+lo: U32, +s: U32, +area: U32) -> U32:
+def slot_in_area(+build: Builds.Build, +lo: U32, +s: U32, +area: U32) -> U32:
   +index = ((lo >> U32.to_nat((s * 4 : U32))) .&. 15 : U32)
-  (Bool.to_u32(U32.is_eq(optional_background(index), area)) << U32.to_nat((s + 10 : U32)) : U32)
+  (Bool.to_u32(U32.is_eq(optional_background(build, index), area)) << U32.to_nat((s + 10 : U32)) : U32)
 
 # GetAreasForChoice as a mask over placeable indices (area 0 = Any/Rare: every placeable task).
-def area_choices(+area: U32, +lo: U32) -> U32:
-  +tiles = (WorldCatalog.area_required(area) .|. slot_in_area(lo, 0, area) .|. slot_in_area(lo, 1, area)
-    .|. slot_in_area(lo, 2, area) .|. slot_in_area(lo, 3, area) .|. slot_in_area(lo, 4, area) : U32)
+def area_choices(+build: Builds.Build, +area: U32, +lo: U32) -> U32:
+  +tiles = (WorldCatalog.area_required(build, area) .|. slot_in_area(build, lo, 0, area) .|. slot_in_area(build, lo, 1, area)
+    .|. slot_in_area(build, lo, 2, area) .|. slot_in_area(build, lo, 3, area) .|. slot_in_area(build, lo, 4, area) : U32)
   Bool.pick(U32, U32.is_zero(area), 32767, tiles)
 

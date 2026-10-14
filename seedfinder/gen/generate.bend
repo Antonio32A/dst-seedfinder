@@ -28,6 +28,7 @@ import ./graph.bend as GenGraph
 import ./tags.bend as GenTags
 import ./cave_custom.bend as CaveCustom
 import ./world.bend as GenWorld
+import ../data/builds.bend as Builds
 
 # forest_map.Generate from a seed to land_done (the end of Graph:PopulateVoronoi), one attempt at a time, as stage
 # functions that gen/job.bend chains and the `gen` trace stage prints: the story to VoronoiPass(100), each KK pass,
@@ -55,8 +56,8 @@ type Seed is Data:
   Seed{seed: U32, windows: Bool, level: LevelSummary.Summary, pieces: Bool}
   CaveSeed{seed: U32, windows: Bool, plan: StoryPlan.Plan, swaps: U32, crashed: Bool, start: Pcg.Rng, pieces: Bool}
 
-def seed_inputs(+seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
-  Seed{seed, windows, LevelSummary.summary(seed), pieces}
+def seed_inputs(+build: Builds.Build, +seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
+  Seed{seed, windows, LevelSummary.summary(build, seed), pieces}
 
 def cave_swaps(+w: CaveChoose.World) -> U32:
   match w:
@@ -68,11 +69,11 @@ def cave_crashed(+w: CaveChoose.World) -> Bool:
     case CaveChoose.World{_, _, _, +crashed}:
       crashed
 
-def cave_seed(+seed: U32, +windows: Bool, +pieces: Bool, +w: CaveChoose.World) -> Seed:
-  CaveSeed{seed, windows, StoryPlan.caves(w, 0), cave_swaps(w), cave_crashed(w), CaveChoose.generate_rng(seed), pieces}
+def cave_seed(+build: Builds.Build, +seed: U32, +windows: Bool, +pieces: Bool, +w: CaveChoose.World) -> Seed:
+  CaveSeed{seed, windows, StoryPlan.caves(build, w, 0), cave_swaps(w), cave_crashed(w), CaveChoose.generate_rng(build, seed), pieces}
 
-def cave_inputs(+seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
-  cave_seed(seed, windows, pieces, CaveChoose.world(seed))
+def cave_inputs(+build: Builds.Build, +seed: U32, +windows: Bool, +pieces: Bool) -> Seed:
+  cave_seed(build, seed, windows, pieces, CaveChoose.world(build, seed))
 
 def is_caves(+c: Seed) -> Bool:
   match c:
@@ -125,10 +126,10 @@ def crashed(+c: Seed) -> Bool:
       crashed
 
 # The RNG at the first attempt's first WorldSim call.
-def first_rng(+c: Seed) -> Pcg.Rng:
+def first_rng(+build: Builds.Build, +c: Seed) -> Pcg.Rng:
   match c:
     case Seed{+seed, _, _, _}:
-      LevelChoose.generate_rng(seed)
+      LevelChoose.generate_rng(build, seed)
     case CaveSeed{_, _, _, _, _, +start, _}:
       start
 
@@ -149,8 +150,8 @@ def entrance_resolved(+c: Seed) -> Seed:
       CaveSeed{seed, windows, StoryPlan.with_entrance(plan, 1), swaps, crashed, start, pieces}
 
 # Generate from its first WorldSim call to WorldGen_VoronoiPass(100).
-def first_story(+c: Seed, +rng: Pcg.Rng) -> StoryGraph.St:
-  Story.build_plan(plan_of(c), rng)
+def first_story(+build: Builds.Build, +c: Seed, +rng: Pcg.Rng) -> StoryGraph.St:
+  Story.build_plan(build, plan_of(c), rng)
 
 def centroid_of(+p: VoronoiPolygon.Poly) -> VoronoiPolygon.P32:
   match p:
@@ -209,8 +210,8 @@ def with_sites(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: List<&2, VoronoiPol
   answer_loop(GenGraph.vertices_of(k), sites, s)
 
 # Story:AddRegionsToMainland to WorldGen_Commit, once VoronoiPass(100)'s sites are known.
-def second_story(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: List<&2, VoronoiPolygon.SiteIn>) -> StoryGraph.St:
-  Story.finish_plan(with_sites(s, k, sites), plan_of(c))
+def second_story(+build: Builds.Build, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: List<&2, VoronoiPolygon.SiteIn>) -> StoryGraph.St:
+  Story.finish_plan(build, with_sites(s, k, sites), plan_of(c))
 
 def point_count(l: List<&2, VoronoiPolygon.P32>, +acc: U32) -> U32:
   match l:
@@ -246,16 +247,16 @@ def checks_loop(n: Nat, +s: StoryGraph.St, +k: GenGraph.Klei, +counts: TileTable
 def valid_cells(+s: StoryGraph.St, +k: GenGraph.Klei, +polys: List<&2, VoronoiPolygon.Poly>) -> Bool:
   checks_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, k, TileTable.from_list(~U32, counts_of(polys), 0), 0)
 
-def cut_loop(vs: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
+def cut_loop(+build: Builds.Build, vs: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
   match vs:
     case Nil{}:
       Nil{}
     case Con{+x, rest}:
-      GenTags.disconnected(s, x) <> cut_loop(rest, s)
+      GenTags.disconnected(build, s, x) <> cut_loop(build, rest, s)
 
 # ApplyPoisonTag's ClearNodeLinks: the graph edges left.
-def poisoned_edges(+s: StoryGraph.St, +k: GenGraph.Klei) -> List<&2, GenGraph.Link>:
-  GenGraph.cleared(GenGraph.edges_of(k), TileTable.from_list(~U32, cut_loop(GenGraph.vertices_of(k), s), 0))
+def poisoned_edges(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei) -> List<&2, GenGraph.Link>:
+  GenGraph.cleared(GenGraph.edges_of(k), TileTable.from_list(~U32, cut_loop(build, GenGraph.vertices_of(k), s), 0))
 
 # ConvertToTileMap's size and centred sites (ScaleAndCenter from the Commit size).
 def tile_size(+size: U32) -> U32:
@@ -312,20 +313,20 @@ def pass_of(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, Layout
 def commit(+c: Seed, +p: Pass) -> Commit.Committed:
   Commit.commit(windows_of(c), world_size(), world_size(), with_centroids(pass_site_list(p), pass_polys(p)))
 
-def tile_world_cells(+s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, got: VoronoiDiagram.Diagram & List<&2, TileWorld.Cell>) -> TileWorld.World:
+def tile_world_cells(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, got: VoronoiDiagram.Diagram & List<&2, TileWorld.Cell>) -> TileWorld.World:
   (_, +cs) = got
-  GenWorld.world(w, sites, polys, GenWorld.nodes(s, k), cs, poisoned_edges(s, k))
+  GenWorld.world(w, sites, polys, GenWorld.nodes(build, s, k), cs, poisoned_edges(build, s, k))
 
-def tile_world_built(+s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, built: VoronoiBuilder.Built, +polys: List<&2, VoronoiPolygon.Poly>) -> TileWorld.World:
+def tile_world_built(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, built: VoronoiBuilder.Built, +polys: List<&2, VoronoiPolygon.Poly>) -> TileWorld.World:
   match built:
     case VoronoiBuilder.Built{_, _, d}:
-      tile_world_cells(s, k, w, sites, polys, GenWorld.cells(d, sites, w, w))
+      tile_world_cells(build, s, k, w, sites, polys, GenWorld.cells(d, sites, w, w))
 
 # The TileWorld.World of ConvertToTileMap's build (the tile stages' input).
-def tile_world(+s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, cells: VoronoiPolygon.Cells) -> TileWorld.World:
+def tile_world(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, cells: VoronoiPolygon.Cells) -> TileWorld.World:
   match cells:
     case VoronoiPolygon.Cells{built, polys, +n}:
-      tile_world_built(s, k, w, sites, built, GenWorld.poly_list(polys, n))
+      tile_world_built(build, s, k, w, sites, built, GenWorld.poly_list(polys, n))
 
 def areas_ok(n: Nat, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites, +x: U32) -> Bool:
   match n:
@@ -351,20 +352,20 @@ def cave_tile_grid(+w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid
 
 # The caves' tile stages: the tile map after ForceConnectivity and the custom tile pass (SetTilesViaFunction), with the
 # PCG32 stream after it.
-def cave_land(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> CaveCustom.Tiles:
-  CaveCustom.run(s, k, windows_of(c), sites, cave_tile_grid(world, lists), rng_after_tiles(s, w))
+def cave_land(+build: Builds.Build, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> CaveCustom.Tiles:
+  CaveCustom.run(build, s, k, windows_of(c), sites, cave_tile_grid(world, lists), rng_after_tiles(s, w))
 
-def crashes_by(caves: Bool, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
+def crashes_by(+build: Builds.Build, caves: Bool, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
   match caves:
     case True{}:
-      CaveCustom.crashes(s, k, sites)
+      CaveCustom.crashes(build, s, k, sites)
     case False{}:
       False{}
 
 # Whether the attempt crashes the game in the caves' custom tile pass (CaveCustom.crashes), which runs whether or not the
 # GetSiteArea check passes; the forest has no such pass.
-def custom_crashes(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
-  crashes_by(is_caves(c), s, k, sites)
+def custom_crashes(+build: Builds.Build, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
+  crashes_by(build, is_caves(c), s, k, sites)
 
 def start_scan(n: Nat, +s: StoryGraph.St, +i: U32) -> U32:
   match n:
@@ -390,17 +391,17 @@ def done_rng(done: CaveCustom.Tiles) -> Pcg.Rng:
     case CaveCustom.Tiles{_, +rng, _}:
       rng
 
-def rng_after_land_by(caves: Bool, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Pcg.Rng:
+def rng_after_land_by(+build: Builds.Build, caves: Bool, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Pcg.Rng:
   match caves:
     case True{}:
-      done_rng(cave_land(c, s, k, w, world, lists, sites))
+      done_rng(cave_land(build, c, s, k, w, world, lists, sites))
     case False{}:
       rng_after_tiles(s, w)
 
 # The stream a failed GetSiteArea check hands to the next attempt: the forest's checks the areas right after
 # ConvertToTileMap; the caves' run after their custom tile pass.
-def rng_after_land(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Pcg.Rng:
-  rng_after_land_by(is_caves(c), c, s, k, w, world, lists, sites)
+def rng_after_land(+build: Builds.Build, +c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Pcg.Rng:
+  rng_after_land_by(build, is_caves(c), c, s, k, w, world, lists, sites)
 
 # ConvertToTileMap's paint, SeparateIslands, ForceConnectivity and DrawRoads: the drawn grid and GetRoads' polylines.
 def tile_grid(+windows: Bool, +w: TileWorld.World, +lists: List<&2, List<&2, U32>>) -> Grid.Grid & List<&2, List<&2, TileWorld.Point>>:
@@ -413,5 +414,5 @@ def land_context(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.
   PopulateState.Ctx{windows_of(c), swaps_of(c), sites, s, GenGraph.vertex_table(k), w, w, tracing, StoryGraph.rng_of(s), pieces_of(c)}
 
 # Graph:ConvertGround to the end of Graph:PopulateVoronoi, from the grid after DrawRoads.
-def land(+ctx: PopulateState.Ctx, g: Grid.Grid, +w: U32) -> PopulateState.Land:
-  Land.land(ctx, PopulateState.Land{g, rng_after_tiles(PopulateState.story_of(ctx), w), Nil{}, Nil{}})
+def land(+build: Builds.Build, +ctx: PopulateState.Ctx, g: Grid.Grid, +w: U32) -> PopulateState.Land:
+  Land.land(build, ctx, PopulateState.Land{g, rng_after_tiles(PopulateState.story_of(ctx), w), Nil{}, Nil{}})

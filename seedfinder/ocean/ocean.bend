@@ -14,6 +14,7 @@ import ./post.bend as OceanPost
 import ../post/finish.bend as Finish
 import ./convert.bend as OceanConvert
 import ./convert_blend.bend as ConvertBlend
+import ../data/builds.bend as Builds
 
 # forest_map.Generate from land_done to the required prefab check (has_ocean): Ocean_PlaceSetPieces (prefill),
 # Ocean_ConvertImpassibleToWater, PopulateOcean, MonkeyIsland_GenerateDocks, and the steps both shards share
@@ -21,21 +22,21 @@ import ./convert_blend.bend as ConvertBlend
 # that decides whether the attempt is the world.
 
 # The prefill: level.ocean_prefill_setpieces on IMPASSABLE with ocean_prefill_setpieces_min_land_dist.
-def prefill(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
-  OceanState.digest(c, OceanPlace.place_set_pieces(OceanPopulate.prefill_specs(), c, TileGroups.impassable(), OceanData.config_ocean_prefill_setpieces_min_land_dist(),
+def prefill(+build: Builds.Build, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+  OceanState.digest(c, OceanPlace.place_set_pieces(build, OceanPopulate.prefill_specs(build), c, TileGroups.impassable(), OceanData.config_ocean_prefill_setpieces_min_land_dist(),
     PopulateSetpiece.ocean_prefill(), s), 0)
 
 def with_counts(got: OceanState.Sea & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx) -> OceanState.Sea:
   (s, +ents) = got
   OceanState.noted(c, s, OceanState.ECounts{0, ents})
 
-def populated(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
-  with_counts(OceanState.ents_of(OceanState.digest(c, OceanPopulate.populate(c, s), 6)), c)
+def populated(+build: Builds.Build, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+  with_counts(OceanState.ents_of(OceanState.digest(c, OceanPopulate.populate(build, c, s), 6)), c)
 
 # Everything after the conversion, with the required prefab table: the final state and whether it passed.
-def after_convert(+c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
-  docked = OceanState.digest(c, Monkey.docks(c, populated(c, s)), 7)
-  Finish.run(c, Finish.forest(), reqs, docked)
+def after_convert(+build: Builds.Build, +c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
+  docked = OceanState.digest(c, Monkey.docks(build, c, populated(build, c, s)), 7)
+  Finish.run(build, c, Finish.forest(build), reqs, docked)
 
 def fills_step(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
@@ -101,5 +102,5 @@ def convert(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   void_step(c, shore_step(c, blend_step(c, noise_step(c, fills_step(c, s)))))
 
 # The ocean phase of one attempt from land_done: the final state and whether the required prefabs are all there.
-def run(+c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
-  after_convert(c, reqs, convert(c, prefill(c, s)))
+def run(+build: Builds.Build, +c: OceanState.Ctx, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
+  after_convert(build, c, reqs, convert(c, prefill(build, c, s)))

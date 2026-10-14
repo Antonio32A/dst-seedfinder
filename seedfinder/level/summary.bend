@@ -2,6 +2,7 @@ import Base
 import ../data/world_catalog.bend as WorldCatalog
 import ./prefix.bend as LevelPrefix
 import ./choose.bend as LevelChoose
+import ../data/builds.bend as Builds
 
 # A World as plain data: level.set_pieces keys in pairs() order, each as key | task mask << 6.
 type Summary is Data:
@@ -47,42 +48,42 @@ def summary_of(w: LevelChoose.World) -> Summary:
     case LevelChoose.World{+swaps, +lo, _, _, table, +size, +codes, +tasks, +count, crashed}:
       Summary{swaps, lo, listed(list_loop(U32.to_nat(size), Listing{table, Nil{}}, 0)), codes, tasks, count, crashed}
 
-def summary(+seed: U32) -> Summary:
-  summary_of(LevelChoose.world(seed))
+def summary(+build: Builds.Build, +seed: U32) -> Summary:
+  summary_of(LevelChoose.world(build, seed))
 
 def quoted(+s: String) -> String:
   "\"" ++ s ++ "\""
 
-def piece_names(entries: List<&2, U32>, +task: U32) -> List<&2, String>:
+def piece_names(+build: Builds.Build, entries: List<&2, U32>, +task: U32) -> List<&2, String>:
   match entries:
     case Nil{}:
       Nil{}
     case Con{+entry, rest}:
-      +tail = piece_names(rest, task)
+      +tail = piece_names(build, rest, task)
       +placed = U32.is_eq((((entry >> 6n) >> U32.to_nat(task)) .&. 1 : U32), 1)
-      Bool.pick(List<&2, String>, placed, quoted(WorldCatalog.key_name((entry .&. 63 : U32))) <> tail, tail)
+      Bool.pick(List<&2, String>, placed, quoted(WorldCatalog.key_name(build, (entry .&. 63 : U32))) <> tail, tail)
 
-def special_names(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, String>:
+def special_names(+build: Builds.Build, n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, String>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      +tail = special_names(p, codes, tasks, task, (k + 1 : U32))
-      Bool.pick(List<&2, String>, U32.is_eq(LevelPrefix.field5(tasks, k), task), quoted(WorldCatalog.special_name(LevelPrefix.field5(codes, k))) <> tail, tail)
+      +tail = special_names(build, p, codes, tasks, task, (k + 1 : U32))
+      Bool.pick(List<&2, String>, U32.is_eq(LevelPrefix.field5(tasks, k), task), quoted(WorldCatalog.special_name(build, LevelPrefix.field5(codes, k))) <> tail, tail)
 
-def task_json(+s: Summary, +c: U32) -> String:
+def task_json(+build: Builds.Build, +s: Summary, +c: U32) -> String:
   match s:
     case Summary{_, +lo, +entries, +codes, +tasks, +count, _}:
-      +task = LevelPrefix.chosen_task(lo, c)
-      "{\"task\":" ++ quoted(WorldCatalog.task_name(task)) ++ ",\"set_pieces\":[" ++ String.join(piece_names(entries, task), ",")
-        ++ "],\"random_set_pieces\":[" ++ String.join(special_names(U32.to_nat(count), codes, tasks, task, 0), ",") ++ "]}"
+      +task = LevelPrefix.chosen_task(build, lo, c)
+      "{\"task\":" ++ quoted(WorldCatalog.task_name(build, task)) ++ ",\"set_pieces\":[" ++ String.join(piece_names(build, entries, task), ",")
+        ++ "],\"random_set_pieces\":[" ++ String.join(special_names(build, U32.to_nat(count), codes, tasks, task, 0), ",") ++ "]}"
 
-def tasks_json(n: Nat, +s: Summary, +c: U32) -> List<&2, String>:
+def tasks_json(+build: Builds.Build, n: Nat, +s: Summary, +c: U32) -> List<&2, String>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      task_json(s, c) <> tasks_json(p, s, (c + 1 : U32))
+      task_json(build, s, c) <> tasks_json(build, p, s, (c + 1 : U32))
 
 def swap_name(+swaps: U32, +bit: U32, +regular: String, +swapped: String) -> String:
   quoted(Bool.pick(String, U32.is_zero((swaps .&. bit : U32)), regular, swapped))
@@ -91,11 +92,11 @@ def chosen_count() -> Nat:
   20n
 
 # The level table as JSON, in the reference harness' world format.
-def summary_json(+s: Summary) -> String:
+def summary_json(+build: Builds.Build, +s: Summary) -> String:
   match s:
     case Summary{+swaps, _, _, _, _, _, crashed}:
       Bool.pick(String, crashed, "{\"error\":\"worldgen raises a Lua error for this seed\"}",
         "{\"prefab_swaps\":{\"grass\":" ++ swap_name(swaps, 1, "regular grass", "grass gekko")
           ++ ",\"twigs\":" ++ swap_name(swaps, 2, "regular twigs", "twiggy trees")
           ++ ",\"berries\":" ++ swap_name(swaps, 4, "regular berries", "juicy berries")
-          ++ "},\"tasks\":[" ++ String.join(tasks_json(chosen_count(), s, 0), ",") ++ "]}")
+          ++ "},\"tasks\":[" ++ String.join(tasks_json(build, chosen_count(), s, 0), ",") ++ "]}")

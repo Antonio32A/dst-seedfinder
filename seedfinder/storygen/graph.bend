@@ -5,6 +5,7 @@ import ../lua/strhash.bend as StrHash
 import ./catalog.bend as StoryCatalog
 import ./mem.bend as StoryMem
 import ./order.bend as StoryOrder
+import ../data/builds.bend as Builds
 
 # The story graph (network.lua Graph/Node/Edge) as one persistent word array, plus the log of every WorldSim call and
 # wrapped Lua function in execution order, and the RNG. Graph 0 is GAME_root; every other graph is a child of the root,
@@ -373,28 +374,28 @@ def set_gf(+s: St, +g: U32, +f: U32, +v: U32) -> St:
 def is_entrance(+s: St, +n: U32) -> Bool:
   U32.is_eq(nf(s, n, f_entrance()), 1)
 
-def graph_name_of(+kind: U32, +part: U32) -> String:
+def graph_name_of(+build: Builds.Build, +kind: U32, +part: U32) -> String:
   match kind:
     case 0:
       "GAME_root"
     case 1:
-      StoryCatalog.task_name(part)
+      StoryCatalog.task_name(build, part)
     case 2:
       "LOOP_BLANK" ++ U32.show(part)
     case _:
       "REGION_LINK_" ++ U32.show(part)
 
-def graph_name(+s: St, +g: U32) -> String:
-  graph_name_of(gf(s, g, g_kind()), gf(s, g, g_part()))
+def graph_name(+build: Builds.Build, +s: St, +g: U32) -> String:
+  graph_name_of(build, gf(s, g, g_kind()), gf(s, g, g_part()))
 
-def base_name(+kind: U32, +graph: String, +b: U32, +c: U32) -> String:
+def base_name(+build: Builds.Build, +kind: U32, +graph: String, +b: U32, +c: U32) -> String:
   match kind:
     case 0:
-      graph ++ ":" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(c)
+      graph ++ ":" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(build, c)
     case 1:
-      graph ++ ":BG_" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(c)
+      graph ++ ":BG_" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(build, c)
     case 2:
-      graph ++ ":COVE_" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(c)
+      graph ++ ":COVE_" ++ U32.show(b) ++ ":" ++ StoryCatalog.room_name(build, c)
     case 3:
       "START"
     case 5:
@@ -402,19 +403,19 @@ def base_name(+kind: U32, +graph: String, +b: U32, +c: U32) -> String:
     case _:
       graph ++ ":REGION_LINK_SUB_" ++ U32.show(b)
 
-def own_name(+s: St, +n: U32) -> String:
-  base_name(nf(s, n, f_kind()), graph_name(s, nf(s, n, f_graph())), nf(s, n, f_b()), nf(s, n, f_c()))
+def own_name(+build: Builds.Build, +s: St, +n: U32) -> String:
+  base_name(build, nf(s, n, f_kind()), graph_name(build, s, nf(s, n, f_graph())), nf(s, n, f_b()), nf(s, n, f_c()))
 
-def name_by_kind(blocker: Bool, +s: St, +n: U32) -> String:
+def name_by_kind(+build: Builds.Build, blocker: Bool, +s: St, +n: U32) -> String:
   match blocker:
     case True{}:
-      own_name(s, nf(s, n, f_a())) ++ ":BLOCKER_BLANK_" ++ U32.show(nf(s, n, f_b()))
+      own_name(build, s, nf(s, n, f_a())) ++ ":BLOCKER_BLANK_" ++ U32.show(nf(s, n, f_b()))
     case False{}:
-      own_name(s, n)
+      own_name(build, s, n)
 
 # The node's id string.
-def node_name(+s: St, +n: U32) -> String:
-  name_by_kind(U32.is_eq(nf(s, n, f_kind()), id_blocker()), s, n)
+def node_name(+build: Builds.Build, +s: St, +n: U32) -> String:
+  name_by_kind(build, U32.is_eq(nf(s, n, f_kind()), id_blocker()), s, n)
 
 # A new graph, child of the root (Graph(id, {parent = root}) and root.children[id] = graph). No WorldSim call.
 def put_block(+s: St, +slot: U32, +k: Nat, +words: List<&2, U32>) -> St:
@@ -422,9 +423,9 @@ def put_block(+s: St, +slot: U32, +k: Nat, +words: List<&2, U32>) -> St:
     case St{+m, +log, +rng}:
       St{StoryMem.set_block(m, slot, k, StoryMem.block(k, words)), log, rng}
 
-def new_graph(+s: St, +kind: U32, +part: U32, +tile: U32, +background: U32) -> Got:
+def new_graph(+build: Builds.Build, +s: St, +kind: U32, +part: U32, +tile: U32, +background: U32) -> Got:
   +g = get(s, s_graphs())
-  +fields = {[kind, part, StrHash.hash_string(graph_name_of(kind, part)), none(), none(), 0, none(), none(), get(s, s_edges()), background, tile] : List<&2, U32>}
+  +fields = {[kind, part, StrHash.hash_string(graph_name_of(build, kind, part)), none(), none(), 0, none(), none(), get(s, s_edges()), background, tile] : List<&2, U32>}
   Got{g, put_block(put(s, s_graphs(), (g + 1 : U32)), graph_slot(g, 0), 4n, fields)}
 
 # WorldSim:AddChild(root, graph id, tile, ...) for a graph.
@@ -471,13 +472,13 @@ def entrance_of(+d: Info) -> U32:
     case NodeData{_, _, _, _, _, _, _, +entrance, _, _, _, _, _, _}:
       entrance
 
-def hashed(+s: St, +n: U32) -> St:
-  set_nf(s, n, f_hash(), StrHash.hash_string(node_name(s, n)))
+def hashed(+build: Builds.Build, +s: St, +n: U32) -> St:
+  set_nf(s, n, f_hash(), StrHash.hash_string(node_name(build, s, n)))
 
 # Graph:AddNode: the node joins graph g (nodes[id] = node, entrancenode) and WorldSim:AddChild(graph, node, ...).
-def add_node(+s: St, +g: U32, +d: Info) -> Got:
+def add_node(+build: Builds.Build, +s: St, +g: U32, +d: Info) -> Got:
   +n = get(s, s_nodes())
-  +s1 = hashed(store_data(put(s, s_nodes(), (n + 1 : U32)), n, g, d), n)
+  +s1 = hashed(build, store_data(put(s, s_nodes(), (n + 1 : U32)), n, g, d), n)
   +s2 = mark_entrance(link_member(s1, g, n, gf(s1, g, g_last())), g, n, entrance_of(d))
   Got{n, emit(s2, ENode{n, rng_of(s2)})}
 
@@ -604,5 +605,5 @@ def fresh(+rng: Pcg.Rng) -> St:
   St{StoryMem.empty(), Nil{}, rng}
 
 # The empty story: GAME_root only, loop_blanks and region_link_tasks at 1.
-def initial(+rng: Pcg.Rng) -> St:
-  put(put(st(new_graph(fresh(rng), k_root(), 0, 0, none())), s_loop_blanks(), 1), s_region_links(), 1)
+def initial(+build: Builds.Build, +rng: Pcg.Rng) -> St:
+  put(put(st(new_graph(build, fresh(rng), k_root(), 0, 0, none())), s_loop_blanks(), 1), s_region_links(), 1)

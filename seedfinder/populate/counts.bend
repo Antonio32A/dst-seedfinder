@@ -8,9 +8,10 @@ import ../f64/random.bend as F64Random
 import ../data/distribute.bend as Distribute
 import ../data/picks.bend as Picks
 import ../data/rooms.bend as Rooms
+import ../data/builds.bend as Builds
 
 # The room closures of ConvertGround / PopulateVoronoi (data/closures.bend category 1, bodies in
-# scripts/gen/out/closures.json) and forest_map.lua's pickspawnprefab.
+# scripts/gen/out/<build>/closures.json) and forest_map.lua's pickspawnprefab.
 
 def draw_pair(got: U32 & Pcg.Rng, +offset: U32) -> U32 & Pcg.Rng:
   (+v, rng) = got
@@ -175,8 +176,8 @@ def f64_of(bits: U32 & U32) -> F64Repr.F64:
   (+hi, +lo) = bits
   F64Repr.F64{hi, lo}
 
-def weight_of(+unit: U32) -> F64Repr.F64:
-  f64_of(Rooms.weight(Distribute.entry_weight(unit)))
+def weight_of(+build: Builds.Build, +unit: U32) -> F64Repr.F64:
+  f64_of(Rooms.weight(build, Distribute.entry_weight(build, unit)))
 
 def entry_at(+entries: List<&2, U32>, +i: U32) -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, entries, U32.to_nat(i)), 0)
@@ -192,12 +193,12 @@ def picked_units(order: List<&2, U32>, +entries: List<&2, U32>) -> List<&2, U32>
 type Weighted is Data:
   Weighted{prefab: U32, weight: F64Repr.F64}
 
-def weighted(units: List<&2, U32>) -> List<&2, Weighted>:
+def weighted(+build: Builds.Build, units: List<&2, U32>) -> List<&2, Weighted>:
   match units:
     case Nil{}:
       Nil{}
     case Con{+u, rest}:
-      Weighted{Distribute.entry_prefab(u), weight_of(u)} <> weighted(rest)
+      Weighted{Distribute.entry_prefab(build, u), weight_of(build, u)} <> weighted(build, rest)
 
 def weighted_total(items: List<&2, Weighted>, +acc: F64Repr.F64) -> F64Repr.F64:
   match items:
@@ -244,22 +245,22 @@ def pick_prepared(+p: Prepared, rng: Pcg.Rng) -> U32 & Pcg.Rng:
     case Prepared{+items, +total}:
       pick_total(F64Cmp.gt(total, F64Repr.zero()), items, total, rng)
 
-def pick_units(+units: List<&2, U32>, rng: Pcg.Rng) -> U32 & Pcg.Rng:
-  pick_prepared(prepared(weighted(units)), rng)
+def pick_units(+build: Builds.Build, +units: List<&2, U32>, rng: Pcg.Rng) -> U32 & Pcg.Rng:
+  pick_prepared(prepared(weighted(build, units)), rng)
 
-def class_units(unfiltered: Bool, +variant: U32, +class: U32) -> List<&2, U32>:
+def class_units(+build: Builds.Build, unfiltered: Bool, +variant: U32, +class: U32) -> List<&2, U32>:
   match unfiltered:
     case True{}:
-      Distribute.variants(variant)
+      Distribute.variants(build, variant)
     case False{}:
-      picked_units(Picks.pick(variant, class), Distribute.variants(variant))
+      picked_units(Picks.pick(build, variant, class), Distribute.variants(build, variant))
 
 # pickspawnprefab's items for a distribute variant on a tile (a tile outside the land classes filters nothing).
-def prepare(+variant: U32, +tile: U32) -> Prepared:
-  +class = Distribute.tile_class(tile)
-  prepared(weighted(class_units(U32.is_eq(class, 1048575), variant, class)))
+def prepare(+build: Builds.Build, +variant: U32, +tile: U32) -> Prepared:
+  +class = Distribute.tile_class(build, tile)
+  prepared(weighted(build, class_units(build, U32.is_eq(class, 1048575), variant, class)))
 
 # pickspawnprefab(distributeprefabs, ground): the prefab string id (4294967295 = nil) for a distribute variant on a
 # tile; one math.random() when the filtered weights sum above 0.
-def pickspawnprefab(+variant: U32, +tile: U32, rng: Pcg.Rng) -> U32 & Pcg.Rng:
-  pick_prepared(prepare(variant, tile), rng)
+def pickspawnprefab(+build: Builds.Build, +variant: U32, +tile: U32, rng: Pcg.Rng) -> U32 & Pcg.Rng:
+  pick_prepared(prepare(build, variant, tile), rng)

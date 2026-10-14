@@ -258,7 +258,7 @@ def ground_tile(+variant: U32, +k: U32) -> U32:
     if sys.argv[-1:] == ["-"]:
         sys.stdout.write(m.text())
     else:
-        (blob.ROOT / "seedfinder" / "data" / f"{m.name}.bend").write_text(m.text())
+        m.emit()
 
 
 if __name__ == "__main__":

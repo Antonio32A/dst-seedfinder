@@ -1,5 +1,7 @@
 import Base
 import ../filters/config.bend as Config
+import ../filters/cave_config.bend as CaveConfig
+import ../data/builds.bend as Builds
 
 def share(xs: List<String>) -> List<&2, String>:
   match xs:
@@ -22,7 +24,7 @@ def word(+args: List<&2, String>, i: Nat) -> String:
   Maybe.default(&2, String, List.get(&2, String, args, i), "")
 
 def value_flags() -> List<&2, String>:
-  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--shard", "--kk", "--dump", "--draws", "-o"]
+  ["--config", "--start-seed", "--limit", "--time-limit", "--worlds", "--platform", "--shard", "--build", "--kk", "--dump", "--draws", "-o"]
 
 def flag_value(args: List<&2, String>, +flag: String) -> Maybe<&2, String>:
   match args:
@@ -158,6 +160,33 @@ def shard_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, U32>:
       Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "forest"), Done{1},
         Bool.pick(Result<&1, &1, U32 & String, U32>, String.eq(text, "caves"), Done{2}, Fail{(2, "--shard must be forest or caves, got \"" ++ text ++ "\"")}))
 
+def build_named(found: Maybe<&2, Builds.Build>, +text: String) -> Result<&1, &1, U32 & String, Maybe<&2, Builds.Build>>:
+  match found:
+    case None{}:
+      Fail{(2, "--build must be a game build (" ++ Builds.numbers_text() ++ "), got \"" ++ text ++ "\"")}
+    case Some{build}:
+      Done{Some{build}}
+
+# The --build flag: the game build the worlds are generated for, None when absent (the config's build, else the latest).
+def build_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Maybe<&2, Builds.Build>>:
+  match m:
+    case None{}:
+      Done{None{}}
+    case Some{+text}:
+      build_named(Builds.of_number(Maybe.default(&2, U32, U32.read(text), 0)), text)
+
+# The build a command without a config runs (the --build flag's, else the latest), when it has the shard.
+def build_for(flag: Maybe<&2, Builds.Build>, caves: Bool) -> Result<&1, &1, U32 & String, Builds.Build>:
+  +build = Maybe.default(&2, Builds.Build, flag, Builds.latest())
+  Bool.pick(Result<&1, &1, U32 & String, Builds.Build>, caves && Bool.not(Builds.has_caves(build)), Fail{(2, CaveConfig.caves_unsupported(build))}, Done{build})
+
+# The build of the --build and --shard flags of a command without a config.
+def flag_build(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Builds.Build>:
+  do Result<&1, &1, U32 & String, Builds.Build>:
+    flag : Maybe<&2, Builds.Build> <- build_flag(flag_value(args, "--build"))
+    +shard : U32 <- shard_flag(flag_value(args, "--shard"))
+    build_for(flag, U32.is_eq(shard, 2))
+
 # The --kk flag: the KK engine, native (the C KK, the default) or bend (kk.bend, for validation).
 def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:
   match m:
@@ -168,9 +197,10 @@ def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:
         Bool.pick(Result<&1, &1, U32 & String, Bool>, String.eq(text, "bend"), Done{False{}}, Fail{(2, "--kk must be native or bend, got \"" ++ text ++ "\"")}))
 
 # A world find query; `platform` overrides the config's platform (platform_flag), `worlds` is the --worlds folder of
-# pre-generated world dumps (<seed>.dstw), `native` the KK engine (kk_flag), `timings` --verbose-timings.
+# pre-generated world dumps (<seed>.dstw), `native` the KK engine (kk_flag), `timings` --verbose-timings, `build` the
+# --build flag (build_flag; it overrides the config's build).
 type Query is Data:
-  Query{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Maybe<&2, String>, platform: U32, worlds: Maybe<&2, String>, native: Bool, timings: Bool}
+  Query{start: U32, total: Nat, limit: U32, time_ms: Nat, json: Bool, config: Maybe<&2, String>, platform: U32, worlds: Maybe<&2, String>, native: Bool, timings: Bool, build: Maybe<&2, Builds.Build>}
 
 def at_most_two(+given: List<&2, String>) -> Result<&1, &1, U32 & String, Unit>:
   Bool.pick(Result<&1, &1, U32 & String, Unit>, Nat.is_le(List.length(&2, String, given), 2n), Done{Unit{}},
@@ -187,31 +217,37 @@ def query_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Query>:
     +time_ms : Nat <- time_limit(flag_value(args, "--time-limit"))
     +platform : U32 <- platform_flag(flag_value(args, "--platform"))
     +native : Bool <- kk_flag(flag_value(args, "--kk"))
-    return Query{start, total, limit, time_ms, Config.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native, Config.is_member(args, "--verbose-timings")}
+    +build : Maybe<&2, Builds.Build> <- build_flag(flag_value(args, "--build"))
+    return Query{start, total, limit, time_ms, Config.is_member(args, "--json"), flag_value(args, "--config"), platform, flag_value(args, "--worlds"), native, Config.is_member(args, "--verbose-timings"), build}
 
 def query_config(+q: Query) -> Maybe<&2, String>:
   match q:
-    case Query{_, _, _, _, _, config, _, _, _, _}:
+    case Query{_, _, _, _, _, config, _, _, _, _, _}:
       config
+
+def query_build(+q: Query) -> Maybe<&2, Builds.Build>:
+  match q:
+    case Query{_, _, _, _, _, _, _, _, _, _, +build}:
+      build
 
 def query_json(+q: Query) -> Bool:
   match q:
-    case Query{_, _, _, _, +json, _, _, _, _, _}:
+    case Query{_, _, _, _, +json, _, _, _, _, _, _}:
       json
 
 def query_timings(+q: Query) -> Bool:
   match q:
-    case Query{_, _, _, _, _, _, _, _, _, +timings}:
+    case Query{_, _, _, _, _, _, _, _, _, +timings, _}:
       timings
 
 # A world dump query: seeds from..from + total - 1, the platform, the KK engine (kk_flag) and the output path, a
-# folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed, and the caves shard when
-# `caves`.
+# folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed, the caves shard when
+# `caves`, and the game build (build_for).
 type Dump is Data:
-  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool, caves: Bool}
+  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool, caves: Bool, build: Builds.Build}
 
 def dump_usage() -> String:
-  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH"
+  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] -o PATH"
 
 def dump_out(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, String>:
   match m:
@@ -239,8 +275,8 @@ def dump_total(rest: List<&2, String>, +from: U32) -> Result<&1, &1, U32 & Strin
     case _:
       Fail{(2, dump_usage())}
 
-# The world dump query of `world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH` (args start
-# with "dump"; the platform defaults to windows).
+# The world dump query of `world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER]
+# [--kk native|bend] -o PATH` (args start with "dump"; the platform defaults to windows).
 def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
   do Result<&1, &1, U32 & String, Dump>:
     +given : List<&2, String> <- positionals(List.drop(&2, String, args, 1n), False{}, "dump: ")
@@ -250,4 +286,5 @@ def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
     +native : Bool <- kk_flag(flag_value(args, "--kk"))
     +out : String <- dump_out(flag_value(args, "-o"))
     +shard : U32 <- shard_flag(flag_value(args, "--shard"))
-    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n), U32.is_eq(shard, 2)}
+    +build : Builds.Build <- flag_build(args)
+    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n), U32.is_eq(shard, 2), build}

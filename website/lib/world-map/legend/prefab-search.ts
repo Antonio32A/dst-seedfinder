@@ -1,4 +1,5 @@
 import { prefabName } from "@/lib/catalog/prefab-sets";
+import { generatedBy } from "@/lib/config/builds";
 import type { WorldPoint } from "@/lib/world-map/view/map-view";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import { setPieceCounts } from "./set-pieces";
@@ -14,7 +15,7 @@ export interface MapMatch extends MapTarget {
     count: number;
 }
 
-type SearchedWorld = Pick<GeneratedWorld, "prefabs" | "setPieces"> & Partial<Pick<GeneratedWorld, "shard">>;
+type SearchedWorld = Pick<GeneratedWorld, "prefabs" | "setPieces"> & Partial<Pick<GeneratedWorld, "shard" | "gameBuild">>;
 
 /** Matches display names and ids containing `query`, ignoring case: the ones starting with it first, then by name. */
 export function searchPrefabs(world: SearchedWorld, query: string): MapMatch[] {
@@ -23,7 +24,7 @@ export function searchPrefabs(world: SearchedWorld, query: string): MapMatch[] {
     const starts = (match: MapMatch) => texts(match).some((text) => text.startsWith(needle));
     return [
         ...world.prefabs.map(({ name, positions }): MapMatch =>
-            ({ kind: "prefab", name, displayName: prefabName(name, world.shard), count: positions.length / 2 })),
+            ({ kind: "prefab", name, displayName: prefabName(name, world.shard, generatedBy(world)), count: positions.length / 2 })),
         ...[...setPieceCounts(world)].map(([name, count]): MapMatch =>
             ({ kind: "set piece", name, displayName: name, count }))
     ]

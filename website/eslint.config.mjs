@@ -67,6 +67,7 @@ export default defineConfig([
         "next-env.d.ts",
         "lib/catalog/cave-vocab.ts",
         "lib/catalog/world.ts",
+        "lib/config/game-builds.ts",
         "public/wasm/"
     ]),
     {

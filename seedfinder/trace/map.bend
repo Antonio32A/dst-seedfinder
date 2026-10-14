@@ -14,6 +14,7 @@ import ../rng/pcg.bend as Pcg
 import ../worldsim/tiles/input.bend as TileInput
 import ../populate/trace.bend as PopulateTrace
 import ../ocean/trace.bend as OceanTrace
+import ../data/builds.bend as Builds
 
 # The map trace stages (site tiles, tiles, populate and ocean): `handles` names them, `run` returns their canonical
 # records. Input: the oracle's `tileinput` records.
@@ -194,19 +195,19 @@ def run_stage(sitetiles: Bool, +seed: U32, +windows: Bool, +lines: List<&2, Stri
     case False{}:
       tiles_all(seed, windows, TileInput.attempts(Canon.records("tmap", lines)), lines)
 
-def run_grid_or_land(populate: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def run_grid_or_land(+build: Builds.Build, populate: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match populate:
     case True{}:
-      PopulateTrace.run(stage, seed, windows, lines)
+      PopulateTrace.run(build, stage, seed, windows, lines)
     case False{}:
       run_stage(String.eq(stage, "sitetiles"), seed, windows, lines)
 
-def run_ocean_or_land(ocean: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def run_ocean_or_land(+build: Builds.Build, ocean: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match ocean:
     case True{}:
-      OceanTrace.run(stage, seed, windows, lines)
+      OceanTrace.run(build, stage, seed, windows, lines)
     case False{}:
-      run_grid_or_land(is_populate(stage), stage, seed, windows, lines)
+      run_grid_or_land(build, is_populate(stage), stage, seed, windows, lines)
 
-def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
-  run_ocean_or_land(OceanTrace.handles(stage), stage, seed, windows, String.split(input, '\n'))
+def run(+build: Builds.Build, +stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
+  run_ocean_or_land(build, OceanTrace.handles(stage), stage, seed, windows, String.split(input, '\n'))

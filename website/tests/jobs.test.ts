@@ -77,4 +77,13 @@ describe("POST /api/jobs", () => {
         expect(response.status).toBe(201);
         expect((await ledger(user.profile.id)).jobs).toBe(1);
     });
+
+    it("accepts an old browser's v2 config as the build it was written for", async () => {
+        const config = { version: 2, platform: "linux", filters: [{ counts: [{ prefab: "pigking", min: 1 }] }] };
+        const response = await api("/api/jobs", { method: "POST", session: user.session, body: { ...SEARCH_REQUEST, config } });
+        expect(response.status).toBe(201);
+        const { job } = (await response.json()) as { job: { id: string } };
+        const row = await db().prepare("SELECT config FROM jobs WHERE id = ?").bind(job.id).first<{ config: string }>();
+        expect(JSON.parse(row!.config)).toEqual({ ...config, version: 3, build: 756039, shard: "forest" });
+    });
 });

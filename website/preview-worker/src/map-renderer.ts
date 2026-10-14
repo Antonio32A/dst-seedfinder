@@ -56,7 +56,7 @@ async function renderPreview(env: Env, preview: MapPreviewRequest): Promise<Rend
     }
 }
 
-async function worldDump(env: Env, { seed, platform, shard, dumpKey }: MapPreviewRequest): Promise<GeneratedDump> {
+async function worldDump(env: Env, { dumpKey, ...world }: MapPreviewRequest): Promise<GeneratedDump> {
     const stored = await env.PREVIEWS.get(dumpKey);
     if (stored !== null) {
         return stored.customMetadata?.outcome === "crashed" ? { status: "crashed" } : {
@@ -65,7 +65,7 @@ async function worldDump(env: Env, { seed, platform, shard, dumpKey }: MapPrevie
         };
     }
     const started = Date.now();
-    const generated = await generateDump(seed, platform, shard);
+    const generated = await generateDump(world);
     console.log(`${dumpKey}: ${generated.status} in ${Date.now() - started} ms`);
     const bytes = generated.status === "dumped" ? generated.bytes : new Uint8Array();
     await env.PREVIEWS.put(dumpKey, bytes, { customMetadata: { outcome: generated.status } });

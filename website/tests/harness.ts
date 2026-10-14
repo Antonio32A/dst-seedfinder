@@ -43,7 +43,7 @@ export const OFFER = {
     cpu_arch: "amd64"
 };
 
-export const SEARCH_REQUEST = { config: {}, wanted: 1, maxCost: 200 };
+export const SEARCH_REQUEST = { config: { version: 3, build: 756039 }, wanted: 1, maxCost: 200 };
 
 interface Grant {
     profile: DiscordProfile;

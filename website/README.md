@@ -5,8 +5,9 @@
 Features:
 
 - local search (WASM version of seedfinder)
-- world map of any seed (pick one at `/map`, or link `/map/<windows|linux>/[caves/]<seed>`), generated in the browser from
-  the same WASM build
+- world map of any seed (pick one at `/map`, or link `/map/<windows|linux>/[forest/|caves/][<build>/]<seed>`; without a
+  build it's the latest one, and the site's own links always name it), generated in the browser from the same WASM
+  build
 - cloud search which runs on Vast.ai (uses [runner](../runner/README.md))
 - log in with Discord
 - credit system (for rate limiting)
@@ -72,11 +73,12 @@ Apply new migrations (`migrations/`) with the last command whenever one is added
 ## Map link previews
 
 A map link unfurls (Discord, Slack, X, ...) with an image of its seed's map, or of the view in its `v` param. The pages
-point `og:image` at `/og/map/<platform>/[caves/]<seed>.png?v=<view>`, served by the preview Worker in
+point `og:image` at `/og/map/<platform>/[caves/][<build>/]<seed>.png?v=<view>`, served by the preview Worker in
 [`preview-worker`](preview-worker): it generates the world dump with the single-threaded WebAssembly build, draws
 it on this site's `/map/preview` page in Cloudflare Browser Run, and keeps the PNG in R2 and the Cache API. The site
 binds it as `MAP_PREVIEW`, pre-warms it when a link-unfurl crawler fetches a map page, and forwards `/og/*` to it on
-hosts its route doesn't cover. Bump `MAP_PREVIEW_VERSION` (`lib/world-map/map-preview-url.ts`) when the worlds or the
+hosts its route doesn't cover. R2 keeps each build's previews and dumps apart, under `previews/<build>.<version>/` and
+`dumps/<build>.<version>/`. Bump `MAP_PREVIEW_VERSION` (`lib/world-map/map-preview-url.ts`) when the worlds or the
 map's drawing change.
 
 It needs the single-threaded build (`../scripts/build.sh wasm-single`) and is deployed before the site, which binds it:
@@ -87,10 +89,18 @@ cd preview-worker && npm ci && npm run deploy
 cd .. && npm run build && npm run deploy
 ```
 
+## Game builds
+
+`lib/config/game-builds.ts` lists the game builds the finder knows (`GAME_BUILDS`), the latest one and the ones the
+site's build dropdowns offer (`website: true`). A map link opens any of them that has its shard. A search config names
+its build (`"build"`, format `version` 3); the site reads configs of the older formats (no version, 1 and 2) as ones for
+build 756039, the build they were written for, both when loading them and when a search is sent. Each build's
+shards take their prefabs, tasks and set pieces from the catalog its entry names (`catalog`).
+
 ## Prefab catalog
 
-`lib/catalog/world.ts` is generated from `scripts/catalog/catalog.json`. Regenerate it from the repository root after
-the catalog changes:
+`lib/catalog/world.ts` is generated from the latest build's catalog (`scripts/catalog/756039/catalog.json`, the one
+`builds.json` names). Regenerate it from the repository root after the catalog changes:
 
 ```sh
 node scripts/gen/gen_website_catalog.mjs

@@ -7,6 +7,8 @@ import ../data/search_vocab.bend as SearchVocab
 import ../data/gen_tags.bend as GenTagsData
 import ./dump.bend as FilterDump
 import ./parse.bend as Parse
+import ../data/search_vocab_types.bend as SearchVocabTypes
+import ../data/builds.bend as Builds
 
 # A generated world as the filters see it (gen/savedata.bend builds it, of_bytes reads it from a world dump).
 # Instances are savedata.ents entries: `index` is the position in its prefab's list, x/z the doubles the worldgen
@@ -79,11 +81,11 @@ def tile_id_of(tile_names: List<&2, FilterDump.TileName>, +name: String) -> U32:
     case Con{FilterDump.TileName{+id, +found}, rest}:
       Bool.pick(U32, String.eq(found, name), id, tile_id_of(rest, name))
 
-def tile_ids_of(tiles: List<&2, SearchVocab.Tile>, +tile_names: List<&2, FilterDump.TileName>) -> List<&2, U32>:
+def tile_ids_of(tiles: List<&2, SearchVocabTypes.Tile>, +tile_names: List<&2, FilterDump.TileName>) -> List<&2, U32>:
   match tiles:
     case Nil{}:
       Nil{}
-    case Con{SearchVocab.Tile{+name, _}, rest}:
+    case Con{SearchVocabTypes.Tile{+name, _}, rest}:
       tile_id_of(tile_names, name) <> tile_ids_of(rest, tile_names)
 
 def instance_at(+groups: List<&2, List<&2, Inst>>, +prefab: U32, +index: U32) -> Inst:
@@ -104,18 +106,18 @@ def prefab_name_at(prefabs: List<&2, FilterDump.Prefab>, +position: U32) -> Stri
     case Con{FilterDump.Prefab{+name, _}, rest}:
       Bool.pick(String, U32.is_zero(position), name, prefab_name_at(rest, (position - 1 : U32)))
 
-def vocab_id(+name: String) -> U32:
-  Maybe.default(&2, U32, Parse.index_of(SearchVocab.all_prefabs(), name, 0), 65535)
+def vocab_id(+build: Builds.Build, +name: String) -> U32:
+  Maybe.default(&2, U32, Parse.index_of(SearchVocab.all_prefabs(build), name, 0), 65535)
 
-def pillar_inst(+groups: List<&2, List<&2, Inst>>, +prefabs: List<&2, FilterDump.Prefab>, +prefab: U32, +index: U32) -> Inst:
-  instance_at(groups, vocab_id(prefab_name_at(prefabs, prefab)), index)
+def pillar_inst(+build: Builds.Build, +groups: List<&2, List<&2, Inst>>, +prefabs: List<&2, FilterDump.Prefab>, +prefab: U32, +index: U32) -> Inst:
+  instance_at(groups, vocab_id(build, prefab_name_at(prefabs, prefab)), index)
 
-def pillar_links_of(pillars: List<&2, FilterDump.Pillar>, +prefabs: List<&2, FilterDump.Prefab>, +groups: List<&2, List<&2, Inst>>) -> List<&2, Link>:
+def pillar_links_of(+build: Builds.Build, pillars: List<&2, FilterDump.Pillar>, +prefabs: List<&2, FilterDump.Prefab>, +groups: List<&2, List<&2, Inst>>) -> List<&2, Link>:
   match pillars:
     case Nil{}:
       Nil{}
     case Con{FilterDump.Pillar{+entry_prefab, +entry, +exit_prefab, +exit}, rest}:
-      Link{pillar_inst(groups, prefabs, entry_prefab, entry), pillar_inst(groups, prefabs, exit_prefab, exit)} <> pillar_links_of(rest, prefabs, groups)
+      Link{pillar_inst(build, groups, prefabs, entry_prefab, entry), pillar_inst(build, groups, prefabs, exit_prefab, exit)} <> pillar_links_of(build, rest, prefabs, groups)
 
 def wrong_shard(+caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
   Fail{(2, Bool.pick(String, caves, "world dump of the forest shard, this finder searches the caves shard",
@@ -141,21 +143,21 @@ def land_bits(words: List<&2, U32>, +k: Nat, +acc: U32) -> List<&2, U32>:
       +r = land_bits(rest, Bool.pick(Nat, full, 0n, Nat.add(k, 2n)), Bool.pick(U32, full, 0, bits))
       Bool.pick(List<&2, U32>, full, bits <> r, r)
 
-def forest_loaded(+seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +links: List<&2, FilterDump.Link>, +graph: Maybe<&2, FilterDump.Graph>, +plan: Maybe<&2, List<&2, FilterDump.Planned>>) -> Loaded:
-  +groups = groups_of(SearchVocab.prefabs(), prefabs, 0)
-  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole()), tiles, graph, plan, land_bits(tiles, 0n, 0)}, platform}
+def forest_loaded(+build: Builds.Build, +seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +links: List<&2, FilterDump.Link>, +graph: Maybe<&2, FilterDump.Graph>, +plan: Maybe<&2, List<&2, FilterDump.Planned>>) -> Loaded:
+  +groups = groups_of(SearchVocab.prefabs(build), prefabs, 0)
+  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(build), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole(build)), tiles, graph, plan, land_bits(tiles, 0n, 0)}, platform}
 
-def cave_loaded(+seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +pillars: List<&2, FilterDump.Pillar>, +graph: Maybe<&2, FilterDump.Graph>) -> Loaded:
-  +groups = groups_of(SearchVocab.all_prefabs(), prefabs, 0)
-  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(), tile_names), groups, pillar_links_of(pillars, prefabs, groups), tiles, graph, None{}, land_bits(tiles, 0n, 0)}, platform}
+def cave_loaded(+build: Builds.Build, +seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +pillars: List<&2, FilterDump.Pillar>, +graph: Maybe<&2, FilterDump.Graph>) -> Loaded:
+  +groups = groups_of(SearchVocab.all_prefabs(build), prefabs, 0)
+  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(build), tile_names), groups, pillar_links_of(build, pillars, prefabs, groups), tiles, graph, None{}, land_bits(tiles, 0n, 0)}, platform}
 
 # The world of a parsed dump of the shard `caves` names; a dump of the other shard is refused.
-def loaded_of(dump: Result<&1, &1, U32 & String, FilterDump.Dump>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
+def loaded_of(+build: Builds.Build, dump: Result<&1, &1, U32 & String, FilterDump.Dump>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
   match dump:
     case Done{FilterDump.Generated{+seed, +platform, +shard, _, +width, +height, +tile_names, +tiles, +prefabs, +links, +pillars, _, +plan, _, +graph}}:
       Bool.pick(Result<&1, &1, U32 & String, Loaded>, U32.is_eq(shard, Bool.to_u32(caves)),
-        Done{Bool.pick(Loaded, caves, cave_loaded(seed, platform, width, height, tile_names, tiles, prefabs, pillars, graph),
-          forest_loaded(seed, platform, width, height, tile_names, tiles, prefabs, links, graph, plan))},
+        Done{Bool.pick(Loaded, caves, cave_loaded(build, seed, platform, width, height, tile_names, tiles, prefabs, pillars, graph),
+          forest_loaded(build, seed, platform, width, height, tile_names, tiles, prefabs, links, graph, plan))},
         wrong_shard(caves))
     case Done{FilterDump.GaveUp{+seed, _, +shard}}:
       Bool.pick(Result<&1, &1, U32 & String, Loaded>, U32.is_eq(shard, Bool.to_u32(caves)), Done{GaveUp{seed}}, wrong_shard(caves))
@@ -163,12 +165,12 @@ def loaded_of(dump: Result<&1, &1, U32 & String, FilterDump.Dump>, +caves: Bool)
       Fail{error}
 
 # Reads a world dump (docs/world-dump.md) of the forest shard from its bytes, with the prefabs and tiles of the vocabulary.
-def of_bytes(bytes: List<&2, U32>) -> Result<&1, &1, U32 & String, Loaded>:
-  loaded_of(FilterDump.of_bytes(bytes), False{})
+def of_bytes(+build: Builds.Build, bytes: List<&2, U32>) -> Result<&1, &1, U32 & String, Loaded>:
+  loaded_of(build, FilterDump.of_bytes(bytes), False{})
 
 # Reads a world dump of the shard `caves` names (True: the caves) from its bytes.
-def of_bytes_in(bytes: List<&2, U32>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
-  loaded_of(FilterDump.of_bytes(bytes), caves)
+def of_bytes_in(+build: Builds.Build, bytes: List<&2, U32>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
+  loaded_of(build, FilterDump.of_bytes(bytes), caves)
 
 def instance_groups(+groups: List<&2, List<&2, Inst>>, ids: List<&2, U32>) -> List<&2, List<&2, Inst>>:
   match ids:

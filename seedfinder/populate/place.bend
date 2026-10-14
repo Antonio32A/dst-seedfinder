@@ -14,6 +14,7 @@ import ./entities.bend as Entities
 import ./layout.bend as PopulateLayout
 import ./state.bend as PopulateState
 import ./setpiece.bend as PopulateSetpiece
+import ../data/builds.bend as Builds
 
 # object_layout.lua's ReserveAndPlaceLayout for ConvertGround's layouts (position nil, WorldSim): the reserved size
 # from the entity list's bounding box (or the ground's side), the random transform (3 GetRandomItem draws unless
@@ -91,8 +92,8 @@ def rotated(got: Turn & Pcg.Rng, +rotation: U32) -> Turn & Pcg.Rng:
   (Bool.pick(Turn, Blob.is_none(rotation), random, forced(rotation)), rng)
 
 # The transform of layout variant v: the random turn (drawn unless disable_transform) unless the layout forces a rotation.
-def turn_of(+v: U32, rng: Pcg.Rng) -> Turn & Pcg.Rng:
-  rotated(turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), Layouts.force_rotation(v))
+def turn_of(+build: Builds.Build, +v: U32, rng: Pcg.Rng) -> Turn & Pcg.Rng:
+  rotated(turn(Layouts.has(build, v, Layouts.flag_disable_transform(build)), rng), Layouts.force_rotation(build, v))
 
 def flipped(+keep: Bool, +n: U32, +k: U32) -> U32:
   Bool.pick(U32, keep, k, (n - 1 - k : U32))
@@ -126,19 +127,19 @@ def ground_loop(k: Nat, got: Array<U32> & List<&2, U32>, +t: Turn, +n: U32, +q: 
       (tiles, +acc) = got
       ground_loop(p, pushed(tiles[ground_index(t, n, (q / n : U32), (q % n : U32))], acc), t, n, (q - 1 : U32))
 
-def ground_decoded(empty: Bool, +v: U32, +t: Turn, +n: U32) -> List<&2, U32>:
+def ground_decoded(+build: Builds.Build, empty: Bool, +v: U32, +t: Turn, +n: U32) -> List<&2, U32>:
   match empty:
     case True{}:
       Nil{}
     case False{}:
       +cells = (n * n : U32)
-      ground_loop(U32.to_nat(cells), (unpack_ground(Layouts.ground(v), [0 : U32^10n], 0), Nil{}), t, n, (cells - 1 : U32))
+      ground_loop(U32.to_nat(cells), (unpack_ground(Layouts.ground(build, v), [0 : U32^10n], 0), Nil{}), t, n, (cells - 1 : U32))
 
 # The ground tiles as ReserveAndPlaceLayout lists them: column outer, row inner, transformed (0 = keep the tile).
 # The variant's ground row is decoded once (sizes up to 30 x 30).
-def ground(+v: U32, +t: Turn) -> List<&2, U32>:
-  +n = Layouts.ground_size(v)
-  ground_decoded(U32.is_zero(n), v, t, n)
+def ground(+build: Builds.Build, +v: U32, +t: Turn) -> List<&2, U32>:
+  +n = Layouts.ground_size(build, v)
+  ground_decoded(build, U32.is_zero(n), v, t, n)
 
 def item_x(+t: Turn, +i: PopulateLayout.Item) -> F64Repr.F64:
   match t:
@@ -239,30 +240,30 @@ def reserved(r: Points.Reserved, +c: PopulateState.Ctx, +node: U32, +ask: Points
           place_if(ok, PopulateState.Land{g, rng, ents, PopulateState.EReserve{node, F32Ops.bits(fsize), start, fill, pos, n, before, rng, ok, x, y} <> events}, c,
             items, f, corner(x, size), corner(y, size), p)
 
-def ground_size(+v: U32, +size: F64Repr.F64) -> F64Repr.F64:
-  +n = Layouts.ground_size(v)
+def ground_size(+build: Builds.Build, +v: U32, +size: F64Repr.F64) -> F64Repr.F64:
+  +n = Layouts.ground_size(build, v)
   F64Repr.pick(U32.is_zero(n), size, F64Arith.mul(F64Repr.from_u32(n), F64Repr.half()))
 
 def or_zero(+v: U32) -> U32:
   Bool.pick(U32, Blob.is_none(v), 0, v)
 
-def position_of(+v: U32) -> U32:
-  or_zero(Layouts.layout_position(v))
+def position_of(+build: Builds.Build, +v: U32) -> U32:
+  or_zero(Layouts.layout_position(build, v))
 
-def placed_turn(got: Turn & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +name: U32, +source: U32) -> PopulateState.Land:
+def placed_turn(+build: Builds.Build, got: Turn & Pcg.Rng, +c: PopulateState.Ctx, +node: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, g: Grid.Grid, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +name: U32, +source: U32) -> PopulateState.Land:
   (+t, +rng) = got
-  +sized = ground_size(v, size)
-  +ask = {Points.Ask{F32Ops.from_f64(sized), or_zero(Layouts.start_mask(v)), or_zero(Layouts.fill_mask(v))} : Points.Ask}
+  +sized = ground_size(build, v, size)
+  +ask = {Points.Ask{F32Ops.from_f64(sized), or_zero(Layouts.start_mask(build, v)), or_zero(Layouts.fill_mask(build, v))} : Points.Ask}
   +site = PopulateState.site_of(c, node)
-  +f = {Frame{F64Repr.zero(), F64Repr.zero(), t, scale_of(Layouts.scale(v))} : Frame}
-  reserved(Points.reserve_space(PopulateState.windows_of(c), PopulateState.sites_of(c), site, ask, position_of(v), ground(v, t), g, rng), c, node, ask, position_of(v),
+  +f = {Frame{F64Repr.zero(), F64Repr.zero(), t, scale_of(Layouts.scale(build, v))} : Frame}
+  reserved(Points.reserve_space(PopulateState.windows_of(c), PopulateState.sites_of(c), site, ask, position_of(build, v), ground(build, v, t), g, rng), c, node, ask, position_of(build, v),
     items, f, sized, rng, ents, events, PopulateSetpiece.Piece{name, source, 0, F64Repr.zero(), F64Repr.zero(), sized, 0, 0})
 
 # ReserveAndPlaceLayout(node, layout, prefabs, add_fn) for the layout variant v, named `name` (string id) and from
 # `source` (populate/setpiece.bend) when the context records the placed layouts.
-def place(+c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, l: PopulateState.Land) -> PopulateState.Land:
+def place(+build: Builds.Build, +c: PopulateState.Ctx, +node: U32, +name: U32, +source: U32, +v: U32, +items: List<&2, PopulateLayout.Item>, l: PopulateState.Land) -> PopulateState.Land:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
       +start = {Box{million(), F64Repr.neg(million()), million(), F64Repr.neg(million())} : Box}
-      +size = F64Arith.mul(scale_of(Layouts.scale(v)), half_extent(bounds(items, start)))
-      placed_turn(turn_of(v, rng), c, node, v, items, size, g, ents, events, name, source)
+      +size = F64Arith.mul(scale_of(Layouts.scale(build, v)), half_extent(bounds(items, start)))
+      placed_turn(build, turn_of(build, v, rng), c, node, v, items, size, g, ents, events, name, source)

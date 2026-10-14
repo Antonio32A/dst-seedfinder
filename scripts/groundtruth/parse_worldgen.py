@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Extract the worlds dumped by the groundtruth-worldgen mod from DST server logs.
 
-usage: parse_worldgen.py [-o OUTDIR] LOG [LOG ...]
+usage: parse_worldgen.py [--build BUILD] [-o OUTDIR] LOG [LOG ...]
 
 Every record is printed as chunks "GTWORLD <kind>:<launch>:<n> <i>/<total> <payload>|".
 Chunks are joined per key and decoded as JSON, and every world keeps the "shard" the mod recorded (forest or caves).
-Writes into OUTDIR (default: build/groundtruth/data/worlds):
+Writes into OUTDIR (default: the data/worlds folder of BUILD's ground truth, build/groundtruth/<BUILD>/ of the main
+checkout or $GT_ROOT/<BUILD>/; BUILD defaults to the latest of builds.json):
   <seed>.json                     the reference world for that seed (a fresh launch if there is one)
   <seed>.<mode>.<launch>-<n>.json every other world generated for the same seed
   index.json                      one summary entry per world
@@ -19,6 +20,9 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from compare_common import groundtruth, latest_build  # noqa: E402
 
 CHUNK = re.compile(r"GTWORLD (\S+) (\d+)/(\d+) (.*)\|\s*$")
 RUN_FIELDS = {"launch", "run", "mode"}
@@ -103,9 +107,11 @@ def report_repeats(worlds_by_seed):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).resolve().parents[2] / "build" / "groundtruth" / "data" / "worlds")
+    parser.add_argument("--build", type=int, default=latest_build())
+    parser.add_argument("-o", "--outdir", type=Path)
     parser.add_argument("logs", nargs="+")
     args = parser.parse_args()
+    outdir = args.outdir or groundtruth(args.build) / "data" / "worlds"
 
     records, broken = assemble(*read_chunks(args.logs))
     if not records:
@@ -123,9 +129,9 @@ def main():
         elif kind == "done":
             print(f"launch finished: {record}")
 
-    args.outdir.mkdir(parents=True, exist_ok=True)
-    (args.outdir / "info.json").write_text(json.dumps(infos, indent=1))
-    index = write_worlds(worlds_by_seed, args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    (outdir / "info.json").write_text(json.dumps(infos, indent=1))
+    index = write_worlds(worlds_by_seed, outdir)
     for entry in index:
         print(f"{entry['file']}: shard={entry['shard']} status={entry['status']} attempts={entry['attempts']} "
               f"size={entry['width']}x{entry['height']} entities={entry['entities']}")

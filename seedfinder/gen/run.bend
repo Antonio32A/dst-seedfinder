@@ -11,6 +11,7 @@ import ./cave_maze.bend as CaveMaze
 import ../worldsim/points.bend as Points
 import ./cave_custom.bend as CaveCustom
 import ./graph.bend as GenGraph
+import ../data/builds.bend as Builds
 
 # `seedfinder gen`: runs the job state machine of each seed to its world, one line per seed, and with `times` one
 # line per stage of every attempt:
@@ -110,43 +111,43 @@ def tiles_dumped(off: Bool, +seed: U32, +a: U32, g: Grid.Grid) -> Grid.Grid & Li
 def dump_tiles(bits: U32, +seed: U32, +a: U32, g: Grid.Grid) -> Grid.Grid & List<&2, String>:
   tiles_dumped(U32.is_zero((bits .&. 1 : U32)), seed, a, g)
 
-def dump_story(bits: U32, +seed: U32, +a: U32, +s: StoryGraph.St) -> List<&2, String>:
-  Bool.pick(List<&2, String>, U32.is_zero((bits .&. 2 : U32)), Nil{}, [CaveDump.story_json(seed, a, s)])
+def dump_story(+build: Builds.Build, bits: U32, +seed: U32, +a: U32, +s: StoryGraph.St) -> List<&2, String>:
+  Bool.pick(List<&2, String>, U32.is_zero((bits .&. 2 : U32)), Nil{}, [CaveDump.story_json(build, seed, a, s)])
 
-def marked_lines(m: CaveMaze.Mazed, +marks: List<&2, Pcg.Rng>, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
+def marked_lines(+build: Builds.Build, m: CaveMaze.Mazed, +marks: List<&2, Pcg.Rng>, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
   match m:
     case CaveMaze.Mazed{g, +rng, +ents, _}:
-      List.append(&2, String, Bool.pick(List<&2, String>, U32.is_zero((bits .&. 4 : U32)), Nil{}, [CaveDump.mazes_json(seed, a, marks, rng, ents)]),
+      List.append(&2, String, Bool.pick(List<&2, String>, U32.is_zero((bits .&. 4 : U32)), Nil{}, [CaveDump.mazes_json(build, seed, a, marks, rng, ents)]),
         Bool.pick(List<&2, String>, U32.is_zero((bits .&. 8 : U32)), Nil{}, [CaveDump.tiles_line(seed, a, g, "after_mazes")]))
 
-def mazed_lines(m: CaveMaze.Marked, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
+def mazed_lines(+build: Builds.Build, m: CaveMaze.Marked, +bits: U32, +seed: U32, +a: U32) -> List<&2, String>:
   match m:
     case CaveMaze.Marked{mazed, +marks}:
-      marked_lines(mazed, marks, bits, seed, a)
+      marked_lines(build, mazed, marks, bits, seed, a)
 
-def mazes_run(off: Bool, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> List<&2, String>:
+def mazes_run(+build: Builds.Build, off: Bool, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> List<&2, String>:
   match off:
     case True{}:
       Nil{}
     case False{}:
-      mazed_lines(CaveMaze.run_marked(c, s, k, w, g, rng, placed, sites), bits, seed, a)
+      mazed_lines(build, CaveMaze.run_marked(build, c, s, k, w, g, rng, placed, sites), bits, seed, a)
 
-def mazes_of(+bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> List<&2, String>:
-  mazes_run(U32.is_zero((bits .&. 12 : U32)), bits, seed, a, c, s, k, w, g, rng, placed, sites)
+def mazes_of(+build: Builds.Build, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> List<&2, String>:
+  mazes_run(build, U32.is_zero((bits .&. 12 : U32)), bits, seed, a, c, s, k, w, g, rng, placed, sites)
 
 def tiled_record(+seed: U32, +a: U32, +s: StoryGraph.St, +w: U32, +rng: Pcg.Rng, +h: Grid.Hash, +windows: Bool, +ms: Nat) -> String:
   Canon.record("gen", List.append(&2, String, [Canon.number("seed", seed), Canon.field("platform", platform_name(windows)), Canon.field("shard", "caves")],
     List.append(&2, String, tiled_fields(seed, a, s, w, rng, h), [Canon.field("ms", Nat.show(ms))])))
 
-def tiled_lines(got: Grid.Grid & List<&2, String>, +head: String, +story: List<&2, String>, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> String:
+def tiled_lines(+build: Builds.Build, got: Grid.Grid & List<&2, String>, +head: String, +story: List<&2, String>, +bits: U32, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> String:
   (g, +tiles) = got
-  String.join(head <> List.append(&2, String, story, List.append(&2, String, tiles, mazes_of(bits, seed, a, c, s, k, w, g, rng, placed, sites))), "\n")
+  String.join(head <> List.append(&2, String, story, List.append(&2, String, tiles, mazes_of(build, bits, seed, a, c, s, k, w, g, rng, placed, sites))), "\n")
 
-def tiled_summary(got: Grid.Grid & Grid.Hash, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites, +o: Options, +ms: Nat) -> String:
+def tiled_summary(+build: Builds.Build, got: Grid.Grid & Grid.Hash, +seed: U32, +a: U32, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites, +o: Options, +ms: Nat) -> String:
   (g, +h) = got
   match o:
     case Options{+windows, _, _, _, +dump, _}:
-      tiled_lines(dump_tiles(dump, seed, a, g), tiled_record(seed, a, s, w, rng, h, windows, ms), dump_story(dump, seed, a, s), dump, seed, a, c, s, k, w, rng, placed, sites)
+      tiled_lines(build, dump_tiles(dump, seed, a, g), tiled_record(seed, a, s, w, rng, h, windows, ms), dump_story(build, dump, seed, a, s), dump, seed, a, c, s, k, w, rng, placed, sites)
 
 def caves_of(+o: Options) -> Bool:
   match o:
@@ -180,10 +181,10 @@ def line_summary(job: GenJob.Job, +seed: U32, +windows: Bool, +caves: Bool, +ms:
   Canon.record("gen", List.append(&2, String, [Canon.number("seed", seed), Canon.field("platform", platform_name(windows))],
     List.append(&2, String, shard_fields(caves), List.append(&2, String, outcome_fields(job, seed), [Canon.field("ms", Nat.show(ms))]))))
 
-def summary(job: GenJob.Job, +seed: U32, +o: Options, +ms: Nat) -> String:
+def summary(+build: Builds.Build, job: GenJob.Job, +seed: U32, +o: Options, +ms: Nat) -> String:
   match job:
     case GenJob.JTiled{+c, +a, +s, +k, +w, grid, +rng, placed, +sites}:
-      tiled_summary(Grid.tiles_digest(grid), seed, a, c, s, k, w, rng, placed, sites, o, ms)
+      tiled_summary(build, Grid.tiles_digest(grid), seed, a, c, s, k, w, rng, placed, sites, o, ms)
     case other:
       line_summary(other, seed, platform_of(o), caves_of(o), ms)
 
@@ -214,33 +215,33 @@ def stage_of(+at: GenJob.Where) -> U32:
     case GenJob.Where{+stage, _}:
       stage
 
-def decided(final: Bool, job: GenJob.Job, +at: GenJob.Where, +since: Nat, +seed: U32, +o: Options, +ms: Nat) -> IO(Stepped):
+def decided(+build: Builds.Build, final: Bool, job: GenJob.Job, +at: GenJob.Where, +since: Nat, +seed: U32, +o: Options, +ms: Nat) -> IO(Stepped):
   match final:
     case True{}:
-      IO.pure(Stepped, Stopped{summary(job, seed, o, ms)})
+      IO.pure(Stepped, Stopped{summary(build, job, seed, o, ms)})
     case False{}:
       do IO<Stepped>:
-        next : GenJob.Job <- GenJob.advance_io(native_of(o), job)
+        next : GenJob.Job <- GenJob.advance_io(build, native_of(o), job)
         return Going{Drive{next, at, since}}
 
-def stepped(got: GenJob.Job & GenJob.Where, +seed: U32, +o: Options, +prev: GenJob.Where, +since: Nat, +now: Nat, +start: Nat) -> IO(Stepped):
+def stepped(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +seed: U32, +o: Options, +prev: GenJob.Where, +since: Nat, +now: Nat, +start: Nat) -> IO(Stepped):
   (job, +at) = got
   +moved = Bool.not(same(prev, at))
   +final = GenJob.settled(stage_of(at)) || (U32.is_eq(stage_of(at), 10) && Bool.not(U32.is_zero((dump_of(o) .&. 3 : U32))))
   do IO<Stepped>:
     print_if(times_of(o) && moved && U32.is_ne(stage_of(prev), 9), stage_line(seed, prev, Nat.sub(now, since)))
-    decided(final, job, at, Bool.pick(Nat, moved, now, since), seed, o, Nat.sub(now, start))
+    decided(build, final, job, at, Bool.pick(Nat, moved, now, since), seed, o, Nat.sub(now, start))
 
-def job_of(caves: Bool, +seed: U32, +o: Options) -> GenJob.Job:
+def job_of(+build: Builds.Build, caves: Bool, +seed: U32, +o: Options) -> GenJob.Job:
   match caves:
     case True{}:
       match o:
         case Options{+windows, _, _, _, _, +draws}:
-          GenJob.start_caves(seed, windows, draws, False{})
+          GenJob.start_caves(build, seed, windows, draws, False{})
     case False{}:
-      GenJob.start(seed, platform_of(o), False{})
+      GenJob.start(build, seed, platform_of(o), False{})
 
-def drive(fuel: Nat, st: Stepped, +seed: U32, +o: Options, +start: Nat) -> IO(Unit):
+def drive(+build: Builds.Build, fuel: Nat, st: Stepped, +seed: U32, +o: Options, +start: Nat) -> IO(Unit):
   match fuel:
     case 0n:
       IO.print("gen: out of fuel")
@@ -251,20 +252,20 @@ def drive(fuel: Nat, st: Stepped, +seed: U32, +o: Options, +start: Nat) -> IO(Un
         case Going{Drive{job, +at, +since}}:
           do IO<Unit>:
             +now : Nat <- IO.now()
-            next : Stepped <- stepped(GenJob.stage(job), seed, o, at, since, now, start)
-            drive(f, next, seed, o, start)
+            next : Stepped <- stepped(build, GenJob.stage(job), seed, o, at, since, now, start)
+            drive(build, f, next, seed, o, start)
 
 # Generates one seed and prints its lines (KK passes from GenLayout.solve: native or kk.bend).
-def seed(+seed: U32, +o: Options) -> IO(Unit):
+def seed(+build: Builds.Build, +seed: U32, +o: Options) -> IO(Unit):
   do IO<Unit>:
     +start : Nat <- IO.now()
-    drive(8192n, Going{Drive{job_of(caves_of(o), seed, o), GenJob.Where{9, 0}, start}}, seed, o, start)
+    drive(build, 8192n, Going{Drive{job_of(build, caves_of(o), seed, o), GenJob.Where{9, 0}, start}}, seed, o, start)
 
-def seeds(n: Nat, +from: U32, +o: Options) -> IO(Unit):
+def seeds(+build: Builds.Build, n: Nat, +from: U32, +o: Options) -> IO(Unit):
   match n:
     case 0n:
       IO.pure(Unit, Unit{})
     case 1n+p:
       do IO<Unit>:
-        seed(from, o)
-        seeds(p, (from + 1 : U32), o)
+        seed(build, from, o)
+        seeds(build, p, (from + 1 : U32), o)

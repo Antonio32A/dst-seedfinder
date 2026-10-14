@@ -7,20 +7,21 @@ import ./graph.bend as StoryGraph
 import ./order.bend as StoryOrder
 import ./nodes.bend as StoryNodes
 import ./background.bend as Background
+import ../data/builds.bend as Builds
 
 # Story:GenerateNodesForRegion with its two layout modes, LinkNodesByKeys (mainland) and RestrictNodesByKey (the moon
 # island), Story:_FindStartingTask, Story:GetRandomNodeFromTasks and Story:_AddPlayerStartNode. Task tables keyed by
 # task id (task_nodes / unusedTasks, usedTasks, unlockingNodes, candidateTasks) are replayed from their insertion
 # and deletion history (lua/table.bend) whenever they are traversed.
 
-def locks(+task: U32) -> List<&2, U32>:
-  Blob.drop(StoryCatalog.task_locks(task), 1)
+def locks(+build: Builds.Build, +task: U32) -> List<&2, U32>:
+  Blob.drop(StoryCatalog.task_locks(build, task), 1)
 
-def keys_given(+task: U32) -> List<&2, U32>:
-  Blob.drop(StoryCatalog.task_keys_given(task), 1)
+def keys_given(+build: Builds.Build, +task: U32) -> List<&2, U32>:
+  Blob.drop(StoryCatalog.task_keys_given(build, task), 1)
 
-def lock_keys(+lock: U32) -> List<&2, U32>:
-  Blob.drop(StoryCatalog.locks_keys(lock), 1)
+def lock_keys(+build: Builds.Build, +lock: U32) -> List<&2, U32>:
+  Blob.drop(StoryCatalog.locks_keys(build, lock), 1)
 
 def task_of(+s: StoryGraph.St, +g: U32) -> U32:
   StoryGraph.gf(s, g, StoryGraph.g_part())
@@ -35,12 +36,12 @@ def any_in(xs: List<&2, U32>, +set: List<&2, U32>) -> Bool:
     case Con{+x, rest}:
       StoryOrder.contains(set, x) || any_in(rest, set)
 
-def all_unlocked(ls: List<&2, U32>, +keys: List<&2, U32>) -> Bool:
+def all_unlocked(+build: Builds.Build, ls: List<&2, U32>, +keys: List<&2, U32>) -> Bool:
   match ls:
     case Nil{}:
       True{}
     case Con{+lock, rest}:
-      any_in(lock_keys(lock), keys) && all_unlocked(rest, keys)
+      any_in(lock_keys(build, lock), keys) && all_unlocked(build, rest, keys)
 
 # key << 8 | graph entries: the task graphs holding each available key, in insertion order.
 def holders_of(holders: List<&2, U32>, +key: U32) -> List<&2, U32>:
@@ -59,26 +60,26 @@ def matching_holders(reqs: List<&2, U32>, +key: U32, +holders: List<&2, U32>) ->
       +tail = matching_holders(rest, key, holders)
       Bool.pick(List<&2, U32>, U32.is_eq(req, key), List.append(&2, U32, holders_of(holders, key), tail), tail)
 
-def lock_holders(+lock: U32, keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
+def lock_holders(+build: Builds.Build, +lock: U32, keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
   match keys:
     case Nil{}:
       Nil{}
     case Con{+key, rest}:
-      List.append(&2, U32, matching_holders(lock_keys(lock), key, holders), lock_holders(lock, rest, holders))
+      List.append(&2, U32, matching_holders(lock_keys(build, lock), key, holders), lock_holders(build, lock, rest, holders))
 
-def unlocking_inserts(ls: List<&2, U32>, +keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
+def unlocking_inserts(+build: Builds.Build, ls: List<&2, U32>, +keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
   match ls:
     case Nil{}:
       Nil{}
     case Con{+lock, rest}:
-      List.append(&2, U32, lock_holders(lock, keys, holders), unlocking_inserts(rest, keys, holders))
+      List.append(&2, U32, lock_holders(build, lock, keys, holders), unlocking_inserts(build, rest, keys, holders))
 
 # LinkNodesByKeys' search: the first task of `tasks` whose locks are all opened by the available keys, followed by its
 # unlockingNodes in pairs() order; empty when none is.
-def lock_order_of(+s: StoryGraph.St, +g: U32) -> List<&2, U32>:
-  StoryOrder.int_order(locks(task_of(s, g)))
+def lock_order_of(+build: Builds.Build, +s: StoryGraph.St, +g: U32) -> List<&2, U32>:
+  StoryOrder.int_order(locks(build, task_of(s, g)))
 
-def unlocked_task(tasks: List<&2, U32>, done: Bool, +s: StoryGraph.St, +keys: List<&2, U32>, +found: U32) -> U32:
+def unlocked_task(+build: Builds.Build, tasks: List<&2, U32>, done: Bool, +s: StoryGraph.St, +keys: List<&2, U32>, +found: U32) -> U32:
   match tasks:
     case Nil{}:
       found
@@ -87,19 +88,19 @@ def unlocked_task(tasks: List<&2, U32>, done: Bool, +s: StoryGraph.St, +keys: Li
         case True{}:
           found
         case False{}:
-          +hit = all_unlocked(lock_order_of(s, g), keys)
-          unlocked_task(rest, hit, s, keys, Bool.pick(U32, hit, g, StoryGraph.none()))
+          +hit = all_unlocked(build, lock_order_of(build, s, g), keys)
+          unlocked_task(build, rest, hit, s, keys, Bool.pick(U32, hit, g, StoryGraph.none()))
 
-def unlocked_list(none: Bool, +g: U32, +s: StoryGraph.St, +keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
+def unlocked_list(+build: Builds.Build, none: Bool, +g: U32, +s: StoryGraph.St, +keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
   match none:
     case True{}:
       Nil{}
     case False{}:
-      g <> StoryGraph.graph_table_order(s, unlocking_inserts(lock_order_of(s, g), keys, holders))
+      g <> StoryGraph.graph_table_order(s, unlocking_inserts(build, lock_order_of(build, s, g), keys, holders))
 
-def first_unlocked(tasks: List<&2, U32>, +s: StoryGraph.St, +keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
-  +g = unlocked_task(tasks, False{}, s, keys, StoryGraph.none())
-  unlocked_list(U32.is_eq(g, StoryGraph.none()), g, s, keys, holders)
+def first_unlocked(+build: Builds.Build, tasks: List<&2, U32>, +s: StoryGraph.St, +keys: List<&2, U32>, +holders: List<&2, U32>) -> List<&2, U32>:
+  +g = unlocked_task(build, tasks, False{}, s, keys, StoryGraph.none())
+  unlocked_list(build, U32.is_eq(g, StoryGraph.none()), g, s, keys, holders)
 
 def item_of(+order: List<&2, U32>, +d: StoryGraph.Got) -> StoryGraph.Got:
   match d:
@@ -152,45 +153,45 @@ def new_holders(given: List<&2, U32>, +holders: List<&2, U32>, +g: U32) -> List<
 type Linking is Data:
   Linking{st: StoryGraph.St, inserted: List<&2, U32>, removed: List<&2, U32>, keys: List<&2, U32>, holders: List<&2, U32>, last: U32, depth: U32}
 
-def linked(+l: Linking, +parent: U32, +current: U32, +s: StoryGraph.St) -> Linking:
+def linked(+build: Builds.Build, +l: Linking, +parent: U32, +current: U32, +s: StoryGraph.St) -> Linking:
   match l:
     case Linking{_, +inserted, +removed, +keys, +holders, _, +depth}:
-      +given = keys_given(task_of(s, current))
+      +given = keys_given(build, task_of(s, current))
       Linking{connected(s, parent, current, depth), inserted, List.append(&2, U32, removed, [current]), new_keys(given, keys),
         new_holders(given, holders, current), current, (depth + 1 : U32)}
 
-def linked_pick(+l: Linking, +parent: U32, +picked: StoryGraph.Got) -> Linking:
+def linked_pick(+build: Builds.Build, +l: Linking, +parent: U32, +picked: StoryGraph.Got) -> Linking:
   match picked:
     case StoryGraph.Got{+current, +s}:
-      linked(l, parent, current, s)
+      linked(build, l, parent, current, s)
 
-def linked_parent(+l: Linking, +current: U32, +picked: StoryGraph.Got) -> Linking:
+def linked_parent(+build: Builds.Build, +l: Linking, +current: U32, +picked: StoryGraph.Got) -> Linking:
   match picked:
     case StoryGraph.Got{+parent, +s}:
-      linked(l, parent, current, s)
+      linked(build, l, parent, current, s)
 
-def link_random(+l: Linking, +s: StoryGraph.St, +order: List<&2, U32>, +last: U32) -> Linking:
-  linked_pick(l, last, random_item(s, order))
+def link_random(+build: Builds.Build, +l: Linking, +s: StoryGraph.St, +order: List<&2, U32>, +last: U32) -> Linking:
+  linked_pick(build, l, last, random_item(s, order))
 
-def link_unlocked(found: List<&2, U32>, +l: Linking, +s: StoryGraph.St, +order: List<&2, U32>, +last: U32) -> Linking:
+def link_unlocked(+build: Builds.Build, found: List<&2, U32>, +l: Linking, +s: StoryGraph.St, +order: List<&2, U32>, +last: U32) -> Linking:
   match found:
     case Nil{}:
-      link_random(l, s, order, last)
+      link_random(build, l, s, order, last)
     case Con{+current, parents}:
-      linked_parent(l, current, random_item(s, parents))
+      linked_parent(build, l, current, random_item(s, parents))
 
-def link_step(+l: Linking) -> Linking:
+def link_step(+build: Builds.Build, +l: Linking) -> Linking:
   match l:
     case Linking{+s, +inserted, +removed, +keys, +holders, +last, _}:
       +order = unused_order(s, inserted, removed)
-      link_unlocked(first_unlocked(order, s, StoryOrder.int_order(keys), holders), l, s, order, last)
+      link_unlocked(build, first_unlocked(build, order, s, StoryOrder.int_order(keys), holders), l, s, order, last)
 
-def link_loop(n: Nat, +l: Linking) -> Linking:
+def link_loop(+build: Builds.Build, n: Nat, +l: Linking) -> Linking:
   match n:
     case 0n:
       l
     case 1n+p:
-      link_loop(p, link_step(l))
+      link_loop(build, p, link_step(build, l))
 
 def final_exit(+l: Linking) -> StoryGraph.Got:
   match l:
@@ -198,21 +199,21 @@ def final_exit(+l: Linking) -> StoryGraph.Got:
       StoryNodes.exit_node(s, last)
 
 # Story:LinkNodesByKeys(start, unused): returns lastNode:GetRandomNodeForExit().
-def link_by_keys(+s: StoryGraph.St, +start: U32, +inserted: List<&2, U32>) -> StoryGraph.Got:
-  +given = keys_given(task_of(s, start))
-  final_exit(link_loop(U32.to_nat((StoryOrder.count(inserted, 0) - 1 : U32)),
+def link_by_keys(+build: Builds.Build, +s: StoryGraph.St, +start: U32, +inserted: List<&2, U32>) -> StoryGraph.Got:
+  +given = keys_given(build, task_of(s, start))
+  final_exit(link_loop(build, U32.to_nat((StoryOrder.count(inserted, 0) - 1 : U32)),
     Linking{StoryGraph.set_gf(s, start, StoryGraph.g_depth(), 0), inserted, [start], new_keys(given, Nil{}), new_holders(given, Nil{}, start), start, 1}))
 
-def opens(+task: U32, +target: U32) -> Bool:
-  all_unlocked(locks(task), keys_given(target))
+def opens(+build: Builds.Build, +task: U32, +target: U32) -> Bool:
+  all_unlocked(build, locks(build, task), keys_given(build, target))
 
-def attach_nodes(+task: U32, +s: StoryGraph.St, used: List<&2, U32>) -> List<&2, U32>:
+def attach_nodes(+build: Builds.Build, +task: U32, +s: StoryGraph.St, used: List<&2, U32>) -> List<&2, U32>:
   match used:
     case Nil{}:
       Nil{}
     case Con{+target, rest}:
-      +tail = attach_nodes(task, s, rest)
-      Bool.pick(List<&2, U32>, opens(task, task_of(s, target)), target <> tail, tail)
+      +tail = attach_nodes(build, task, s, rest)
+      Bool.pick(List<&2, U32>, opens(build, task, task_of(s, target)), target <> tail, tail)
 
 type Restricting is Data:
   Restricting{st: StoryGraph.St, used: List<&2, U32>, inserted: List<&2, U32>, removed: List<&2, U32>, parent: U32, depth: U32, last: U32}
@@ -243,13 +244,13 @@ def with_st(+r: Restricting, +s: StoryGraph.St) -> Restricting:
 type Candidate is Data:
   Candidate{task: U32, parents: List<&2, U32>}
 
-def candidates(tasks: List<&2, U32>, +s: StoryGraph.St, +used: List<&2, U32>) -> List<&2, Candidate>:
+def candidates(+build: Builds.Build, tasks: List<&2, U32>, +s: StoryGraph.St, +used: List<&2, U32>) -> List<&2, Candidate>:
   match tasks:
     case Nil{}:
       Nil{}
     case Con{+g, rest}:
-      +tail = candidates(rest, s, used)
-      +parents = attach_nodes(task_of(s, g), s, used)
+      +tail = candidates(build, rest, s, used)
+      +parents = attach_nodes(build, task_of(s, g), s, used)
       Bool.pick(List<&2, Candidate>, List.is_empty(&2, U32, parents), tail, Candidate{g, StoryGraph.graph_table_order(s, parents)} <> tail)
 
 def candidate_tasks(cs: List<&2, Candidate>) -> List<&2, U32>:
@@ -289,18 +290,18 @@ def append_any(+cs: List<&2, Candidate>, +r: Restricting, +order: List<&2, U32>)
     case Con{_, _}:
       append_all(StoryGraph.graph_table_order(st_of(r), candidate_tasks(cs)), r, cs)
 
-def restrict_step(+r: Restricting) -> Restricting:
+def restrict_step(+build: Builds.Build, +r: Restricting) -> Restricting:
   match r:
     case Restricting{+s, _, +inserted, +removed, _, _, _}:
       +order = unused_order(s, inserted, removed)
-      append_any(candidates(order, s, used_order_of(r)), r, order)
+      append_any(candidates(build, order, s, used_order_of(r)), r, order)
 
 def remaining(+r: Restricting) -> U32:
   match r:
     case Restricting{_, _, +inserted, +removed, _, _, _}:
       (StoryOrder.count(inserted, 0) - StoryOrder.count(removed, 0) : U32)
 
-def restrict_loop(n: Nat, done: Bool, +r: Restricting) -> Restricting:
+def restrict_loop(+build: Builds.Build, n: Nat, done: Bool, +r: Restricting) -> Restricting:
   match n:
     case 0n:
       r
@@ -309,8 +310,8 @@ def restrict_loop(n: Nat, done: Bool, +r: Restricting) -> Restricting:
         case True{}:
           r
         case False{}:
-          +next = restrict_step(r)
-          restrict_loop(p, U32.is_zero(remaining(next)), next)
+          +next = restrict_step(build, r)
+          restrict_loop(build, p, U32.is_zero(remaining(next)), next)
 
 def last_exit(+r: Restricting) -> StoryGraph.Got:
   match r:
@@ -318,21 +319,21 @@ def last_exit(+r: Restricting) -> StoryGraph.Got:
       StoryNodes.exit_node(s, last)
 
 # Story:RestrictNodesByKey(start, unused): each round appends every unlockable task, cycling through its parents.
-def restrict_by_key(+s: StoryGraph.St, +start: U32, +inserted: List<&2, U32>) -> StoryGraph.Got:
-  last_exit(restrict_loop(U32.to_nat(StoryOrder.count(inserted, 0)), U32.is_eq(StoryOrder.count(inserted, 0), 1),
+def restrict_by_key(+build: Builds.Build, +s: StoryGraph.St, +start: U32, +inserted: List<&2, U32>) -> StoryGraph.Got:
+  last_exit(restrict_loop(build, U32.to_nat(StoryOrder.count(inserted, 0)), U32.is_eq(StoryOrder.count(inserted, 0), 1),
     Restricting{StoryGraph.set_gf(s, start, StoryGraph.g_depth(), 0), [start], inserted, [start], 1, 1, start}))
 
-def is_start_task(+s: StoryGraph.St, +g: U32) -> Bool:
-  +row = StoryCatalog.task_locks(task_of(s, g))
+def is_start_task(+build: Builds.Build, +s: StoryGraph.St, +g: U32) -> Bool:
+  +row = StoryCatalog.task_locks(build, task_of(s, g))
   U32.is_zero(Blob.at(row, 0)) || U32.is_eq(Blob.at(row, 1), Enums.lock_none())
 
-def start_tasks(order: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
+def start_tasks(+build: Builds.Build, order: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
   match order:
     case Nil{}:
       Nil{}
     case Con{+g, rest}:
-      +tail = start_tasks(rest, s)
-      Bool.pick(List<&2, U32>, is_start_task(s, g), g <> tail, tail)
+      +tail = start_tasks(build, rest, s)
+      Bool.pick(List<&2, U32>, is_start_task(build, s, g), g <> tail, tail)
 
 def start_within(inside: Bool, +k: U32, +s: StoryGraph.St, +starts: List<&2, U32>, +order: List<&2, U32>) -> StoryGraph.Got:
   match inside:
@@ -354,8 +355,8 @@ def start_of(empty: Bool, +s: StoryGraph.St, +starts: List<&2, U32>, +order: Lis
       start_picked(StoryGraph.upto(s, StoryOrder.count(starts, 0)), starts, order)
 
 # Story:_FindStartingTask: startTasks[math.random(#startTasks)], or GetRandomItem(task_nodes) when that is nil.
-def find_starting_task(+s: StoryGraph.St, +order: List<&2, U32>) -> StoryGraph.Got:
-  +starts = start_tasks(order, s)
+def find_starting_task(+build: Builds.Build, +s: StoryGraph.St, +order: List<&2, U32>) -> StoryGraph.Got:
+  +starts = start_tasks(build, order, s)
   start_of(List.is_empty(&2, U32, starts), s, starts, order)
 
 type Region is Data:
@@ -381,55 +382,55 @@ def region_final(+r: Region) -> U32:
     case Region{_, _, _, +final}:
       final
 
-def separated(split: Bool, +s: StoryGraph.St, +entrance: U32, +final: U32) -> StoryGraph.St:
+def separated(+build: Builds.Build, split: Bool, +s: StoryGraph.St, +entrance: U32, +final: U32) -> StoryGraph.St:
   match split:
     case True{}:
-      Background.separate_by_blanks(s, entrance, final)
+      Background.separate_by_blanks(build, s, entrance, final)
     case False{}:
       s
 
-def rolled(+roll: StoryGraph.Got, +entrance: U32, +final: U32) -> StoryGraph.St:
+def rolled(+build: Builds.Build, +roll: StoryGraph.Got, +entrance: U32, +final: U32) -> StoryGraph.St:
   match roll:
     case StoryGraph.Got{+r, +s}:
-      separated(U32.is_eq(r, 1), s, entrance, final)
+      separated(build, U32.is_eq(r, 1), s, entrance, final)
 
-def looped(different: Bool, +s: StoryGraph.St, +entrance: U32, +final: U32) -> StoryGraph.St:
+def looped(+build: Builds.Build, different: Bool, +s: StoryGraph.St, +entrance: U32, +final: U32) -> StoryGraph.St:
   match different:
     case True{}:
-      rolled(StoryGraph.below(s, StoryData.half_threshold()), entrance, final)
+      rolled(build, StoryGraph.below(s, StoryData.half_threshold(build)), entrance, final)
     case False{}:
       s
 
-def finished_at(+start: U32, +f: U32, +entrance: StoryGraph.Got) -> Region:
+def finished_at(+build: Builds.Build, +start: U32, +f: U32, +entrance: StoryGraph.Got) -> Region:
   match entrance:
     case StoryGraph.Got{+e, +s1}:
-      Region{looped(U32.is_ne(StoryGraph.nf(s1, e, StoryGraph.f_task()), StoryGraph.nf(s1, f, StoryGraph.f_task())), s1, e, f), start, e, f}
+      Region{looped(build, U32.is_ne(StoryGraph.nf(s1, e, StoryGraph.f_task()), StoryGraph.nf(s1, f, StoryGraph.f_task())), s1, e, f), start, e, f}
 
-def finished(+start: U32, +final: StoryGraph.Got) -> Region:
+def finished(+build: Builds.Build, +start: U32, +final: StoryGraph.Got) -> Region:
   match final:
     case StoryGraph.Got{+f, +s}:
-      finished_at(start, f, StoryNodes.entrance_node(s, start))
+      finished_at(build, start, f, StoryNodes.entrance_node(s, start))
 
-def laid_out(restricted: Bool, +s: StoryGraph.St, +start: U32, +graphs: List<&2, U32>) -> StoryGraph.Got:
+def laid_out(+build: Builds.Build, restricted: Bool, +s: StoryGraph.St, +start: U32, +graphs: List<&2, U32>) -> StoryGraph.Got:
   match restricted:
     case True{}:
       +before = StoryGraph.rng_of(s)
-      StoryGraph.returned_got(restrict_by_key(StoryGraph.say(s), start, graphs), StoryGraph.f_restrict_nodes_by_key(), before)
+      StoryGraph.returned_got(restrict_by_key(build, StoryGraph.say(s), start, graphs), StoryGraph.f_restrict_nodes_by_key(), before)
     case False{}:
       +before = StoryGraph.rng_of(s)
-      StoryGraph.returned_got(link_by_keys(StoryGraph.say(s), start, graphs), StoryGraph.f_link_nodes_by_keys(), before)
+      StoryGraph.returned_got(link_by_keys(build, StoryGraph.say(s), start, graphs), StoryGraph.f_link_nodes_by_keys(), before)
 
-def started(+found: StoryGraph.Got, +graphs: List<&2, U32>, +restricted: Bool) -> Region:
+def started(+build: Builds.Build, +found: StoryGraph.Got, +graphs: List<&2, U32>, +restricted: Bool) -> Region:
   match found:
     case StoryGraph.Got{+start, +s}:
-      finished(start, laid_out(restricted, StoryGraph.say(s), start, graphs))
+      finished(build, start, laid_out(build, restricted, StoryGraph.say(s), start, graphs))
 
-def generated(tasks: List<&2, U32>, +s: StoryGraph.St) -> StoryGraph.St:
+def generated(+build: Builds.Build, tasks: List<&2, U32>, +s: StoryGraph.St) -> StoryGraph.St:
   match tasks:
     case Nil{}:
       s
     case Con{+task, rest}:
-      generated(rest, StoryGraph.st(StoryNodes.generate_task(s, task)))
+      generated(build, rest, StoryGraph.st(StoryNodes.generate_task(build, s, task)))
 
 def graphs_after(tasks: List<&2, U32>, +first: U32) -> List<&2, U32>:
   match tasks:
@@ -440,14 +441,14 @@ def graphs_after(tasks: List<&2, U32>, +first: U32) -> List<&2, U32>:
 
 # Story:GenerateNodesForRegion(tasks in pairs() order, mode): every task's graph, the starting task, the layout, the
 # entrance node and the loop blank (math.random() < 0.5) when entrance and final node are in different tasks.
-def generate_region(+s: StoryGraph.St, +tasks: List<&2, U32>, +restricted: Bool) -> Region:
+def generate_region(+build: Builds.Build, +s: StoryGraph.St, +tasks: List<&2, U32>, +restricted: Bool) -> Region:
   +graphs = graphs_after(tasks, StoryGraph.get(s, StoryGraph.s_graphs()))
-  +made = generated(tasks, s)
-  started(find_starting_task(made, StoryGraph.graph_table_order(made, graphs)), graphs, restricted)
+  +made = generated(build, tasks, s)
+  started(build, find_starting_task(build, made, StoryGraph.graph_table_order(made, graphs)), graphs, restricted)
 
-def start_room(+room: U32) -> StoryGraph.Info:
-  StoryGraph.NodeData{StoryGraph.id_start(), 0, 0, room, StoryNodes.room_type(room), StoryCatalog.room_value(room), StoryNodes.room_itype(room), 0,
-    StoryNodes.optional(StoryCatalog.room_exit_weight(room)), StoryNodes.optional(StoryCatalog.room_entrance_weight(room)), StoryGraph.none(), room, 1, 0}
+def start_room(+build: Builds.Build, +room: U32) -> StoryGraph.Info:
+  StoryGraph.NodeData{StoryGraph.id_start(), 0, 0, room, StoryNodes.room_type(build, room), StoryCatalog.room_value(build, room), StoryNodes.room_itype(build, room), 0,
+    StoryNodes.optional(StoryCatalog.room_exit_weight(build, room)), StoryNodes.optional(StoryCatalog.room_entrance_weight(build, room)), StoryGraph.none(), room, 1, 0}
 
 def graph_of_task(order: List<&2, U32>, +s: StoryGraph.St, +task: U32) -> U32:
   match order:
@@ -462,32 +463,32 @@ def start_joined(+entrance: U32, +added: StoryGraph.Got) -> StoryGraph.St:
     case StoryGraph.Got{+n, +s}:
       StoryGraph.link(s, n, entrance)
 
-def start_linked(+s: StoryGraph.St, +g: U32, +room: U32, +entry: StoryGraph.Got) -> StoryGraph.St:
+def start_linked(+build: Builds.Build, +s: StoryGraph.St, +g: U32, +room: U32, +entry: StoryGraph.Got) -> StoryGraph.St:
   match entry:
     case StoryGraph.Got{+e, +es}:
-      start_joined(e, StoryGraph.add_node(StoryGraph.say(es), g, start_room(room)))
+      start_joined(e, StoryGraph.add_node(build, StoryGraph.say(es), g, start_room(build, room)))
 
-def start_in(found: Bool, +s: StoryGraph.St, +g: U32, +fallback: U32, +room: U32) -> StoryGraph.St:
+def start_in(+build: Builds.Build, found: Bool, +s: StoryGraph.St, +g: U32, +fallback: U32, +room: U32) -> StoryGraph.St:
   match found:
     case True{}:
-      start_linked(s, g, room, StoryNodes.entrance_node(StoryGraph.say(s), g))
+      start_linked(build, s, g, room, StoryNodes.entrance_node(StoryGraph.say(s), g))
     case False{}:
-      start_linked(s, fallback, room, StoryNodes.entrance_node(StoryGraph.say(s), fallback))
+      start_linked(build, s, fallback, room, StoryNodes.entrance_node(StoryGraph.say(s), fallback))
 
-def start_named(named: Bool, +s: StoryGraph.St, +task: U32, +fallback: U32, +room: U32) -> StoryGraph.St:
+def start_named(+build: Builds.Build, named: Bool, +s: StoryGraph.St, +task: U32, +fallback: U32, +room: U32) -> StoryGraph.St:
   match named:
     case True{}:
       +g = graph_of_task(StoryGraph.children_order(s), s, task)
-      start_in(U32.is_ne(g, StoryGraph.none()), StoryGraph.say(s), g, fallback, room)
+      start_in(build, U32.is_ne(g, StoryGraph.none()), StoryGraph.say(s), g, fallback, room)
     case False{}:
-      start_in(False{}, s, fallback, fallback, room)
+      start_in(build, False{}, s, fallback, fallback, room)
 
 # Story:_AddPlayerStartNode: valid_start_tasks[math.random(#valid_start_tasks)], the START node (the start_node room
 # with AddStartingSetPiece's countstaticlayouts) linked to that task's entrance pick.
-def start_drawn(+valid: List<&2, U32>, +fallback: U32, +room: U32, +d: StoryGraph.Got) -> StoryGraph.St:
+def start_drawn(+build: Builds.Build, +valid: List<&2, U32>, +fallback: U32, +room: U32, +d: StoryGraph.Got) -> StoryGraph.St:
   match d:
     case StoryGraph.Got{+k, +s}:
-      start_named((k <= StoryOrder.count(valid, 0) : U32), s, StoryOrder.nth_or_last(valid, (k - 1 : U32), 0), fallback, room)
+      start_named(build, (k <= StoryOrder.count(valid, 0) : U32), s, StoryOrder.nth_or_last(valid, (k - 1 : U32), 0), fallback, room)
 
-def add_start_node(+s: StoryGraph.St, +fallback: U32, +room: U32, +valid: List<&2, U32>) -> StoryGraph.St:
-  start_drawn(valid, fallback, room, StoryGraph.upto(s, StoryOrder.count(valid, 0)))
+def add_start_node(+build: Builds.Build, +s: StoryGraph.St, +fallback: U32, +room: U32, +valid: List<&2, U32>) -> StoryGraph.St:
+  start_drawn(build, valid, fallback, room, StoryGraph.upto(s, StoryOrder.count(valid, 0)))

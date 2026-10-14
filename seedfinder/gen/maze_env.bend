@@ -6,6 +6,7 @@ import ../worldsim/tiles/world.bend as TileWorld
 import ../populate/entities.bend as Entities
 import ../populate/names.bend as PopulateNames
 import ./graph.bend as GenGraph
+import ../data/builds.bend as Builds
 
 # What the caves' maze passes run on: the attempt's platform and prefab swap state, its story and graph, the map size and
 # the tile world, and the state they thread through (the tile map, the PCG32 stream, the entities added to `entities`
@@ -33,8 +34,8 @@ def built_with(+name: U32, +from: U32, +to: U32, +built: List<&2, Built>) -> Lis
   Bool.pick(List<&2, Built>, (from < to : U32), Built{name, from, to} <> built, built)
 
 # The string id of a prefab name.
-def prefab(+name: String) -> U32:
-  PopulateNames.string_id(name)
+def prefab(+build: Builds.Build, +name: String) -> U32:
+  PopulateNames.string_id(build, name)
 
 def windows_of(+e: Env) -> Bool:
   match e:

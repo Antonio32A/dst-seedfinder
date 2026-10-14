@@ -34,7 +34,7 @@ def fingerprint(key):
 def main():
     closures = ids.closures()
     m = blob.Module("closures", "scripts/gen/gen_closures.py",
-                    "Closure variants referenced by the data modules (bodies in scripts/gen/out/closures.json).",
+                    "Closure variants referenced by the data modules (bodies in scripts/gen/out/<build>/closures.json).",
                     imports=("./blob.bend as Blob",))
     m.comment("Categories: " + ", ".join(f"{i} {c}" for i, c in enumerate(CATEGORIES)) + ".",
               "Evaluated in this build: IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) is false, SIZE_VARIATION 3.")
@@ -56,7 +56,7 @@ def main():
     m.code(f"def closure_fingerprint(+id: U32) -> U32:\n  match id:\n{cases}\n    case _:\n      0")
     m.emit()
     if sys.argv[1:] != ["-"]:
-        (blob.GEN / "out" / "closures.json").write_text(json.dumps(
+        (blob.out_dir() / "closures.json").write_text(json.dumps(
             [{k: c[k] for k in ("id", "forest", "body", "sites", "contexts", "cave_sites", "cave_contexts", "upvalues",
                                 "globals")} for c in closures],
             indent=1) + "\n")

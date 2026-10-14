@@ -9,6 +9,7 @@ import ../worldsim/layout/space.bend as LayoutSpace
 import ./job.bend as GenJob
 import ./layout.bend as GenLayout
 import ./savedata.bend as SaveData
+import ../data/builds.bend as Builds
 
 # `seedfinder world dump`: generates the seeds a slot each, several at once, and writes each world's dump
 # (docs/world-dump.md), with one line per seed when it is written:
@@ -50,22 +51,22 @@ type Ctx is Data:
 
 def windows_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, +windows, _, _, _, _}, _}:
+    case Ctx{Args.Dump{_, _, +windows, _, _, _, _, _}, _}:
       windows
 
 def native_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, +native, _, _, _}, _}:
+    case Ctx{Args.Dump{_, _, _, +native, _, _, _, _}, _}:
       native
 
 def caves_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, _, _, _, +caves}, _}:
+    case Ctx{Args.Dump{_, _, _, _, _, _, +caves, _}, _}:
       caves
 
 def path_of(+ctx: Ctx, +seed: U32) -> String:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, _, +out, +folder, _}, _}:
+    case Ctx{Args.Dump{_, _, _, _, +out, +folder, _, _}, _}:
       Bool.pick(String, folder, out ++ "/" ++ U32.show(seed) ++ ".dstw", out)
 
 def instance_count(prefabs: List<&2, FilterDump.Prefab>, +n: U32) -> U32:
@@ -78,20 +79,20 @@ def instance_count(prefabs: List<&2, FilterDump.Prefab>, +n: U32) -> U32:
 def world_finished(+d: FilterDump.Dump, +seed: U32, +since: Nat) -> Slot:
   Finished{seed, 0, instance_count(FilterDump.prefabs(d), 0), FilterDump.bytes(d), since}
 
-def dumped(caves: Bool, +seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
+def dumped(+build: Builds.Build, caves: Bool, +seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match caves:
     case True{}:
-      SaveData.dump_caves(seed, windows, final)
+      SaveData.dump_caves(build, seed, windows, final)
     case False{}:
-      SaveData.dump(seed, windows, final)
+      SaveData.dump(build, seed, windows, final)
 
 def gave_up(+seed: U32, +ctx: Ctx) -> List<&2, U32>:
   FilterDump.bytes(FilterDump.GaveUp{seed, Bool.pick(U32, windows_of(ctx), 1, 2), Bool.to_u32(caves_of(ctx))})
 
-def finished(job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
+def finished(+build: Builds.Build, job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
   match job:
     case GenJob.JWorld{_, _, final}:
-      world_finished(dumped(caves_of(ctx), seed, windows_of(ctx), final), seed, since)
+      world_finished(dumped(build, caves_of(ctx), seed, windows_of(ctx), final), seed, since)
     case GenJob.JDone{_, _, GenJob.Crashed{}}:
       Finished{seed, 2, 0, Nil{}, since}
     case _:
@@ -105,66 +106,66 @@ def at_pass(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +since: N
     case None{}:
       Busy{seed, job, since}
 
-def settled_slot(settled: Bool, job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
+def settled_slot(+build: Builds.Build, settled: Bool, job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
   match settled:
     case True{}:
-      finished(job, seed, since, ctx)
+      finished(build, job, seed, since, ctx)
     case False{}:
       at_pass(GenJob.layout(job), seed, since)
 
-def parked(got: GenJob.Job & GenJob.Where, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
+def parked(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
   (job, +at) = got
   match at:
     case GenJob.Where{+stage, _}:
-      settled_slot(GenJob.settled(stage), job, seed, since, ctx)
+      settled_slot(build, GenJob.settled(stage), job, seed, since, ctx)
 
-def stepped_unless_laying(got: GenJob.Job & Maybe<&2, GenLayout.Layout>) -> GenJob.Job:
+def stepped_unless_laying(+build: Builds.Build, got: GenJob.Job & Maybe<&2, GenLayout.Layout>) -> GenJob.Job:
   (job, pass) = got
   match pass:
     case Some{_}:
       job
     case None{}:
-      GenJob.step(job)
+      GenJob.step(build, job)
 
-def moved_at(settled: Bool, native: Bool, job: GenJob.Job) -> GenJob.Job:
+def moved_at(+build: Builds.Build, settled: Bool, native: Bool, job: GenJob.Job) -> GenJob.Job:
   match settled native:
     case True{} _:
       job
     case False{} True{}:
-      stepped_unless_laying(GenJob.layout(job))
+      stepped_unless_laying(build, GenJob.layout(job))
     case False{} False{}:
-      GenJob.advance(job)
+      GenJob.advance(build, job)
 
 # A stage transition, or with kk.bend a whole KK pass; a job at a native KK pass, or decided, stays.
-def moved(+native: Bool, got: GenJob.Job & GenJob.Where) -> GenJob.Job:
+def moved(+build: Builds.Build, +native: Bool, got: GenJob.Job & GenJob.Where) -> GenJob.Job:
   (job, +at) = got
   match at:
     case GenJob.Where{+stage, _}:
-      moved_at(GenJob.settled(stage), native, job)
+      moved_at(build, GenJob.settled(stage), native, job)
 
 def rush_steps() -> Nat:
   64n
 
-def rushed(fuel: Nat, job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
+def rushed(+build: Builds.Build, fuel: Nat, job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
   match fuel:
     case 0n:
-      parked(GenJob.stage(job), seed, since, ctx)
+      parked(build, GenJob.stage(job), seed, since, ctx)
     case 1n+f:
-      rushed(f, moved(native_of(ctx), GenJob.stage(job)), seed, since, ctx)
+      rushed(build, f, moved(build, native_of(ctx), GenJob.stage(job)), seed, since, ctx)
 
-def work(slot: Slot, +ctx: Ctx) -> Slot:
+def work(+build: Builds.Build, slot: Slot, +ctx: Ctx) -> Slot:
   match slot:
     case Busy{+seed, job, +since}:
-      rushed(rush_steps(), job, seed, since, ctx)
+      rushed(build, rush_steps(), job, seed, since, ctx)
     case other:
       other
 
-def worked_all(s: Slots, +ctx: Ctx) -> Slots:
+def worked_all(+build: Builds.Build, s: Slots, +ctx: Ctx) -> Slots:
   match s:
     case Leaf{slot}:
-      Leaf{work(slot, ctx)}
+      Leaf{work(build, slot, ctx)}
     case Fork{a, b}:
-      x y = worked_all(a, ctx) worked_all(b, ctx)
+      x y = worked_all(build, a, ctx) worked_all(build, b, ctx)
       Fork{x, y}
 
 def split_loop(n: Nat, xs: List<&1, Slot>, acc: List<&1, Slot>) -> Split:
@@ -229,7 +230,7 @@ def launched(xs: List<&1, Slot>, +ctx: Ctx, acc: List<&1, Slot>) -> IO(List<&1, 
         case other:
           launched(rest, ctx, other <> acc)
 
-def joined(xs: List<&1, Slot>, acc: List<&1, Slot>) -> IO(List<&1, Slot>):
+def joined(+build: Builds.Build, xs: List<&1, Slot>, acc: List<&1, Slot>) -> IO(List<&1, Slot>):
   match xs:
     case Nil{}:
       IO.pure(List<&1, Slot>, List.reverse(&1, Slot, acc))
@@ -238,15 +239,15 @@ def joined(xs: List<&1, Slot>, acc: List<&1, Slot>) -> IO(List<&1, Slot>):
         case Waiting{+seed, job, laid, +since}:
           do IO<List<&1, Slot>>:
             +ps : List<&2, LayoutSpace.Vec> <- IO.join(List<&2, LayoutSpace.Vec>, laid)
-            joined(rest, Busy{seed, GenJob.laid(job, ps), since} <> acc)
+            joined(build, rest, Busy{seed, GenJob.laid(build, job, ps), since} <> acc)
         case other:
-          joined(rest, other <> acc)
+          joined(build, rest, other <> acc)
 
-def joined_fed(fed: Fed) -> IO(Fed):
+def joined_fed(+build: Builds.Build, fed: Fed) -> IO(Fed):
   match fed:
     case Fed{slots, +feed}:
       do IO<Fed>:
-        xs : List<&1, Slot> <- joined(slots, Nil{})
+        xs : List<&1, Slot> <- joined(build, slots, Nil{})
         return Fed{xs, feed}
 
 def outcome_name(+outcome: U32) -> String:
@@ -288,17 +289,17 @@ def written_dump(+seed: U32, +outcome: U32, +count: U32, bytes: List<&2, U32>, +
     IO.print(line(seed, ctx, outcome, count, Nat.sub(now, since)))
     reported(r, feed)
 
-def started_job(caves: Bool, +seed: U32, +windows: Bool) -> GenJob.Job:
+def started_job(+build: Builds.Build, caves: Bool, +seed: U32, +windows: Bool) -> GenJob.Job:
   match caves:
     case True{}:
-      GenJob.start_caves(seed, windows, 0, True{})
+      GenJob.start_caves(build, seed, windows, 0, True{})
     case False{}:
-      GenJob.start(seed, windows, True{})
+      GenJob.start(build, seed, windows, True{})
 
-def refilled(+feed: Feed, +ctx: Ctx, +now: Nat) -> Slot:
+def refilled(+build: Builds.Build, +feed: Feed, +ctx: Ctx, +now: Nat) -> Slot:
   match feed:
     case Feed{+next, +left, _, _}:
-      Bool.pick(Slot, Nat.is_eq(left, 0n), Free{}, Busy{next, started_job(caves_of(ctx), next, windows_of(ctx)), now})
+      Bool.pick(Slot, Nat.is_eq(left, 0n), Free{}, Busy{next, started_job(build, caves_of(ctx), next, windows_of(ctx)), now})
 
 def fed_after(+feed: Feed) -> Feed:
   match feed:
@@ -311,7 +312,7 @@ def busy_one(+feed: Feed) -> Feed:
       Feed{next, left, (busy + 1 : U32), failed}
 
 # Writes the finished dumps (with their lines) and gives the free slots the next seeds, counting the slots in use.
-def written(xs: List<&1, Slot>, +feed: Feed, +ctx: Ctx, acc: List<&1, Slot>) -> IO(Fed):
+def written(+build: Builds.Build, xs: List<&1, Slot>, +feed: Feed, +ctx: Ctx, acc: List<&1, Slot>) -> IO(Fed):
   match xs:
     case Nil{}:
       IO.pure(Fed, Fed{List.reverse(&1, Slot, acc), feed})
@@ -321,13 +322,13 @@ def written(xs: List<&1, Slot>, +feed: Feed, +ctx: Ctx, acc: List<&1, Slot>) -> 
           do IO<Fed>:
             +after : Feed <- written_dump(seed, outcome, count, bytes, since, feed, ctx)
             +now : Nat <- IO.now()
-            written(rest, fed_after(after), ctx, refilled(after, ctx, now) <> acc)
+            written(build, rest, fed_after(after), ctx, refilled(build, after, ctx, now) <> acc)
         case Free{}:
           do IO<Fed>:
             +now : Nat <- IO.now()
-            written(rest, fed_after(feed), ctx, refilled(feed, ctx, now) <> acc)
+            written(build, rest, fed_after(feed), ctx, refilled(build, feed, ctx, now) <> acc)
         case other:
-          written(rest, busy_one(feed), ctx, other <> acc)
+          written(build, rest, busy_one(feed), ctx, other <> acc)
 
 def restarted(+feed: Feed) -> Feed:
   match feed:
@@ -340,7 +341,7 @@ def ended(+feed: Feed) -> IO(Unit):
       Bool.pick(IO(Unit), U32.is_zero(failed), IO.pure(Unit, Unit{}),
         IO.die(Unit, 1, "dump: " ++ U32.show(failed) ++ " seeds have no dump (crashed, or the dump could not be written)"))
 
-def rounds(fuel: Nat, fed: Fed, +ctx: Ctx) -> IO(Unit):
+def rounds(+build: Builds.Build, fuel: Nat, fed: Fed, +ctx: Ctx) -> IO(Unit):
   match fuel fed:
     case 0n Fed{_, +feed}:
       ended(feed)
@@ -350,11 +351,11 @@ def rounds(fuel: Nat, fed: Fed, +ctx: Ctx) -> IO(Unit):
       match ctx:
         case Ctx{_, +n}:
           do IO<Unit>:
-            laying : List<&1, Slot> <- launched(flat(worked_all(tree_of(slots, n), ctx)), ctx, Nil{})
+            laying : List<&1, Slot> <- launched(flat(worked_all(build, tree_of(slots, n), ctx)), ctx, Nil{})
             IO.sleep(0)
-            after : Fed <- written(laying, restarted(feed), ctx, Nil{})
-            next : Fed <- joined_fed(after)
-            rounds(k, next, ctx)
+            after : Fed <- written(build, laying, restarted(feed), ctx, Nil{})
+            next : Fed <- joined_fed(build, after)
+            rounds(build, k, next, ctx)
 
 def free_slots(n: Nat) -> List<&1, Slot>:
   match n:
@@ -372,13 +373,14 @@ def slots_for(+threads: U32, +total: Nat) -> Nat:
 
 def started(+q: Args.Dump, +threads: U32) -> IO(Unit):
   match q:
-    case Args.Dump{+from, +total, +windows, +native, +out, +folder, +caves}:
-      +ctx = {Ctx{Args.Dump{from, total, windows, native, out, folder, caves}, slots_for(threads, total)} : Ctx}
+    case Args.Dump{+from, +total, +windows, +native, +out, +folder, +caves, +build}:
+      +ctx = {Ctx{Args.Dump{from, total, windows, native, out, folder, caves, build}, slots_for(threads, total)} : Ctx}
       do IO<Unit>:
-        first : Fed <- written(free_slots(slots_for(threads, total)), Feed{from, total, 0, 0}, ctx, Nil{})
-        rounds(round_limit(), first, ctx)
+        first : Fed <- written(build, free_slots(slots_for(threads, total)), Feed{from, total, 0, 0}, ctx, Nil{})
+        rounds(build, round_limit(), first, ctx)
 
-# world dump SEED [TO] [--platform windows|linux] [--kk native|bend] -o PATH (args start with "dump").
+# world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] -o PATH (args
+# start with "dump").
 def run(+args: List<&2, String>) -> IO(Unit):
   do IO<Unit>:
     +q : Args.Dump <- IO.pass(Args.Dump, Args.dump_of(args))

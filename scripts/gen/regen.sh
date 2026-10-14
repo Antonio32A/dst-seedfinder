@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # usage: regen.sh [--check]
-# Regenerates every generated module in seedfinder/data/ and config.schema.json (the only way they may change).
-# The extractors first write sidecars from the real game scripts into scripts/gen/out/ (lua-dst, the host C++
-# toolchain and the game binaries), then the generators write seedfinder/data/*.bend from them. Needs scripts/setup.sh.
-# --check regenerates into a temp dir and fails if any of them (or a sidecar present in scripts/gen/out/) differs.
+# Regenerates seedfinder/data/, website/lib/config/game-builds.ts, config.schema.json and website/lib/catalog/cave-vocab.ts
+# (the only way they may change) for every game build of builds.json. For each build B the extractors write sidecars
+# from B's game files (build/deps/builds/B/, filled by scripts/setup.sh) into scripts/gen/out/B/ (lua-dst, the host C++
+# toolchain and the game binaries), and the generators stage B's modules in build/gen/data/B/. gen_builds.py then
+# writes seedfinder/data/ from the staged modules: the ones every build shares, the per-build copies in b<build>/ with
+# their dispatch modules, and builds.bend. The schema and cave-vocab.ts come from the latest build.
+# --check regenerates into a temp dir and fails if anything differs: a sidecar present in scripts/gen/out/B/, any file
+# of seedfinder/data/ (stray or missing ones too), game-builds.ts, the schema or cave-vocab.ts.
 set -euo pipefail
 
 root="$(cd "$(dirname "$(realpath "$0")")/../.." && pwd)"
@@ -11,22 +15,29 @@ check="${1:-}"
 cd "$root"
 
 gen=scripts/gen
-build=build/gen
 lua=scripts/harness/bin/lua-dst
 lua_src="${LUA_SRC:-build/deps/lua-5.1.5/src}"
 boost="${BOOST_DIR:-build/deps/boost_1_52_0}"
 [[ -x "$lua" ]] || scripts/harness/build.sh
-mkdir -p "$build" "$gen/out"
+mkdir -p build/gen "$gen/out"
 status=0
 
 out="$gen/out"
+staging=build/gen/data
+target=.
 if [[ "$check" == "--check" ]]; then
-    out="$(mktemp -d)"
-    trap 'rm -rf "$out"' EXIT
+    temp="$(mktemp -d)"
+    trap 'rm -rf "$temp"' EXIT
+    out="$temp/out"
+    staging="$temp/data"
+    target="$temp/root"
 fi
 
-clang -O2 -shared -fPIC -I"$lua_src" -o "$build/tablelayout.so" "$gen/lib/tablelayout.c"
-clang++ -O0 -std=c++17 -ffp-contract=off -w -isystem "$boost" -o "$build/gen_constants" "$gen/gen_constants.cpp"
+clang -O2 -shared -fPIC -I"$lua_src" -o build/gen/tablelayout.so "$gen/lib/tablelayout.c"
+clang++ -O0 -std=c++17 -ffp-contract=off -w -isystem "$boost" -o build/gen/gen_constants "$gen/gen_constants.cpp"
+
+read -r latest builds < <(python3 -c 'import json, sys; r = json.load(open(sys.argv[1]))
+print(r["latest"], *(b["number"] for b in r["builds"]))' builds.json)
 
 sidecars=(
     "story.json:$lua $gen/extract_story.lua"
@@ -34,7 +45,7 @@ sidecars=(
     "layouts.json:$lua $gen/extract_layouts.lua"
     "ocean.json:$lua $gen/extract_ocean.lua"
     "constants.json:$lua $gen/extract_constants.lua"
-    "constants_c.json:$build/gen_constants"
+    "constants_c.json:build/gen/gen_constants"
     "storygen.json:$lua $gen/extract_storygen.lua"
     "tiles.json:$lua $gen/extract_tiles.lua"
     "ocean_post.json:$lua $gen/extract_ocean_post.lua"
@@ -44,67 +55,73 @@ sidecars=(
     "layouts_caves.json:env GEN_SHARD=caves $lua $gen/extract_layouts.lua"
 )
 
-for entry in "${sidecars[@]}"; do
-    name="${entry%%:*}"
-    cmd="${entry#*:}"
-    (
-        ulimit -v 16000000
-        timeout 900 $cmd > "$out/$name"
-    )
-
-    if [[ "$check" != "--check" ]]; then
-        echo "wrote   $gen/out/$name"
-    elif [[ ! -f "$gen/out/$name" ]]; then
-        echo "new     $gen/out/$name"
-    elif cmp -s "$out/$name" "$gen/out/$name"; then
-        echo "ok      $gen/out/$name"
-    else
-        echo "STALE   $gen/out/$name ($cmd)"
-        status=1
-    fi
-done
-
 generators=(
-    "seedfinder/data/catalog.bend:$gen/gen_catalog.py"
-    "seedfinder/data/world_catalog.bend:$gen/gen_world_catalog.py"
-    "seedfinder/data/cave_catalog.bend:$gen/gen_cave_catalog.py"
-    "seedfinder/data/cave_story.bend:$gen/gen_cave_story.py"
-    "seedfinder/data/search_vocab.bend:$gen/gen_search_vocab.py"
-    "seedfinder/data/blob.bend:$gen/gen_blob.py"
-    "seedfinder/data/strings.bend:$gen/gen_strings.py"
-    "seedfinder/data/enums.bend:$gen/gen_enums.py"
-    "seedfinder/data/closures.bend:$gen/gen_closures.py"
-    "seedfinder/data/rooms.bend:$gen/gen_rooms.py"
-    "seedfinder/data/tasks.bend:$gen/gen_tasks.py"
-    "seedfinder/data/distribute.bend:$gen/gen_distribute.py"
-    "seedfinder/data/picks.bend:$gen/gen_distribute.py picks"
-    "seedfinder/data/layouts.bend:$gen/gen_layouts.py"
-    "seedfinder/data/layout_props.bend:$gen/gen_layouts.py props"
-    "seedfinder/data/ocean.bend:$gen/gen_ocean.py"
-    "seedfinder/data/ocean_convert.bend:$gen/gen_ocean_convert.py"
-    "seedfinder/data/constants.bend:$gen/gen_constants.py"
-    "seedfinder/data/story.bend:$gen/gen_story.py"
-    "seedfinder/data/tile_groups.bend:$gen/gen_tiles.py"
-    "seedfinder/data/populate.bend:$gen/gen_populate.py"
-    "seedfinder/data/ocean_post.bend:$gen/gen_ocean_post.py"
-    "seedfinder/data/pow.bend:$gen/gen_pow.py"
-    "seedfinder/data/powf.bend:$gen/gen_powf.py"
-    "seedfinder/data/gen_tags.bend:$gen/gen_gen.py"
-    "config.schema.json:$gen/gen_schema.py"
-    "website/lib/catalog/cave-vocab.ts:$gen/gen_cave_vocab.py"
+    gen_catalog.py gen_world_catalog.py gen_cave_catalog.py gen_cave_story.py gen_search_vocab.py gen_blob.py
+    gen_strings.py gen_enums.py gen_closures.py gen_rooms.py gen_tasks.py gen_distribute.py "gen_distribute.py picks"
+    gen_layouts.py "gen_layouts.py props" gen_ocean.py gen_ocean_convert.py gen_constants.py gen_story.py gen_tiles.py
+    gen_populate.py gen_ocean_post.py gen_pow.py gen_powf.py gen_gen.py
 )
 
-for entry in "${generators[@]}"; do
-    name="${entry%%:*}"
-    script="${entry#*:}"
+use_build() {
+    export GEN_BUILD="$1" GEN_GAME="build/deps/builds/$1" GEN_SCRIPTS="build/deps/builds/$1/scripts"
+    export GEN_OUT="$out/$1" GEN_DATA="$staging/$1"
+}
 
-    if [[ "$check" != "--check" ]]; then
-        GEN_OUT="$out" python3 $script
-        echo "wrote   $name ($script)"
-    elif GEN_OUT="$out" python3 $script - | cmp -s - "$name"; then
+for build in $builds; do
+    if [[ ! -f "build/deps/builds/$build/version.txt" ]]; then
+        echo "regen.sh: build/deps/builds/$build is missing: run DST_GAME=<that build's install> scripts/setup.sh" >&2
+        exit 1
+    fi
+    use_build "$build"
+    rm -rf "$GEN_DATA"
+    mkdir -p "$GEN_OUT" "$GEN_DATA"
+
+    for entry in "${sidecars[@]}"; do
+        (
+            ulimit -v 16000000
+            timeout 900 ${entry#*:} > "$GEN_OUT/${entry%%:*}"
+        )
+    done
+
+    for script in "${generators[@]}"; do
+        python3 $gen/$script
+    done
+
+    for file in "$GEN_OUT"/*; do
+        name="$gen/out/$build/$(basename "$file")"
+        if [[ "$check" != "--check" ]]; then
+            echo "wrote   $name"
+        elif [[ ! -f "$name" ]]; then
+            echo "new     $name"
+        elif cmp -s "$file" "$name"; then
+            echo "ok      $name"
+        else
+            echo "STALE   $name"
+            status=1
+        fi
+    done
+done
+
+python3 $gen/gen_builds.py --staging "$staging" --root "$target"
+use_build "$latest"
+outputs=(seedfinder/data website/lib/config/game-builds.ts config.schema.json website/lib/catalog/cave-vocab.ts)
+
+if [[ "$check" != "--check" ]]; then
+    python3 $gen/gen_schema.py
+    python3 $gen/gen_cave_vocab.py
+    printf 'wrote   %s\n' "${outputs[@]}"
+    exit $status
+fi
+
+mkdir -p "$target/website/lib/catalog"
+python3 $gen/gen_schema.py - > "$target/config.schema.json"
+python3 $gen/gen_cave_vocab.py - > "$target/website/lib/catalog/cave-vocab.ts"
+for name in "${outputs[@]}"; do
+    if diff -r "$target/$name" "$name" > "$temp/diff"; then
         echo "ok      $name"
     else
-        echo "STALE   $name ($script)"
+        echo "STALE   $name"
+        grep -E '^(Only in|diff )' "$temp/diff" | sed 's/^/          /' || true
         status=1
     fi
 done

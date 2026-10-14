@@ -22,9 +22,10 @@ import ../ocean/convert.bend as OceanConvert
 import ../ocean/convert_noise.bend as ConvertNoise
 import ../ocean/convert_blend.bend as ConvertBlend
 import ../populate/pins.bend as PopulatePins
+import ../data/builds.bend as Builds
 
 # Golden values: the emulator's C++ (SameTask verbatim from worldsim/src/tiles.cpp, FNV-1a as the oracle sink
-# computes it) and the game Lua (tile ranges, NoiseTileFunctions via gen/out/*.json; the layout laws:
+# computes it) and the game Lua (tile ranges, NoiseTileFunctions via gen/out/<build>/*.json; the layout laws:
 # object_layout.ConvertLayoutToEntitylist under the harness).
 
 law grid_fnv_header_cell:
@@ -59,13 +60,13 @@ def tiles_same_task():
   {==}
 
 law layout_default_start:
-  {PopulateLayout.check_code(PopulateLayout.convert(0, 25, Pcg.at_counter(1, 0)), 1) == 2583074900 : U32}
+  {PopulateLayout.check_code(PopulateLayout.convert(Builds.Build{756039}, 0, 25, Pcg.at_counter(1, 0)), 1) == 2583074900 : U32}
 
 def layout_default_start():
   {==}
 
 law layout_mushroom_ring:
-  {PopulateLayout.check_code(PopulateLayout.convert(0, 62, Pcg.at_counter(1, 0)), 1) == 3519284001 : U32}
+  {PopulateLayout.check_code(PopulateLayout.convert(Builds.Build{756039}, 0, 62, Pcg.at_counter(1, 0)), 1) == 3519284001 : U32}
 
 def layout_mushroom_ring():
   {==}
@@ -107,13 +108,13 @@ def ocean_dock_two_thirds():
   {==}
 
 law ocean_bunch_ground:
-  {F64Repr.to_i32(Bunches.ground_of(F64Repr.F64{1081109995, 2233382994}, 425)) == 278 : U32}
+  {F64Repr.to_i32(Bunches.ground_of(Builds.Build{756039}, F64Repr.F64{1081109995, 2233382994}, 425)) == 278 : U32}
 
 def ocean_bunch_ground():
   {==}
 
 law ocean_wormhole_pairs:
-  {OceanEnts.count(OceanPost.swap_wormholes(OceanPostData.wormhole_prefab(), [OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.one(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.two(), F64Repr.zero(), 0, 0, 0}]), OceanPostData.wormhole_prefab()) == 2 : U32}
+  {OceanEnts.count(OceanPost.swap_wormholes(Builds.Build{756039}, OceanPostData.wormhole_prefab(Builds.Build{756039}), [OceanEnts.Ent{OceanPostData.wormhole_marker(Builds.Build{756039}), F64Repr.zero(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(Builds.Build{756039}), F64Repr.one(), F64Repr.zero(), 0, 0, 0}, OceanEnts.Ent{OceanPostData.wormhole_marker(Builds.Build{756039}), F64Repr.two(), F64Repr.zero(), 0, 0, 0}]), OceanPostData.wormhole_prefab(Builds.Build{756039})) == 2 : U32}
 
 def ocean_wormhole_pairs():
   {==}
@@ -185,13 +186,13 @@ def tiles_noise_eighths_mid():
 # The closures that counts.bend and layout.bend port by hand are found by id, and an unknown id counts 0: each port is
 # pinned to the fingerprint of the game code it ports, so a regeneration that renumbers or edits a closure fails here.
 law ported_closures_line_up:
-  {PopulatePins.line_up(PopulatePins.ported()) == True{} : Bool}
+  {PopulatePins.line_up(Builds.Build{756039}, PopulatePins.ported()) == True{} : Bool}
 
 def ported_closures_line_up():
   {==}
 
 law ported_closures_are_all_pinned:
-  {PopulatePins.every_ported_closure_is_pinned() == True{} : Bool}
+  {PopulatePins.every_ported_closure_is_pinned(Builds.Build{756039}) == True{} : Bool}
 
 def ported_closures_are_all_pinned():
   {==}

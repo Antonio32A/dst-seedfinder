@@ -2,19 +2,20 @@
 
 import { useState } from "react";
 import WorldSection from "@/components/criteria/world/WorldSection";
-import { MAX_FILTER_NAME_LENGTH, optionName, type Shard } from "@/lib/config/seedfinder-config";
+import { MAX_FILTER_NAME_LENGTH, optionName } from "@/lib/config/seedfinder-config";
 import type { WorldFilter } from "@/lib/criteria/search-state";
+import type { WorldKind } from "@/lib/criteria/world-rules";
 
 interface WorldFilterCardProps {
     filter: WorldFilter;
-    shard: Shard;
+    world: WorldKind;
     index: number;
     total: number;
     onChange: (filter: WorldFilter) => void;
     onRemove: () => void;
 }
 
-export default function WorldFilterCard({ filter, shard, index, total, onChange, onRemove }: WorldFilterCardProps) {
+export default function WorldFilterCard({ filter, world, index, total, onChange, onRemove }: WorldFilterCardProps) {
     const [renaming, setRenaming] = useState(false);
     const name = optionName(filter, index);
 
@@ -56,7 +57,7 @@ export default function WorldFilterCard({ filter, shard, index, total, onChange,
                             )}
                         </div>
                 )}
-                <WorldSection shard={shard} rows={filter} onChange={(rows) => onChange({ ...filter, ...rows })}/>
+                <WorldSection world={world} rows={filter} onChange={(rows) => onChange({ ...filter, ...rows })}/>
             </section>
     );
 }

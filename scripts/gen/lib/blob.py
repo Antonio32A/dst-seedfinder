@@ -24,14 +24,53 @@ NONE = UNIT_LIMIT - 1
 ROOT = Path(__file__).resolve().parents[3]
 GEN = ROOT / "scripts" / "gen"
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import registry  # noqa: E402
+
+
+def build():
+    """The game build being generated: GEN_BUILD, the latest registered build by default."""
+    return int(os.environ.get("GEN_BUILD", registry.latest()))
+
+
+def game_dir():
+    """The build's game files, version.txt and bin64/ (GEN_GAME; scripts/setup.sh fills build/deps/builds/<build>/)."""
+    return Path(os.environ.get("GEN_GAME", ROOT / "build" / "deps" / "builds" / str(build())))
+
+
+def scripts_dir():
+    """The build's game Lua scripts (GEN_SCRIPTS)."""
+    return Path(os.environ.get("GEN_SCRIPTS", game_dir() / "scripts"))
+
 
 def out_dir():
-    """Directory of the extractor sidecars (GEN_OUT overrides it, as regen.sh --check does)."""
-    return Path(os.environ.get("GEN_OUT", GEN / "out"))
+    """Directory of the build's extractor sidecars (GEN_OUT overrides it, as regen.sh --check does)."""
+    return Path(os.environ.get("GEN_OUT", GEN / "out" / str(build())))
+
+
+def data_dir():
+    """Staging directory of the build's generated modules (GEN_DATA); gen_builds.py makes seedfinder/data from it."""
+    return Path(os.environ.get("GEN_DATA", ROOT / "build" / "gen" / "data" / str(build())))
 
 
 def sidecar(name):
     return json.loads((out_dir() / name).read_text())
+
+
+def catalog(shard):
+    """The catalog JSON of `shard` (forest or caves) for the build: GEN_CATALOG_FOREST / GEN_CATALOG_CAVES, else the
+    one builds.json names."""
+    path = os.environ.get(f"GEN_CATALOG_{shard.upper()}") or registry.catalog_path(build(), shard)
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def write_module(name, text):
+    """Writes the generated module <name>.bend to the staging directory, or prints it with the single argument `-`."""
+    if sys.argv[1:] == ["-"]:
+        sys.stdout.write(text)
+        return
+    data_dir().mkdir(parents=True, exist_ok=True)
+    (data_dir() / f"{name}.bend").write_text(text, encoding="utf-8")
 
 
 def unit(v):
@@ -133,12 +172,8 @@ class Module:
         return "\n".join(lines).rstrip("\n") + "\n"
 
     def emit(self):
-        """Writes data/<name>.bend, or prints it with the single argument `-`."""
-        text = self.text()
-        if sys.argv[1:] == ["-"]:
-            sys.stdout.write(text)
-            return
-        (ROOT / "seedfinder" / "data" / f"{self.name}.bend").write_text(text)
+        """Writes <name>.bend to the staging directory, or prints it with the single argument `-`."""
+        write_module(self.name, self.text())
 
 
 def parse_module_tables(text):

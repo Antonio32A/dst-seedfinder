@@ -1,9 +1,9 @@
 import os
 import unittest
 
-from minimap_icons import LUA, ROOT, parse_icons, run_extractor
+from minimap_icons import LUA, parse_icons, registry, run_extractor, scripts_dir
 
-GAME_SCRIPTS = os.path.join(ROOT, "build/deps/game-scripts")
+BUILD = registry.latest()
 
 
 class ParseIcons(unittest.TestCase):
@@ -12,11 +12,11 @@ class ParseIcons(unittest.TestCase):
             parse_icons('{"a": {"icon": "../a.png"}}')
 
 
-@unittest.skipUnless(os.path.isdir(GAME_SCRIPTS) and os.path.exists(LUA), "needs scripts/setup.sh")
+@unittest.skipUnless(os.path.isdir(scripts_dir(BUILD)) and os.path.exists(LUA), "needs scripts/setup.sh")
 class ExtractorOnTheGameScripts(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.table = run_extractor()
+        cls.table = run_extractor(BUILD)
 
     def test_records_the_last_icon_priority_and_draw_over_fog_flag_the_constructor_set(self):
         self.assertEqual(self.table["antlion"], {"icon": "antlion.png", "priority": 1})

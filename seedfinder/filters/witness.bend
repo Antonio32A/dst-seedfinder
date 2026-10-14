@@ -6,6 +6,7 @@ import ../f64/cmp.bend as F64Cmp
 import ./walk.bend as Walk
 import ./world.bend as FilterWorld
 import ../data/search_vocab.bend as SearchVocab
+import ../data/builds.bend as Builds
 
 # Witness JSON (docs/config.md section 8), without spaces.
 
@@ -59,15 +60,15 @@ def length_text(+l: Walk.Length) -> String:
   thousandths_text(Walk.thousandths(l))
 
 # "prefab", "index", "x", "z" of an instance, without the braces.
-def instance_fields(+i: FilterWorld.Inst) -> String:
+def instance_fields(+build: Builds.Build, +i: FilterWorld.Inst) -> String:
   match i:
     case FilterWorld.Inst{+prefab, +index, _, _, +xk, +zk, +flags}:
-      "\"prefab\":\"" ++ SearchVocab.prefab_name(prefab) ++ "\",\"index\":" ++ U32.show(index) ++ ",\"x\":"
+      "\"prefab\":\"" ++ SearchVocab.prefab_name(build, prefab) ++ "\",\"index\":" ++ U32.show(index) ++ ",\"x\":"
         ++ coordinate(xk, U32.is_eq((flags .&. 1 : U32), 1)) ++ ",\"z\":" ++ coordinate(zk, U32.is_eq((flags .&. 2 : U32), 2))
 
 # {"prefab", "index", "x", "z"} of an instance.
-def instance(+i: FilterWorld.Inst) -> String:
-  "{" ++ instance_fields(i) ++ "}"
+def instance(+build: Builds.Build, +i: FilterWorld.Inst) -> String:
+  "{" ++ instance_fields(build, i) ++ "}"
 
 def signed_text(+v: U32) -> String:
   Bool.pick(String, is_negative(v), "-" ++ U32.show(magnitude(v)), U32.show(v))

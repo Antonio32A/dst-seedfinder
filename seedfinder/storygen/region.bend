@@ -13,6 +13,7 @@ import ./link.bend as StoryLink
 import ./background.bend as Background
 import ./setpieces.bend as StorySetpieces
 import ./plan.bend as StoryPlan
+import ../data/builds.bend as Builds
 
 # Story:AddRegionsToMainland for the moon island: FindMainlandNodesForNewRegion (the geometry-dependent choice of the
 # two mainland nodes the island links to), GenerateNodesForRegion (RestrictNodesByKey), coves, set pieces and two
@@ -280,46 +281,46 @@ def region_added(+prev: U32, +added: StoryGraph.Got) -> StoryGraph.Got:
       StoryGraph.Got{node, StoryGraph.link_if(U32.is_ne(prev, StoryGraph.none()), s, prev, node)}
 
 # n region sub nodes of graph g, each linked to the one before; `walk` holds the last node and the state.
-def link_nodes(n: Nat, +walk: StoryGraph.Got, +g: U32, +i: U32) -> StoryGraph.St:
+def link_nodes(+build: Builds.Build, n: Nat, +walk: StoryGraph.Got, +g: U32, +i: U32) -> StoryGraph.St:
   match n:
     case 0n:
       StoryGraph.st(walk)
     case 1n+p:
       match walk:
         case StoryGraph.Got{+prev, +s}:
-          link_nodes(p, region_added(prev, StoryGraph.add_node(StoryGraph.graph_child(s, g), g, region_sub(i))), g, (i + 1 : U32))
+          link_nodes(build, p, region_added(prev, StoryGraph.add_node(build, StoryGraph.graph_child(s, g), g, region_sub(i))), g, (i + 1 : U32))
 
 def region_joined(+s: StoryGraph.St, +g: U32, +from: U32, +to: U32) -> StoryGraph.St:
   +first = StoryGraph.gf(s, g, StoryGraph.g_first())
   +third = StoryGraph.nf(s, StoryGraph.nf(s, first, StoryGraph.f_next()), StoryGraph.f_next())
   StoryGraph.bump(StoryGraph.lock(StoryGraph.lock(StoryGraph.link(s, first, StoryGraph.gf(s, g, StoryGraph.g_last())), from, first), third, to), StoryGraph.s_region_links())
 
-def region_linked(+made: StoryGraph.Got, +from: U32, +to: U32) -> StoryGraph.St:
+def region_linked(+build: Builds.Build, +made: StoryGraph.Got, +from: U32, +to: U32) -> StoryGraph.St:
   match made:
     case StoryGraph.Got{+g, +m}:
-      region_joined(link_nodes(4n, StoryGraph.Got{StoryGraph.none(), StoryGraph.graph_child(m, g)}, g, 1), g, from, to)
+      region_joined(link_nodes(build, 4n, StoryGraph.Got{StoryGraph.none(), StoryGraph.graph_child(m, g)}, g, 1), g, from, to)
 
 # Story:LinkRegions(from, to): a REGION_LINK graph of four OCEAN_COASTAL nodes in a ring, locked to both ends.
-def link_regions(+s: StoryGraph.St, +from: U32, +to: U32) -> StoryGraph.St:
+def link_regions(+build: Builds.Build, +s: StoryGraph.St, +from: U32, +to: U32) -> StoryGraph.St:
   +k = StoryGraph.get(s, StoryGraph.s_region_links())
-  region_linked(StoryGraph.new_graph(s, StoryGraph.k_region_link(), k, StoryData.impassable_value(), StoryData.region_link_room()), from, to)
+  region_linked(build, StoryGraph.new_graph(build, s, StoryGraph.k_region_link(), k, StoryData.impassable_value(build), StoryData.region_link_room(build)), from, to)
 
-def island_linked(+region: StoryLink.Region, +ends: Ends, +graphs: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
+def island_linked(+build: Builds.Build, +region: StoryLink.Region, +ends: Ends, +graphs: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
   match ends:
     case Ends{+c1, +c2}:
       +s = StoryLink.region_st(region)
       +order = StoryGraph.graph_table_order(s, graphs)
-      +placed = StorySetpieces.insert_set_pieces(Background.add_cove_nodes(s, order), order, plan)
-      +linked = link_regions(link_regions(placed, c1, StoryLink.region_entrance(region)), c2, StoryLink.region_final(region))
+      +placed = StorySetpieces.insert_set_pieces(build, Background.add_cove_nodes(build, s, order), order, plan)
+      +linked = link_regions(build, link_regions(build, placed, c1, StoryLink.region_entrance(region)), c2, StoryLink.region_final(region))
       StoryGraph.call(StoryGraph.call(linked, StoryGraph.m_add_new_positions()), StoryGraph.m_voronoi_pass())
 
-def island(found: Ends & StoryGraph.St, +tasks: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
+def island(+build: Builds.Build, found: Ends & StoryGraph.St, +tasks: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
   (+ends, +s) = found
   +graphs = StoryLink.graphs_after(tasks, StoryGraph.get(s, StoryGraph.s_graphs()))
-  island_linked(StoryLink.generate_region(s, tasks, True{}), ends, graphs, plan)
+  island_linked(build, StoryLink.generate_region(build, s, tasks, True{}), ends, graphs, plan)
 
 # Story:AddRegionsToMainland for the island region (tasks in pairs(region_tasksets.island1) order), with
 # on_region_added_fn's WorldGen_AddNewPositions and VoronoiPass(50).
-def add_regions(+s: StoryGraph.St, +tasks: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
+def add_regions(+build: Builds.Build, +s: StoryGraph.St, +tasks: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
   +before = StoryGraph.rng_of(s)
-  StoryGraph.returned(island(find_mainland(s), tasks, plan), StoryGraph.f_add_regions_to_mainland(), before)
+  StoryGraph.returned(island(build, find_mainland(s), tasks, plan), StoryGraph.f_add_regions_to_mainland(), before)

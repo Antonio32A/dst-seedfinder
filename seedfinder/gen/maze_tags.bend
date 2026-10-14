@@ -3,6 +3,7 @@ import ../data/cave_story.bend as CaveStory
 import ../data/enums.bend as Enums
 import ../storygen/graph.bend as StoryGraph
 import ../storygen/order.bend as StoryOrder
+import ../data/builds.bend as Builds
 
 # What the caves' maze passes read of the finished story: Story.GlobalTags (tag value -> task -> node ids) and the
 # edge lists of the nodes (Edge:Edge inserts itself into both nodes' `edges` in creation order).
@@ -14,8 +15,8 @@ type Link is Data:
 def global_slot(+k: U32) -> U32:
   (StoryGraph.global_base() + (k * 3 : U32) : U32)
 
-def global_tag_value(+s: StoryGraph.St, +k: U32) -> String:
-  CaveStory.tag_value(StoryGraph.get(s, global_slot(k)))
+def global_tag_value(+build: Builds.Build, +s: StoryGraph.St, +k: U32) -> String:
+  CaveStory.tag_value(build, StoryGraph.get(s, global_slot(k)))
 
 def global_graph(+s: StoryGraph.St, +k: U32) -> U32:
   StoryGraph.get(s, (global_slot(k) + 1 : U32))
@@ -30,16 +31,16 @@ def new_graph(hit: Bool, +g: U32, +seen: List<&2, U32>) -> List<&2, U32>:
     case False{}:
       seen
 
-def graphs_loop(n: Nat, +s: StoryGraph.St, +tag: String, +k: U32, +seen: List<&2, U32>) -> List<&2, U32>:
+def graphs_loop(+build: Builds.Build, n: Nat, +s: StoryGraph.St, +tag: String, +k: U32, +seen: List<&2, U32>) -> List<&2, U32>:
   match n:
     case 0n:
       List.reverse(&2, U32, seen)
     case 1n+p:
-      graphs_loop(p, s, tag, (k + 1 : U32), new_graph(String.eq(global_tag_value(s, k), tag), global_graph(s, k), seen))
+      graphs_loop(build, p, s, tag, (k + 1 : U32), new_graph(String.eq(global_tag_value(build, s, k), tag), global_graph(s, k), seen))
 
 # pairs(Story.GlobalTags[tag]): the task graphs that got the global tag, in the order of the Lua table.
-def tasks(+s: StoryGraph.St, +tag: String) -> List<&2, U32>:
-  StoryGraph.graph_table_order(s, graphs_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, tag, 0, Nil{}))
+def tasks(+build: Builds.Build, +s: StoryGraph.St, +tag: String) -> List<&2, U32>:
+  StoryGraph.graph_table_order(s, graphs_loop(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, tag, 0, Nil{}))
 
 def nodes_add(hit: Bool, +node: U32, +acc: List<&2, U32>) -> List<&2, U32>:
   match hit:
@@ -48,16 +49,16 @@ def nodes_add(hit: Bool, +node: U32, +acc: List<&2, U32>) -> List<&2, U32>:
     case False{}:
       acc
 
-def nodes_loop(n: Nat, +s: StoryGraph.St, +tag: String, +g: U32, +k: U32, +acc: List<&2, U32>) -> List<&2, U32>:
+def nodes_loop(+build: Builds.Build, n: Nat, +s: StoryGraph.St, +tag: String, +g: U32, +k: U32, +acc: List<&2, U32>) -> List<&2, U32>:
   match n:
     case 0n:
       List.reverse(&2, U32, acc)
     case 1n+p:
-      nodes_loop(p, s, tag, g, (k + 1 : U32), nodes_add(String.eq(global_tag_value(s, k), tag) && U32.is_eq(global_graph(s, k), g), global_node(s, k), acc))
+      nodes_loop(build, p, s, tag, g, (k + 1 : U32), nodes_add(String.eq(global_tag_value(build, s, k), tag) && U32.is_eq(global_graph(s, k), g), global_node(s, k), acc))
 
 # ipairs(Story.GlobalTags[tag][task]): the node ids in insertion order.
-def nodes(+s: StoryGraph.St, +tag: String, +g: U32) -> List<&2, U32>:
-  nodes_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, tag, g, 0, Nil{})
+def nodes(+build: Builds.Build, +s: StoryGraph.St, +tag: String, +g: U32) -> List<&2, U32>:
+  nodes_loop(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, tag, g, 0, Nil{})
 
 def link_add(hit: Bool, +a: U32, +b: U32, +acc: List<&2, Link>) -> List<&2, Link>:
   match hit:

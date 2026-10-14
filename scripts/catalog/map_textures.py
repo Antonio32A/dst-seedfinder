@@ -20,6 +20,9 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(ROOT, "scripts/gen/lib"))
+import registry  # noqa: E402
+
 GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together"))
 MAP_EDGE = "levels/tiles/map_edge.tex"
 MAP_EDGE_ATLAS = "levels/tiles/map_edge.xml"
@@ -200,14 +203,17 @@ def write_map_textures(game_dir, noises, icon_names, out_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--catalog", action="append", help="a catalog whose textures to write; every shard's by default")
+    ap.add_argument("--catalog", action="append",
+                    help="a catalog whose textures to write; by default every catalog a build of builds.json uses")
     ap.add_argument("--out", default=os.path.join(ROOT, "website/public/world-map"))
     ap.add_argument("--manifest", default=os.path.join(HERE, "map_textures.json"))
     args = ap.parse_args()
     if not os.path.isdir(GAME_DIR):
         sys.exit("no game install at %s (set DST_GAME)" % GAME_DIR)
     catalogs = []
-    for path in args.catalog or [os.path.join(HERE, "catalog.json"), os.path.join(HERE, "cave_catalog.json")]:
+    registered = sorted({str(registry.catalog_path(build["number"], shard))
+                         for build in registry.builds() for shard in registry.CATALOG_FILES})
+    for path in args.catalog or registered:
         with open(path) as f:
             catalogs.append(json.load(f))
     noises = sorted({tile["minimap_noise"] for catalog in catalogs for tile in catalog["tiles"] if tile.get("minimap_noise")})

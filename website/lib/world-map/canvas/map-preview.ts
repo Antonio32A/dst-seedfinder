@@ -1,3 +1,4 @@
+import { generatedBy } from "@/lib/config/builds";
 import { entityLayer, mapWorld } from "@/lib/world-map/legend/entity-layer";
 import { defaultShown } from "@/lib/world-map/legend/prefab-visibility";
 import { fitView, type LinkedView, openLinkedView, type Size } from "@/lib/world-map/view/map-view";
@@ -34,7 +35,7 @@ export async function renderMapPreview(
     if (gl === null) throw new Error("This browser can't draw the map: it needs WebGL2.");
     const scene = createMapScene(gl, world, entityLayer(world), readAccent(canvas), () => undefined);
     try {
-        scene.entities.show(defaultShown(undefined, world.shard));
+        scene.entities.show(defaultShown(undefined, world.shard, generatedBy(world)));
         await scene.built;
         scene.draw(view === undefined ? fitView(world, size) : openLinkedView(view, size), size);
         return await new Promise<Blob>((resolve, reject) => canvas.toBlob(

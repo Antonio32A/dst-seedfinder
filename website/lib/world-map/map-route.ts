@@ -1,9 +1,13 @@
+import { gameBuildOf, hasShard } from "@/lib/config/builds";
+import { type GameBuild, LATEST_BUILD, WEBSITE_BUILDS } from "@/lib/config/game-builds";
 import {
     DEFAULT_SHARD,
     type Platform,
     PLATFORMS,
     type SeedfinderConfig,
-    type Shard
+    type Shard,
+    SHARD_LABELS,
+    SHARDS
 } from "@/lib/config/seedfinder-config";
 import { upgradeConfig } from "@/lib/config/upgrade-config";
 import { validateConfig } from "@/lib/config/validate-config";
@@ -20,21 +24,23 @@ const VIEW_PARAM = /^(-?\d{1,6})_(-?\d{1,6})_(\d{1,6})_(-?\d{1,6})$/;
 
 export type MapConfig = { config: SeedfinderConfig } | { error: string };
 
-export type MapRoute = { platform: Platform; shard: Shard; seed: number } | { error: string };
+/** What a map shows: the world a build generates for a seed of a shard on a platform. */
+export interface MapSeed {
+    platform: Platform;
+    shard: Shard;
+    build: GameBuild;
+    seed: number;
+}
+
+export type MapRoute = MapSeed | { error: string };
 
 /**
- * The forest's map lives at `/map/<platform>/<seed>` and the caves' at `/map/<platform>/caves/<seed>`, opening on
- * `view` when there's one.
+ * A world's map lives at `/map/<platform>/<build>/<seed>` in the forest and at `/map/<platform>/caves/<build>/<seed>`
+ * in the caves, opening on `view` when there's one.
  */
-export function mapPath(
-    platform: Platform,
-    seed: number,
-    config?: SeedfinderConfig,
-    shard: Shard = config?.shard ?? DEFAULT_SHARD,
-    view?: LinkedView
-) {
+export function mapPath({ platform, shard, build, seed }: MapSeed, config?: SeedfinderConfig, view?: LinkedView) {
     const query = [config && `c=${encodeShareParam(config)}`, view && `v=${encodeMapView(view)}`].filter(Boolean).join("&");
-    return `/map/${platform}/${shard === "caves" ? "caves/" : ""}${seed}${query && `?${query}`}`;
+    return `/map/${platform}/${shard === "caves" ? "caves/" : ""}${build}/${seed}${query && `?${query}`}`;
 }
 
 /**
@@ -62,22 +68,48 @@ export function parseMapView(param: string | string[] | undefined): LinkedView |
     return roundedView({ centerX, centerZ, span, heading });
 }
 
-export function parseMapRoute(platform: string, seed: string, shard: Shard = DEFAULT_SHARD): MapRoute {
+function seedOf(text: string): number | { error: string } {
+    const value = /^\d{1,10}$/.test(text) ? Number(text) : SEED_SPACE;
+    return value < SEED_SPACE ? value : { error: `"${text}" isn't a seed. Seeds are whole numbers from 0 to ${SEED_SPACE - 1}.` };
+}
+
+function buildOf(text: string | undefined, shard: Shard): GameBuild | { error: string } {
+    if (text === undefined) return LATEST_BUILD;
+    const build = /^\d{1,10}$/.test(text) ? gameBuildOf(Number(text)) : undefined;
+    if (build === undefined) return { error: `There's no build "${text}". Use ${WEBSITE_BUILDS.join(" or ")}.` };
+    return hasShard(build, shard) ? build : { error: `Build ${build} has no ${SHARD_LABELS[shard].toLowerCase()} yet.` };
+}
+
+/**
+ * The world of a map route's segments after its platform: an optional shard word (the forest without one), then the
+ * seed, or the build then the seed (the latest build without one).
+ */
+export function parseMapRoute(platform: string, segments: readonly string[]): MapRoute {
     const known = PLATFORMS.find((option) => option === platform);
     if (known === undefined) return { error: `There's no "${platform}" platform. Use ${PLATFORMS.join(" or ")}.` };
-    const value = /^\d{1,10}$/.test(seed) ? Number(seed) : SEED_SPACE;
-    if (value >= SEED_SPACE) return { error: `"${seed}" isn't a seed. Seeds are whole numbers from 0 to ${SEED_SPACE - 1}.` };
-    return { platform: known, shard, seed: value };
+    const named = SHARDS.find((option) => option === segments[0]);
+    const shard = named ?? DEFAULT_SHARD;
+    const rest = segments.slice(named === undefined ? 0 : 1);
+    if (rest.length < 1 || rest.length > 2) return { error: `There's no map at "${segments.join("/")}".` };
+    const build = buildOf(rest.at(-2), shard);
+    const seed = seedOf(rest[rest.length - 1]);
+    if (typeof build === "object") return build;
+    return typeof seed === "object" ? seed : { platform: known, shard, build, seed };
 }
 
-/** Where a typed seed's map lives on the platform and shard, or why the text isn't a seed. */
-export function pickedMapPath(platform: Platform, seed: string, shard: Shard): { path: string } | { error: string } {
-    const route = parseMapRoute(platform, seed.trim(), shard);
-    return "error" in route ? route : { path: mapPath(route.platform, route.seed, undefined, route.shard) };
+/** Where a typed seed's map lives on the platform, shard and build, or why the text isn't a seed. */
+export function pickedMapPath(
+    platform: Platform,
+    seed: string,
+    shard: Shard,
+    build: GameBuild
+): { path: string } | { error: string } {
+    const route = parseMapRoute(platform, [shard, String(build), seed.trim()]);
+    return "error" in route ? route : { path: mapPath(route) };
 }
 
-/** On the map's platform and shard, since `world eval` refuses a config for another. */
-export function parseMapConfig(share: string, platform: Platform, shard: Shard = DEFAULT_SHARD): MapConfig {
+/** On the map's platform, shard and build, since `world eval` refuses a config for another. */
+export function parseMapConfig(share: string, { platform, shard, build }: Omit<MapSeed, "seed">): MapConfig {
     const checked = validateConfig(upgradeConfig(decodeShareParam(share)));
-    return checked.ok ? { config: { ...checked.value, platform, shard } } : { error: checked.error };
+    return checked.ok ? { config: { ...checked.value, platform, shard, build } } : { error: checked.error };
 }

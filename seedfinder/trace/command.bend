@@ -2,8 +2,9 @@ import Base
 import ../cli/args.bend as Args
 import ../cli/files.bend as Files
 import ./dispatch.bend as TraceDispatch
+import ../data/builds.bend as Builds
 
-# seedfinder trace SEED --stage NAME [--platform windows|linux] [--input FILE] [--draws N]
+# seedfinder trace SEED --stage NAME [--platform windows|linux] [--build NUMBER] [--input FILE] [--draws N]
 
 def fail(+message: String) -> Result<&1, &1, U32 & String, Unit>:
   Fail{(2, "trace: " ++ message)}
@@ -74,33 +75,35 @@ def print_traced(traced: Result<&1, &1, U32 & String, List<&2, String>>, +stage:
         IO.print(header(stage, seed, windows))
         print_lines(lines)
 
-def traced_text(text: Result<&1, &1, U32 & String, String>, +stage: String, +seed: U32, +windows: Bool) -> IO(Unit):
+def traced_text(+build: Builds.Build, text: Result<&1, &1, U32 & String, String>, +stage: String, +seed: U32, +windows: Bool) -> IO(Unit):
   match text:
     case Fail{failure}:
       (code, message) = failure
       IO.die(Unit, 2, message)
     case Done{+input}:
-      print_traced(TraceDispatch.run(stage, seed, windows, input), stage, seed, windows)
+      print_traced(TraceDispatch.run(build, stage, seed, windows, input), stage, seed, windows)
 
 type Request is Data:
-  Request{seed: U32, stage: String, windows: Bool}
+  Request{seed: U32, stage: String, windows: Bool, build: Builds.Build}
 
 def request_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Request>:
   do Result<&1, &1, U32 & String, Request>:
     +seed : U32 <- seed_of(U32.read(Args.word(args, 0n)))
     +stage : String <- stage_of(Args.flag_value(args, "--stage"))
     +windows : Bool <- platform_of(Args.flag_value(args, "--platform"))
-    return Request{seed, stage, windows}
+    flag : Maybe<&2, Builds.Build> <- Args.build_flag(Args.flag_value(args, "--build"))
+    +build : Builds.Build <- Args.build_for(flag, False{})
+    return Request{seed, stage, windows, build}
 
 def run_request(parsed: Result<&1, &1, U32 & String, Request>, +args: List<&2, String>) -> IO(Unit):
   match parsed:
     case Fail{failure}:
       (code, message) = failure
       IO.die(Unit, 2, message)
-    case Done{Request{+seed, +stage, +windows}}:
+    case Done{Request{+seed, +stage, +windows, +build}}:
       do IO<Unit>:
         text : Result<&1, &1, U32 & String, String> <- input_source(Args.flag_value(args, "--draws"), Args.flag_value(args, "--input"))
-        traced_text(text, stage, seed, windows)
+        traced_text(build, text, stage, seed, windows)
 
 # Prints the canonical records of one stage.
 def trace(+args: List<&2, String>) -> IO(Unit):

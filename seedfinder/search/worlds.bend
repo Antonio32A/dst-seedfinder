@@ -2,6 +2,7 @@ import Base
 import ../filters/shard_search.bend as ShardSearch
 import ../filters/rules.bend as Rules
 import ../filters/world.bend as FilterWorld
+import ../filters/dump.bend as FilterDump
 import ../filters/evaluate.bend as Evaluate
 import ../cli/files.bend as Files
 import ./common.bend as SearchCommon
@@ -10,6 +11,7 @@ import ../cli/args.bend as Args
 import ../filters/par.bend as Par
 import ./speed.bend as Speed
 import ./timings.bend as Timings
+import ../data/builds.bend as Builds
 
 # `world find --worlds DIR` for configs with parts B-E: the scan of search.py over pre-generated worlds. Part A
 # selects candidates chunk by chunk; each candidate's DIR/<seed>.dstw decides it (a missing dump counts as a world
@@ -36,23 +38,23 @@ type Hunt is Data:
 def chunk_size() -> Nat:
   65536n
 
-def outcomes_of(skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -> List<&2, Evaluate.Outcome>:
+def outcomes_of(+build: Builds.Build, skip: Bool, +world: FilterWorld.World, +later: Rules.Later) -> List<&2, Evaluate.Outcome>:
   match skip:
     case True{}:
       Nil{}
     case False{}:
-      Evaluate.parallel_jobs(world, Evaluate.jobs_of(later))
+      Evaluate.parallel_jobs(build, world, Evaluate.jobs_of(later))
 
-def entry_verdict(+names: List<&2, String>, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
-  Hit{SearchReport.entry_json(index, SearchReport.name_at(names, index)) ++ ",\"level\":" ++ ShardSearch.summary_json(caves, seed) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
+def entry_verdict(+build: Builds.Build, +names: List<&2, String>, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
+  Hit{SearchReport.entry_json(index, SearchReport.name_at(names, index)) ++ ",\"level\":" ++ ShardSearch.summary_json(build, caves, seed) ++ ",\"results\":" ++ Evaluate.results_json(outcomes, True{})}
 
-def first_entry(laters: List<&2, Rules.Later>, +names: List<&2, String>, found: Bool, +world: FilterWorld.World, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
+def first_entry(+build: Builds.Build, laters: List<&2, Rules.Later>, +names: List<&2, String>, found: Bool, +world: FilterWorld.World, +seed: U32, +caves: Bool, +index: U32, +outcomes: List<&2, Evaluate.Outcome>) -> Verdict:
   match laters found:
     case _ True{}:
-      entry_verdict(names, seed, caves, (index - 1 : U32), outcomes)
+      entry_verdict(build, names, seed, caves, (index - 1 : U32), outcomes)
     case Con{+later, ls} False{}:
-      +found = Evaluate.parallel_holds(world, Evaluate.jobs_of(later))
-      first_entry(ls, names, found, world, seed, caves, (index + 1 : U32), outcomes_of(Bool.not(found), world, later))
+      +found = Evaluate.parallel_holds(build, world, Evaluate.jobs_of(later))
+      first_entry(build, ls, names, found, world, seed, caves, (index + 1 : U32), outcomes_of(build, Bool.not(found), world, later))
     case _ _:
       Miss{}
 
@@ -61,10 +63,10 @@ def later_at(+laters: List<&2, Rules.Later>, +index: U32) -> Rules.Later:
 
 # A world's verdict from the option that matched it after Timings.judged, as world_verdict gives it (`otherwise` when
 # none did).
-def open_verdict(+o: Timings.Open, +config: ShardSearch.Search, +seed: U32, +otherwise: Verdict) -> Verdict:
+def open_verdict(+build: Builds.Build, +o: Timings.Open, +config: ShardSearch.Search, +seed: U32, +otherwise: Verdict) -> Verdict:
   match o:
     case Timings.Open{Some{+world}, Some{+index}}:
-      entry_verdict(ShardSearch.names(config), seed, ShardSearch.caves(config), index, Evaluate.parallel_jobs(world, Evaluate.jobs_of(later_at(ShardSearch.laters(config), index))))
+      entry_verdict(build, ShardSearch.names(config), seed, ShardSearch.caves(config), index, Evaluate.parallel_jobs(build, world, Evaluate.jobs_of(later_at(ShardSearch.laters(config), index))))
     case _:
       otherwise
 
@@ -72,13 +74,14 @@ def open_verdict(+o: Timings.Open, +config: ShardSearch.Search, +seed: U32, +oth
 type Matched is Data:
   Matched{seed: U32, open: Timings.Open, otherwise: Verdict}
 
-def matched_with(+config: ShardSearch.Search, m: Matched) -> Judged:
+def matched_with(+build: Builds.Build, +config: ShardSearch.Search, m: Matched) -> Judged:
   match m:
     case Matched{+seed, +o, +otherwise}:
-      Judged{seed, open_verdict(o, config, seed, otherwise)}
+      Judged{seed, open_verdict(build, o, config, seed, otherwise)}
 
 def matched_judged(config: ShardSearch.Search, m: Matched) -> Judged:
-  matched_with(config, m)
+  +search = config
+  matched_with(ShardSearch.build(search), search, m)
 
 # The verdicts of the worlds after Timings.judged (the witnesses and level tables of the hits), in parallel, in order.
 def matched_verdicts(+config: ShardSearch.Search, +matches: List<&2, Matched>) -> List<&2, Judged>:
@@ -91,11 +94,11 @@ def usable(+config: ShardSearch.Search, +platform: U32, +world: FilterWorld.Worl
   platform_matches(ShardSearch.windows(config), platform) && (FilterWorld.has_graph(world) || Bool.not(Rules.needs_graph(ShardSearch.laters(config))))
     && (FilterWorld.has_plan(world) || Bool.not(Rules.needs_plan(ShardSearch.laters(config))))
 
-def world_verdict(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: ShardSearch.Search, +seed: U32) -> Verdict:
+def world_verdict(+build: Builds.Build, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: ShardSearch.Search, +seed: U32) -> Verdict:
   match loaded:
     case Done{FilterWorld.Generated{+world, +platform}}:
       Bool.pick(Verdict, usable(config, platform, world),
-        first_entry(ShardSearch.laters(config), ShardSearch.names(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
+        first_entry(build, ShardSearch.laters(config), ShardSearch.names(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
     case Done{FilterWorld.GaveUp{_}}:
       Miss{}
     case Fail{_}:
@@ -108,34 +111,39 @@ def dump_path(+dir: String, +seed: U32) -> String:
 type Read is Data:
   Read{seed: U32, bytes: Maybe<&2, List<&2, U32>>}
 
-def maybe_bytes(r: Result<&1, &1, U32 & String, List<&2, U32>>) -> Maybe<&2, List<&2, U32>>:
+# A candidate's dump as read, the run stopped when the dump belongs to another game build than the config's.
+def read_of(+seed: U32, r: Result<&1, &1, U32 & String, List<&2, U32>>, +build: U32) -> IO(Read):
   match r:
-    case Done{bytes}:
-      Some{bytes}
+    case Done{+bytes}:
+      +dumped = FilterDump.build_of_bytes(bytes)
+      Bool.pick(IO(Read), FilterDump.is_other_build(dumped, build), IO.die(Read, 2, FilterDump.other_build_message(dumped, build)),
+        IO.pure(Read, Read{seed, Some{bytes}}))
     case Fail{_}:
-      None{}
+      IO.pure(Read, Read{seed, None{}})
 
-def read_batch(seeds: List<&2, U32>, +dir: String, +acc: List<&2, Read>) -> IO(List<&2, Read>):
+def read_batch(seeds: List<&2, U32>, +dir: String, +build: U32, +acc: List<&2, Read>) -> IO(List<&2, Read>):
   match seeds:
     case Nil{}:
       IO.pure(List<&2, Read>, List.reverse(&2, Read, acc))
     case Con{+seed, rest}:
       do IO<List<&2, Read>>:
         bytes : Result<&1, &1, U32 & String, List<&2, U32>> <- Files.read_bytes("world: ", dump_path(dir, seed))
-        read_batch(rest, dir, Read{seed, maybe_bytes(bytes)} <> acc)
+        +read : Read <- read_of(seed, bytes, build)
+        read_batch(rest, dir, build, read <> acc)
 
 type Judged is Data:
   Judged{seed: U32, verdict: Verdict}
 
-def judged_with(+config: ShardSearch.Search, r: Read) -> Judged:
+def judged_with(+build: Builds.Build, +config: ShardSearch.Search, r: Read) -> Judged:
   match r:
     case Read{+seed, Some{bytes}}:
-      Judged{seed, world_verdict(FilterWorld.of_bytes_in(bytes, ShardSearch.caves(config)), config, seed)}
+      Judged{seed, world_verdict(build, FilterWorld.of_bytes_in(build, bytes, ShardSearch.caves(config)), config, seed)}
     case Read{+seed, None{}}:
       Judged{seed, Absent{}}
 
 def judged(config: ShardSearch.Search, r: Read) -> Judged:
-  judged_with(config, r)
+  +search = config
+  judged_with(ShardSearch.build(search), search, r)
 
 def batch_size() -> Nat:
   32n
@@ -244,17 +252,17 @@ def ctx_dir(+ctx: Ctx) -> String:
     case Ctx{_, _, _, _, _, _, +dir, _, _}:
       dir
 
-def scan_leaves(+depth: Nat, +lo: U32, +n: Nat, +levels: ShardSearch.Levels) -> U32 & List<&2, U32>:
+def scan_leaves(+build: Builds.Build, +depth: Nat, +lo: U32, +n: Nat, +levels: ShardSearch.Levels) -> U32 & List<&2, U32>:
   match depth:
     case 0n:
-      (0, ShardSearch.candidates_leaf(levels, lo, n))
+      (0, ShardSearch.candidates_leaf(build, levels, lo, n))
     case 1n+d:
       +half = Nat.div(n, 2n)
-      a b = scan_leaves(d, lo, half, levels) scan_leaves(d, (lo + U32.from_nat(half) : U32), Nat.sub(n, half), levels)
+      a b = scan_leaves(build, d, lo, half, levels) scan_leaves(build, d, (lo + U32.from_nat(half) : U32), Nat.sub(n, half), levels)
       SearchCommon.combine(a, b)
 
-def chunk_candidates(+len: Nat, +lo: U32, +levels: ShardSearch.Levels) -> U32 & List<&2, U32>:
-  scan_leaves(SearchCommon.search_depth(), lo, len, levels)
+def chunk_candidates(+build: Builds.Build, +len: Nat, +lo: U32, +levels: ShardSearch.Levels) -> U32 & List<&2, U32>:
+  scan_leaves(build, SearchCommon.search_depth(), lo, len, levels)
 
 def criteria_of(+ctx: Ctx) -> ShardSearch.Levels:
   match ctx:
@@ -271,7 +279,7 @@ def ctx_total(+ctx: Ctx) -> Nat:
       total
 
 # The next chunk's candidates (or the end or time stop).
-def refilled(+h: Hunt, +now: Nat, +ctx: Ctx) -> Hunt:
+def refilled(+build: Builds.Build, +h: Hunt, +now: Nat, +ctx: Ctx) -> Hunt:
   match h:
     case Hunt{+next, +left, _, +found, +hits, _, +missing, _}:
       +len = Nat.min(chunk_size(), left)
@@ -280,7 +288,7 @@ def refilled(+h: Hunt, +now: Nat, +ctx: Ctx) -> Hunt:
       +scanned = Nat.sub(ctx_total(ctx), left)
       Bool.pick(Hunt, done || late, Hunt{next, left, scanned, found, hits, Bool.pick(U32, done, 2, 3), missing, Nil{}},
         Hunt{(next + U32.from_nat(len) : U32), Nat.sub(left, len), scanned, found, hits, 0, missing,
-          candidates(chunk_candidates(len, next, criteria_of(ctx)))})
+          candidates(chunk_candidates(build, len, next, criteria_of(ctx)))})
 
 def ctx_timings(+ctx: Ctx) -> Bool:
   match ctx:
@@ -358,15 +366,16 @@ def loaded_of(+seed: U32, loaded: Result<&1, &1, U32 & String, FilterWorld.Loade
     case Fail{_}:
       Loaded{seed, None{}, Absent{}}
 
-def loaded_with(+config: ShardSearch.Search, r: Read) -> Loaded:
+def loaded_with(+build: Builds.Build, +config: ShardSearch.Search, r: Read) -> Loaded:
   match r:
     case Read{+seed, Some{bytes}}:
-      loaded_of(seed, FilterWorld.of_bytes_in(bytes, ShardSearch.caves(config)), config)
+      loaded_of(seed, FilterWorld.of_bytes_in(build, bytes, ShardSearch.caves(config)), config)
     case Read{+seed, None{}}:
       Loaded{seed, None{}, Absent{}}
 
 def loaded_read(config: ShardSearch.Search, r: Read) -> Loaded:
-  loaded_with(config, r)
+  +search = config
+  loaded_with(ShardSearch.build(search), search, r)
 
 def opens_of(loaded: List<&2, Loaded>, +config: ShardSearch.Search) -> List<&2, Timings.Open>:
   match loaded:
@@ -395,14 +404,14 @@ def judged_with_timings(+loaded: List<&2, Loaded>, +j: Timings.Judged, +p: Pace,
         +t1 : Nat <- IO.now()
         return Batch{verdicts, with_pace_timings(p, Timings.with_hits(t, Nat.sub(t1, t0)))}
 
-def judged_batch(timed: Bool, reads: List<&2, Read>, +p: Pace, +ctx: Ctx) -> IO(Batch):
+def judged_batch(+build: Builds.Build, timed: Bool, reads: List<&2, Read>, +p: Pace, +ctx: Ctx) -> IO(Batch):
   match timed:
     case False{}:
       IO.pure(Batch, Batch{Par.map(~Read, ~Judged, ~ShardSearch.Search, ~judged, ctx_config(ctx), reads), p})
     case True{}:
       +loaded = Par.map(~Read, ~Loaded, ~ShardSearch.Search, ~loaded_read, ctx_config(ctx), reads)
       do IO<Batch>:
-        +j : Timings.Judged <- Timings.judged(pace_timings(p), ShardSearch.laters(ctx_config(ctx)), opens_of(loaded, ctx_config(ctx)))
+        +j : Timings.Judged <- Timings.judged(build, pace_timings(p), ShardSearch.laters(ctx_config(ctx)), opens_of(loaded, ctx_config(ctx)))
         judged_with_timings(loaded, j, p, ctx)
 
 def batch_judged(+b: Batch) -> List<&2, Judged>:
@@ -435,14 +444,14 @@ def refilled_pace(+r: Refilled) -> Pace:
       p
 
 # The next chunk's candidates, with --verbose-timings the scan timed.
-def timed_refill(timed: Bool, +h: Hunt, +p: Pace, +now: Nat, +ctx: Ctx) -> IO(Refilled):
+def timed_refill(+build: Builds.Build, timed: Bool, +h: Hunt, +p: Pace, +now: Nat, +ctx: Ctx) -> IO(Refilled):
   match timed:
     case False{}:
-      IO.pure(Refilled, Refilled{refilled(h, now, ctx), p})
+      IO.pure(Refilled, Refilled{refilled(build, h, now, ctx), p})
     case True{}:
       do IO<Refilled>:
         +t0 : Nat <- IO.now()
-        +after : Hunt = refilled(h, now, ctx)
+        +after : Hunt = refilled(build, h, now, ctx)
         +t1 : Nat <- IO.now()
         return Refilled{after, with_pace_timings(p, Timings.with_prefilter(pace_timings(p), scan_chunk(h), Nat.sub(t1, t0)))}
 
@@ -451,33 +460,33 @@ def scanning(+h: Hunt, +now: Nat, +ctx: Ctx) -> Bool:
     case Hunt{_, +left, _, _, _, _, _, _}:
       Nat.is_gt(left, 0n) && Nat.is_lt(elapsed(ctx, now), ctx_time(ctx))
 
-def hunt(fuel: Nat, h: Hunt, +ctx: Ctx, +pace: Pace) -> IO(Unit):
+def hunt(+build: Builds.Build, fuel: Nat, h: Hunt, +ctx: Ctx, +pace: Pace) -> IO(Unit):
   match fuel h:
     case 1n+k Hunt{+next, +left, +scanned, +found, +hits, 0, +missing, Con{+seed, +rest}}:
       +pending = {seed <> rest : List<&2, U32>}
       do IO<Unit>:
-        reads : List<&2, Read> <- read_batch(List.take(&2, U32, pending, batch_size()), ctx_dir(ctx), Nil{})
-        +batch : Batch <- judged_batch(ctx_timings(ctx), reads, pace, ctx)
+        reads : List<&2, Read> <- read_batch(List.take(&2, U32, pending, batch_size()), ctx_dir(ctx), Builds.number(build), Nil{})
+        +batch : Batch <- judged_batch(build, ctx_timings(ctx), reads, pace, ctx)
         +f : Folded = folded(batch_judged(batch), Hunt{next, left, scanned, found, hits, 0, missing, List.drop(&2, U32, pending, batch_size())}, ctx, Nil{})
         print_lines(json_of(ctx), folded_lines(f))
         +now : Nat <- IO.now()
         +after : Hunt = timed(folded_hunt(f), now, ctx)
         +p : Pace <- paced(batch_pace(batch), List.length(&2, Judged, batch_judged(batch)), after, now, ctx)
-        hunt(k, after, ctx, p)
+        hunt(build, k, after, ctx, p)
     case 1n+k Hunt{+next, +left, +scanned, +found, +hits, 0, +missing, Nil{}}:
       +h = {Hunt{next, left, scanned, found, hits, 0, missing, Nil{}} : Hunt}
       do IO<Unit>:
         +now : Nat <- IO.now()
-        +got : Refilled <- timed_refill(ctx_timings(ctx) && scanning(h, now, ctx), h, pace, now, ctx)
-        hunt(k, refilled_hunt(got), ctx, refilled_pace(got))
+        +got : Refilled <- timed_refill(build, ctx_timings(ctx) && scanning(h, now, ctx), h, pace, now, ctx)
+        hunt(build, k, refilled_hunt(got), ctx, refilled_pace(got))
     case _ other:
       report(other, ctx, pace)
 
 # world find --worlds DIR for a config with parts B-E (docs/config.md section 8 output).
-def run(+q: Args.Query, +config: ShardSearch.Search, +dir: String) -> IO(Unit):
+def run(+build: Builds.Build, +q: Args.Query, +config: ShardSearch.Search, +dir: String) -> IO(Unit):
   match q:
-    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _, +timings}:
+    case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, _, +timings, _}:
       do IO<Unit>:
         +started : Nat <- IO.now()
-        hunt(Nat.add(Nat.add(total, Nat.div(total, chunk_size())), 4n), Hunt{start, total, 0n, 0, Nil{}, 0, 0, Nil{}},
+        hunt(build, Nat.add(Nat.add(total, Nat.div(total, chunk_size())), 4n), Hunt{start, total, 0n, 0, Nil{}, 0, 0, Nil{}},
           Ctx{start, total, limit, time_ms, json, config, dir, started, timings}, Pace{Speed.started(), started, 0n, Timings.started(ShardSearch.laters(config))})

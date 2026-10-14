@@ -11,21 +11,22 @@ import ./ents.bend as OceanEnts
 import ./state.bend as OceanState
 import ./post.bend as OceanPost
 import ./ocean.bend as Ocean
+import ../data/builds.bend as Builds
 
 # Lane G's ocean trace stage `oceanpost`: from the oracle's land_done state (`oin`,
 # `orow at="land"`, `oent`, `oreq`), the prefill, then the oracle's grid after the conversion (`orow at="void"`,
 # `odig at="void"` for the counter) and everything after it; prints the oracle's `ocean` records of those steps.
 
-def names_loop(n: Nat, m: Map<&2, U32>, +i: U32) -> Map<&2, U32>:
+def names_loop(+build: Builds.Build, n: Nat, m: Map<&2, U32>, +i: U32) -> Map<&2, U32>:
   match n:
     case 0n:
       m
     case 1n+p:
-      names_loop(p, Map.set(&2, U32, m, Strings.name(i), i), (i + 1 : U32))
+      names_loop(build, p, Map.set(&2, U32, m, Strings.name(build, i), i), (i + 1 : U32))
 
 # Every constant string's id by name.
-def names() -> Map<&2, U32>:
-  names_loop(U32.to_nat(Strings.strings_count()), Map.new(&2, U32), 0)
+def names(+build: Builds.Build) -> Map<&2, U32>:
+  names_loop(build, U32.to_nat(Strings.strings_count(build)), Map.new(&2, U32), 0)
 
 def unquoted(+s: String) -> String:
   String.from_list(List.reverse(&2, Char, List.drop(&2, Char, List.reverse(&2, Char, List.drop(&2, Char, String.to_list(s), 1n)), 1n)))
@@ -62,8 +63,8 @@ def hash_text(+h: Grid.Hash) -> String:
     case Grid.Hash{+hi, +lo}:
       Canon.hex64(hi, lo)
 
-def prefab_text(+id: U32) -> String:
-  Canon.quoted(Strings.name(id))
+def prefab_text(+build: Builds.Build, +id: U32) -> String:
+  Canon.quoted(Strings.name(build, id))
 
 # What the records share: seed, attempt, map size, and the running opieces / oadd indices.
 type Out is Data:
@@ -117,10 +118,10 @@ def pieces_line(+o: Out, +tile: U32, +total: U32, +before: Pcg.Rng, +after: Pcg.
       Canon.record("opieces", [attempt_field(o), Canon.number("k", k), Canon.number("tile", tile), Canon.number("total", total),
         Canon.number("before", ctr(o, before)), Canon.number("after", ctr(o, after))])
 
-def add_line(+o: Out, +prefab: U32, +tx: F64Repr.F64, +ty: F64Repr.F64, +x: F64Repr.F64, +z: F64Repr.F64, +after: Pcg.Rng) -> String:
+def add_line(+build: Builds.Build, +o: Out, +prefab: U32, +tx: F64Repr.F64, +ty: F64Repr.F64, +x: F64Repr.F64, +z: F64Repr.F64, +after: Pcg.Rng) -> String:
   match o:
     case Out{_, _, _, _, _, +k}:
-      Canon.record("oadd", [attempt_field(o), Canon.number("k", k), Canon.field("prefab", prefab_text(prefab)), Canon.field("tx", f64_text(tx)),
+      Canon.record("oadd", [attempt_field(o), Canon.number("k", k), Canon.field("prefab", prefab_text(build, prefab)), Canon.field("tx", f64_text(tx)),
         Canon.field("ty", f64_text(ty)), Canon.field("x", f64_text(x)), Canon.field("z", f64_text(z)), Canon.number("after", ctr(o, after))])
 
 def bumped(+o: Out, +pieces: U32, +adds: U32) -> Out:
@@ -128,10 +129,10 @@ def bumped(+o: Out, +pieces: U32, +adds: U32) -> Out:
     case Out{+seed, +a, +w, +h, +p, +d}:
       Out{seed, a, w, h, (p + pieces : U32), (d + adds : U32)}
 
-def entity_line(+kind: String, +o: Out, +e: OceanEnts.Ent, +k: U32) -> String:
+def entity_line(+build: Builds.Build, +kind: String, +o: Out, +e: OceanEnts.Ent, +k: U32) -> String:
   match e:
     case OceanEnts.Ent{+prefab, +x, +z, _, _, _}:
-      Canon.record(kind, [attempt_field(o), Canon.field("prefab", prefab_text(prefab)), Canon.number("k", k), Canon.field("x", f64_text(x)),
+      Canon.record(kind, [attempt_field(o), Canon.field("prefab", prefab_text(build, prefab)), Canon.number("k", k), Canon.field("x", f64_text(x)),
         Canon.field("z", f64_text(z))])
 
 def counters() -> Array<U32>:
@@ -144,7 +145,7 @@ def keep_line(on: Bool, +line: String, acc: List<&2, String>) -> List<&2, String
     case False{}:
       acc
 
-def indexed_loop(xs: List<&2, OceanEnts.Ent>, got: Array<U32> & U32, +kind: String, +o: Out, +i: U32, +from: U32, acc: List<&2, String>) -> List<&2, String>:
+def indexed_loop(+build: Builds.Build, xs: List<&2, OceanEnts.Ent>, got: Array<U32> & U32, +kind: String, +o: Out, +i: U32, +from: U32, acc: List<&2, String>) -> List<&2, String>:
   match xs:
     case Nil{}:
       List.reverse(&2, String, acc)
@@ -153,29 +154,29 @@ def indexed_loop(xs: List<&2, OceanEnts.Ent>, got: Array<U32> & U32, +kind: Stri
       +e = {OceanEnts.Ent{prefab, x, z, id, target, piece} : OceanEnts.Ent}
       counts[prefab] <- (k + 1 : U32)
       +next_prefab = OceanEnts.prefab_of(Maybe.default(&2, OceanEnts.Ent, List.head(&2, OceanEnts.Ent, rest), e))
-      indexed_loop(rest, counts[next_prefab], kind, o, (i + 1 : U32), from, keep_line((i >= from : U32), entity_line(kind, o, e, k), acc))
+      indexed_loop(build, rest, counts[next_prefab], kind, o, (i + 1 : U32), from, keep_line((i >= from : U32), entity_line(build, kind, o, e, k), acc))
 
 # Records of kind `kind` for the entities (newest first) from position `from` (oldest first), k = index in its
 # prefab's list.
-def entity_lines(+kind: String, +o: Out, +ents: List<&2, OceanEnts.Ent>, +from: U32) -> List<&2, String>:
+def entity_lines(+build: Builds.Build, +kind: String, +o: Out, +ents: List<&2, OceanEnts.Ent>, +from: U32) -> List<&2, String>:
   +oldest = List.reverse(&2, OceanEnts.Ent, ents)
   +first = OceanEnts.prefab_of(Maybe.default(&2, OceanEnts.Ent, List.head(&2, OceanEnts.Ent, oldest), OceanEnts.Ent{0, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}))
-  indexed_loop(oldest, counters()[first], kind, o, 0, from, Nil{})
+  indexed_loop(build, oldest, counters()[first], kind, o, 0, from, Nil{})
 
-def count_line(nonzero: Bool, +o: Out, +at: String, +i: U32, +c: U32, acc: List<&2, String>) -> List<&2, String>:
+def count_line(+build: Builds.Build, nonzero: Bool, +o: Out, +at: String, +i: U32, +c: U32, acc: List<&2, String>) -> List<&2, String>:
   match nonzero:
     case False{}:
       acc
     case True{}:
-      Canon.record("ocount", [attempt_field(o), Canon.field("at", Canon.quoted(at)), Canon.field("prefab", prefab_text(i)), Canon.number("n", c)]) <> acc
+      Canon.record("ocount", [attempt_field(o), Canon.field("at", Canon.quoted(at)), Canon.field("prefab", prefab_text(build, i)), Canon.number("n", c)]) <> acc
 
-def count_lines(n: Nat, got: Array<U32> & U32, +o: Out, +at: String, +i: U32, acc: List<&2, String>) -> List<&2, String>:
+def count_lines(+build: Builds.Build, n: Nat, got: Array<U32> & U32, +o: Out, +at: String, +i: U32, acc: List<&2, String>) -> List<&2, String>:
   match n:
     case 0n:
       List.reverse(&2, String, acc)
     case 1n+p:
       (counts, +c) = got
-      count_lines(p, counts[(i + 1 : U32)], o, at, (i + 1 : U32), count_line(U32.is_ne(c, 0), o, at, i, c, acc))
+      count_lines(build, p, counts[(i + 1 : U32)], o, at, (i + 1 : U32), count_line(build, U32.is_ne(c, 0), o, at, i, c, acc))
 
 def bump(got: Array<U32> & U32, +i: U32) -> Array<U32>:
   (counts, +c) = got
@@ -188,9 +189,9 @@ def tally(xs: List<&2, OceanEnts.Ent>, counts: Array<U32>) -> Array<U32>:
     case Con{+e, rest}:
       tally(rest, bump(counts[OceanEnts.prefab_of(e)], OceanEnts.prefab_of(e)))
 
-def counts_lines(+o: Out, +at: String, +ents: List<&2, OceanEnts.Ent>) -> List<&2, String>:
+def counts_lines(+build: Builds.Build, +o: Out, +at: String, +ents: List<&2, OceanEnts.Ent>) -> List<&2, String>:
   counts = tally(ents, counters())
-  count_lines(U32.to_nat(Strings.strings_count()), counts[0], o, at, 0, Nil{})
+  count_lines(build, U32.to_nat(Strings.strings_count(build)), counts[0], o, at, 0, Nil{})
 
 def wormhole_lines(xs: List<&2, OceanEnts.Ent>, +o: Out, +k: U32) -> List<&2, String>:
   match xs:
@@ -203,28 +204,28 @@ def wormhole_lines(xs: List<&2, OceanEnts.Ent>, +o: Out, +k: U32) -> List<&2, St
 def span_line(+kind: String, +o: Out, +before: Pcg.Rng, +after: Pcg.Rng) -> String:
   Canon.record(kind, [attempt_field(o), Canon.number("before", ctr(o, before)), Canon.number("after", ctr(o, after))])
 
-def added_lines(+kind: String, +span: String, +o: Out, +before: Pcg.Rng, +after: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +added: U32) -> List<&2, String>:
+def added_lines(+build: Builds.Build, +kind: String, +span: String, +o: Out, +before: Pcg.Rng, +after: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +added: U32) -> List<&2, String>:
   +total = U32.from_nat(List.length(&2, OceanEnts.Ent, ents))
-  span_line(span, o, before, after) <> entity_lines(kind, o, ents, (total - added : U32))
+  span_line(span, o, before, after) <> entity_lines(build, kind, o, ents, (total - added : U32))
 
-def names_text(xs: List<&2, U32>) -> String:
+def names_text(+build: Builds.Build, xs: List<&2, U32>) -> String:
   match xs:
     case Nil{}:
       ""
     case Con{+id, Nil{}}:
-      Strings.name(id)
+      Strings.name(build, id)
     case Con{+id, rest}:
-      Strings.name(id) ++ "," ++ names_text(rest)
+      Strings.name(build, id) ++ "," ++ names_text(build, rest)
 
-def missing_text(+xs: List<&2, U32>) -> String:
-  Bool.pick(String, List.is_empty(&2, U32, xs), "none", Canon.quoted(names_text(xs)))
+def missing_text(+build: Builds.Build, +xs: List<&2, U32>) -> String:
+  Bool.pick(String, List.is_empty(&2, U32, xs), "none", Canon.quoted(names_text(build, xs)))
 
-def status_line(+o: Out, +ok: Bool, +missing: List<&2, U32>, +rng: Pcg.Rng) -> String:
-  Canon.record("ostatus", [attempt_field(o), Canon.number("ok", Bool.to_u32(ok)), Canon.field("missing", missing_text(missing)),
+def status_line(+build: Builds.Build, +o: Out, +ok: Bool, +missing: List<&2, U32>, +rng: Pcg.Rng) -> String:
+  Canon.record("ostatus", [attempt_field(o), Canon.number("ok", Bool.to_u32(ok)), Canon.field("missing", missing_text(build, missing)),
     Canon.number("ctr", ctr(o, rng))])
 
-def req_line(+o: Out, +prefab: U32, +count: U32, +have: U32) -> String:
-  Canon.record("oreq", [attempt_field(o), Canon.field("prefab", prefab_text(prefab)), Canon.number("count", count), Canon.number("have", have)])
+def req_line(+build: Builds.Build, +o: Out, +prefab: U32, +count: U32, +have: U32) -> String:
+  Canon.record("oreq", [attempt_field(o), Canon.field("prefab", prefab_text(build, prefab)), Canon.number("count", count), Canon.number("have", have)])
 
 def blend_line(+o: Out, +k: U32, +hash: Grid.Hash) -> String:
   match o:
@@ -234,42 +235,42 @@ def blend_line(+o: Out, +k: U32, +hash: Grid.Hash) -> String:
 def snapshot_name(+at: U32) -> String:
   Bool.pick(String, U32.is_zero(at), "populate", "filter")
 
-def event_lines(evs: List<&2, OceanState.Ev>, +o: Out) -> List<&2, String>:
+def event_lines(+build: Builds.Build, evs: List<&2, OceanState.Ev>, +o: Out) -> List<&2, String>:
   match evs:
     case Nil{}:
       Nil{}
     case Con{+ev, rest}:
       match ev:
         case OceanState.EDigest{+at, +rng, +tiles, +mflags, +ids}:
-          digest_line(o, at, rng, tiles, mflags, ids) <> event_lines(rest, o)
+          digest_line(o, at, rng, tiles, mflags, ids) <> event_lines(build, rest, o)
         case OceanState.EBlend{+k, +hash}:
-          blend_line(o, k, hash) <> event_lines(rest, o)
+          blend_line(o, k, hash) <> event_lines(build, rest, o)
         case OceanState.EPieces{+tile, +total, +before, +after}:
-          pieces_line(o, tile, total, before, after) <> event_lines(rest, bumped(o, 1, 0))
+          pieces_line(o, tile, total, before, after) <> event_lines(build, rest, bumped(o, 1, 0))
         case OceanState.EAdd{+prefab, +tx, +ty, +x, +z, +after}:
-          add_line(o, prefab, tx, ty, x, z, after) <> event_lines(rest, bumped(o, 0, 1))
+          add_line(build, o, prefab, tx, ty, x, z, after) <> event_lines(build, rest, bumped(o, 0, 1))
         case OceanState.ECounts{+at, +ents}:
-          List.append(&2, String, counts_lines(o, snapshot_name(at), ents), event_lines(rest, o))
+          List.append(&2, String, counts_lines(build, o, snapshot_name(at), ents), event_lines(build, rest, o))
         case OceanState.EDocks{+before, +after, +ents, +added}:
-          List.append(&2, String, added_lines("odock", "odocks", o, before, after, ents, added), event_lines(rest, o))
+          List.append(&2, String, added_lines(build, "odock", "odocks", o, before, after, ents, added), event_lines(build, rest, o))
         case OceanState.EWormholes{+ents}:
-          List.append(&2, String, wormhole_lines(ents, o, 0), event_lines(rest, o))
+          List.append(&2, String, wormhole_lines(ents, o, 0), event_lines(build, rest, o))
         case OceanState.EBunches{+before, +after, +ents, +added}:
-          List.append(&2, String, added_lines("obunch", "obunches", o, before, after, ents, added), event_lines(rest, o))
+          List.append(&2, String, added_lines(build, "obunch", "obunches", o, before, after, ents, added), event_lines(build, rest, o))
         case OceanState.EFinal{+ents}:
-          List.append(&2, String, entity_lines("ofinal", o, ents, 0), event_lines(rest, o))
+          List.append(&2, String, entity_lines(build, "ofinal", o, ents, 0), event_lines(build, rest, o))
         case OceanState.EReq{+prefab, +count, +have}:
-          req_line(o, prefab, count, have) <> event_lines(rest, o)
+          req_line(build, o, prefab, count, have) <> event_lines(build, rest, o)
         case OceanState.EStatus{+ok, +missing, +rng}:
-          status_line(o, ok, missing, rng) <> event_lines(rest, o)
+          status_line(build, o, ok, missing, rng) <> event_lines(build, rest, o)
         case OceanState.EPiece{_}:
-          event_lines(rest, o)
+          event_lines(build, rest, o)
 
-def sea_lines(got: OceanState.Sea & Bool, +o: Out) -> List<&2, String>:
+def sea_lines(+build: Builds.Build, got: OceanState.Sea & Bool, +o: Out) -> List<&2, String>:
   (s, _) = got
   match s:
     case OceanState.Sea{_, _, _, _, _, +events}:
-      event_lines(List.reverse(&2, OceanState.Ev, events), o)
+      event_lines(build, List.reverse(&2, OceanState.Ev, events), o)
 
 def swaps_of(+level: LevelSummary.Summary) -> U32:
   match level:
@@ -281,50 +282,50 @@ def with_void(s: OceanState.Sea, void: Grid.Grid, +rng: Pcg.Rng) -> OceanState.S
     case OceanState.Sea{_, ids, _, +ents, +topo, +events}:
       OceanState.Sea{void, ids, rng, ents, topo, events}
 
-def post_attempt(+seed: U32, +windows: Bool, +a: String, +lines: List<&2, String>) -> List<&2, String>:
+def post_attempt(+build: Builds.Build, +seed: U32, +windows: Bool, +a: String, +lines: List<&2, String>) -> List<&2, String>:
   +input = OceanRows.input(a, lines)
   +w = TileInput.num("w", input)
   +h = TileInput.num("h", input)
-  +m = names()
-  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), w, h, True{}, False{}} : OceanState.Ctx}
+  +m = names(build)
+  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(build, seed)), w, h, True{}, False{}} : OceanState.Ctx}
   +ents = ents_loop(TileInput.of_attempt("oent", a, lines), m, Nil{})
   +reqs = reqs_loop(TileInput.of_attempt("oreq", a, lines), m)
   +rng = Pcg.at_counter(seed, TileInput.num("ctr", input))
   +void_rng = Pcg.at_counter(seed, TileInput.num("ctr", OceanRows.digest_record(a, "\"void\"", lines)))
   s = {OceanState.Sea{OceanRows.grid(a, "\"land\"", w, h, lines), OceanRows.ids(a, "\"land\"", w, h, lines), rng, ents, TileInput.num("topo", input), Nil{}} : OceanState.Sea}
-  prefilled = Ocean.prefill(c, s)
-  sea_lines(Ocean.after_convert(c, reqs, with_void(prefilled, OceanRows.grid(a, "\"void\"", w, h, lines), void_rng)), {Out{seed, a, w, h, 0, 0} : Out})
+  prefilled = Ocean.prefill(build, c, s)
+  sea_lines(build, Ocean.after_convert(build, c, reqs, with_void(prefilled, OceanRows.grid(a, "\"void\"", w, h, lines), void_rng)), {Out{seed, a, w, h, 0, 0} : Out})
 
-def post_all(as: List<&2, String>, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def post_all(+build: Builds.Build, as: List<&2, String>, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match as:
     case Nil{}:
       Nil{}
     case Con{+a, rest}:
-      List.append(&2, String, post_attempt(seed, windows, a, lines), post_all(rest, seed, windows, lines))
+      List.append(&2, String, post_attempt(build, seed, windows, a, lines), post_all(build, rest, seed, windows, lines))
 
 # The `oceanpost` records for a seed, platform and the lines of its input.
-def run_post(+seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
-  post_all(OceanRows.attempts(lines), seed, windows, lines)
+def run_post(+build: Builds.Build, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+  post_all(build, OceanRows.attempts(lines), seed, windows, lines)
 
-def full_attempt(+seed: U32, +windows: Bool, +a: String, +lines: List<&2, String>) -> List<&2, String>:
+def full_attempt(+build: Builds.Build, +seed: U32, +windows: Bool, +a: String, +lines: List<&2, String>) -> List<&2, String>:
   +input = OceanRows.input(a, lines)
   +w = TileInput.num("w", input)
   +h = TileInput.num("h", input)
-  +m = names()
-  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(seed)), w, h, True{}, False{}} : OceanState.Ctx}
+  +m = names(build)
+  +c = {OceanState.Ctx{windows, swaps_of(LevelSummary.summary(build, seed)), w, h, True{}, False{}} : OceanState.Ctx}
   +ents = ents_loop(TileInput.of_attempt("oent", a, lines), m, Nil{})
   +reqs = reqs_loop(TileInput.of_attempt("oreq", a, lines), m)
   +rng = Pcg.at_counter(seed, TileInput.num("ctr", input))
   s = {OceanState.Sea{OceanRows.grid(a, "\"land\"", w, h, lines), OceanRows.ids(a, "\"land\"", w, h, lines), rng, ents, TileInput.num("topo", input), Nil{}} : OceanState.Sea}
-  sea_lines(Ocean.run(c, reqs, s), {Out{seed, a, w, h, 0, 0} : Out})
+  sea_lines(build, Ocean.run(build, c, reqs, s), {Out{seed, a, w, h, 0, 0} : Out})
 
-def full_all(as: List<&2, String>, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def full_all(+build: Builds.Build, as: List<&2, String>, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match as:
     case Nil{}:
       Nil{}
     case Con{+a, rest}:
-      List.append(&2, String, full_attempt(seed, windows, a, lines), full_all(rest, seed, windows, lines))
+      List.append(&2, String, full_attempt(build, seed, windows, a, lines), full_all(build, rest, seed, windows, lines))
 
 # The `ocean` records for a seed, platform and the lines of its input.
-def run_full(+seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
-  full_all(OceanRows.attempts(lines), seed, windows, lines)
+def run_full(+build: Builds.Build, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+  full_all(build, OceanRows.attempts(lines), seed, windows, lines)

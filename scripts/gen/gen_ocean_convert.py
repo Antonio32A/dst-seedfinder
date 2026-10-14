@@ -12,7 +12,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 
-SCRIPTS = blob.ROOT / "build" / "deps" / "game-scripts"
 NUMBER = r"(-?[0-9]*\.?[0-9]+)"
 
 INTEGERS = ("shallowRadius", "fillOffset", "fillDepth", "noise_octave_water", "noise_octave_grave", "kernelSize")
@@ -97,8 +96,8 @@ def f64_const(m, name, value):
 
 
 def main():
-    source = (SCRIPTS / "map" / "ocean_gen.lua").read_text().replace("\r\n", "\n")
-    constants = (SCRIPTS / "constants.lua").read_text().replace("\r\n", "\n")
+    source = (blob.scripts_dir() / "map" / "ocean_gen.lua").read_text().replace("\r\n", "\n")
+    constants = (blob.scripts_dir() / "constants.lua").read_text().replace("\r\n", "\n")
     convert = function_body(source, "function Ocean_ConvertImpassibleToWater(")
     tiles = blob.sidecar("story.json")["enums"]["WORLD_TILES"]
     config = {e["key"]: e["value"] for e in blob.sidecar("ocean.json")["config"] if "value" in e}

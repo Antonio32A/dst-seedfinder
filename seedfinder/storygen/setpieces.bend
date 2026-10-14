@@ -8,6 +8,7 @@ import ../data/story.bend as StoryData
 import ../data/enums.bend as Enums
 import ./graph.bend as StoryGraph
 import ./order.bend as StoryOrder
+import ../data/builds.bend as Builds
 
 # Story:InsertAdditionalSetPieces: every task's set_pieces (Level:ChooseSetPieces, in pairs(level.set_pieces) order)
 # and random_set_pieces go into the first acceptable node of shuffledKeys(task.nodes) (countstaticlayouts[name] = 1).
@@ -16,34 +17,34 @@ import ./order.bend as StoryOrder
 def packed(+name: U32, +layout: U32) -> U32:
   ((name << 16n) .|. layout : U32)
 
-def keyed_pieces(entries: List<&2, U32>, +task: U32) -> List<&2, U32>:
+def keyed_pieces(+build: Builds.Build, entries: List<&2, U32>, +task: U32) -> List<&2, U32>:
   match entries:
     case Nil{}:
       Nil{}
     case Con{+entry, rest}:
-      +tail = keyed_pieces(rest, task)
+      +tail = keyed_pieces(build, rest, task)
       +key = (entry .&. 63 : U32)
       +placed = U32.is_eq((((entry >> 6n) >> U32.to_nat(task)) .&. 1 : U32), 1)
-      Bool.pick(List<&2, U32>, placed, packed(StoryData.piece_key(key), StoryData.piece_key_layout(key)) <> tail, tail)
+      Bool.pick(List<&2, U32>, placed, packed(StoryData.piece_key(build, key), StoryData.piece_key_layout(build, key)) <> tail, tail)
 
-def special_pieces(n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, U32>:
+def special_pieces(+build: Builds.Build, n: Nat, +codes: U32, +tasks: U32, +task: U32, +k: U32) -> List<&2, U32>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      +tail = special_pieces(p, codes, tasks, task, (k + 1 : U32))
+      +tail = special_pieces(build, p, codes, tasks, task, (k + 1 : U32))
       +code = LevelPrefix.field5(codes, k)
-      Bool.pick(List<&2, U32>, U32.is_eq(LevelPrefix.field5(tasks, k), task), packed(StoryData.piece_special(code), StoryData.piece_special_layout(code)) <> tail, tail)
+      Bool.pick(List<&2, U32>, U32.is_eq(LevelPrefix.field5(tasks, k), task), packed(StoryData.piece_special(build, code), StoryData.piece_special_layout(build, code)) <> tail, tail)
 
-def forest_set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
+def forest_set_pieces(+build: Builds.Build, +level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
   match level:
     case LevelSummary.Summary{_, _, +entries, _, _, _, _}:
-      keyed_pieces(entries, task)
+      keyed_pieces(build, entries, task)
 
-def forest_random_set_pieces(+level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
+def forest_random_set_pieces(+build: Builds.Build, +level: LevelSummary.Summary, +task: U32) -> List<&2, U32>:
   match level:
     case LevelSummary.Summary{_, _, _, +codes, +tasks, +count, _}:
-      special_pieces(U32.to_nat(count), codes, tasks, task, 0)
+      special_pieces(build, U32.to_nat(count), codes, tasks, task, 0)
 
 def cave_layout_unresolved() -> U32:
   65535
@@ -56,18 +57,18 @@ def cave_packed(keys: List<&2, U32>) -> List<&2, U32>:
       packed(key, cave_layout_unresolved()) <> cave_packed(rest)
 
 # task.set_pieces of a task; a caves piece is its data/cave_catalog.bend key with no layout yet.
-def set_pieces(+plan: StoryPlan.Plan, +task: U32) -> List<&2, U32>:
+def set_pieces(+build: Builds.Build, +plan: StoryPlan.Plan, +task: U32) -> List<&2, U32>:
   match plan:
     case StoryPlan.ForestPlan{+level}:
-      forest_set_pieces(level, task)
+      forest_set_pieces(build, level, task)
     case StoryPlan.CavePlan{_, +placed, _}:
       cave_packed(StoryPlan.cave_piece_names(placed, task))
 
 # task.random_set_pieces of a task (the caves have none).
-def random_set_pieces(+plan: StoryPlan.Plan, +task: U32) -> List<&2, U32>:
+def random_set_pieces(+build: Builds.Build, +plan: StoryPlan.Plan, +task: U32) -> List<&2, U32>:
   match plan:
     case StoryPlan.ForestPlan{+level}:
-      forest_random_set_pieces(level, task)
+      forest_random_set_pieces(build, level, task)
     case StoryPlan.CavePlan{_, _, _}:
       Nil{}
 
@@ -104,17 +105,17 @@ def shuffled(+s: StoryGraph.St, +order: List<&2, U32>) -> Picks:
   arr = fill_array(order, Array.new(U32, U32.to_nat(LuaTable.ceil_log2((n + 2 : U32))), StoryGraph.none()), 0)
   unshuffled(LuaUtil.shuffle_array(arr, n, StoryGraph.rng_of(s)), n, s)
 
-def acceptable(+s: StoryGraph.St, +node: U32, +random: Bool) -> Bool:
+def acceptable(+build: Builds.Build, +s: StoryGraph.St, +node: U32, +random: Bool) -> Bool:
   +not_blank = Bool.pick(Bool, random, U32.is_ne(StoryGraph.nf(s, node, StoryGraph.f_type()), Enums.node_type_blank()),
-    Bool.not(StoryData.is_impassable(StoryGraph.nf(s, node, StoryGraph.f_value()))))
+    Bool.not(StoryData.is_impassable(build, StoryGraph.nf(s, node, StoryGraph.f_value()))))
   Bool.not(StoryGraph.is_entrance(s, node)) && not_blank
 
-def choice(order: List<&2, U32>, +s: StoryGraph.St, +random: Bool) -> U32:
+def choice(+build: Builds.Build, order: List<&2, U32>, +s: StoryGraph.St, +random: Bool) -> U32:
   match order:
     case Nil{}:
       StoryGraph.none()
     case Con{+node, rest}:
-      Bool.pick(U32, acceptable(s, node, random), node, choice(rest, s, random))
+      Bool.pick(U32, acceptable(build, s, node, random), node, choice(build, rest, s, random))
 
 def placed_if(missing: Bool, +node: U32, +s: StoryGraph.St, +piece: U32) -> StoryGraph.St:
   match missing:
@@ -126,10 +127,10 @@ def placed_if(missing: Bool, +node: U32, +s: StoryGraph.St, +piece: U32) -> Stor
 def placed(+node: U32, +s: StoryGraph.St, +piece: U32) -> StoryGraph.St:
   placed_if(U32.is_eq(node, StoryGraph.none()), node, s, piece)
 
-def place_one(+p: Picks, +piece: U32, +random: Bool) -> StoryGraph.Got:
+def place_one(+build: Builds.Build, +p: Picks, +piece: U32, +random: Bool) -> StoryGraph.Got:
   match p:
     case Picks{+order, +s}:
-      +node = choice(order, s, random)
+      +node = choice(build, order, s, random)
       StoryGraph.Got{node, placed(node, s, piece)}
 
 # Placing set pieces: the state and whether a piece found no node (which ends the pass).
@@ -141,7 +142,7 @@ def placing_of(+g: StoryGraph.Got) -> Placing:
     case StoryGraph.Got{+v, +s}:
       Placing{s, U32.is_eq(v, StoryGraph.none())}
 
-def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random: Bool) -> StoryGraph.St:
+def place_all(+build: Builds.Build, pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random: Bool) -> StoryGraph.St:
   match pieces:
     case Nil{}:
       match p:
@@ -154,25 +155,25 @@ def place_all(pieces: List<&2, U32>, +p: Placing, +order: List<&2, U32>, +random
             case True{}:
               s
             case False{}:
-              place_all(rest, placing_of(place_one(shuffled(s, order), piece, random)), order, random)
+              place_all(build, rest, placing_of(place_one(build, shuffled(s, order), piece, random)), order, random)
 
-def pieces_of_graph(task_graph: Bool, +s: StoryGraph.St, +g: U32, +plan: StoryPlan.Plan) -> StoryGraph.St:
+def pieces_of_graph(+build: Builds.Build, task_graph: Bool, +s: StoryGraph.St, +g: U32, +plan: StoryPlan.Plan) -> StoryGraph.St:
   match task_graph:
     case True{}:
       +task = StoryGraph.gf(s, g, StoryGraph.g_part())
       +order = StoryGraph.node_order(s, g)
-      place_all(random_set_pieces(plan, task), Placing{place_all(set_pieces(plan, task), Placing{s, False{}}, order, False{}), False{}}, order, True{})
+      place_all(build, random_set_pieces(build, plan, task), Placing{place_all(build, set_pieces(build, plan, task), Placing{s, False{}}, order, False{}), False{}}, order, True{})
     case False{}:
       s
 
-def pieces_loop(graphs: List<&2, U32>, +s: StoryGraph.St, +plan: StoryPlan.Plan) -> StoryGraph.St:
+def pieces_loop(+build: Builds.Build, graphs: List<&2, U32>, +s: StoryGraph.St, +plan: StoryPlan.Plan) -> StoryGraph.St:
   match graphs:
     case Nil{}:
       s
     case Con{+g, rest}:
-      pieces_loop(rest, pieces_of_graph(U32.is_eq(StoryGraph.gf(s, g, StoryGraph.g_kind()), StoryGraph.k_task()), s, g, plan), plan)
+      pieces_loop(build, rest, pieces_of_graph(build, U32.is_eq(StoryGraph.gf(s, g, StoryGraph.g_kind()), StoryGraph.k_task()), s, g, plan), plan)
 
 # Story:InsertAdditionalSetPieces over the given graphs (pairs order).
-def insert_set_pieces(+s: StoryGraph.St, +graphs: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
+def insert_set_pieces(+build: Builds.Build, +s: StoryGraph.St, +graphs: List<&2, U32>, +plan: StoryPlan.Plan) -> StoryGraph.St:
   +before = StoryGraph.rng_of(s)
-  StoryGraph.returned(pieces_loop(graphs, s, plan), StoryGraph.f_insert_additional_set_pieces(), before)
+  StoryGraph.returned(pieces_loop(build, graphs, s, plan), StoryGraph.f_insert_additional_set_pieces(), before)

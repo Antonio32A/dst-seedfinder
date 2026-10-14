@@ -1,5 +1,5 @@
 import { isRecord } from "@/lib/records";
-import { CONFIG_VERSION } from "./seedfinder-config";
+import { CONFIG_VERSION, LEGACY_CONFIG_BUILD, LEGACY_CONFIG_VERSIONS } from "./seedfinder-config";
 
 const LEVEL_SECTIONS = ["tasks", "prefab_swaps", "setpieces"];
 const WORLD_SECTIONS = ["counts", "distances", "tiles", "bridges", "routes"];
@@ -17,19 +17,29 @@ const generationOf = (entries: Record<string, unknown>[]) =>
 
 const isV1 = (config: Record<string, unknown>) => config.version === 1 || Object.hasOwn(config, "criteria");
 
-export function upgradeConfig(config: unknown): unknown {
-    if (!isRecord(config)) return config;
+const isLegacy = (config: Record<string, unknown>) =>
+    config.version === undefined || LEGACY_CONFIG_VERSIONS.includes(config.version);
+
+function v2Sections(config: Record<string, unknown>): Record<string, unknown> {
     const kept = Object.fromEntries(Object.entries(config).filter(([key]) => key !== "settings" && key !== "criteria"));
-    if (!isV1(config)) return { version: CONFIG_VERSION, ...kept };
+    if (!isV1(config)) return kept;
     const entries = entriesOf(config);
     const generation = generationOf(entries);
     const filters = entries.map((entry) => sectionsOf(entry, WORLD_SECTIONS));
     return {
         ...kept,
-        version: CONFIG_VERSION,
         ...(isEmpty(generation) ? {} : { generation }),
         ...(filters.every(isEmpty) ? {} : { filters })
     };
+}
+
+/**
+ * A config of a legacy format version (none, 1 or 2) in the current format, for the build those were written for; any
+ * other config is left as it is.
+ */
+export function upgradeConfig(config: unknown): unknown {
+    if (!isRecord(config) || !isLegacy(config)) return config;
+    return { ...v2Sections(config), version: CONFIG_VERSION, build: LEGACY_CONFIG_BUILD };
 }
 
 export function dropsLevelTables(config: unknown): boolean {

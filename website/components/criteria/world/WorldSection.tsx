@@ -1,10 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MAX_RULES_PER_SECTION, type Shard } from "@/lib/config/seedfinder-config";
+import { MAX_RULES_PER_SECTION } from "@/lib/config/seedfinder-config";
 import { replaceByKey, withoutKey } from "@/lib/criteria/state-helpers";
 import {
     NEW_WORLD_ROW,
+    type WorldKind,
     type WorldRows,
     type WorldSection as WorldSectionKey
 } from "@/lib/criteria/world-rules";
@@ -13,7 +14,7 @@ import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
 import RouteRuleRow from "./RouteRuleRow";
 import TileRuleRow from "./TileRuleRow";
-import { WorldShardProvider } from "./WorldShard";
+import { WorldKindProvider } from "./WorldKind";
 
 interface RowProps<T> {
     row: T;
@@ -41,7 +42,7 @@ const SECTIONS: { id: WorldSectionKey; title: string; add: string }[] = [
 ];
 
 interface WorldSectionProps {
-    shard: Shard;
+    world: WorldKind;
     rows: WorldRows;
     onChange: (rows: Partial<WorldRows>) => void;
 }
@@ -68,14 +69,14 @@ function RowList<S extends WorldSectionKey>({ section, rows, onChange }: {
     );
 }
 
-export default function WorldSection({ shard, rows, onChange }: WorldSectionProps) {
+export default function WorldSection({ world, rows, onChange }: WorldSectionProps) {
     const picked = SECTIONS.filter(({ id }) => rows[id].length > 0);
     const full = SECTIONS.filter(({ id }) => rows[id].length >= MAX_RULES_PER_SECTION);
     const add = (section: WorldSectionKey) =>
-            onChange({ [section]: [...rows[section], NEW_WORLD_ROW[section](shard)] });
+            onChange({ [section]: [...rows[section], NEW_WORLD_ROW[section](world)] });
 
     return (
-            <WorldShardProvider value={shard}>
+            <WorldKindProvider value={world}>
                 {picked.length === 0 &&
                         <p className="hint">Click on any of the buttons to add something to search for.</p>}
                 {picked.map(({ id, title }) => (
@@ -97,6 +98,6 @@ export default function WorldSection({ shard, rows, onChange }: WorldSectionProp
                         <p className="hint">{full.map(({ title }) => title).join(", ")}:
                             max {MAX_RULES_PER_SECTION} per
                             option.</p>}
-            </WorldShardProvider>
+            </WorldKindProvider>
     );
 }

@@ -139,7 +139,8 @@ const HitRow = memo(function HitRow({ hit, platform, config, showOption, onCopy 
     const [open, setOpen] = useState(false);
     const worldId = useId();
     const seed = String(hit.seed);
-    const catalog = levelCatalogOf(config.shard);
+    const catalog = levelCatalogOf(config.shard, config.build);
+    const world = { platform, shard: catalog.shard, build: config.build, seed: hit.seed };
 
     return (
             <li className="hit">
@@ -149,7 +150,7 @@ const HitRow = memo(function HitRow({ hit, platform, config, showOption, onCopy 
                             onClick={() => onCopy(seed, `Seed ${seed}`)}>
                         copy
                     </button>
-                    <Link href={mapPath(platform, hit.seed, config)} className="link-button"
+                    <Link href={mapPath(world, config)} className="link-button"
                           aria-label={`Map of seed ${seed} on ${platform}`}>
                         map
                     </Link>

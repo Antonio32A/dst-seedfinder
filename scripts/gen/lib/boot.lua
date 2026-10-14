@@ -1,13 +1,21 @@
 -- Shared setup for the lua generators in scripts/gen: runs the unmodified worldgen_main.lua (default forest,
 -- SURVIVAL_TOGETHER, seed 1) under the harness stubs up to forest_map.Generate and exposes the loaded game state.
 -- GEN_SHARD=caves makes BOOT.level the DST_CAVE level data and lib/reach.lua reach the caves' tasks and rooms.
+-- GEN_SCRIPTS names the game build's scripts (regen.sh sets it; build/deps/game-scripts without it).
 -- usage: local BOOT = dofile(<gen>/lib/boot.lua)
 
 local GEN = debug.getinfo(1, "S").source:match("^@(.*)/lib/[^/]*$")
 local ROOT = GEN .. "/../.."
 local BOOT = { gen = GEN }
 
-HARNESS_SCRIPTS_DIR = ROOT .. "/build/deps/game-scripts"
+HARNESS_SCRIPTS_DIR = os.getenv("GEN_SCRIPTS") or (ROOT .. "/build/deps/game-scripts")
+
+-- The game script a function's debug.getinfo source names, relative to the scripts folder.
+function GAME_SCRIPT_FILE(source)
+    local path = source:gsub("^@", "")
+    local prefix = HARNESS_SCRIPTS_DIR .. "/"
+    return path:sub(1, #prefix) == prefix and path:sub(#prefix + 1) or path
+end
 HARNESS_VERBOSE = false
 
 local SENTINEL = {}
@@ -121,7 +129,7 @@ end
 
 function BOOT.fn_info(fn)
     local info = debug.getinfo(fn, "S")
-    return { file = info.source:gsub("^@", ""):gsub("^.*/game%-scripts/", ""), first = info.linedefined, last = info.lastlinedefined }
+    return { file = GAME_SCRIPT_FILE(info.source), first = info.linedefined, last = info.lastlinedefined }
 end
 
 local JSON_NULL = setmetatable({}, { __tostring = function() return "null" end })

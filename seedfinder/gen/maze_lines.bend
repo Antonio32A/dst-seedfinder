@@ -10,6 +10,7 @@ import ./graph.bend as GenGraph
 import ./tags.bend as GenTags
 import ./maze_env.bend as MazeEnv
 import ./maze_tags.bend as MazeTags
+import ../data/builds.bend as Builds
 
 # The lines the maze passes draw so a maze does not cut itself off from land: WorldSim:DrawCellLine along the edges of
 # nodes (from site to site) and WorldSim:DrawGroundLine between two positions.
@@ -90,28 +91,28 @@ def fake_edges(cut: Bool, g: Grid.Grid, +e: MazeEnv.Env, +other: U32) -> Grid.Gr
     case False{}:
       g
 
-def bridged(solid: Bool, g: Grid.Grid, +e: MazeEnv.Env, +other: U32) -> Grid.Grid:
-  fake_edges(solid && U32.is_eq(GenTags.disconnected(MazeEnv.story_of(e), other), 1), g, e, other)
+def bridged(+build: Builds.Build, solid: Bool, g: Grid.Grid, +e: MazeEnv.Env, +other: U32) -> Grid.Grid:
+  fake_edges(solid && U32.is_eq(GenTags.disconnected(build, MazeEnv.story_of(e), other), 1), g, e, other)
 
 # One edge of a maze entrance: the bridge line, and when the node across is ForceDisconnected the FAKE_GROUND lines
 # along that node's own edges.
-def bridge_link(g: Grid.Grid, +e: MazeEnv.Env, +entrance: U32, +tile: U32, +l: MazeTags.Link) -> Grid.Grid:
-  bridged(MazeTags.is_solid(MazeEnv.story_of(e), l), cell_line_if(MazeTags.is_solid(MazeEnv.story_of(e), l), g, e, l, TileLines.Pen{tile, False{}, True{}}), e, other_end(l, entrance))
+def bridge_link(+build: Builds.Build, g: Grid.Grid, +e: MazeEnv.Env, +entrance: U32, +tile: U32, +l: MazeTags.Link) -> Grid.Grid:
+  bridged(build, MazeTags.is_solid(MazeEnv.story_of(e), l), cell_line_if(MazeTags.is_solid(MazeEnv.story_of(e), l), g, e, l, TileLines.Pen{tile, False{}, True{}}), e, other_end(l, entrance))
 
-def bridge_links(links: List<&2, MazeTags.Link>, g: Grid.Grid, +e: MazeEnv.Env, +entrance: U32, +tile: U32) -> Grid.Grid:
+def bridge_links(+build: Builds.Build, links: List<&2, MazeTags.Link>, g: Grid.Grid, +e: MazeEnv.Env, +entrance: U32, +tile: U32) -> Grid.Grid:
   match links:
     case Nil{}:
       g
     case Con{+l, rest}:
-      bridge_links(rest, bridge_link(g, e, entrance, tile, l), e, entrance, tile)
+      bridge_links(build, rest, bridge_link(build, g, e, entrance, tile, l), e, entrance, tile)
 
 # The bridge lines of every maze entrance node (in table order).
-def bridge(entrances: List<&2, U32>, g: Grid.Grid, +e: MazeEnv.Env, +tile: U32) -> Grid.Grid:
+def bridge(+build: Builds.Build, entrances: List<&2, U32>, g: Grid.Grid, +e: MazeEnv.Env, +tile: U32) -> Grid.Grid:
   match entrances:
     case Nil{}:
       g
     case Con{+n, rest}:
-      bridge(rest, bridge_links(MazeTags.edges(MazeEnv.story_of(e), n), g, e, n, tile), e, tile)
+      bridge(build, rest, bridge_links(build, MazeTags.edges(MazeEnv.story_of(e), n), g, e, n, tile), e, tile)
 
 # DrawGroundLine(x0, y0, x1, y1, tile, true, true) from tile coordinates.
 def ground_line(g: Grid.Grid, +x0: F64Repr.F64, +y0: F64Repr.F64, +x1: F64Repr.F64, +y1: F64Repr.F64, +tile: U32) -> Grid.Grid:

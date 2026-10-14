@@ -1,22 +1,26 @@
 # catalog
 
-Generates `catalog.json`: the settings, prefab swaps, tasks, set pieces, prefabs and tiles of a default forest world
-(`SURVIVAL_TOGETHER`), used by the seedfinder data generators and the website. It's built from the game scripts plus
-statistics over a sample of generated worlds.
+Generates `<build>/catalog.json`: the settings, prefab swaps, tasks, set pieces, prefabs and tiles of a default forest
+world (`SURVIVAL_TOGETHER`) of a game build, used by the seedfinder data generators and the website. It's built from the
+game scripts plus statistics over a sample of generated worlds. Each build of the repository root's `builds.json` names
+the catalog folder it uses per shard (`catalog`), so a game update that doesn't change the catalog keeps the older
+build's; the scripts take `--build NUMBER` (the latest build by default) and keep each build's catalogs, inputs
+(`<build>/inputs/`) and work files (`build/catalog/<build>/`) apart.
 
-Everything here needs `scripts/setup.sh` to have been run, numpy, and the game installed through Steam (`DST_GAME`
-overrides the install path; without the game the catalog silently loses its icons, tile colours and game build).
+Everything here needs `scripts/setup.sh` to have been run for the build's install (its scripts in
+`build/deps/builds/<build>/`), numpy, and the game installed through Steam (`DST_GAME` overrides the install path;
+without the game the catalog silently loses its icons and tile colours).
 
 ## The caves catalog
 
-`python3 scripts/catalog/build_catalog.py --shard caves` writes `cave_catalog.json`: the prefabs and tiles of the caves
+`python3 scripts/catalog/build_catalog.py --shard caves` writes `<build>/cave_catalog.json`: the prefabs and tiles of the caves
 shard (`DST_CAVE`, task set `cave_default`), in the shape of the forest catalog's `prefabs[]` and `tiles[]` (without
-settings, tasks and set pieces). Its inputs, snapshotted in `inputs/`:
+settings, tasks and set pieces). Its inputs, snapshotted in `<build>/inputs/`:
 
 - `static_caves.json`: `extract_static.lua` run with `CATALOG_SHARD=caves`, which walks the caves' tasks, rooms and
   layouts (the same static walk as the forest's, so a prefab appears if a cave room, layout, map tag or maze can place
   it).
-- `worlds_caves.jsonl`: summaries of the real cave worlds in `build/groundtruth/data/worlds_caves/`. Their prefab sets
+- `worlds_caves.jsonl`: summaries of the real cave worlds in `build/groundtruth/<build>/data/worlds_caves/`. Their prefab sets
   say which prefabs really occur (`empirical`) and which tiles the caves use (`in_caves_worlds`).
 
 Tiles are shard independent apart from which ones the sampled worlds use: a tile gets its `minimap_noise` from whichever
@@ -28,7 +32,8 @@ minimap or inventory icon). The prefabs that genuinely have none, which the map 
 `names.PREFAB_NAMES` and groups to `names.GROUPS`.
 
 ```sh
-CATALOG_SHARD=caves scripts/harness/bin/lua-dst scripts/catalog/extract_static.lua > build/catalog/static_caves.json
+CATALOG_SHARD=caves scripts/harness/bin/lua-dst scripts/catalog/extract_static.lua --build 756039 \
+    > build/catalog/756039/build/static_caves.json
 python3 scripts/catalog/build_catalog.py --shard caves --collect
 python3 scripts/catalog/build_catalog.py --shard caves
 python3 scripts/catalog/map_textures.py && node scripts/gen/gen_website_catalog.mjs
@@ -53,14 +58,14 @@ ocean tile's ground colour. Colours are `[r, g, b]` (0-255).
   tiles without a minimap layer.
 - `ocean_minimap_color`: an ocean tile's ground `colors.minimap_color` RGB; `null` for the other tiles.
 
-The texture names and ranks come from `inputs/static.json` (`minimap_noise`, `minimap_rank`, `ground_minimap_color`).
+The texture names and ranks come from `<build>/inputs/static.json` (`minimap_noise`, `minimap_rank`, `ground_minimap_color`).
 
 ## Minimap icons
 
 `icons.minimap` of each prefab is what the game itself draws for it. `minimap_icons.py` runs every game prefab's
 constructor under `extract_minimap_icons.lua` (the master simulation, with stubs for what the constructors touch) and
 records what each tells its `MiniMapEntity`: the last icon, priority and draw-over-fog flag. Prefabs whose last
-`SetEnabled` is false, or that never set an icon, have none. The table is snapshotted in `inputs/minimap_icons.json`
+`SetEnabled` is false, or that never set an icon, have none. The table is snapshotted in `<build>/inputs/minimap_icons.json`
 (`incomplete: true` marks a constructor that crashed after setting its icon):
 
 ```sh
@@ -106,7 +111,7 @@ marker's single icon only approximates them.
 `map_textures.py` writes the textures the website's map draws with to `website/public/world-map/`, as lossless PNGs of
 the full-size mip, rows in stored order (the first row is v = 0, as the game uploads it):
 
-- `noise/<name>.<hash>.png`: every `minimap_noise` of `catalog.json` and `cave_catalog.json`, RGB.
+- `noise/<name>.<hash>.png`: every `minimap_noise` of the catalogs `builds.json` uses, RGB.
 - `map_edge.<hash>.png`: `levels/tiles/map_edge.tex`, RGBA, with its straight alpha exactly as stored
   (`levels/tiles/map_edge.xml` places its 48 cells).
 - `minimap_paper.<hash>.png`: `images/minimap_paper.tex`, RGB.
@@ -135,7 +140,7 @@ right; `iconSheet.levels` of the manifest (and `world.ts`) gives each one's regi
 `w = 63` starting half a texel into 64 texels, and is drawn 63 px (9.84375 world units) wide. Priorities are per prefab
 (`world.ts` `icon.priority`), not per icon.
 
-It needs the game install (`DST_GAME` overrides the path) and reads `catalog.json`, so rerun it after
+It needs the game install (`DST_GAME` overrides the path) and reads the catalogs, so rerun it after
 `build_catalog.py`, then regenerate `world.ts`:
 
 ```sh
@@ -151,7 +156,7 @@ stays free and credits the art to Klei with a notice that the site isn't affilia
 
 ## Rebuilding from the committed inputs
 
-The world samples and statistics are snapshotted in `inputs/`, so tweaks like names or groups (`names.py`) only need:
+The world samples and statistics are snapshotted in `<build>/inputs/`, so tweaks like names or groups (`names.py`) only need:
 
 ```sh
 python3 scripts/catalog/build_catalog.py
@@ -166,13 +171,16 @@ Needs tools that aren't in the repo, given by environment variables:
   `out/out_1M.txt`)
 - `REALGEN_DIR` (optional): real-game world summaries (`out/*/summary.json`)
 
-1. Delete `build/deps/game-scripts/` and rerun `scripts/setup.sh` to pull the new scripts.
+1. Run `DST_GAME=<the new install> scripts/setup.sh` to add the new build's scripts to `build/deps/builds/<build>/`, and
+   register the build in `builds.json`.
 2. If worldgen changed, re-validate the emulator and rebuild `$HARNESS_DIR/out/out_1M.txt`.
-3. Run `scripts/catalog/regen.sh --fresh-worlds` (without the flag, the cached worlds in `build/catalog/worlds/` are
-   reused). It refreshes `inputs/` and writes `catalog.json`.
-4. Seeds the emulator couldn't generate are listed as `no-world` in `build/catalog/build/run_worlds.log`. Generate them
-   with the real game, one at a time (`$REALGEN_DIR/run.sh <seed> build/catalog/build/realgen/<seed>`), then run
-   `build_catalog.py --collect` and `build_catalog.py` again.
+3. Run `scripts/catalog/regen.sh --build <build> --fresh-worlds` (without the flag, the cached worlds in
+   `build/catalog/<build>/worlds/` are reused). It refreshes `<build>/inputs/` and writes `<build>/catalog.json` and
+   `<build>/cave_catalog.json`; point the build's `catalog` in `builds.json` at them.
+4. Seeds the emulator couldn't generate are listed as `no-world` in `build/catalog/<build>/build/run_worlds.log`.
+   Generate them with the real game, one at a time
+   (`$REALGEN_DIR/run.sh <seed> build/catalog/<build>/build/realgen/<seed>`), then run
+   `build_catalog.py --build <build> --collect` and `build_catalog.py --build <build>` again.
 5. Check the output: `cross_check.empirical_not_static` must be empty, and any prefab with `name_source: "fallback"`
    needs a name in `names.py`.
 6. Regenerate what depends on it: `scripts/gen/regen.sh`, `python3 scripts/catalog/map_textures.py` and

@@ -23,7 +23,8 @@ const WORLD = {
 };
 
 const SEARCH: SeedfinderConfig = {
-    version: 2,
+    version: 3,
+    build: 756039,
     generation: { tasks: { required: ["Killer bees!"] }, setpieces: [{ required: { MooseNest: 1 } }] },
     filters: [
         {
@@ -108,15 +109,19 @@ describe("the prefabs a map shows", () => {
     });
 
     it("shows a named prefab although the game doesn't draw it", () => {
-        const search: SeedfinderConfig = { version: 2, filters: [{ counts: [{ prefab: UNDRAWN, min: 1 }] }] };
+        const search: SeedfinderConfig = {
+            version: 3,
+            build: 756039,
+            filters: [{ counts: [{ prefab: UNDRAWN, min: 1 }] }]
+        };
         expect(defaultShown()).not.toContain(UNDRAWN);
         expect(defaultShown(search)).toContain(UNDRAWN);
     });
 
     it("shows the game's default for a search without world rules", () => {
-        const levelOnly: SeedfinderConfig = { version: 2, generation: { tasks: { required: ["Killer bees!"] } } };
+        const levelOnly: SeedfinderConfig = { version: 3, build: 756039, generation: { tasks: { required: ["Killer bees!"] } } };
         expect(defaultShown(levelOnly)).toEqual(defaultShown());
-        expect(defaultShown({ version: 2 })).toEqual(defaultShown());
+        expect(defaultShown({ version: 3, build: 756039 })).toEqual(defaultShown());
     });
 });
 

@@ -7,6 +7,7 @@ import ../worldsim/grid.bend as Grid
 import ../ocean/ents.bend as OceanEnts
 import ../gen/job.bend as GenJob
 import ../gen/savedata.bend as SaveData
+import ../data/builds.bend as Builds
 
 # A caves world (newest entity first): a cave_exit (string id 917), two tentacle_pillar (1217) teleporting to each
 # other, a tentacle_pillar_atrium (1218) whose target is gone, and an entity of no vocabulary prefab.
@@ -17,7 +18,7 @@ def cave_final() -> GenJob.Final:
       OceanEnts.Ent{917, F64Repr.F64{1069547520, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []}
 
 law cave_world_is_dump_world:
-  {FilterWorld.loaded_of(Done{SaveData.dump_caves(7, True{}, cave_final())}, True{}) == Done{FilterWorld.Generated{SaveData.cave_world(7, True{}, cave_final()), 1}} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+  {FilterWorld.loaded_of(Builds.Build{756039}, Done{SaveData.dump_caves(Builds.Build{756039}, 7, True{}, cave_final())}, True{}) == Done{FilterWorld.Generated{SaveData.cave_world(Builds.Build{756039}, 7, True{}, cave_final()), 1}} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
 
 def cave_world_is_dump_world():
   {==}

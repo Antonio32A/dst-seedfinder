@@ -19,6 +19,8 @@ import { useLocalSearch } from "@/lib/browser-search/use-local-search";
 import { copyText } from "@/lib/client/clipboard";
 import { rememberMapOrigin } from "@/lib/client/map-origin";
 import { useAccount } from "@/lib/client/use-account";
+import { buildLabel } from "@/lib/config/builds";
+import type { GameBuild } from "@/lib/config/game-builds";
 import { type Shard, SHARD_LABELS } from "@/lib/config/seedfinder-config";
 import {
     decodeShareParam,
@@ -30,6 +32,7 @@ import {
     type Preset,
     type SearchState,
     STORAGE_KEY,
+    switchBuild,
     switchShard,
     toSeedfinderConfig,
     validateSearch,
@@ -141,8 +144,21 @@ export default function SeedFinderApp() {
         }
     };
 
+    const changeBuild = (build: GameBuild) => {
+        const switched = switchBuild(state, build);
+        setState(switched.state);
+        if (switched.dropped > 0) {
+            notify(`Switched to build ${buildLabel(build)}. Dropped ${switched.dropped} pick${switched.dropped === 1 ? "" : "s"} that it doesn't have.`);
+        }
+    };
+
+    const presetSearch = (preset: Preset): SearchState => ({
+        ...switchBuild(preset.build(), state.build).state,
+        platform: state.platform
+    });
+
     const pickPreset = (preset: Preset) => {
-        if (isEmptySearch(state)) setState({ ...preset.build(), platform: state.platform });
+        if (isEmptySearch(state)) setState(presetSearch(preset));
         else setPendingPreset(preset);
     };
 
@@ -161,6 +177,8 @@ export default function SeedFinderApp() {
                             issues={issues}
                             platform={state.platform}
                             onPlatformChange={(platform) => setState((current) => ({ ...current, platform }))}
+                            build={state.build}
+                            onBuildChange={changeBuild}
                             wanted={wanted}
                             onWantedChange={setWanted}
                             target={target}
@@ -199,7 +217,7 @@ export default function SeedFinderApp() {
                         message={`Loading "${pendingPreset?.name ?? ""}" replaces everything you've picked.`}
                         confirmLabel="Replace"
                         onConfirm={() => {
-                            if (pendingPreset) setState({ ...pendingPreset.build(), platform: state.platform });
+                            if (pendingPreset) setState(presetSearch(pendingPreset));
                             setPendingPreset(null);
                         }}
                         onCancel={() => setPendingPreset(null)}

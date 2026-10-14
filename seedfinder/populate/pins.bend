@@ -1,5 +1,6 @@
 import Base
 import ../data/closures.bend as Closures
+import ../data/builds.bend as Builds
 
 # The hand-ported closures, each pinned to the game code it ports: the id in data/closures.bend and the fingerprint
 # of that closure variant. A regeneration that renumbers or changes a closure breaks the pin
@@ -8,12 +9,12 @@ import ../data/closures.bend as Closures
 type Pin is Data:
   Pin{id: U32, fingerprint: U32}
 
-def line_up(pins: List<&2, Pin>) -> Bool:
+def line_up(+build: Builds.Build, pins: List<&2, Pin>) -> Bool:
   match pins:
     case Nil{}:
       True{}
     case Con{Pin{+id, +fingerprint}, rest}:
-      U32.is_eq(Closures.closure_fingerprint(id), fingerprint) && line_up(rest)
+      U32.is_eq(Closures.closure_fingerprint(build, id), fingerprint) && line_up(build, rest)
 
 def is_pinned(pins: List<&2, Pin>, +id: U32) -> Bool:
   match pins:
@@ -31,12 +32,12 @@ def is_ported_category(categories: List<&2, U32>) -> Bool:
 
 # Every closure of the room (1) and layout area (2) categories, the ones ported by hand, is pinned: a closure that a
 # regeneration adds has to be ported and pinned before the proofs pass.
-def all_pinned(n: Nat, +pins: List<&2, Pin>, +id: U32) -> Bool:
+def all_pinned(+build: Builds.Build, n: Nat, +pins: List<&2, Pin>, +id: U32) -> Bool:
   match n:
     case 0n:
       True{}
     case 1n+p:
-      (Bool.not(is_ported_category(Closures.closure_categories(id))) || is_pinned(pins, id)) && all_pinned(p, pins, (id + 1 : U32))
+      (Bool.not(is_ported_category(Closures.closure_categories(build, id))) || is_pinned(pins, id)) && all_pinned(build, p, pins, (id + 1 : U32))
 
 # counts.bend: the room count closures of countprefabs and countstaticlayouts (66-97; the Halloween ones count 0) and the caves' 100 and 141-143, and the prefabdata closures 85, 144 and 145.
 def room_counts() -> List<&2, Pin>:
@@ -148,5 +149,5 @@ def layout_areas() -> List<&2, Pin>:
 def ported() -> List<&2, Pin>:
   List.append(&2, Pin, room_counts(), layout_areas())
 
-def every_ported_closure_is_pinned() -> Bool:
-  all_pinned(U32.to_nat(Closures.closure_count()), ported(), 0)
+def every_ported_closure_is_pinned(+build: Builds.Build) -> Bool:
+  all_pinned(build, U32.to_nat(Closures.closure_count(build)), ported(), 0)

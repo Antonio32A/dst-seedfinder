@@ -1,0 +1,9 @@
+{
+  "latest": 756039,
+  "builds": [
+    {"number": 756039, "label": "756039", "channel": "release", "steam_branch": "public",
+     "shards": ["forest", "caves"], "website": true, "catalog": {"forest": 756039, "caves": 756039}},
+    {"number": 757748, "label": "757748 (beta)", "channel": "beta", "steam_branch": "updatebeta",
+     "shards": ["forest"], "website": false, "catalog": {"forest": 756039, "caves": 756039}}
+  ]
+}

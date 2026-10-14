@@ -1,6 +1,6 @@
 import createSeedfinder from "../../../build/wasm-single/seedfinder.mjs";
 import seedfinder from "../../../build/wasm-single/seedfinder.wasm";
-import type { Platform, Shard } from "@/lib/config/seedfinder-config";
+import type { MapSeed } from "@/lib/world-map/map-route";
 import { CRASHED_LINE, DUMP_PATH, dumpArgs } from "@/lib/world-map/world/world-dump";
 
 export type GeneratedDump = { status: "dumped"; bytes: Uint8Array } | { status: "crashed" };
@@ -11,13 +11,13 @@ interface SeedfinderRuntime {
 
 let running: Promise<unknown> = Promise.resolve();
 
-export function generateDump(seed: number, platform: Platform, shard: Shard): Promise<GeneratedDump> {
-    const dump = running.then(() => runDump(seed, platform, shard));
+export function generateDump(world: MapSeed): Promise<GeneratedDump> {
+    const dump = running.then(() => runDump(world));
     running = dump.catch(() => undefined);
     return dump;
 }
 
-function runDump(seed: number, platform: Platform, shard: Shard): Promise<GeneratedDump> {
+function runDump({ seed, platform, shard, build }: MapSeed): Promise<GeneratedDump> {
     return new Promise((resolve, reject) => {
         let runtime: SeedfinderRuntime | null = null;
         let crashed = false;
@@ -28,7 +28,7 @@ function runDump(seed: number, platform: Platform, shard: Shard): Promise<Genera
             resolve({ status: "dumped", bytes: runtime.FS.readFile(DUMP_PATH) });
         };
         createSeedfinder({
-            arguments: ["--", ...dumpArgs(seed, platform, shard)],
+            arguments: ["--", ...dumpArgs(seed, platform, shard, build)],
             instantiateWasm: (
                 imports: WebAssembly.Imports,
                 receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void

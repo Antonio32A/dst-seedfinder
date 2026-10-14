@@ -1,6 +1,7 @@
 import Base
 import ./convert_trace.bend as ConvertTrace
 import ./ocean_trace.bend as OceanPostTrace
+import ../data/builds.bend as Builds
 
 # Lane G's ocean trace stages: `oconvert` (Ocean_ConvertImpassibleToWater from the
 # oracle's grid after the prefill), `oceanpost` (land_done to the attempt status around the oracle's converted
@@ -9,20 +10,20 @@ import ./ocean_trace.bend as OceanPostTrace
 def handles(+stage: String) -> Bool:
   String.eq(stage, "oconvert") || String.eq(stage, "ocean") || String.eq(stage, "oceanpost")
 
-def run_ocean(post: Bool, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def run_ocean(+build: Builds.Build, post: Bool, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match post:
     case True{}:
-      OceanPostTrace.run_post(seed, windows, lines)
+      OceanPostTrace.run_post(build, seed, windows, lines)
     case False{}:
-      OceanPostTrace.run_full(seed, windows, lines)
+      OceanPostTrace.run_full(build, seed, windows, lines)
 
-def run_stage(convert: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+def run_stage(+build: Builds.Build, convert: Bool, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
   match convert:
     case True{}:
       ConvertTrace.run(seed, windows, lines)
     case False{}:
-      run_ocean(String.eq(stage, "oceanpost"), seed, windows, lines)
+      run_ocean(build, String.eq(stage, "oceanpost"), seed, windows, lines)
 
 # The stage's records for a seed, platform and the lines of its input.
-def run(+stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
-  run_stage(String.eq(stage, "oconvert"), stage, seed, windows, lines)
+def run(+build: Builds.Build, +stage: String, +seed: U32, +windows: Bool, +lines: List<&2, String>) -> List<&2, String>:
+  run_stage(build, String.eq(stage, "oconvert"), stage, seed, windows, lines)

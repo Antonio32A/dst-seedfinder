@@ -4,74 +4,80 @@ import ./cave_config.bend as CaveConfig
 import ./rules.bend as Rules
 import ../level/summary.bend as LevelSummary
 import ../level/cave_summary.bend as CaveSummary
+import ../data/builds.bend as Builds
 
 # The part A criteria of either shard.
 type Levels is Data:
   ForestLevels{criteria: List<&2, Config.Criteria>}
   CaveLevels{criteria: List<&2, CaveConfig.Criteria>}
 
-# A compiled search config of either shard as the world search sees it: the platform, the shard, the part A criteria
+# A compiled search config of either shard as the world search sees it: the platform, the game build, the shard, the part A criteria
 # of `generation` that pick the candidates, and the parts B-E of every filter.
 type Search is Data:
-  Search{windows: Bool, caves: Bool, level: Levels, laters: List<&2, Rules.Later>, names: List<&2, String>}
+  Search{windows: Bool, build: Builds.Build, caves: Bool, level: Levels, laters: List<&2, Rules.Later>, names: List<&2, String>}
 
 def of_forest(+config: Config.Config) -> Search:
   match config:
-    case Config.Config{+windows, +level, +laters, _, +names}:
-      Search{windows, False{}, ForestLevels{[level]}, laters, names}
+    case Config.Config{+windows, +build, +level, +laters, _, +names}:
+      Search{windows, build, False{}, ForestLevels{[level]}, laters, names}
 
 def of_caves(+config: CaveConfig.Config) -> Search:
   match config:
-    case CaveConfig.Config{+windows, +level, +laters, +names}:
-      Search{windows, True{}, CaveLevels{[level]}, laters, names}
+    case CaveConfig.Config{+windows, +build, +level, +laters, +names}:
+      Search{windows, build, True{}, CaveLevels{[level]}, laters, names}
 
 def windows(+search: Search) -> Bool:
   match search:
-    case Search{+windows, _, _, _, _}:
+    case Search{+windows, _, _, _, _, _}:
       windows
+
+def build(+search: Search) -> Builds.Build:
+  match search:
+    case Search{_, +build, _, _, _, _}:
+      build
 
 def caves(+search: Search) -> Bool:
   match search:
-    case Search{_, +caves, _, _, _}:
+    case Search{_, _, +caves, _, _, _}:
       caves
 
 def laters(+search: Search) -> List<&2, Rules.Later>:
   match search:
-    case Search{_, _, _, +laters, _}:
+    case Search{_, _, _, _, +laters, _}:
       laters
 
 def names(+search: Search) -> List<&2, String>:
   match search:
-    case Search{_, _, _, _, +names}:
+    case Search{_, _, _, _, _, +names}:
       names
 
 def level(+search: Search) -> Levels:
   match search:
-    case Search{_, _, +level, _, _}:
+    case Search{_, _, _, +level, _, _}:
       level
 
 # The level table of `seed` as JSON, as `world show` prints it.
-def summary_json(+caves: Bool, +seed: U32) -> String:
-  Bool.pick(String, caves, CaveSummary.summary_json(seed), LevelSummary.summary_json(LevelSummary.summary(seed)))
+def summary_json(+build: Builds.Build, +caves: Bool, +seed: U32) -> String:
+  Bool.pick(String, caves, CaveSummary.summary_json(build, seed), LevelSummary.summary_json(build, LevelSummary.summary(build, seed)))
 
-def forest_leaf(n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +hits: List<&2, U32>) -> List<&2, U32>:
+def forest_leaf(+build: Builds.Build, n: Nat, +seed: U32, +criteria: List<&2, Config.Criteria>, +hits: List<&2, U32>) -> List<&2, U32>:
   match n:
     case 0n:
       List.reverse(&2, U32, hits)
     case 1n+p:
-      forest_leaf(p, (seed + 1 : U32), criteria, Bool.pick(List<&2, U32>, Config.matches(criteria, seed), seed <> hits, hits))
+      forest_leaf(build, p, (seed + 1 : U32), criteria, Bool.pick(List<&2, U32>, Config.matches(build, criteria, seed), seed <> hits, hits))
 
-def cave_leaf(n: Nat, +seed: U32, +criteria: List<&2, CaveConfig.Criteria>, +hits: List<&2, U32>) -> List<&2, U32>:
+def cave_leaf(+build: Builds.Build, n: Nat, +seed: U32, +criteria: List<&2, CaveConfig.Criteria>, +hits: List<&2, U32>) -> List<&2, U32>:
   match n:
     case 0n:
       List.reverse(&2, U32, hits)
     case 1n+p:
-      cave_leaf(p, (seed + 1 : U32), criteria, Bool.pick(List<&2, U32>, CaveConfig.matches(criteria, seed), seed <> hits, hits))
+      cave_leaf(build, p, (seed + 1 : U32), criteria, Bool.pick(List<&2, U32>, CaveConfig.matches(build, criteria, seed), seed <> hits, hits))
 
 # The seeds lo..lo+n-1 whose level table satisfies some of the criteria, in order, on one thread (a private copy of the criteria).
-def candidates_leaf(levels: Levels, +lo: U32, n: Nat) -> List<&2, U32>:
+def candidates_leaf(+build: Builds.Build, levels: Levels, +lo: U32, n: Nat) -> List<&2, U32>:
   match levels:
     case ForestLevels{criteria}:
-      forest_leaf(n, lo, Config.local_criteria(criteria), Nil{})
+      forest_leaf(build, n, lo, Config.local_criteria(criteria), Nil{})
     case CaveLevels{criteria}:
-      cave_leaf(n, lo, CaveConfig.local_criteria(criteria), Nil{})
+      cave_leaf(build, n, lo, CaveConfig.local_criteria(criteria), Nil{})

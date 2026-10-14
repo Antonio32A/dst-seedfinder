@@ -16,7 +16,7 @@ DEFAULT_COVE_CHANCE = 0.35
 DEFAULT_COVE_MAX_EDGES = 1
 POISON_BITS = {"ForceConnected": 2, "RoadPoison": 4, "ForceDisconnected": 8}
 FLAG_CUSTOM_TILES, FLAG_SAFE, FLAG_CUSTOM_OBJECTS = 1, 2, 4
-TAG_KINDS = {None: 0, "TAG": 1, "GLOBALTAG": 2, "ITEM": 3}
+TAG_KINDS = {None: 0, "TAG": 1, "GLOBALTAG": 2, "ITEM": 3, "STATIC": 4}
 RANDOM_BODY = re.compile(r"^function\(\) return (?:(\d+) ?\+ ?)?math\.random\((\d+)(?:, ?(\d+))?\) end$")
 
 

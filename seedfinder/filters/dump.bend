@@ -275,6 +275,25 @@ def versioned(words: List<&2, U32>) -> Result<&1, &1, U32 & String, Dump>:
     case _:
       Fail{(2, "not a world dump")}
 
+def build_in(words: List<&2, U32>) -> U32:
+  match words:
+    case Con{+tag, Con{3, Con{_, Con{1, Con{_, Con{_, Con{+build, _}}}}}}}:
+      Bool.pick(U32, U32.is_eq(tag, magic()), build, 0)
+    case _:
+      0
+
+# The game build a world dump's header names: 0 when unknown, when the world generation gave up, or when the bytes are
+# no format 3 dump.
+def build_of_bytes(bytes: List<&2, U32>) -> U32:
+  build_in(words_of(List.take(&2, U32, bytes, 28n), Nil{}))
+
+# Whether a dump of build `dumped` (build_of_bytes) belongs to another build than `build`.
+def is_other_build(+dumped: U32, +build: U32) -> Bool:
+  Bool.not(U32.is_zero(dumped) || U32.is_eq(dumped, build))
+
+def other_build_message(+dumped: U32, +build: U32) -> String:
+  "world dump is build " ++ U32.show(dumped) ++ ", the config is build " ++ U32.show(build)
+
 def is_dump(words: List<&2, U32>) -> Bool:
   match words:
     case Con{+tag, _}:

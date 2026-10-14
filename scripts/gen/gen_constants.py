@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Writes data/constants.bend from out/constants_c.json (gen_constants.cpp: KK initial positions, blur kernel),
 out/constants.json (extract_constants.lua: placement circle positions), the perlin permutation, read out of the
-Linux dedicated server binary and, when DST_WINDOWS_EXE names it, the Windows one (the only 512-byte table
-p[i] = p[i + 256] of a permutation of 0..255 that both contain), and the game build (the install's version.txt).
-`-` prints the module instead."""
+Linux dedicated server binary of the build (GEN_GAME) and, when DST_WINDOWS_EXE names it, the Windows one (the only
+512-byte table p[i] = p[i + 256] of a permutation of 0..255 that both contain). Fails unless GEN_GAME's version.txt is
+the build being generated (GEN_BUILD). `-` prints the module instead."""
 import os
 import sys
 from pathlib import Path
@@ -11,8 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 
-GAME = Path(os.environ.get("DST_GAME", Path.home() / ".local/share/Steam/steamapps/common/Don't Starve Together"))
-BINARIES = [GAME / "bin64" / "dontstarve_dedicated_server_nullrenderer_x64"] + (
+BINARIES = [blob.game_dir() / "bin64" / "dontstarve_dedicated_server_nullrenderer_x64"] + (
     [Path(os.environ["DST_WINDOWS_EXE"])] if "DST_WINDOWS_EXE" in os.environ else [])
 
 
@@ -41,12 +40,12 @@ def f64_units(hex_bits):
 
 
 def main():
+    version = (blob.game_dir() / "version.txt").read_text().strip()
+    assert version == str(blob.build()), f"{blob.game_dir()} is build {version}, not {blob.build()}"
     c = blob.sidecar("constants_c.json")
     lua = blob.sidecar("constants.json")
     m = blob.Module("constants", "scripts/gen/gen_constants.py",
-                    "KK initial positions, blur kernel, placement circles, perlin permutation, game build.")
-    m.comment("The build number of the game the data was generated from.")
-    m.const("game_build", int((GAME / "version.txt").read_text().strip()))
+                    "KK initial positions, blur kernel, placement circles, perlin permutation.")
     m.table("kk_positions", [f64_units(x) + f64_units(y) for x, y in c["kk_positions"]],
             "Row v: the initial KK position of vertex v (x then y, f64 bits, 4 units each): random_point() number v "
             "of a fresh minstd_rand over [0, 425]^2; island vertices continue the sequence.")

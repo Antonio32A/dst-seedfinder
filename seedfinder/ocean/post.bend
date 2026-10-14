@@ -12,6 +12,7 @@ import ../worldsim/points.bend as Points
 import ../worldsim/tiles/groups.bend as TileGroups
 import ./ents.bend as OceanEnts
 import ./state.bend as OceanState
+import ../data/builds.bend as Builds
 
 # forest_map.Generate after the ocean: Graph:GlobalPostPopulate (wormhole pairing in marker order, the
 # customization and randomization proxies), the impassable filter, and the required prefab check that decides the
@@ -28,21 +29,21 @@ def pair_loop(+wormhole: U32, markers: List<&2, OceanEnts.Ent>, +id: U32, acc: L
 
 # SwapOutWormholeMarkers: consecutive markers become wormhole pairs (ids from MIN_WORMHOLE_ID, each targeting the
 # other) at the end of savedata.ents.wormhole; an odd last marker is dropped, and so are the markers.
-def swapped_done(got: List<&2, OceanEnts.Ent> & List<&2, OceanEnts.Ent>, +wormhole: U32) -> List<&2, OceanEnts.Ent>:
+def swapped_done(+build: Builds.Build, got: List<&2, OceanEnts.Ent> & List<&2, OceanEnts.Ent>, +wormhole: U32) -> List<&2, OceanEnts.Ent>:
   (+kept, markers) = got
-  +pairs = pair_loop(wormhole, markers, OceanPostData.min_wormhole_id(), Nil{})
+  +pairs = pair_loop(wormhole, markers, OceanPostData.min_wormhole_id(build), Nil{})
   OceanEnts.appended(kept, pairs, wormhole)
 
-def swap_wormholes(+wormhole: U32, +ents: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
-  swapped_done(OceanEnts.split(ents, OceanPostData.wormhole_marker()), wormhole)
+def swap_wormholes(+build: Builds.Build, +wormhole: U32, +ents: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
+  swapped_done(build, OceanEnts.split(ents, OceanPostData.wormhole_marker(build)), wormhole)
 
-def customization_loop(n: Nat, +ents: List<&2, OceanEnts.Ent>, +i: U32) -> List<&2, OceanEnts.Ent>:
+def customization_loop(+build: Builds.Build, n: Nat, +ents: List<&2, OceanEnts.Ent>, +i: U32) -> List<&2, OceanEnts.Ent>:
   match n:
     case 0n:
       ents
     case 1n+p:
-      +row = OceanPostData.customization_proxies(i)
-      customization_loop(p, OceanEnts.moved(ents, Blob.at(row, 0), Blob.at(row, 1)), (i + 1 : U32))
+      +row = OceanPostData.customization_proxies(build, i)
+      customization_loop(build, p, OceanEnts.moved(ents, Blob.at(row, 0), Blob.at(row, 1)), (i + 1 : U32))
 
 def chosen(got: U32 & Pcg.Rng, +row: List<&2, U32>, +e: OceanEnts.Ent, +acc: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
   (+k, rng) = got
@@ -60,14 +61,14 @@ def randomized(got: List<&2, OceanEnts.Ent> & List<&2, OceanEnts.Ent>, +row: Lis
   (kept, proxies) = got
   random_loop(proxies, row, (kept, rng))
 
-def randomization_loop(n: Nat, got: List<&2, OceanEnts.Ent> & Pcg.Rng, +i: U32) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
+def randomization_loop(+build: Builds.Build, n: Nat, got: List<&2, OceanEnts.Ent> & Pcg.Rng, +i: U32) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
   match n:
     case 0n:
       got
     case 1n+p:
       (+ents, rng) = got
-      +row = OceanPostData.randomization_proxies(i)
-      randomization_loop(p, randomized(OceanEnts.split(ents, Blob.at(row, 0)), row, rng), (i + 1 : U32))
+      +row = OceanPostData.randomization_proxies(build, i)
+      randomization_loop(build, p, randomized(OceanEnts.split(ents, Blob.at(row, 0)), row, rng), (i + 1 : U32))
 
 def post_done(got: List<&2, OceanEnts.Ent> & Pcg.Rng, +c: OceanState.Ctx, +wormhole: U32, g: Grid.Grid, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (+ents, rng) = got
@@ -75,29 +76,29 @@ def post_done(got: List<&2, OceanEnts.Ent> & Pcg.Rng, +c: OceanState.Ctx, +wormh
   OceanState.noted(c, OceanState.digest(c, s, 8), OceanState.EWormholes{OceanEnts.of_prefab(ents, wormhole)})
 
 # Graph:GlobalPostPopulate(entities, width, height) for a level whose wormhole_prefab is `wormhole`.
-def post_populate(+c: OceanState.Ctx, +wormhole: U32, s: OceanState.Sea) -> OceanState.Sea:
+def post_populate(+build: Builds.Build, +c: OceanState.Ctx, +wormhole: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      +swapped = customization_loop(U32.to_nat(OceanPostData.customization_proxies_count()), swap_wormholes(wormhole, ents), 0)
-      post_done(randomization_loop(U32.to_nat(OceanPostData.randomization_proxies_count()), (swapped, rng), 0), c, wormhole, g, ids, topo, events)
+      +swapped = customization_loop(build, U32.to_nat(OceanPostData.customization_proxies_count(build)), swap_wormholes(build, wormhole, ents), 0)
+      post_done(randomization_loop(build, U32.to_nat(OceanPostData.randomization_proxies_count(build)), (swapped, rng), 0), c, wormhole, g, ids, topo, events)
 
 
 def keep_step(got: Grid.Grid & U32, +e: OceanEnts.Ent, +acc: List<&2, OceanEnts.Ent>) -> Grid.Grid & List<&2, OceanEnts.Ent>:
   (g, +tile) = got
   (g, OceanEnts.keep_if(Bool.not(TileGroups.is_impassable(tile)), e, acc))
 
-def visual_of(+v: F64Repr.F64, +size: U32) -> F64Repr.F64:
-  F64Arith.add(F64Arith.div(v, F64Repr.from_u32(OceanPostData.tile_scale())), F64Arith.mul(F64Repr.from_u32(size), F64Repr.half()))
+def visual_of(+build: Builds.Build, +v: F64Repr.F64, +size: U32) -> F64Repr.F64:
+  F64Arith.add(F64Arith.div(v, F64Repr.from_u32(OceanPostData.tile_scale(build))), F64Arith.mul(F64Repr.from_u32(size), F64Repr.half()))
 
-def visible_loop(xs: List<&2, OceanEnts.Ent>, got: Grid.Grid & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx) -> Grid.Grid & List<&2, OceanEnts.Ent>:
+def visible_loop(+build: Builds.Build, xs: List<&2, OceanEnts.Ent>, got: Grid.Grid & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx) -> Grid.Grid & List<&2, OceanEnts.Ent>:
   match xs:
     case Nil{}:
       (g, +acc) = got
       (g, List.reverse(&2, OceanEnts.Ent, acc))
     case Con{OceanEnts.Ent{+prefab, +x, +z, +id, +target, +piece}, rest}:
       (g, +acc) = got
-      tile_at = Points.visual_tile(g, visual_of(x, OceanState.width_of(c)), visual_of(z, OceanState.height_of(c)))
-      visible_loop(rest, keep_step(tile_at, OceanEnts.Ent{prefab, x, z, id, target, piece}, acc), c)
+      tile_at = Points.visual_tile(g, visual_of(build, x, OceanState.width_of(c)), visual_of(build, z, OceanState.height_of(c)))
+      visible_loop(build, rest, keep_step(tile_at, OceanEnts.Ent{prefab, x, z, id, target, piece}, acc), c)
 
 def filtered(got: Grid.Grid & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx, ids: Grid.Grid, rng: Pcg.Rng, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (g, +ents) = got
@@ -105,10 +106,10 @@ def filtered(got: Grid.Grid & List<&2, OceanEnts.Ent>, +c: OceanState.Ctx, ids: 
 
 # The impassable filter: every entity whose GetVisualTileAtPosition(x / 4 + width / 2, z / 4 + height / 2) is an
 # impassable tile is removed.
-def impassable_filter(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+def impassable_filter(+build: Builds.Build, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, rng, +ents, +topo, +events}:
-      filtered(visible_loop(ents, (g, Nil{}), c), c, ids, rng, topo, events)
+      filtered(visible_loop(build, ents, (g, Nil{}), c), c, ids, rng, topo, events)
 
 # A required prefab and its count (forest_map's double_check).
 type Req is Data:
@@ -140,17 +141,17 @@ def add_all(xs: List<&2, Req>, +reqs: List<&2, Req>) -> List<&2, Req>:
     case Con{Req{+prefab, +count}, rest}:
       add_all(rest, add_required(reqs, prefab, count))
 
-def ocean_required(rooms: List<&2, U32>, +reqs: List<&2, Req>) -> List<&2, Req>:
+def ocean_required(+build: Builds.Build, rooms: List<&2, U32>, +reqs: List<&2, Req>) -> List<&2, Req>:
   match rooms:
     case Nil{}:
       reqs
     case Con{+room, rest}:
-      ocean_required(rest, add_ones(Rooms.room_required_prefabs(room), reqs))
+      ocean_required(build, rest, add_ones(Rooms.room_required_prefabs(build, room), reqs))
 
 # forest_map's double_check: level.required_prefabs, the root's GetRequiredPrefabs() and the ocean rooms'
 # required_prefabs.
-def double_check(+root: List<&2, Req>) -> List<&2, Req>:
-  ocean_required(Tasks.lists(9), add_all(root, add_ones(OceanPostData.level_required_prefabs(0), Nil{})))
+def double_check(+build: Builds.Build, +root: List<&2, Req>) -> List<&2, Req>:
+  ocean_required(build, Tasks.lists(build, 9), add_all(root, add_ones(OceanPostData.level_required_prefabs(build, 0), Nil{})))
 
 def check_loop(reqs: List<&2, Req>, +ents: List<&2, OceanEnts.Ent>, +c: OceanState.Ctx, s: OceanState.Sea, +missing: List<&2, U32>) -> OceanState.Sea & List<&2, U32>:
   match reqs:

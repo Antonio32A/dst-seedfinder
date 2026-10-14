@@ -5,20 +5,20 @@ import Stepper from "@/components/ui/Stepper";
 import Toggle from "@/components/ui/Toggle";
 import { countCap, countHint } from "@/lib/catalog/prefab-sets";
 import { shardCatalog } from "@/lib/catalog/shard-catalog";
-import type { Shard } from "@/lib/config/seedfinder-config";
 import {
     COUNT_FLOOR,
     type CountRow,
     type NearRow,
     newNear,
     WORLD_COUNT_MODES,
-    type WorldCountMode
+    type WorldCountMode,
+    type WorldKind
 } from "@/lib/criteria/world-rules";
 import PrefabSetField from "./PrefabSetField";
 import RuleFrame from "./RuleFrame";
 import TileDistance from "./TileDistance";
 import TravelOptions from "./TravelOptions";
-import { useWorldShard } from "./WorldShard";
+import { useWorldKind } from "./WorldKind";
 
 const BOUND_FIELDS: Record<WorldCountMode, ["min" | "max", string][]> = {
     atLeast: [["min", "Count minimum"]],
@@ -31,15 +31,15 @@ const BOUND_FIELDS: Record<WorldCountMode, ["min" | "max", string][]> = {
     none: []
 };
 
-const alwaysOne = (shard: Shard) => (id: string) => {
-    const prefab = shardCatalog(shard).byId.get(id);
+const alwaysOne = ({ shard, build }: WorldKind) => (id: string) => {
+    const prefab = shardCatalog(shard, build).byId.get(id);
     return prefab?.always && prefab.unique ? "always exactly 1" : undefined;
 };
 
 type Update = (patch: Partial<CountRow>) => void;
 
-function CountBounds({ row, update, shard }: { row: CountRow; update: Update; shard: Shard }) {
-    const cap = countCap(row.prefabs, shard);
+function CountBounds({ row, update, world }: { row: CountRow; update: Update; world: WorldKind }) {
+    const cap = countCap(row.prefabs, world.shard, world.build);
     const floor = COUNT_FLOOR[row.mode];
     const range = {
         min: [floor, row.mode === "between" ? row.max : cap],
@@ -59,11 +59,11 @@ function NearControls({ near, counted, onChange }: {
     counted: string[];
     onChange: (near: NearRow | null) => void;
 }) {
-    const shard = useWorldShard();
+    const world = useWorldKind();
     const overlaps = near?.prefabs.some((id) => counted.includes(id));
     return (
             <div className="rule__scope">
-                <Toggle checked={near !== null} onChange={(on) => onChange(on ? newNear(shard) : null)}>
+                <Toggle checked={near !== null} onChange={(on) => onChange(on ? newNear(world) : null)}>
                     only count ones near something
                 </Toggle>
                 {near && (
@@ -91,7 +91,7 @@ interface CountRuleRowProps {
 }
 
 export default function CountRuleRow({ row, index, onChange, onRemove }: CountRuleRowProps) {
-    const shard = useWorldShard();
+    const world = useWorldKind();
     const update: Update = (patch) => onChange({ ...row, ...patch });
     const setMode = (mode: WorldCountMode) => {
         const min = Math.max(row.min, COUNT_FLOOR[mode]);
@@ -101,11 +101,11 @@ export default function CountRuleRow({ row, index, onChange, onRemove }: CountRu
     return (
             <RuleFrame title={`Count ${index + 1}`} onRemove={onRemove}>
                 <PrefabSetField label="What to count" ids={row.prefabs} onChange={(prefabs) => update({ prefabs })}
-                                blocked={alwaysOne(shard)} autoOpen/>
+                                blocked={alwaysOne(world)} autoOpen/>
                 <div className="rule__controls">
                     <Select label="How many" options={WORLD_COUNT_MODES} value={row.mode} onChange={setMode}/>
-                    <CountBounds row={row} update={update} shard={shard}/>
-                    {row.prefabs.length > 0 && <span className="hint">{countHint(row.prefabs, shard)}</span>}
+                    <CountBounds row={row} update={update} world={world}/>
+                    {row.prefabs.length > 0 && <span className="hint">{countHint(row.prefabs, world.shard, world.build)}</span>}
                 </div>
                 <NearControls near={row.near} counted={row.prefabs} onChange={(near) => update({ near })}/>
             </RuleFrame>

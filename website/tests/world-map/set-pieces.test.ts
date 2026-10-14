@@ -50,14 +50,16 @@ describe("the set pieces a map shows", () => {
     it("starts with none without a search, or with a search that names none", () => {
         expect([...defaultShownSetPieces()]).toEqual([]);
         expect([...defaultShownSetPieces({
-            version: 2,
+            version: 3,
+            build: 756039,
             filters: [{ counts: [{ prefab: "pigking", min: 1 }] }]
         })]).toEqual([]);
     });
 
     it("shows every set piece the search's set piece rules name, in groups too", () => {
         const search: SeedfinderConfig = {
-            version: 2,
+            version: 3,
+            build: 756039,
             generation: {
                 setpieces: [
                     { tasks: ["Magic meadow"], required: { MooseNest: 1 } },

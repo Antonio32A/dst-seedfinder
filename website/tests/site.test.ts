@@ -51,13 +51,30 @@ describe("every response carries the security headers", () => {
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
     });
 
-    it.each(["/map/windows/1", "/map/windows/forest/1", "/map/windows/caves/1"])("on the world map %s, which serves the app", async (path) => {
+    it.each([
+        "/map/windows/1",
+        "/map/windows/forest/1",
+        "/map/windows/caves/1",
+        "/map/windows/756039/1",
+        "/map/windows/forest/756039/1",
+        "/map/windows/caves/756039/1"
+    ])("on the world map %s, which serves the app", async (path) => {
         const response = await api(path);
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toMatch(/^text\/html/);
         const page = await response.text();
         expect(page).toContain("DST Seedfinder");
         expect(page).toContain('<a href="/" class="link-button">back</a>');
+        expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
+    });
+
+    it.each([
+        ["/map/windows/123/1", "There&#x27;s no build &quot;123&quot;. Use 756039."],
+        ["/map/windows/caves/757748/1", "Build 757748 has no caves yet."]
+    ])("on the world map %s, which says it isn't one", async (path, error) => {
+        const response = await api(path);
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain(error);
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);
     });
 
@@ -74,7 +91,7 @@ describe("every response carries the security headers", () => {
     });
 
     it("on a world map with a search, which serves the app", async () => {
-        const response = await api(`/map/linux/1?c=${encodeShareParam({ version: 2, platform: "windows" })}`);
+        const response = await api(`/map/linux/1?c=${encodeShareParam({ version: 3, build: 756039, platform: "windows" })}`);
         expect(response.status).toBe(200);
         expect(await response.text()).toContain("DST Seedfinder");
         expect(securityHeaders(response)).toEqual(SECURITY_HEADERS);

@@ -5,18 +5,20 @@ import ../filters/cave_evaluate.bend as CaveEvaluate
 import ../filters/shard_search.bend as ShardSearch
 import ../filters/rules.bend as Rules
 import ../filters/world.bend as FilterWorld
+import ../filters/dump.bend as FilterDump
 import ../filters/evaluate.bend as Evaluate
 import ../filters/level_checks.bend as LevelChecks
 import ../level/summary.bend as LevelSummary
 import ../cli/args.bend as Args
 import ../cli/files.bend as Files
+import ../data/builds.bend as Builds
 
-# seedfinder world eval --config CONFIG.json --world WORLD.dstw [--json] [--fast]: one config on one dumped world,
+# seedfinder world eval --config CONFIG.json --world WORLD.dstw [--build NUMBER] [--json] [--fast]: one config on one dumped world,
 # printed as its level table (from the seed) and the witnesses of docs/config.md section 8, per filter. Exit 0 when
 # some filter matches, 1 when none does or the world gave up, 2 on a config or input error.
 
 def usage() -> String:
-  "usage: seedfinder world eval --config CONFIG.json --world WORLD.dstw [--json] [--fast]"
+  "usage: seedfinder world eval --config CONFIG.json --world WORLD.dstw [--build NUMBER] [--json] [--fast]"
 
 type Evaluated is Data:
   Evaluated{entries: List<&2, String>, matched: List<&2, U32>}
@@ -29,14 +31,14 @@ def evaluated_step(+outcomes: List<&2, Evaluate.Outcome>, +i: U32, e: Evaluated)
     case Evaluated{+entries, +matched}:
       Evaluated{List.append(&2, String, entries, [entry_json(outcomes)]), Bool.pick(List<&2, U32>, Evaluate.holds(outcomes), List.append(&2, U32, matched, [i]), matched)}
 
-def level_outcomes_of(+caves: Bool, +shown: LevelChecks.Shown, +seed: U32) -> List<&2, Evaluate.Outcome>:
-  Bool.pick(List<&2, Evaluate.Outcome>, caves, CaveEvaluate.level_outcomes(shown, seed), Evaluate.level_outcomes(shown, LevelSummary.summary(seed)))
+def level_outcomes_of(+build: Builds.Build, +caves: Bool, +shown: LevelChecks.Shown, +seed: U32) -> List<&2, Evaluate.Outcome>:
+  Bool.pick(List<&2, Evaluate.Outcome>, caves, CaveEvaluate.level_outcomes(build, shown, seed), Evaluate.level_outcomes(build, shown, LevelSummary.summary(build, seed)))
 
-def entries_loop(+shown: LevelChecks.Shown, laters: List<&2, Rules.Later>, stop: Bool, +world: FilterWorld.World, +caves: Bool, +seed: U32, +fast: Bool, +i: U32, +e: Evaluated) -> Evaluated:
+def entries_loop(+build: Builds.Build, +shown: LevelChecks.Shown, laters: List<&2, Rules.Later>, stop: Bool, +world: FilterWorld.World, +caves: Bool, +seed: U32, +fast: Bool, +i: U32, +e: Evaluated) -> Evaluated:
   match laters stop:
     case Con{+later, ls} False{}:
-      +outcomes = Evaluate.entry_outcomes_from(level_outcomes_of(caves, shown, seed), later, world, fast)
-      entries_loop(shown, ls, fast && Evaluate.holds(outcomes), world, caves, seed, fast, (i + 1 : U32), evaluated_step(outcomes, i, e))
+      +outcomes = Evaluate.entry_outcomes_from(build, level_outcomes_of(build, caves, shown, seed), later, world, fast)
+      entries_loop(build, shown, ls, fast && Evaluate.holds(outcomes), world, caves, seed, fast, (i + 1 : U32), evaluated_step(outcomes, i, e))
     case _ _:
       e
 
@@ -73,7 +75,7 @@ def graph_missing(+config: ShardSearch.Search, +world: FilterWorld.World) -> Boo
 def plan_missing(+config: ShardSearch.Search, +world: FilterWorld.World) -> Bool:
   Rules.needs_plan(ShardSearch.laters(config)) && Bool.not(FilterWorld.has_plan(world))
 
-def evaluate_world(+config: ShardSearch.Search, +text: String, loaded: FilterWorld.Loaded, +path: String, +fast: Bool) -> IO(Unit):
+def evaluate_world(+build: Builds.Build, +config: ShardSearch.Search, +text: String, loaded: FilterWorld.Loaded, +path: String, +fast: Bool) -> IO(Unit):
   match loaded:
     case FilterWorld.Generated{+world, +platform}:
       match world:
@@ -82,23 +84,25 @@ def evaluate_world(+config: ShardSearch.Search, +text: String, loaded: FilterWor
             Bool.pick(IO(Unit), graph_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no topology (GRPH section), which bridges rules need; regenerate it"),
               Bool.pick(IO(Unit), plan_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no level plan (PLAN section), which setpieces rules with placed names need; regenerate it"),
                 print_outcome(outcome_line(seed, ShardSearch.windows(config),
-                  entries_loop(LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))))
+                  entries_loop(build, LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))))
     case FilterWorld.GaveUp{+seed}:
       IO.die(Unit, 1, "evaluate: seed " ++ path ++ ": world generation did not finish (seed " ++ U32.show(seed) ++ "); no match")
 
-def with_loaded(+config: ShardSearch.Search, +text: String, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +path: String, +fast: Bool) -> IO(Unit):
+def with_loaded(+build: Builds.Build, +config: ShardSearch.Search, +text: String, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +path: String, +fast: Bool) -> IO(Unit):
   match loaded:
     case Fail{(code, message)}:
       IO.die(Unit, 2, "world: " ++ path ++ ": " ++ message)
     case Done{world}:
-      evaluate_world(config, text, world, path, fast)
+      evaluate_world(build, config, text, world, path, fast)
 
-def with_world(+config: ShardSearch.Search, +text: String, bytes: Result<&1, &1, U32 & String, List<&2, U32>>, +path: String, +fast: Bool) -> IO(Unit):
+def with_world(+build: Builds.Build, +config: ShardSearch.Search, +text: String, bytes: Result<&1, &1, U32 & String, List<&2, U32>>, +path: String, +fast: Bool) -> IO(Unit):
   match bytes:
     case Fail{(code, message)}:
       IO.die(Unit, 2, message)
-    case Done{data}:
-      with_loaded(config, text, FilterWorld.of_bytes_in(data, ShardSearch.caves(config)), path, fast)
+    case Done{+data}:
+      +dumped = FilterDump.build_of_bytes(data)
+      Bool.pick(IO(Unit), FilterDump.is_other_build(dumped, Builds.number(build)), IO.die(Unit, 2, FilterDump.other_build_message(dumped, Builds.number(build))),
+        with_loaded(build, config, text, FilterWorld.of_bytes_in(build, data, ShardSearch.caves(config)), path, fast))
 
 def with_compiled(compiled: Result<&1, &1, U32 & String, ShardSearch.Search>, +text: String, +world_path: String, +fast: Bool) -> IO(Unit):
   match compiled:
@@ -107,7 +111,7 @@ def with_compiled(compiled: Result<&1, &1, U32 & String, ShardSearch.Search>, +t
     case Done{+config}:
       do IO<Unit>:
         bytes : Result<&1, &1, U32 & String, List<&2, U32>> <- Files.read_bytes("world: ", world_path)
-        with_world(config, text, bytes, world_path, fast)
+        with_world(ShardSearch.build(config), config, text, bytes, world_path, fast)
 
 def search_of_forest(compiled: Result<&1, &1, U32 & String, Config.Config>) -> Result<&1, &1, U32 & String, ShardSearch.Search>:
   match compiled:
@@ -123,23 +127,25 @@ def search_of_caves(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -
     case Done{config}:
       Done{ShardSearch.of_caves(config)}
 
-def with_config(text: Result<&1, &1, U32 & String, String>, +world_path: String, +fast: Bool) -> IO(Unit):
+def with_config(text: Result<&1, &1, U32 & String, String>, +world_path: String, +fast: Bool, +build: Maybe<&2, Builds.Build>) -> IO(Unit):
   match text:
     case Fail{(code, message)}:
       IO.die(Unit, 2, message)
     case Done{+t}:
-      Bool.pick(IO(Unit), U32.is_eq(Config.shard_named(t), 2), with_compiled(search_of_caves(CaveConfig.config_of(t)), t, world_path, fast),
-        with_compiled(search_of_forest(Config.config_of(t)), t, world_path, fast))
+      Bool.pick(IO(Unit), U32.is_eq(Config.shard_named(t), 2), with_compiled(search_of_caves(CaveConfig.config_of(t, build)), t, world_path, fast),
+        with_compiled(search_of_forest(Config.config_of(t, build)), t, world_path, fast))
 
-def eval_paths(config: Maybe<&2, String>, world: Maybe<&2, String>, +fast: Bool) -> IO(Unit):
+def eval_paths(config: Maybe<&2, String>, world: Maybe<&2, String>, +fast: Bool, +build: Maybe<&2, Builds.Build>) -> IO(Unit):
   match config world:
     case Some{+config_path} Some{+world_path}:
       do IO<Unit>:
         text : Result<&1, &1, U32 & String, String> <- Files.read_text("config: ", config_path)
-        with_config(text, world_path, fast)
+        with_config(text, world_path, fast, build)
     case _ _:
       IO.die(Unit, 2, usage())
 
-# The `world eval` subcommand; args start with "eval".
+# The `world eval` subcommand; args start with "eval". --build overrides the config's build.
 def run(+args: List<&2, String>) -> IO(Unit):
-  eval_paths(Args.flag_value(args, "--config"), Args.flag_value(args, "--world"), Config.is_member(args, "--fast"))
+  do IO<Unit>:
+    +build : Maybe<&2, Builds.Build> <- IO.pass(Maybe<&2, Builds.Build>, Args.build_flag(Args.flag_value(args, "--build")))
+    eval_paths(Args.flag_value(args, "--config"), Args.flag_value(args, "--world"), Config.is_member(args, "--fast"), build)

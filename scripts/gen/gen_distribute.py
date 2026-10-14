@@ -186,7 +186,7 @@ def main():
     if sys.argv[-1:] == ["-"]:
         sys.stdout.write(module.text())
     else:
-        (blob.ROOT / "seedfinder" / "data" / f"{module.name}.bend").write_text(module.text())
+        module.emit()
 
 
 if __name__ == "__main__":

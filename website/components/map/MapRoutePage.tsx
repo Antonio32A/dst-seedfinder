@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
 import MapScreen from "@/components/map/MapScreen";
-import { PLATFORM_LABELS, type Shard, SHARD_LABELS } from "@/lib/config/seedfinder-config";
+import { LATEST_BUILD } from "@/lib/config/game-builds";
+import { PLATFORM_LABELS, SHARD_LABELS } from "@/lib/config/seedfinder-config";
 import { siteName } from "@/lib/site-metadata";
 import { MAP_PREVIEW_SIZE, mapPreviewPath } from "@/lib/world-map/map-preview-url";
 import { parseMapRoute, parseMapView } from "@/lib/world-map/map-route";
 
 export interface MapPageProps {
-    params: Promise<{ platform: string; seed: string }>;
+    params: Promise<{ platform: string; rest: string[] }>;
     searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export async function mapRouteMetadata(shard: Shard, { params, searchParams }: MapPageProps): Promise<Metadata> {
-    const { platform, seed } = await params;
-    const route = parseMapRoute(platform, seed, shard);
+export async function mapRouteMetadata({ params, searchParams }: MapPageProps): Promise<Metadata> {
+    const { platform, rest } = await params;
+    const route = parseMapRoute(platform, rest);
     if ("error" in route) return {};
-    const title = `Seed ${route.seed} (${PLATFORM_LABELS[route.platform]} ${SHARD_LABELS[shard].toLowerCase()})`;
-    const image = mapPreviewPath(route.platform, route.seed, shard, parseMapView((await searchParams).v));
+    const build = route.build === LATEST_BUILD ? "" : `, build ${route.build}`;
+    const title = `Seed ${route.seed} (${PLATFORM_LABELS[route.platform]} ${SHARD_LABELS[route.shard].toLowerCase()}${build})`;
+    const image = mapPreviewPath(route, parseMapView((await searchParams).v));
     return {
         description: null,
         openGraph: {
@@ -28,9 +30,9 @@ export async function mapRouteMetadata(shard: Shard, { params, searchParams }: M
     };
 }
 
-export default async function MapRoutePage({ shard, params, searchParams }: MapPageProps & { shard: Shard }) {
-    const { platform, seed } = await params;
+export default async function MapRoutePage({ params, searchParams }: MapPageProps) {
+    const { platform, rest } = await params;
     const { c: share, v: view } = await searchParams;
-    return <MapScreen route={parseMapRoute(platform, seed, shard)} share={typeof share === "string" ? share : undefined}
+    return <MapScreen route={parseMapRoute(platform, rest)} share={typeof share === "string" ? share : undefined}
                       view={parseMapView(view)}/>;
 }

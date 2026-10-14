@@ -8,6 +8,7 @@ import ../ocean/ents.bend as OceanEnts
 import ../populate/setpiece.bend as PopulateSetpiece
 import ../gen/job.bend as GenJob
 import ../gen/savedata.bend as SaveData
+import ../data/builds.bend as Builds
 
 # World dumps (docs/world-dump.md): tiny hand-built files.
 law dump_gave_up:
@@ -43,13 +44,13 @@ def dump_round_trip_caves():
 
 # The forest finder refuses a caves dump, generated or not.
 law world_refuses_caves:
-  {FilterWorld.of_bytes(FilterDump.bytes(FilterDump.Generated{7, 2, 1, 756039, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}, FilterDump.Prefab{"tentacle_pillar_atrium", [FilterDump.Position{5, 6}]}], [], [FilterDump.Pillar{0, 0, 0, 1}, FilterDump.Pillar{0, 1, 1, 0}], None{}, None{}, None{}, None{}})) == Fail{(2, "world dump of the caves shard, this finder searches the forest shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+  {FilterWorld.of_bytes(Builds.Build{756039}, FilterDump.bytes(FilterDump.Generated{7, 2, 1, 756039, 3, 1, [FilterDump.TileName{6, "GRASS"}], [393222], [FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}, FilterDump.Prefab{"tentacle_pillar_atrium", [FilterDump.Position{5, 6}]}], [], [FilterDump.Pillar{0, 0, 0, 1}, FilterDump.Pillar{0, 1, 1, 0}], None{}, None{}, None{}, None{}})) == Fail{(2, "world dump of the caves shard, this finder searches the forest shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
 
 def world_refuses_caves():
   {==}
 
 law world_refuses_caves_gave_up:
-  {FilterWorld.of_bytes(FilterDump.bytes(FilterDump.GaveUp{7, 2, 1})) == Fail{(2, "world dump of the caves shard, this finder searches the forest shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+  {FilterWorld.of_bytes(Builds.Build{756039}, FilterDump.bytes(FilterDump.GaveUp{7, 2, 1})) == Fail{(2, "world dump of the caves shard, this finder searches the forest shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
 
 def world_refuses_caves_gave_up():
   {==}
@@ -76,13 +77,13 @@ def world_links(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>) -> Lis
 
 # A caves dump loads with its tentacle pillar links, as vocabulary prefab instances (cave_exit 370, tentacle_pillar 454, tentacle_pillar_atrium 455).
 law world_loads_pillar_links:
-  {world_links(FilterWorld.of_bytes_in(pillar_dump(), True{})) == [Ends{454, 0, 454, 1}, Ends{454, 1, 454, 0}, Ends{455, 0, 370, 0}] : List<&2, Ends>}
+  {world_links(FilterWorld.of_bytes_in(Builds.Build{756039}, pillar_dump(), True{})) == [Ends{454, 0, 454, 1}, Ends{454, 1, 454, 0}, Ends{455, 0, 370, 0}] : List<&2, Ends>}
 
 def world_loads_pillar_links():
   {==}
 
 law caves_finder_refuses_forest_dump:
-  {FilterWorld.of_bytes_in(FilterDump.bytes(FilterDump.GaveUp{7, 2, 0}), True{}) == Fail{(2, "world dump of the forest shard, this finder searches the caves shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+  {FilterWorld.of_bytes_in(Builds.Build{756039}, FilterDump.bytes(FilterDump.GaveUp{7, 2, 0}), True{}) == Fail{(2, "world dump of the forest shard, this finder searches the caves shard")} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
 
 def caves_finder_refuses_forest_dump():
   {==}
@@ -249,7 +250,7 @@ def dump_writes_generated_set_pieces():
 # the catalog), an armorgrass at (0.125, -0.125) (a rounding tie) and the other wormhole: the dump of its savedata reads
 # back as the filters' world of it.
 law dump_round_trip:
-  {FilterWorld.of_bytes(FilterDump.bytes(SaveData.dump(7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []}))) == Done{FilterWorld.Generated{SaveData.world(7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []}), 2}} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
+  {FilterWorld.of_bytes(Builds.Build{756039}, FilterDump.bytes(SaveData.dump(Builds.Build{756039}, 7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []}))) == Done{FilterWorld.Generated{SaveData.world(Builds.Build{756039}, 7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []}), 2}} : Result<&1, &1, U32 & String, FilterWorld.Loaded>}
 
 def dump_round_trip():
   {==}
@@ -257,7 +258,7 @@ def dump_round_trip():
 # The same world on Windows: every prefab in name order (the catalog's or not, and the pocket dimension containers at
 # (0, 0)), instances in savedata order, and the tie rounded away from zero.
 law dump_prefabs_in_name_order:
-  {FilterDump.prefabs(SaveData.dump(7, True{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []})) == [FilterDump.Prefab{"armorgrass", [FilterDump.Position{13, 4294967283}]}, FilterDump.Prefab{"rabbitkinghorn_container", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"shadow_container", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}, FilterDump.Prefab{"wormhole_MARKER", [FilterDump.Position{60200, 10600}]}] : List<&2, FilterDump.Prefab>}
+  {FilterDump.prefabs(SaveData.dump(Builds.Build{756039}, 7, True{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 0}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 0}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 0}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [], [], 3, FilterDump.Graph{[], []}, []})) == [FilterDump.Prefab{"armorgrass", [FilterDump.Position{13, 4294967283}]}, FilterDump.Prefab{"rabbitkinghorn_container", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"shadow_container", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}, FilterDump.Prefab{"wormhole_MARKER", [FilterDump.Position{60200, 10600}]}] : List<&2, FilterDump.Prefab>}
 
 def dump_prefabs_in_name_order():
   {==}
@@ -267,7 +268,7 @@ def dump_prefabs_in_name_order():
 # 3) at tile (0.5, 0.5) of half-size 0: members by ENTS name order and savedata index, centres and bounds in world
 # hundredths.
 law dump_set_piece_members:
-  {FilterDump.set_pieces(SaveData.dump(7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 2}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 1}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 1}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [PopulateSetpiece.Piece{25, 4, 0, F64Repr.F64{1073217536, 0}, F64Repr.F64{1072693248, 0}, F64Repr.F64{1071644672, 0}, 1, 3}, PopulateSetpiece.Piece{25, 5, 3, F64Repr.F64{1071644672, 0}, F64Repr.F64{1071644672, 0}, F64Repr.F64{0, 0}, 3, 4}], [], 3, FilterDump.Graph{[], []}, []})) == Some{[FilterDump.Piece{"AbandonedBoat1", 4, 0, 0, 4294967096, 4294967096, 4294966896, 200, 0, [FilterDump.Member{0, 0}, FilterDump.Member{4, 0}]}, FilterDump.Piece{"AbandonedBoat1", 5, 3, 4294966896, 4294966896, 4294966896, 4294966896, 4294966896, 4294966896, [FilterDump.Member{3, 1}]}]} : Maybe<&2, List<&2, FilterDump.Piece>>}
+  {FilterDump.set_pieces(SaveData.dump(Builds.Build{756039}, 7, False{}, GenJob.Final{Grid.put(Grid.new(3, 3, Grid.cell(6, 0)), 4, Grid.cell(1, 0)), Pcg.Rng{0, 0}, [OceanEnts.Ent{611, F64Repr.F64{3229499392, 0}, F64Repr.F64{3227619328, 0}, 11, 10, 2}, OceanEnts.Ent{547, F64Repr.F64{1069547520, 0}, F64Repr.F64{3217031168, 0}, 0, 0, 1}, OceanEnts.Ent{546, F64Repr.F64{1082314752, 0}, F64Repr.F64{1079672832, 0}, 0, 0, 1}, OceanEnts.Ent{611, F64Repr.F64{1081196544, 0}, F64Repr.F64{3227320320, 0}, 10, 11, 0}], 3, [PopulateSetpiece.Piece{25, 4, 0, F64Repr.F64{1073217536, 0}, F64Repr.F64{1072693248, 0}, F64Repr.F64{1071644672, 0}, 1, 3}, PopulateSetpiece.Piece{25, 5, 3, F64Repr.F64{1071644672, 0}, F64Repr.F64{1071644672, 0}, F64Repr.F64{0, 0}, 3, 4}], [], 3, FilterDump.Graph{[], []}, []})) == Some{[FilterDump.Piece{"AbandonedBoat1", 4, 0, 0, 4294967096, 4294967096, 4294966896, 200, 0, [FilterDump.Member{0, 0}, FilterDump.Member{4, 0}]}, FilterDump.Piece{"AbandonedBoat1", 5, 3, 4294966896, 4294966896, 4294966896, 4294966896, 4294966896, 4294966896, [FilterDump.Member{3, 1}]}]} : Maybe<&2, List<&2, FilterDump.Piece>>}
 
 def dump_set_piece_members():
   {==}
@@ -300,8 +301,29 @@ def loaded_has_plan(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>) ->
       False{}
 
 law world_has_plan_of_its_dump:
-  {(loaded_has_plan(FilterWorld.of_bytes(FilterDump.bytes(plan_dump(Some{plan()})))), loaded_has_plan(FilterWorld.of_bytes(FilterDump.bytes(plan_dump(None{})))))
+  {(loaded_has_plan(FilterWorld.of_bytes(Builds.Build{756039}, FilterDump.bytes(plan_dump(Some{plan()})))), loaded_has_plan(FilterWorld.of_bytes(Builds.Build{756039}, FilterDump.bytes(plan_dump(None{})))))
     == (True{}, False{}) : Bool & Bool}
 
 def world_has_plan_of_its_dump():
+  {==}
+
+def empty_final() -> GenJob.Final:
+  GenJob.Final{Grid.new(3, 3, Grid.cell(6, 0)), Pcg.Rng{0, 0}, [], 3, [], [], 3, FilterDump.Graph{[], []}, []}
+
+# The header's game build word is the build the world was generated for.
+law dump_header_names_its_build:
+  {(FilterDump.build_of_bytes(FilterDump.bytes(SaveData.dump(Builds.Build{756039}, 7, True{}, empty_final()))),
+    FilterDump.build_of_bytes(FilterDump.bytes(SaveData.dump(Builds.Build{757748}, 7, True{}, empty_final()))))
+    == (Builds.number(Builds.Build{756039}), Builds.number(Builds.Build{757748})) : U32 & U32}
+
+def dump_header_names_its_build():
+  {==}
+
+# A dump of an unknown build (0) or of the config's build is the config's; one of another build is refused.
+law dump_of_another_build:
+  {(FilterDump.is_other_build(0, 756039), FilterDump.is_other_build(756039, 756039), FilterDump.is_other_build(757748, 756039),
+    FilterDump.build_of_bytes(FilterDump.bytes(FilterDump.GaveUp{7, 2, 0})), FilterDump.other_build_message(757748, 756039))
+    == (False{}, False{}, True{}, 0, "world dump is build 757748, the config is build 756039") : Bool & Bool & Bool & U32 & String}
+
+def dump_of_another_build():
   {==}

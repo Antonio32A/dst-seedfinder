@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Builds catalog.json from the static extraction (build/static.json) and the empirical world summaries.
+"""Builds a game build's catalog.json from the static extraction (build/static.json) and the empirical world summaries.
 
-usage: python3 build_catalog.py [--out catalog.json]
-Run from anywhere; paths are relative to this file. See README.md.
+usage: python3 build_catalog.py [--build NUMBER] [--shard forest|caves] [--out catalog.json]
+Run from anywhere; paths are relative to this file. The build (the latest of builds.json by default) picks the folder
+<build>/ beside this file, its game scripts in build/deps/builds/<build>/ and its ground truth worlds. See README.md.
 """
 import argparse
 import collections
@@ -19,9 +20,6 @@ import zipfile
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-WORK = os.path.join(ROOT, "build/catalog")
-INPUTS = os.path.join(HERE, "inputs")
-SCRIPTS = os.path.join(ROOT, "build/deps/game-scripts")
 WORLDSIM = os.environ.get("WORLDSIM_DIR", "")
 REALGEN = os.environ.get("REALGEN_DIR", "")
 GAME_DIR = os.environ.get("DST_GAME", os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together"))
@@ -33,9 +31,24 @@ SHARD_INPUTS = {
 }
 
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(ROOT, "scripts/gen/lib"))
 import map_textures  # noqa: E402
 import names as handnames  # noqa: E402
+import registry  # noqa: E402
 from summarize_world import summarize  # noqa: E402
+
+
+def use_build(number):
+    """Points the paths of this module at game build `number`."""
+    global BUILD, BUILD_DIR, INPUTS, WORK, SCRIPTS
+    BUILD = number
+    BUILD_DIR = os.path.join(HERE, str(number))
+    INPUTS = os.path.join(BUILD_DIR, "inputs")
+    WORK = os.path.join(ROOT, "build/catalog", str(number))
+    SCRIPTS = os.path.join(ROOT, "build/deps/builds", str(number), "scripts")
+
+
+use_build(registry.latest())
 
 
 def as_list(v):
@@ -54,12 +67,12 @@ def load_json(path):
 def real_world_sources():
     """Yields (seed, source_label, summary) for every real-game world on disk."""
     if SHARD == "caves":
-        for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds_caves/[0-9]*.json"))):
+        for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth", str(BUILD), "data/worlds_caves/[0-9]*.json"))):
             world = load_json(path)
             if isinstance(world, dict) and world.get("shard") == "caves":
                 yield "groundtruth_dump", path, summarize(world, "groundtruth_dump")
         return
-    for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth/data/worlds/*.json"))):
+    for path in sorted(glob.glob(os.path.join(ROOT, "build/groundtruth", str(BUILD), "data/worlds/*.json"))):
         yield "groundtruth_dump", path, summarize(load_json(path), "groundtruth_dump")
     for path in sorted(glob.glob(os.path.join(WORLDSIM, "gt/*/world.json")) if WORLDSIM else []):
         yield "worldsim_gt_dump", path, summarize(load_json(path), "worldsim_gt_dump")
@@ -806,15 +819,6 @@ def cave_only_prefabs(static, layout_reach, ss):
     return out
 
 
-def game_build():
-    path = os.path.join(GAME_DIR, "version.txt")
-    try:
-        with open(path) as f:
-            return f.read().strip()
-    except OSError:
-        return None
-
-
 def missing_names_and_images(prefabs):
     """The prefabs the sampled worlds contain that have no display name or no image (a minimap or inventory icon)
     and are not listed in names.NO_IMAGE as deliberately imageless."""
@@ -834,11 +838,13 @@ def missing_names_and_images(prefabs):
 def main():
     global SHARD
     ap = argparse.ArgumentParser()
+    ap.add_argument("--build", type=int, default=registry.latest(), help="the game build (default: the latest)")
     ap.add_argument("--shard", choices=sorted(SHARD_INPUTS), default="forest")
     ap.add_argument("--out")
     ap.add_argument("--static")
     ap.add_argument("--collect", action="store_true", help="only refresh inputs/ from build/catalog")
     args = ap.parse_args()
+    use_build(args.build)
     SHARD = args.shard
     files = SHARD_INPUTS[SHARD]
     if args.collect:
@@ -864,7 +870,7 @@ def main():
 
     catalog = {
         "schema_version": 1,
-        "game_build": game_build(),
+        "game_build": str(BUILD),
         "generated": datetime.date.today().isoformat(),
         "shard": SHARD,
         "preset": static["level"]["id"],
@@ -884,7 +890,7 @@ def main():
                                      if p["id"] in static_only],
         },
     }
-    with open(args.out or os.path.join(HERE, files["out"]), "w") as f:
+    with open(args.out or os.path.join(BUILD_DIR, files["out"]), "w") as f:
         json.dump(catalog, f, indent=1, sort_keys=False)
         f.write("\n")
     print("%s: worlds %d (%s), prefabs %d (static %d, empirical %d), empirical-not-static %d, static-only %d, tiles %d" % (

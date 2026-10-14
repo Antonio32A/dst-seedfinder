@@ -50,7 +50,7 @@ local function describe_upvalue(v, depth)
     if kind == "function" then
         local info = debug.getinfo(v, "S")
         if info.what == "C" then return "<C function>" end
-        return string.format("<function %s:%d-%d>", info.source:gsub("^@", ""):gsub("^.*/game%-scripts/", ""), info.linedefined,
+        return string.format("<function %s:%d-%d>", GAME_SCRIPT_FILE(info.source), info.linedefined,
             info.lastlinedefined)
     end
     if kind == "table" then
@@ -106,7 +106,7 @@ end
 
 function Closures:ref(fn, context)
     local info = debug.getinfo(fn, "S")
-    local file = info.source:gsub("^@", ""):gsub("^.*/game%-scripts/", "")
+    local file = GAME_SCRIPT_FILE(info.source)
     local upvalues = {}
     for i = 1, 200 do
         local name, value = debug.getupvalue(fn, i)

@@ -1,5 +1,6 @@
 import { CAVE_TASKS } from "@/lib/catalog/cave-level";
 import { prefabName } from "@/lib/catalog/prefab-sets";
+import { generatedBy } from "@/lib/config/builds";
 import { type SeedfinderConfig, setPieceRules, type Shard, WORLD_UNITS_PER_TILE } from "@/lib/config/seedfinder-config";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 import type { LegendGroup, LegendPrefab } from "./prefab-visibility";
@@ -72,10 +73,11 @@ export interface SetPieceDetails {
 }
 
 export function setPieceDetails(
-    world: Pick<GeneratedWorld, "prefabs" | "setPieces"> & Partial<Pick<GeneratedWorld, "shard">>,
+    world: Pick<GeneratedWorld, "prefabs" | "setPieces"> & Partial<Pick<GeneratedWorld, "shard" | "gameBuild">>,
     index: number
 ): SetPieceDetails {
     const { name, source, transform, xk, zk, bounds, members } = world.setPieces![index];
+    const build = generatedBy(world);
     const counts = tally(Array.from({ length: members.length / 2 }, (_, at) => world.prefabs[members[2 * at]].name));
     return {
         index,
@@ -87,7 +89,7 @@ export function setPieceDetails(
         height: (bounds[3] - bounds[1]) / 100 / WORLD_UNITS_PER_TILE,
         transform: TRANSFORM_WORDS[transform & 7],
         members: [...counts]
-            .map(([prefab, count]) => ({ prefab, displayName: prefabName(prefab, world.shard), count }))
+            .map(([prefab, count]) => ({ prefab, displayName: prefabName(prefab, world.shard, build), count }))
             .sort((a, b) => b.count - a.count || a.displayName.localeCompare(b.displayName))
     };
 }

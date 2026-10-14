@@ -2,6 +2,8 @@ import { CAVE_OPTIONAL_PICKED } from "./cave-vocab";
 import { CAVE_SET_PIECE_KINDS, CAVE_SET_PIECES, CAVE_SWAP_INFOS, CAVE_TASKS } from "./cave-level";
 import { SET_PIECE_KINDS, SET_PIECES, SWAPS, TASKS } from "./level";
 import type { SetPieceInfo, SetPieceKind, SetPieceKindInfo, SwapInfo, TaskInfo } from "./level-types";
+import { type CatalogBuild, catalogBuild } from "@/lib/config/builds";
+import type { GameBuild } from "@/lib/config/game-builds";
 import { DEFAULT_SHARD, type Shard } from "@/lib/config/seedfinder-config";
 
 /** What a shard's level table is made of: the words the level-table filters and the results use. */
@@ -39,23 +41,27 @@ function catalogOf(
 
 const FOREST_OPTIONAL_PICKED = 5;
 
-export const LEVEL_CATALOGS: Record<Shard, LevelCatalog> = {
-    forest: catalogOf("forest", {
-        tasks: TASKS,
-        swaps: SWAPS,
-        setPieceKinds: SET_PIECE_KINDS,
-        setPieces: SET_PIECES,
-        optionalPicked: FOREST_OPTIONAL_PICKED
-    }),
-    caves: catalogOf("caves", {
-        tasks: CAVE_TASKS,
-        swaps: CAVE_SWAP_INFOS,
-        setPieceKinds: CAVE_SET_PIECE_KINDS,
-        setPieces: CAVE_SET_PIECES,
-        optionalPicked: CAVE_OPTIONAL_PICKED
-    })
+const LEVEL_CATALOGS: Record<CatalogBuild, Record<Shard, LevelCatalog>> = {
+    756039: {
+        forest: catalogOf("forest", {
+            tasks: TASKS,
+            swaps: SWAPS,
+            setPieceKinds: SET_PIECE_KINDS,
+            setPieces: SET_PIECES,
+            optionalPicked: FOREST_OPTIONAL_PICKED
+        }),
+        caves: catalogOf("caves", {
+            tasks: CAVE_TASKS,
+            swaps: CAVE_SWAP_INFOS,
+            setPieceKinds: CAVE_SET_PIECE_KINDS,
+            setPieces: CAVE_SET_PIECES,
+            optionalPicked: CAVE_OPTIONAL_PICKED
+        })
+    }
 };
 
-export function levelCatalogOf(shard: Shard | undefined): LevelCatalog {
-    return LEVEL_CATALOGS[shard ?? DEFAULT_SHARD];
+/** The level table of the shard of the build, through the catalog the build's registry entry names. */
+export function levelCatalogOf(shard: Shard | undefined, build: GameBuild): LevelCatalog {
+    const known = shard ?? DEFAULT_SHARD;
+    return LEVEL_CATALOGS[catalogBuild(build, known)][known];
 }

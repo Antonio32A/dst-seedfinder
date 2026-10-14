@@ -6,6 +6,7 @@ import ../ocean/state.bend as OceanState
 import ../ocean/post.bend as OceanPost
 import ../ocean/bunches.bend as Bunches
 import ./archive.bend as Archive
+import ../data/builds.bend as Builds
 
 # forest_map.Generate from Graph:GlobalPostPopulate to GetEncodedMap, the steps every shard shares: GlobalPostPopulate,
 # the impassable filter, BunchSpawnerRun, AncientArchivePass, the required prefab check and, when the attempt is the
@@ -16,8 +17,8 @@ import ./archive.bend as Archive
 type Shard is Data:
   Shard{wormhole: U32, dispenser: U32, temporary: U32}
 
-def forest() -> Shard:
-  Shard{OceanPostData.wormhole_prefab(), Blob.none(), Blob.none()}
+def forest(+build: Builds.Build) -> Shard:
+  Shard{OceanPostData.wormhole_prefab(build), Blob.none(), Blob.none()}
 
 def encoded(ok: Bool, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match ok:
@@ -32,11 +33,11 @@ def checked(got: OceanState.Sea & Bool, +c: OceanState.Ctx) -> OceanState.Sea & 
   (s, +ok) = got
   (encoded(ok, c, s), ok)
 
-def finished(+c: OceanState.Ctx, +wormhole: U32, +dispenser: U32, +temporary: U32, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
-  checked(OceanPost.required(reqs, c, Archive.run(dispenser, temporary, Bunches.bunches(c, OceanPost.impassable_filter(c, OceanPost.post_populate(c, wormhole, s))))), c)
+def finished(+build: Builds.Build, +c: OceanState.Ctx, +wormhole: U32, +dispenser: U32, +temporary: U32, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
+  checked(OceanPost.required(reqs, c, Archive.run(dispenser, temporary, Bunches.bunches(build, c, OceanPost.impassable_filter(build, c, OceanPost.post_populate(build, c, wormhole, s))))), c)
 
 # Everything after the last population step, with the required prefab table: the final state and whether it passed.
-def run(+c: OceanState.Ctx, shard: Shard, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
+def run(+build: Builds.Build, +c: OceanState.Ctx, shard: Shard, +reqs: List<&2, OceanPost.Req>, s: OceanState.Sea) -> OceanState.Sea & Bool:
   match shard:
     case Shard{+wormhole, +dispenser, +temporary}:
-      finished(c, wormhole, dispenser, temporary, reqs, s)
+      finished(build, c, wormhole, dispenser, temporary, reqs, s)

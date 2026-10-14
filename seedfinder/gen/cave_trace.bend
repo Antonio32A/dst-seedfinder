@@ -41,6 +41,7 @@ import ./maze_labyrinth.bend as MazeLabyrinth
 import ./maze_meta.bend as MazeMeta
 import ./maze_tags.bend as MazeTags
 import ../filters/dump.bend as FilterDump
+import ../data/builds.bend as Builds
 
 # The `cavegen` trace stage: one attempt of the caves' forest_map.Generate through the job state machine, from the start of
 # the seed's stream or (input: a stream position) from the position of a later attempt, printing one record per stage
@@ -87,18 +88,18 @@ def attempt_of(+rc: Rc) -> U32:
     case Rc{_, +a, _}:
       a
 
-def node_text(+rc: Rc, +n: U32) -> String:
-  Canon.quoted(StoryGraph.node_name(rc_story(rc), n))
+def node_text(+build: Builds.Build, +rc: Rc, +n: U32) -> String:
+  Canon.quoted(StoryGraph.node_name(build, rc_story(rc), n))
 
-def names_of(+s: StoryGraph.St, nodes: List<&2, U32>) -> List<&2, String>:
+def names_of(+build: Builds.Build, +s: StoryGraph.St, nodes: List<&2, U32>) -> List<&2, String>:
   match nodes:
     case Nil{}:
       Nil{}
     case Con{+n, rest}:
-      StoryGraph.node_name(s, n) <> names_of(s, rest)
+      StoryGraph.node_name(build, s, n) <> names_of(build, s, rest)
 
-def nodes_text(+rc: Rc, nodes: List<&2, U32>) -> String:
-  Canon.quoted(String.join(names_of(rc_story(rc), nodes), ";"))
+def nodes_text(+build: Builds.Build, +rc: Rc, nodes: List<&2, U32>) -> String:
+  Canon.quoted(String.join(names_of(build, rc_story(rc), nodes), ";"))
 
 def pts_hash(ps: List<&2, Points.Pt>, h: Grid.Hash) -> Grid.Hash:
   match ps:
@@ -153,24 +154,24 @@ def forced_lines(+rc: Rc, +world: TileWorld.World, +ctr: U32) -> List<&2, String
 type CaTr is Type:
   CaTr{ca: CaveCustom.Ca, lines: List<&2, String>, k: U32}
 
-def ca_translated(picked: Points.Picked, placed: List<&2, CaveCustom.Placed>, +room: U32, +site: TileWorld.Site, +lines: List<&2, String>, +k: U32) -> CaTr:
-  CaTr{CaveCustom.picked_translated(picked, placed, room, site), lines, (k + 1 : U32)}
+def ca_translated(+build: Builds.Build, picked: Points.Picked, placed: List<&2, CaveCustom.Placed>, +room: U32, +site: TileWorld.Site, +lines: List<&2, String>, +k: U32) -> CaTr:
+  CaTr{CaveCustom.picked_translated(build, picked, placed, room, site), lines, (k + 1 : U32)}
 
-def ca_picked(picked: Points.Picked, placed: List<&2, CaveCustom.Placed>, +room: U32, +site: TileWorld.Site, +rc: Rc, +vertex: U32, +sites: Points.Sites, +id: String, +before: Pcg.Rng, +lines: List<&2, String>, +k: U32) -> CaTr:
+def ca_picked(+build: Builds.Build, picked: Points.Picked, placed: List<&2, CaveCustom.Placed>, +room: U32, +site: TileWorld.Site, +rc: Rc, +vertex: U32, +sites: Points.Sites, +id: String, +before: Pcg.Rng, +lines: List<&2, String>, +k: U32) -> CaTr:
   match picked:
     case Points.Picked{g, +rng, +n, shuffled, +kept}:
-      ca_translated(Points.Picked{g, rng, n, shuffled, kept}, placed, room, site,
+      ca_translated(build, Points.Picked{g, rng, n, shuffled, kept}, placed, room, site,
         points_record(rc, "ca", k, id, Points.site_area(sites, vertex), before, rng, kept) <> lines, k)
 
-def ca_painted(ran: CaveAutomaton.Painted, placed: List<&2, CaveCustom.Placed>, +rc: Rc, +windows: Bool, +sites: Points.Sites, +room: U32, +vertex: U32, +site: TileWorld.Site, +id: String, +before: Pcg.Rng, +lines: List<&2, String>, +k: U32) -> CaTr:
+def ca_painted(+build: Builds.Build, ran: CaveAutomaton.Painted, placed: List<&2, CaveCustom.Placed>, +rc: Rc, +windows: Bool, +sites: Points.Sites, +room: U32, +vertex: U32, +site: TileWorld.Site, +id: String, +before: Pcg.Rng, +lines: List<&2, String>, +k: U32) -> CaTr:
   match ran:
     case CaveAutomaton.Painted{g, +rng}:
       +line = Canon.record("cca", [Canon.number("a", attempt_of(rc)), Canon.number("k", k), Canon.field("id", id),
-        Canon.number("iterations", CaveStory.room_ca_iterations(room)), Canon.number("mode", CaveStory.room_ca_seed_mode(room)),
-        Canon.number("points", CaveStory.room_ca_random_points(room)), Canon.number("before", counter(rc, before)), Canon.number("after", counter(rc, rng))])
-      ca_picked(Points.points_for_site(windows, sites, vertex, g, rng), placed, room, site, rc, vertex, sites, id, rng, line <> lines, k)
+        Canon.number("iterations", CaveStory.room_ca_iterations(build, room)), Canon.number("mode", CaveStory.room_ca_seed_mode(build, room)),
+        Canon.number("points", CaveStory.room_ca_random_points(build, room)), Canon.number("before", counter(rc, before)), Canon.number("after", counter(rc, rng))])
+      ca_picked(build, Points.points_for_site(windows, sites, vertex, g, rng), placed, room, site, rc, vertex, sites, id, rng, line <> lines, k)
 
-def ca_node(t: CaTr, +rc: Rc, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +kl: GenGraph.Klei, +n: U32) -> CaTr:
+def ca_node(+build: Builds.Build, t: CaTr, +rc: Rc, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +kl: GenGraph.Klei, +n: U32) -> CaTr:
   match t:
     case CaTr{ca, +lines, +k}:
       match ca:
@@ -178,79 +179,79 @@ def ca_node(t: CaTr, +rc: Rc, +windows: Bool, +sites: Points.Sites, +world: Tile
           +room = StoryCatalog.cave_room(StoryGraph.nf(rc_story(rc), n, StoryGraph.f_room()))
           +vertex = GenGraph.vertex_of(kl, n)
           +site = TileWorld.site(world, vertex)
-          ca_painted(CaveAutomaton.run(windows, site, CaveStory.room_ca_iterations(room), CaveStory.room_ca_seed_mode(room),
-            CaveStory.room_ca_random_points(room), g, rng), placed, rc, windows, sites, room, vertex, site, node_text(rc, n), rng, lines, k)
+          ca_painted(build, CaveAutomaton.run(windows, site, CaveStory.room_ca_iterations(build, room), CaveStory.room_ca_seed_mode(build, room),
+            CaveStory.room_ca_random_points(build, room), g, rng), placed, rc, windows, sites, room, vertex, site, node_text(build, rc, n), rng, lines, k)
 
-def ca_loop(nodes: List<&2, U32>, t: CaTr, +rc: Rc, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +kl: GenGraph.Klei) -> CaTr:
+def ca_loop(+build: Builds.Build, nodes: List<&2, U32>, t: CaTr, +rc: Rc, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +kl: GenGraph.Klei) -> CaTr:
   match nodes:
     case Nil{}:
       t
     case Con{+n, rest}:
-      ca_loop(rest, ca_node(t, rc, windows, sites, world, kl, n), rc, windows, sites, world, kl)
+      ca_loop(build, rest, ca_node(build, t, rc, windows, sites, world, kl, n), rc, windows, sites, world, kl)
 
 def ca_start(g: Grid.Grid, +rng: Pcg.Rng) -> CaTr:
   CaTr{CaveCustom.Ca{g, rng, Nil{}, Nil{}}, Nil{}, 0}
 
 # Every RunCA of the custom tile pass and the GetPointsForSite after it, from the tile map after ForceConnectivity.
-def ca_traced(+rc: Rc, +windows: Bool, +kl: GenGraph.Klei, +sites: Points.Sites, +w: U32) -> CaTr:
+def ca_traced(+build: Builds.Build, +rc: Rc, +windows: Bool, +kl: GenGraph.Klei, +sites: Points.Sites, +w: U32) -> CaTr:
   +world = CaveCustom.world_of(sites)
   +s = rc_story(rc)
-  ca_loop(CaveCustom.custom_nodes(CaveCustom.nodes_order(s), s),
+  ca_loop(build, CaveCustom.custom_nodes(build, CaveCustom.nodes_order(s), s),
     ca_start(Generate.cave_tile_grid(world, TileConvert.site_tiles(world)), Generate.rng_after_tiles(s, w)), rc, windows, sites, world, kl)
 
 type MzTr is Type:
   MzTr{p: MazeEnv.Pass, lines: List<&2, String>, k: U32}
 
-def maze_record(+rc: Rc, +k: U32, +kind: String, +tag: String, +nodes: List<&2, U32>, +before: Pcg.Rng, +after: Pcg.Rng, +found: List<&2, WorldCaveMaze.Found>) -> String:
+def maze_record(+build: Builds.Build, +rc: Rc, +k: U32, +kind: String, +tag: String, +nodes: List<&2, U32>, +before: Pcg.Rng, +after: Pcg.Rng, +found: List<&2, WorldCaveMaze.Found>) -> String:
   Canon.record("cmaze", [Canon.number("a", attempt_of(rc)), Canon.number("k", k), Canon.field("kind", Canon.quoted(kind)), Canon.field("tag", Canon.quoted(tag)),
-    Canon.field("nodes", nodes_text(rc, nodes)), Canon.number("before", counter(rc, before)), Canon.number("after", counter(rc, after)),
+    Canon.field("nodes", nodes_text(build, rc, nodes)), Canon.number("before", counter(rc, before)), Canon.number("after", counter(rc, after)),
     Canon.number("count", U32.from_nat(List.length(&2, WorldCaveMaze.Found, found))), Canon.field("hash", hash_text(found_hash(found, Grid.fnv_offset())))])
 
-def labyrinth_ran(ran: WorldCaveMaze.Ran, +e: MazeEnv.Env, +rc: Rc, +k: U32, +members: List<&2, U32>, +entrances: List<&2, U32>, +before: Pcg.Rng, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>, +lines: List<&2, String>) -> MzTr:
+def labyrinth_ran(+build: Builds.Build, ran: WorldCaveMaze.Ran, +e: MazeEnv.Env, +rc: Rc, +k: U32, +members: List<&2, U32>, +entrances: List<&2, U32>, +before: Pcg.Rng, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>, +lines: List<&2, String>) -> MzTr:
   match ran:
     case WorldCaveMaze.Ran{g, +found, +rng}:
-      MzTr{MazeLabyrinth.ran_lines(WorldCaveMaze.Ran{g, found, rng}, e, members, entrances, before, ents, marks), maze_record(rc, k, "runmaze", "Labyrinth", members, before, rng, found) <> lines, (k + 1 : U32)}
+      MzTr{MazeLabyrinth.ran_lines(build, WorldCaveMaze.Ran{g, found, rng}, e, members, entrances, before, ents, marks), maze_record(build, rc, k, "runmaze", "Labyrinth", members, before, rng, found) <> lines, (k + 1 : U32)}
 
-def labyrinth_drawn(got: F64Repr.F64 & Pcg.Rng, +e: MazeEnv.Env, +rc: Rc, +k: U32, +members: List<&2, U32>, +entrances: List<&2, U32>, g: Grid.Grid, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>, +lines: List<&2, String>) -> MzTr:
+def labyrinth_drawn(+build: Builds.Build, got: F64Repr.F64 & Pcg.Rng, +e: MazeEnv.Env, +rc: Rc, +k: U32, +members: List<&2, U32>, +entrances: List<&2, U32>, g: Grid.Grid, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>, +lines: List<&2, String>) -> MzTr:
   (+r, +rng) = got
-  labyrinth_ran(WorldCaveMaze.run_maze(WorldCaveMaze.Params{MazeEnv.windows_of(e), 3, MazeLabyrinth.val_of(r), Enums.tile_impassable(), Enums.tile_brick()},
+  labyrinth_ran(build, WorldCaveMaze.run_maze(WorldCaveMaze.Params{MazeEnv.windows_of(e), 3, MazeLabyrinth.val_of(r), Enums.tile_impassable(), Enums.tile_brick()},
     MazeEnv.node_sites(members, e), g, rng), e, rc, k, members, entrances, rng, ents, marks, lines)
 
-def labyrinth_task(t: MzTr, +e: MazeEnv.Env, +rc: Rc, +task: U32) -> MzTr:
+def labyrinth_task(+build: Builds.Build, t: MzTr, +e: MazeEnv.Env, +rc: Rc, +task: U32) -> MzTr:
   match t:
     case MzTr{p, +lines, +k}:
       match p:
         case MazeEnv.Pass{g, +rng, ents, marks}:
-          labyrinth_drawn(F64Random.random(rng), e, rc, k, MazeTags.nodes(MazeEnv.story_of(e), "Labyrinth", task), MazeTags.nodes(MazeEnv.story_of(e), "LabyrinthEntrance", task),
+          labyrinth_drawn(build, F64Random.random(rng), e, rc, k, MazeTags.nodes(build, MazeEnv.story_of(e), "Labyrinth", task), MazeTags.nodes(build, MazeEnv.story_of(e), "LabyrinthEntrance", task),
             g, ents, marks, lines)
 
-def meta_mapped(m: WorldCaveMaze.Mapped, +e: MazeEnv.Env, +rc: Rc, +k: U32, +g: U32, +members: List<&2, U32>, grid: Grid.Grid, +before: Pcg.Rng, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>, +lines: List<&2, String>) -> MzTr:
+def meta_mapped(+build: Builds.Build, m: WorldCaveMaze.Mapped, +e: MazeEnv.Env, +rc: Rc, +k: U32, +g: U32, +members: List<&2, U32>, grid: Grid.Grid, +before: Pcg.Rng, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>, +lines: List<&2, String>) -> MzTr:
   match m:
     case WorldCaveMaze.Mapped{+found, +rng}:
-      MzTr{MazeMeta.mapped(WorldCaveMaze.Mapped{found, rng}, e, g, grid, before, ents, marks), maze_record(rc, k, "metamaze", "Maze", members, before, rng, found) <> lines, (k + 1 : U32)}
+      MzTr{MazeMeta.mapped(build, WorldCaveMaze.Mapped{found, rng}, e, g, grid, before, ents, marks), maze_record(build, rc, k, "metamaze", "Maze", members, before, rng, found) <> lines, (k + 1 : U32)}
 
-def meta_task(t: MzTr, +e: MazeEnv.Env, +rc: Rc, +g: U32) -> MzTr:
+def meta_task(+build: Builds.Build, t: MzTr, +e: MazeEnv.Env, +rc: Rc, +g: U32) -> MzTr:
   match t:
     case MzTr{p, +lines, +k}:
       match p:
         case MazeEnv.Pass{grid, +rng, ents, marks}:
-          +members = MazeTags.nodes(MazeEnv.story_of(e), "Maze", g)
-          meta_mapped(WorldCaveMaze.meta_maze(MazeEnv.windows_of(e), CaveStory.task_maze_size(StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))),
+          +members = MazeTags.nodes(build, MazeEnv.story_of(e), "Maze", g)
+          meta_mapped(build, WorldCaveMaze.meta_maze(MazeEnv.windows_of(e), CaveStory.task_maze_size(build, StoryCatalog.cave_task(StoryGraph.gf(MazeEnv.story_of(e), g, StoryGraph.g_part()))),
             MazeEnv.node_sites(members, e), rng), e, rc, k, g, members, grid, rng, ents, marks, lines)
 
-def labyrinth_loop(tasks: List<&2, U32>, t: MzTr, +e: MazeEnv.Env, +rc: Rc) -> MzTr:
+def labyrinth_loop(+build: Builds.Build, tasks: List<&2, U32>, t: MzTr, +e: MazeEnv.Env, +rc: Rc) -> MzTr:
   match tasks:
     case Nil{}:
       t
     case Con{+task, rest}:
-      labyrinth_loop(rest, labyrinth_task(t, e, rc, task), e, rc)
+      labyrinth_loop(build, rest, labyrinth_task(build, t, e, rc, task), e, rc)
 
-def meta_loop(tasks: List<&2, U32>, t: MzTr, +e: MazeEnv.Env, +rc: Rc) -> MzTr:
+def meta_loop(+build: Builds.Build, tasks: List<&2, U32>, t: MzTr, +e: MazeEnv.Env, +rc: Rc) -> MzTr:
   match tasks:
     case Nil{}:
       t
     case Con{+g, rest}:
-      meta_loop(rest, meta_task(t, e, rc, g), e, rc)
+      meta_loop(build, rest, meta_task(build, t, e, rc, g), e, rc)
 
 def maze_lines_of(t: MzTr) -> List<&2, String>:
   match t:
@@ -258,10 +259,10 @@ def maze_lines_of(t: MzTr) -> List<&2, String>:
       lines
 
 # Every RunMaze and GetPointsForMetaMaze of the Labyrinth and Maze passes, from the tile map before the mazes.
-def maze_lines(+rc: Rc, +e: MazeEnv.Env, g: Grid.Grid, +rng: Pcg.Rng) -> List<&2, String>:
+def maze_lines(+build: Builds.Build, +rc: Rc, +e: MazeEnv.Env, g: Grid.Grid, +rng: Pcg.Rng) -> List<&2, String>:
   +story = MazeEnv.story_of(e)
-  List.reverse(&2, String, maze_lines_of(meta_loop(MazeTags.tasks(story, "Maze"),
-    labyrinth_loop(MazeTags.tasks(story, "Labyrinth"), MzTr{MazeEnv.Pass{g, rng, Nil{}, Nil{}}, Nil{}, 0}, e, rc), e, rc)))
+  List.reverse(&2, String, maze_lines_of(meta_loop(build, MazeTags.tasks(build, story, "Maze"),
+    labyrinth_loop(build, MazeTags.tasks(build, story, "Labyrinth"), MzTr{MazeEnv.Pass{g, rng, Nil{}, Nil{}}, Nil{}, 0}, e, rc), e, rc)))
 
 type Cn is Data:
   Cn{reserves: U32, points: U32, w: U32}
@@ -269,10 +270,10 @@ type Cn is Data:
 def optional(+ok: Bool, +v: U32) -> String:
   Bool.pick(String, ok, U32.show(v), "nil")
 
-def reserve_record(+rc: Rc, +cn: Cn, +node: U32, +size: U32, +start: U32, +fill: U32, +pos: U32, +n: U32, +before: Pcg.Rng, +after: Pcg.Rng, +ok: Bool, +x: U32, +y: U32) -> String:
+def reserve_record(+build: Builds.Build, +rc: Rc, +cn: Cn, +node: U32, +size: U32, +start: U32, +fill: U32, +pos: U32, +n: U32, +before: Pcg.Rng, +after: Pcg.Rng, +ok: Bool, +x: U32, +y: U32) -> String:
   match cn:
     case Cn{+k, _, _}:
-      Canon.record("creserve", [Canon.number("a", attempt_of(rc)), Canon.number("k", k), Canon.field("node", node_text(rc, node)), Canon.field("size", Canon.hex32(size)),
+      Canon.record("creserve", [Canon.number("a", attempt_of(rc)), Canon.number("k", k), Canon.field("node", node_text(build, rc, node)), Canon.field("size", Canon.hex32(size)),
         Canon.number("start", start), Canon.number("fill", fill), Canon.number("pos", pos), Canon.number("n", n), Canon.number("before", counter(rc, before)),
         Canon.number("after", counter(rc, after)), Canon.number("ok", Bool.to_u32(ok)), Canon.field("x", optional(ok, x)), Canon.field("y", optional(ok, y))])
 
@@ -309,61 +310,61 @@ def points_k(+cn: Cn) -> U32:
     case Cn{_, +p, _}:
       p
 
-def event_lines(evs: List<&2, PopulateState.Ev>, +rc: Rc, +cn: Cn, +disc: String) -> List<&2, String>:
+def event_lines(+build: Builds.Build, evs: List<&2, PopulateState.Ev>, +rc: Rc, +cn: Cn, +disc: String) -> List<&2, String>:
   match evs:
     case Nil{}:
       Nil{}
     case Con{+ev, rest}:
       match ev:
         case PopulateState.EPoints{+node, +n, +before, +after, _, +kept}:
-          points_record(rc, "populate", points_k(cn), node_text(rc, node), n, before, after, kept) <> event_lines(rest, rc, bumped_point(cn), disc)
+          points_record(rc, "populate", points_k(cn), node_text(build, rc, node), n, before, after, kept) <> event_lines(build, rest, rc, bumped_point(cn), disc)
         case PopulateState.EReserve{+node, +size, +start, +fill, +pos, +n, +before, +after, +ok, +x, +y}:
-          reserve_record(rc, cn, node, size, start, fill, pos, n, before, after, ok, x, y) <> event_lines(rest, rc, bumped_reserve(cn), disc)
+          reserve_record(build, rc, cn, node, size, start, fill, pos, n, before, after, ok, x, y) <> event_lines(build, rest, rc, bumped_reserve(cn), disc)
         case PopulateState.EDigest{+at, +rng, +tiles, _}:
-          digest_record(rc, cn, at, rng, tiles) <> digest_then(at, disc, event_lines(rest, rc, cn, disc))
+          digest_record(rc, cn, at, rng, tiles) <> digest_then(at, disc, event_lines(build, rest, rc, cn, disc))
         case _:
-          event_lines(rest, rc, cn, disc)
+          event_lines(build, rest, rc, cn, disc)
 
 def cents_line(+rc: Rc, +at: String, +n: U32, +rng: Pcg.Rng) -> String:
   Canon.record("cents", [Canon.number("a", attempt_of(rc)), Canon.field("at", Canon.quoted(at)), Canon.number("n", n), Canon.number("ctr", counter(rc, rng))])
 
-def land_summary(l: PopulateState.Land, +rc: Rc, +cn: Cn, +disc: String, +at: String) -> PopulateState.Land & List<&2, String>:
+def land_summary(+build: Builds.Build, l: PopulateState.Land, +rc: Rc, +cn: Cn, +disc: String, +at: String) -> PopulateState.Land & List<&2, String>:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      (PopulateState.Land{g, rng, ents, events}, List.append(&2, String, event_lines(List.reverse(&2, PopulateState.Ev, events), rc, cn, disc),
+      (PopulateState.Land{g, rng, ents, events}, List.append(&2, String, event_lines(build, List.reverse(&2, PopulateState.Ev, events), rc, cn, disc),
         [cents_line(rc, at, U32.from_nat(List.length(&2, Entities.Ent, ents)), rng)]))
 
-def disconnect_branch(exceeds: Bool, l: PopulateState.Land, +cx: PopulateState.Ctx, +rc: Rc, +disc: String) -> PopulateState.Land & List<&2, String>:
+def disconnect_branch(+build: Builds.Build, exceeds: Bool, l: PopulateState.Land, +cx: PopulateState.Ctx, +rc: Rc, +disc: String) -> PopulateState.Land & List<&2, String>:
   match exceeds:
     case True{}:
-      land_summary(l, rc, Cn{0, 0, PopulateState.width_of(cx)}, disc, "disconnect")
+      land_summary(build, l, rc, Cn{0, 0, PopulateState.width_of(cx)}, disc, "disconnect")
     case False{}:
-      land_summary(PopulateVoronoi.populate(cx, l), rc, Cn{0, 0, PopulateState.width_of(cx)}, disc, "populate")
+      land_summary(build, PopulateVoronoi.populate(build, cx, l), rc, Cn{0, 0, PopulateState.width_of(cx)}, disc, "populate")
 
 def populated_job(got: PopulateState.Land & List<&2, String>, +ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (land, +lines) = got
   (GenJob.cave_populated((land, ok), c, a, s, w, graph), lines)
 
-def detected_lines(got: Grid.Grid & U32, +cx: PopulateState.Ctx, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def detected_lines(+build: Builds.Build, got: Grid.Grid & U32, +cx: PopulateState.Ctx, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (g, +count) = got
   +exceeds = TileDisconnect.exceeds(count, PopulateState.width_of(cx), PopulateState.height_of(cx))
-  populated_job(disconnect_branch(exceeds, PopulateState.Land{g, rng, ents, events}, cx, rc,
+  populated_job(disconnect_branch(build, exceeds, PopulateState.Land{g, rng, ents, events}, cx, rc,
     Canon.record("cdisconnect", [Canon.number("a", attempt_of(rc)), Canon.number("count", count), Canon.number("exceeds", Bool.to_u32(exceeds))])),
     Bool.not(exceeds), c, attempt_of(rc), rc_story(rc), w, graph)
 
-def replaced_lines(l: PopulateState.Land, +cx: PopulateState.Ctx, +sx: U32, +sy: U32, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def replaced_lines(+build: Builds.Build, l: PopulateState.Land, +cx: PopulateState.Ctx, +sx: U32, +sy: U32, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      detected_lines(TileDisconnect.detect(g, sx, sy), cx, rng, ents, events, rc, c, w, graph)
+      detected_lines(build, TileDisconnect.detect(g, sx, sy), cx, rng, ents, events, rc, c, w, graph)
 
-def populate_start(start: U32 & U32, +cx: PopulateState.Ctx, land: PopulateState.Land, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def populate_start(+build: Builds.Build, start: U32 & U32, +cx: PopulateState.Ctx, land: PopulateState.Land, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (+sx, +sy) = start
-  replaced_lines(PopulateState.digest(PopulateLand.replaced(PopulateGround.convert_ground(cx, land)), cx, 1), cx, sx, sy, rc, c, w, graph)
+  replaced_lines(build, PopulateState.digest(PopulateLand.replaced(PopulateGround.convert_ground(build, cx, land)), cx, 1), cx, sx, sy, rc, c, w, graph)
 
 # ConvertGround to PopulateVoronoi with the events recorded, and DetectDisconnect between them.
-def populate_lines(+c: Generate.Seed, +k: GenGraph.Klei, +sites: Points.Sites, +w: U32, land: PopulateState.Land, +rc: Rc) -> GenJob.Job & List<&2, String>:
-  populate_start(Generate.cave_start(rc_story(rc), k, sites), Generate.land_context(c, rc_story(rc), k, sites, w, True{}), land, rc, c, w,
-    GenJob.sites_graph(rc_story(rc), k, sites))
+def populate_lines(+build: Builds.Build, +c: Generate.Seed, +k: GenGraph.Klei, +sites: Points.Sites, +w: U32, land: PopulateState.Land, +rc: Rc) -> GenJob.Job & List<&2, String>:
+  populate_start(build, Generate.cave_start(rc_story(rc), k, sites), Generate.land_context(c, rc_story(rc), k, sites, w, True{}), land, rc, c, w,
+    GenJob.sites_graph(build, rc_story(rc), k, sites))
 
 type Ps is Type:
   Ps{sea: OceanState.Sea, lines: List<&2, String>}
@@ -387,68 +388,68 @@ def counted(ps: Ps, +rc: Rc, +at: String) -> Ps:
     case Ps{sea, +lines}:
       counted_facts(sea_facts(sea), rc, at, lines)
 
-def post_populated(ps: Ps, +cx: OceanState.Ctx, +wormhole: U32) -> Ps:
+def post_populated(+build: Builds.Build, ps: Ps, +cx: OceanState.Ctx, +wormhole: U32) -> Ps:
   match ps:
     case Ps{sea, +lines}:
-      Ps{OceanPost.post_populate(cx, wormhole, sea), lines}
+      Ps{OceanPost.post_populate(build, cx, wormhole, sea), lines}
 
-def filtered(ps: Ps, +cx: OceanState.Ctx) -> Ps:
+def filtered(+build: Builds.Build, ps: Ps, +cx: OceanState.Ctx) -> Ps:
   match ps:
     case Ps{sea, +lines}:
-      Ps{OceanPost.impassable_filter(cx, sea), lines}
+      Ps{OceanPost.impassable_filter(build, cx, sea), lines}
 
-def bunched(ps: Ps, +cx: OceanState.Ctx) -> Ps:
+def bunched(+build: Builds.Build, ps: Ps, +cx: OceanState.Ctx) -> Ps:
   match ps:
     case Ps{sea, +lines}:
-      Ps{Bunches.bunches(cx, sea), lines}
+      Ps{Bunches.bunches(build, cx, sea), lines}
 
 def archived(ps: Ps, +dispenser: U32, +temporary: U32) -> Ps:
   match ps:
     case Ps{sea, +lines}:
       Ps{Archive.run(dispenser, temporary, sea), lines}
 
-def req_loop(reqs: List<&2, OceanPost.Req>, +ents: List<&2, OceanEnts.Ent>, +rc: Rc, +missing: U32) -> List<&2, String>:
+def req_loop(+build: Builds.Build, reqs: List<&2, OceanPost.Req>, +ents: List<&2, OceanEnts.Ent>, +rc: Rc, +missing: U32) -> List<&2, String>:
   match reqs:
     case Nil{}:
       [Canon.record("cstatus", [Canon.number("a", attempt_of(rc)), Canon.number("ok", Bool.to_u32(U32.is_zero(missing)))])]
     case Con{OceanPost.Req{+prefab, +count}, rest}:
       +have = OceanEnts.count(ents, prefab)
-      Canon.record("creq", [Canon.number("a", attempt_of(rc)), Canon.field("prefab", Canon.quoted(Strings.name(prefab))), Canon.number("need", count), Canon.number("have", have)])
-        <> req_loop(rest, ents, rc, (missing + Bool.to_u32((have < count : U32)) : U32))
+      Canon.record("creq", [Canon.number("a", attempt_of(rc)), Canon.field("prefab", Canon.quoted(Strings.name(build, prefab))), Canon.number("need", count), Canon.number("have", have)])
+        <> req_loop(build, rest, ents, rc, (missing + Bool.to_u32((have < count : U32)) : U32))
 
-def required_step(got: OceanState.Sea & List<&2, OceanEnts.Ent>, +cx: OceanState.Ctx, +rc: Rc, +lines: List<&2, String>, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def required_step(+build: Builds.Build, got: OceanState.Sea & List<&2, OceanEnts.Ent>, +cx: OceanState.Ctx, +rc: Rc, +lines: List<&2, String>, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   (sea, +ents) = got
-  (GenJob.cave_posted(Finish.checked(OceanPost.required(CaveRequired.required(rc_story(rc)), cx, sea), cx), c, attempt_of(rc), rc_story(rc), w, graph),
-    List.append(&2, String, List.reverse(&2, String, lines), req_loop(CaveRequired.required(rc_story(rc)), ents, rc, 0)))
+  (GenJob.cave_posted(Finish.checked(OceanPost.required(CaveRequired.required(build, rc_story(rc)), cx, sea), cx), c, attempt_of(rc), rc_story(rc), w, graph),
+    List.append(&2, String, List.reverse(&2, String, lines), req_loop(build, CaveRequired.required(build, rc_story(rc)), ents, rc, 0)))
 
-def post_final(ps: Ps, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def post_final(+build: Builds.Build, ps: Ps, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match ps:
     case Ps{sea, +lines}:
-      required_step(OceanState.ents_of(sea), cx, rc, lines, c, w, graph)
+      required_step(build, OceanState.ents_of(sea), cx, rc, lines, c, w, graph)
 
-def post_chain(ps: Ps, shard: Finish.Shard, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def post_chain(+build: Builds.Build, ps: Ps, shard: Finish.Shard, +cx: OceanState.Ctx, +rc: Rc, +c: Generate.Seed, +w: U32, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match shard:
     case Finish.Shard{+wormhole, +dispenser, +temporary}:
-      post_final(counted(archived(counted(bunched(counted(filtered(counted(post_populated(counted(ps, rc, "atrium"), cx, wormhole), rc, "post_populate"), cx), rc, "filter"), cx), rc, "bunches"),
+      post_final(build, counted(archived(counted(bunched(build, counted(filtered(build, counted(post_populated(build, counted(ps, rc, "atrium"), cx, wormhole), rc, "post_populate"), cx), rc, "filter"), cx), rc, "bunches"),
         dispenser, temporary), rc, "archive"), cx, rc, c, w, graph)
 
 # GlobalPostPopulate to the required prefab check on the caves' land, and the job that follows.
-def post_lines(+c: Generate.Seed, +w: U32, land: PopulateState.Land, +rc: Rc, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
+def post_lines(+build: Builds.Build, +c: Generate.Seed, +w: U32, land: PopulateState.Land, +rc: Rc, +graph: FilterDump.Graph) -> GenJob.Job & List<&2, String>:
   match land:
     case PopulateState.Land{g, +rng, +ents, _}:
-      post_chain(Ps{GenJob.atriumed(OceanState.ents_of(GenJob.sea_of(GenJob.Landed{g, rng, ents, rc_story(rc), w, Nil{}, Nil{}, graph, Nil{}}))), Nil{}},
-        GenJob.cave_shard(), OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, False{}}, rc, c, w, graph)
+      post_chain(build, Ps{GenJob.atriumed(build, OceanState.ents_of(GenJob.sea_of(GenJob.Landed{g, rng, ents, rc_story(rc), w, Nil{}, Nil{}, graph, Nil{}}))), Nil{}},
+        GenJob.cave_shard(build), OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, False{}}, rc, c, w, graph)
 
-def ca_mazes(t: CaTr, +rc: Rc, +e: MazeEnv.Env) -> List<&2, String>:
+def ca_mazes(+build: Builds.Build, t: CaTr, +rc: Rc, +e: MazeEnv.Env) -> List<&2, String>:
   match t:
     case CaTr{ca, +lines, _}:
       match ca:
         case CaveCustom.Ca{g, +rng, _, _}:
-          List.append(&2, String, List.reverse(&2, String, lines), maze_lines(rc, e, g, rng))
+          List.append(&2, String, List.reverse(&2, String, lines), maze_lines(build, rc, e, g, rng))
 
 # The custom tile pass's engine calls and the mazes' that follow them.
-def cave_lines(+rc: Rc, +c: Generate.Seed, +kl: GenGraph.Klei, +sites: Points.Sites, +w: U32) -> List<&2, String>:
-  ca_mazes(ca_traced(rc, Generate.windows_of(c), kl, sites, w), rc, MazeEnv.Env{Generate.windows_of(c), Generate.swaps_of(c), rc_story(rc), kl, w, CaveCustom.world_of(sites)})
+def cave_lines(+build: Builds.Build, +rc: Rc, +c: Generate.Seed, +kl: GenGraph.Klei, +sites: Points.Sites, +w: U32) -> List<&2, String>:
+  ca_mazes(build, ca_traced(build, rc, Generate.windows_of(c), kl, sites, w), rc, MazeEnv.Env{Generate.windows_of(c), Generate.swaps_of(c), rc_story(rc), kl, w, CaveCustom.world_of(sites)})
 
 def verdict_line(+a: U32, +result: String, +ctr: U32) -> String:
   Canon.record("cverdict", [Canon.number("a", a), Canon.field("result", Canon.quoted(result)), Canon.number("ctr", ctr)])
@@ -489,35 +490,35 @@ def start_lines(+st: Tr, +a: U32, +rng: Pcg.Rng) -> List<&2, String>:
   Bool.pick(List<&2, String>, U32.is_eq(a, 1), [Canon.record("cattempt", [Canon.number("a", a), Canon.number("ctr", Pcg.counter(tr_seed(st), rng))])],
     [verdict_line((a - 1 : U32), failed_at(tr_last(st)), Pcg.counter(tr_seed(st), rng))])
 
-def commit_lines(+st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +second: Generate.Pass) -> List<&2, String>:
-  List.append(&2, String, GenTrace.first_lines(gen_tr(st, a), s, k, a, second),
-    GenTrace.commit_lines(Generate.commit(c, second), Pcg.counter(tr_seed(st), StoryGraph.rng_of(s)), a, GenTrace.names_of(GenGraph.vertices_of(k), s)))
+def commit_lines(+build: Builds.Build, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +second: Generate.Pass) -> List<&2, String>:
+  List.append(&2, String, GenTrace.first_lines(build, gen_tr(st, a), s, k, a, second),
+    GenTrace.commit_lines(Generate.commit(c, second), Pcg.counter(tr_seed(st), StoryGraph.rng_of(s)), a, GenTrace.names_of(build, GenGraph.vertices_of(k), s)))
 
-def tiles_lines(+st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> List<&2, String>:
+def tiles_lines(+build: Builds.Build, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> List<&2, String>:
   [Canon.record("ccommit", [Canon.number("a", a), Canon.number("ok", 1)]),
-    paint_line(rc_of(st, a, s), Generate.tile_world(s, k, Generate.tile_size(size), Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)),
+    paint_line(rc_of(st, a, s), Generate.tile_world(build, s, k, Generate.tile_size(size), Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)),
       Pcg.counter(tr_seed(st), Generate.rng_after_tiles(s, Generate.tile_size(size))))]
 
 def tiled_pair(got: Grid.Grid & String, +rest: List<&2, String>) -> Grid.Grid & List<&2, String>:
   (g, +line) = got
   (g, line <> rest)
 
-def tiled_lines(g: Grid.Grid, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, +sites: Points.Sites) -> Grid.Grid & List<&2, String>:
-  tiled_pair(digest(g, rc_of(st, a, s), "before_mazes", Pcg.counter(tr_seed(st), rng)), cave_lines(rc_of(st, a, s), c, k, sites, w))
+def tiled_lines(+build: Builds.Build, g: Grid.Grid, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, +sites: Points.Sites) -> Grid.Grid & List<&2, String>:
+  tiled_pair(digest(g, rc_of(st, a, s), "before_mazes", Pcg.counter(tr_seed(st), rng)), cave_lines(build, rc_of(st, a, s), c, k, sites, w))
 
 def mazed_populated(got: GenJob.Job & List<&2, String>, +head: List<&2, String>) -> GenJob.Job & List<&2, String>:
   (job, +lines) = got
   (job, List.append(&2, String, head, lines))
 
-def mazed_digest(got: Grid.Grid & String, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> GenJob.Job & List<&2, String>:
+def mazed_digest(+build: Builds.Build, got: Grid.Grid & String, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> GenJob.Job & List<&2, String>:
   (g, +line) = got
-  mazed_populated(populate_lines(c, k, sites, w, PopulateState.Land{g, rng, ents, events}, rc_of(st, a, s)),
+  mazed_populated(populate_lines(build, c, k, sites, w, PopulateState.Land{g, rng, ents, events}, rc_of(st, a, s)),
     [line, cents_line(rc_of(st, a, s), "mazes", U32.from_nat(List.length(&2, Entities.Ent, ents)), rng)])
 
-def mazed_lines(land: PopulateState.Land, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> GenJob.Job & List<&2, String>:
+def mazed_lines(+build: Builds.Build, land: PopulateState.Land, +st: Tr, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> GenJob.Job & List<&2, String>:
   match land:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      mazed_digest(digest(g, rc_of(st, a, s), "after_mazes", Pcg.counter(tr_seed(st), rng)), rng, ents, events, st, c, a, s, k, w, sites)
+      mazed_digest(build, digest(g, rc_of(st, a, s), "after_mazes", Pcg.counter(tr_seed(st), rng)), rng, ents, events, st, c, a, s, k, w, sites)
 
 def world_digest(got: Grid.Grid & Grid.Hash, +a: U32, +ctr: U32, +n: U32) -> List<&2, String>:
   (g, +h) = got
@@ -546,38 +547,38 @@ def done_name(+o: GenJob.Outcome, +last: U32) -> String:
 def stopped(+c: Generate.Seed, +a: U32) -> GenJob.Job:
   GenJob.JDone{c, a, GenJob.GaveUp{}}
 
-def start_job(first: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> GenJob.Job:
+def start_job(+build: Builds.Build, first: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> GenJob.Job:
   match first:
     case True{}:
-      GenJob.advance(GenJob.JStart{c, a, rng})
+      GenJob.advance(build, GenJob.JStart{c, a, rng})
     case False{}:
       stopped(c, a)
 
-def tiled_job(got: Grid.Grid & List<&2, String>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> GenJob.Job & List<&2, String>:
+def tiled_job(+build: Builds.Build, got: Grid.Grid & List<&2, String>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> GenJob.Job & List<&2, String>:
   (g, +lines) = got
-  (GenJob.advance(GenJob.JTiled{c, a, s, k, w, g, rng, placed, sites}), lines)
+  (GenJob.advance(build, GenJob.JTiled{c, a, s, k, w, g, rng, placed, sites}), lines)
 
 # The stage the job has just entered: its records, and the job after the stage (a stopped one at the end of the attempt).
-def enter(job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
+def enter(+build: Builds.Build, job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
   match job:
     case GenJob.JStart{+c, +a, +rng}:
-      (start_job(U32.is_eq(a, 1), c, a, rng), start_lines(st, a, rng))
+      (start_job(build, U32.is_eq(a, 1), c, a, rng), start_lines(st, a, rng))
     case GenJob.JFirst{+c, +a, +s, +k}:
-      (GenJob.advance(GenJob.JFirst{c, a, s, k}), Nil{})
+      (GenJob.advance(build, GenJob.JFirst{c, a, s, k}), Nil{})
     case GenJob.JSecond{+c, +a, +s, +k, +first}:
-      (GenJob.advance(GenJob.JSecond{c, a, s, k, first}), Nil{})
+      (GenJob.advance(build, GenJob.JSecond{c, a, s, k, first}), Nil{})
     case GenJob.JCommit{+c, +a, +s, +k, +second}:
-      (GenJob.advance(GenJob.JCommit{c, a, s, k, second}), commit_lines(st, c, a, s, k, second))
+      (GenJob.advance(build, GenJob.JCommit{c, a, s, k, second}), commit_lines(build, st, c, a, s, k, second))
     case GenJob.JTiles{+c, +a, +s, +k, +size, +sites}:
-      (GenJob.advance(GenJob.JTiles{c, a, s, k, size, sites}), tiles_lines(st, c, a, s, k, size, sites))
+      (GenJob.advance(build, GenJob.JTiles{c, a, s, k, size, sites}), tiles_lines(build, st, c, a, s, k, size, sites))
     case GenJob.JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
-      (GenJob.advance(GenJob.JLand{c, a, s, k, w, world, lists, sites}), forced_lines(rc_of(st, a, s), world, Pcg.counter(tr_seed(st), Generate.rng_after_tiles(s, w))))
+      (GenJob.advance(build, GenJob.JLand{c, a, s, k, w, world, lists, sites}), forced_lines(rc_of(st, a, s), world, Pcg.counter(tr_seed(st), Generate.rng_after_tiles(s, w))))
     case GenJob.JTiled{+c, +a, +s, +k, +w, grid, +rng, placed, +sites}:
-      tiled_job(tiled_lines(grid, st, c, a, s, k, w, rng, sites), c, a, s, k, w, rng, placed, sites)
+      tiled_job(build, tiled_lines(build, grid, st, c, a, s, k, w, rng, sites), c, a, s, k, w, rng, placed, sites)
     case GenJob.JMazed{+c, +a, +s, +k, +w, land, +sites}:
-      mazed_lines(land, st, c, a, s, k, w, sites)
+      mazed_lines(build, land, st, c, a, s, k, w, sites)
     case GenJob.JPost{+c, +a, +s, +w, land, +graph}:
-      post_lines(c, w, land, rc_of(st, a, s), graph)
+      post_lines(build, c, w, land, rc_of(st, a, s), graph)
     case GenJob.JWorld{+c, +a, world}:
       (stopped(c, a), world_lines(world, tr_seed(st), a))
     case GenJob.JDone{+c, +a, +o}:
@@ -608,18 +609,18 @@ def entered(got: GenJob.Job & List<&2, String>, +st: Tr, +stage: U32, +a: U32) -
   (job, +lines) = got
   (Tr{tr_seed(st), tr_ctr(st), stage, lines <> tr_chunks(st)}, moved(stops(stage, a), job))
 
-def with_rng(got: GenJob.Job & Pcg.Rng, +st: Tr, +stage: U32, +a: U32) -> Tr & Next:
+def with_rng(+build: Builds.Build, got: GenJob.Job & Pcg.Rng, +st: Tr, +stage: U32, +a: U32) -> Tr & Next:
   (job, +rng) = got
-  entered(enter(job, Tr{tr_seed(st), GenTrace.start_counter(stage, tr_seed(st), tr_ctr(st), rng), tr_last(st), tr_chunks(st)}),
+  entered(enter(build, job, Tr{tr_seed(st), GenTrace.start_counter(stage, tr_seed(st), tr_ctr(st), rng), tr_last(st), tr_chunks(st)}),
     Tr{tr_seed(st), GenTrace.start_counter(stage, tr_seed(st), tr_ctr(st), rng), tr_last(st), tr_chunks(st)}, stage, a)
 
-def at_stage(got: GenJob.Job & GenJob.Where, +st: Tr) -> Tr & Next:
+def at_stage(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +st: Tr) -> Tr & Next:
   (job, +at) = got
   match at:
     case GenJob.Where{+stage, +a}:
-      with_rng(GenTrace.job_rng(job), st, stage, a)
+      with_rng(build, GenTrace.job_rng(job), st, stage, a)
 
-def trace_loop(fuel: Nat, got: Tr & Next) -> Tr:
+def trace_loop(+build: Builds.Build, fuel: Nat, got: Tr & Next) -> Tr:
   match fuel:
     case 0n:
       (+st, _) = got
@@ -630,9 +631,9 @@ def trace_loop(fuel: Nat, got: Tr & Next) -> Tr:
         case Ended{}:
           st
         case More{job}:
-          trace_loop(f, at_stage(GenJob.stage(job), st))
+          trace_loop(build, f, at_stage(build, GenJob.stage(job), st))
 
 # The stage's records for a seed on the platform; the input is the stream position the attempt starts from (empty for the first).
-def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
-  GenTrace.lines_of(GenTrace.Tr{seed, 0, 0, 0, tr_chunks(trace_loop(256n,
-    (Tr{seed, 0, 0, Nil{}}, More{GenJob.start_caves(seed, windows, Maybe.default(&2, U32, U32.read(input), 0), False{})})))})
+def run(+build: Builds.Build, +stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
+  GenTrace.lines_of(GenTrace.Tr{seed, 0, 0, 0, tr_chunks(trace_loop(build, 256n,
+    (Tr{seed, 0, 0, Nil{}}, More{GenJob.start_caves(build, seed, windows, Maybe.default(&2, U32, U32.read(input), 0), False{})})))})

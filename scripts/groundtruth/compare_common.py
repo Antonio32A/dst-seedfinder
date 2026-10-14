@@ -1,9 +1,33 @@
-"""Shared by the compare_caves_*.py tools."""
+"""Shared by the compare_caves_*.py tools and parse_worldgen.py."""
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CAVE_WORLDS = ROOT / "build/groundtruth/data/worlds_caves"
+
+
+def main_checkout():
+    """The repository's main checkout: ROOT, or the checkout a git worktree at ROOT belongs to."""
+    git = ROOT / ".git"
+    return Path(git.read_text().split(":", 1)[1].strip()).parents[2] if git.is_file() else ROOT
+
+
+GT_ROOT = Path(os.environ.get("GT_ROOT") or main_checkout() / "build/groundtruth")
+
+
+def latest_build():
+    """The latest game build of builds.json, the default one."""
+    return json.loads((ROOT / "builds.json").read_text())["latest"]
+
+
+def groundtruth(build):
+    """The ground truth of a game build: data/worlds, data/worlds_caves, dstw, dstw_caves, windows_caves, logs."""
+    return GT_ROOT / str(build)
+
+
+def cave_worlds(build, platform):
+    """The real cave world JSONs of a build generated on a platform's server."""
+    return groundtruth(build) / ("windows_caves" if platform == "windows" else "data/worlds_caves")
 
 
 def seeds_of(text):

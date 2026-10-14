@@ -2,10 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
+import BuildField from "@/components/search/BuildField";
 import PlatformField from "@/components/search/PlatformField";
 import Brand from "@/components/shell/Brand";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { rememberMapOrigin } from "@/lib/client/map-origin";
+import { type GameBuild, LATEST_BUILD } from "@/lib/config/game-builds";
 import {
     DEFAULT_PLATFORM,
     DEFAULT_SHARD,
@@ -20,6 +22,7 @@ export default function MapPicker() {
     const router = useRouter();
     const [platform, setPlatform] = useState<Platform>(DEFAULT_PLATFORM);
     const [shard, setShard] = useState<Shard>(DEFAULT_SHARD);
+    const [build, setBuild] = useState<GameBuild>(LATEST_BUILD);
     const [seed, setSeed] = useState("");
     const [error, setError] = useState("");
 
@@ -27,7 +30,7 @@ export default function MapPicker() {
 
     const open = (event: FormEvent) => {
         event.preventDefault();
-        const picked = pickedMapPath(platform, seed, shard);
+        const picked = pickedMapPath(platform, seed, shard, build);
         if ("error" in picked) setError(picked.error);
         else router.push(picked.path);
     };
@@ -57,6 +60,7 @@ export default function MapPicker() {
                                     onChange={setShard}
                             />
                             <PlatformField platform={platform} onChange={setPlatform}/>
+                            <BuildField build={build} onChange={setBuild}/>
                         </div>
                         <label className="start-seed">
                             <span className="seg__legend">Seed</span>

@@ -5,18 +5,21 @@
 #   seeds          : comma separated seeds or ranges, default 1-10
 #   shard          : forest (default, the Master shard) or caves (the Caves shard, preset DST_CAVE)
 # Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder.
-# Logs go to build/groundtruth/logs/worldgen/ (worldgen_caves/ for the caves), worlds to build/groundtruth/data/worlds/
-# (worlds_caves/ for the caves); GT_WORLDS_DIR overrides the worlds folder.
+# The game build is the install's version.txt. Logs go to build/groundtruth/<build>/logs/worldgen/ (worldgen_caves/ for
+# the caves), worlds to build/groundtruth/<build>/data/worlds/ (worlds_caves/ for the caves), in the main checkout;
+# GT_ROOT overrides build/groundtruth and GT_WORLDS_DIR the worlds folder. The server storage is shared by every build.
 set -euo pipefail
 
 here="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
-work="$(cd "$here/../.." && pwd)/build/groundtruth"
+gt_root="${GT_ROOT:-$(dirname "$(git -C "$here" rev-parse --path-format=absolute --git-common-dir)")/build/groundtruth}"
 mode="${1:-fresh}"
 seeds="${2:-1-10}"
 shard="${3:-forest}"
 default_dst="$HOME/.local/share/Steam/steamapps/common/Don't Starve Together"
 dst="${DST_GAME:-$default_dst}"
-storage="$work/storage"
+build="$(tr -dc 0-9 < "$dst/version.txt")"
+work="$gt_root/$build"
+storage="$gt_root/storage"
 cluster_dir="$storage/DoNotStarveTogether/Cluster_GTW"
 case "$shard" in
 forest) shard_dir=Master; worlds_dir="$work/data/worlds"; logs="$work/logs/worldgen" ;;

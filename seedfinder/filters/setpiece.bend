@@ -1,6 +1,8 @@
 import Base
 import ../data/catalog.bend as Catalog
 import ../level/setpieces.bend as LevelSetpieces
+import ../data/catalog_types.bend as CatalogTypes
+import ../data/builds.bend as Builds
 
 # Per-boon count bounds in the same 8-bit layout as Pieces, plus bitmasks of the catalog ids
 # each single-choice category may take (bit 0 = nothing chosen).
@@ -58,30 +60,30 @@ def allowed_ids(+index: U32, +low: U32, +high: U32) -> U32:
 def restrict_mask(+mask: U32, +applies: Bool, +allowed: U32) -> U32:
   Bool.pick(U32, applies, (mask .&. allowed : U32), mask)
 
-def restrict(+f: Filter, +kind: U32, +index: U32, +low: U32, +high: U32) -> Filter:
+def restrict(+build: Builds.Build, +f: Filter, +kind: U32, +index: U32, +low: U32, +high: U32) -> Filter:
   match f:
     case Filter{+min_a, +min_b, +min_c, +min_d, +max_a, +max_b, +max_c, +max_d, +traps, +pois, +protecteds}:
-      +boon = U32.is_eq(kind, Catalog.kind_boon())
+      +boon = U32.is_eq(kind, Catalog.kind_boon(build))
       +allowed = allowed_ids(index, low, high)
-      +impossible_fixed = U32.is_eq(kind, Catalog.kind_fixed()) && Bool.not(in_range(index, low, high))
+      +impossible_fixed = U32.is_eq(kind, Catalog.kind_fixed(build)) && Bool.not(in_range(index, low, high))
       Filter{
         set_lane(boon, min_a, 0, index, low), set_lane(boon, min_b, 4, index, low),
         set_lane(boon, min_c, 8, index, low), set_lane(boon, min_d, 12, index, low),
         set_lane(boon, max_a, 0, index, high), set_lane(boon, max_b, 4, index, high),
         set_lane(boon, max_c, 8, index, high), set_lane(boon, max_d, 12, index, high),
-        restrict_mask(restrict_mask(traps, U32.is_eq(kind, Catalog.kind_trap()), allowed), impossible_fixed, 0),
-        restrict_mask(pois, U32.is_eq(kind, Catalog.kind_point_of_interest()), allowed),
-        restrict_mask(protecteds, U32.is_eq(kind, Catalog.kind_protected_resource()), allowed)
+        restrict_mask(restrict_mask(traps, U32.is_eq(kind, Catalog.kind_trap(build)), allowed), impossible_fixed, 0),
+        restrict_mask(pois, U32.is_eq(kind, Catalog.kind_point_of_interest(build)), allowed),
+        restrict_mask(protecteds, U32.is_eq(kind, Catalog.kind_protected_resource(build)), allowed)
       }
 
-def find_entry(entries: List<&2, Catalog.Entry>, +name: String) -> Maybe<&2, Catalog.Entry>:
+def find_entry(entries: List<&2, CatalogTypes.Entry>, +name: String) -> Maybe<&2, CatalogTypes.Entry>:
   match entries:
     case Nil{}:
       None{}
     case Con{+entry, rest}:
       match entry:
-        case Catalog.Entry{+entry_name, _, _}:
-          Bool.pick(Maybe<&2, Catalog.Entry>, String.eq(entry_name, name), Some{entry}, find_entry(rest, name))
+        case CatalogTypes.Entry{+entry_name, _, _}:
+          Bool.pick(Maybe<&2, CatalogTypes.Entry>, String.eq(entry_name, name), Some{entry}, find_entry(rest, name))
 
 def parsed_bound(read: Maybe<&2, U32>, +text: String) -> Result<&1, &1, U32 & String, U32>:
   match read:
@@ -101,38 +103,38 @@ def bound(parts: List<&2, String>, +i: Nat, +fallback: U32) -> Result<&1, &1, U3
   bound_text(List.get(&2, String, parts, i), fallback)
 
 def restrict_by_entry(
-  found: Maybe<&2, Catalog.Entry>, +f: Filter, +name: String, +low: U32, +high: U32
+  +build: Builds.Build, found: Maybe<&2, CatalogTypes.Entry>, +f: Filter, +name: String, +low: U32, +high: U32
 ) -> Result<&1, &1, U32 & String, Filter>:
   match found:
     case None{}:
       Fail{(2, "unknown set piece: " ++ name)}
-    case Some{Catalog.Entry{_, +kind, +index}}:
-      Done{restrict(f, kind, index, low, high)}
+    case Some{CatalogTypes.Entry{_, +kind, +index}}:
+      Done{restrict(build, f, kind, index, low, high)}
 
 def with_bounds(
-  +f: Filter, +name: String, low: Result<&1, &1, U32 & String, U32>, high: Result<&1, &1, U32 & String, U32>
+  +build: Builds.Build, +f: Filter, +name: String, low: Result<&1, &1, U32 & String, U32>, high: Result<&1, &1, U32 & String, U32>
 ) -> Result<&1, &1, U32 & String, Filter>:
   match low high:
     case Done{+l} Done{+h}:
-      restrict_by_entry(find_entry(Catalog.catalog(), name), f, name, l, h)
+      restrict_by_entry(build, find_entry(Catalog.catalog(build), name), f, name, l, h)
     case Fail{e} _:
       Fail{e}
     case _ Fail{e}:
       Fail{e}
 
 # "Name" (at least one), "Name:min" or "Name:min:max".
-def constrain(acc: Result<&1, &1, U32 & String, Filter>, +spec: String) -> Result<&1, &1, U32 & String, Filter>:
+def constrain(+build: Builds.Build, acc: Result<&1, &1, U32 & String, Filter>, +spec: String) -> Result<&1, &1, U32 & String, Filter>:
   match acc:
     case Fail{e}:
       Fail{e}
     case Done{+f}:
       +parts = String.split(spec, ':')
       +name = Maybe.default(&2, String, List.get(&2, String, parts, 0n), "")
-      with_bounds(f, name, bound(parts, 1n, 1), bound(parts, 2n, lane_maximum()))
+      with_bounds(build, f, name, bound(parts, 1n, 1), bound(parts, 2n, lane_maximum()))
 
-def parse(specs: List<&2, String>, acc: Result<&1, &1, U32 & String, Filter>) -> Result<&1, &1, U32 & String, Filter>:
+def parse(+build: Builds.Build, specs: List<&2, String>, acc: Result<&1, &1, U32 & String, Filter>) -> Result<&1, &1, U32 & String, Filter>:
   match specs:
     case Nil{}:
       acc
     case Con{+spec, rest}:
-      parse(rest, constrain(acc, spec))
+      parse(build, rest, constrain(build, acc, spec))

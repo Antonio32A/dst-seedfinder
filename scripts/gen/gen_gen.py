@@ -2,7 +2,6 @@
 """Writes data/gen_tags.bend for the end-to-end generator (gen/): the string ids of the node tags Graph:ApplyPoisonTag
 reads (network.lua), and the catalog vocabulary of the search filters (data/search_vocab.bend order) as the generator's
 string ids and tile ids (the caves' own prefabs too), to build the filters' world from a generated one. `-` prints the module instead."""
-import json
 import sys
 from pathlib import Path
 
@@ -10,8 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import blob  # noqa: E402
 import ids  # noqa: E402
 
-CATALOG = json.loads((Path(__file__).resolve().parents[1] / "catalog" / "catalog.json").read_text(encoding="utf-8"))
-CAVE_CATALOG = json.loads((Path(__file__).resolve().parents[1] / "catalog" / "cave_catalog.json").read_text(encoding="utf-8"))
+CATALOG = blob.catalog("forest")
+CAVE_CATALOG = blob.catalog("caves")
 NEVER_PLACED = 4294967295
 POCKET_CONTAINERS = ("shadow_container", "rabbitkinghorn_container")
 PILLARS = ("tentacle_pillar", "tentacle_pillar_atrium")

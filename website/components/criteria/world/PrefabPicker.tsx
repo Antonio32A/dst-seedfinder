@@ -13,7 +13,8 @@ import {
 import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import type { WorldPrefab } from "@/lib/catalog/world";
 import { MAX_PREFAB_IDS, type Shard } from "@/lib/config/seedfinder-config";
-import { useWorldShard } from "./WorldShard";
+import type { WorldKind } from "@/lib/criteria/world-rules";
+import { useWorldKind } from "./WorldKind";
 
 export type Blocked = (id: string) => string | undefined;
 
@@ -32,8 +33,8 @@ interface Draft {
     toggle: (ids: string[], on: boolean) => void;
 }
 
-const anchorPrefabs = (shard: Shard): WorldPrefab[] => {
-    const { anchors, byId } = shardCatalog(shard);
+const anchorPrefabs = ({ shard, build }: WorldKind): WorldPrefab[] => {
+    const { anchors, byId } = shardCatalog(shard, build);
     return anchors.flatMap((anchor) => byId.get(anchor.id) ?? []);
 };
 
@@ -63,7 +64,7 @@ function Checkbox({ checked, mixed = false, disabled, onChange }: {
     );
 }
 
-function PrefabOption({ prefab, draft, shard }: { prefab: WorldPrefab; draft: Draft; shard: Shard }) {
+function PrefabOption({ prefab, draft, world }: { prefab: WorldPrefab; draft: Draft; world: WorldKind }) {
     const checked = draft.ids.includes(prefab.id);
     const reason = draft.blocked(prefab.id);
     const counts = prefabCountText(prefab);
@@ -73,7 +74,7 @@ function PrefabOption({ prefab, draft, shard }: { prefab: WorldPrefab; draft: Dr
                     <Checkbox checked={checked} disabled={!checked && (reason !== undefined || draft.full)}
                               onChange={(on) => draft.toggle([prefab.id], on)}/>
                     <span className="pick__text">
-          <span className="pick__name">{prefabName(prefab.id, shard)}</span>
+          <span className="pick__name">{prefabName(prefab.id, world.shard, world.build)}</span>
                         {[...(reason ? [reason] : []), ...prefabTags(prefab)].map((tag) => (
                                 <span key={tag} className="tag">
               {tag}
@@ -86,12 +87,12 @@ function PrefabOption({ prefab, draft, shard }: { prefab: WorldPrefab; draft: Dr
     );
 }
 
-function FamilyOption({ family, members, draft, open, shard }: {
+function FamilyOption({ family, members, draft, open, world }: {
     family: PrefabFamily;
     members: WorldPrefab[];
     draft: Draft;
     open: boolean;
-    shard: Shard;
+    world: WorldKind;
 }) {
     const [expanded, setExpanded] = useState<boolean>();
     const free = members.filter((member) => !draft.blocked(member.id)).map((member) => member.id);
@@ -116,7 +117,7 @@ function FamilyOption({ family, members, draft, open, shard }: {
                 {shown && (
                         <ul className="picker__items picker__items--nested">
                             {members.map((member) => (
-                                    <PrefabOption key={member.id} prefab={member} draft={draft} shard={shard}/>
+                                    <PrefabOption key={member.id} prefab={member} draft={draft} world={world}/>
                             ))}
                         </ul>
                 )}
@@ -141,11 +142,11 @@ function visibleEntries(
         needle: string,
         groupName: string,
         listed: (prefab: WorldPrefab) => boolean,
-        shard: Shard
+        world: WorldKind
 ): PickerEntry[] {
     return entries.flatMap((entry) => {
         const members = entry.family ? entry.members : [entry.prefab];
-        const label = entry.family ? entry.family.label : prefabName(entry.prefab.id, shard);
+        const label = entry.family ? entry.family.label : prefabName(entry.prefab.id, world.shard, world.build);
         const reachable = members.filter(listed);
         const names = members.flatMap((member) => [member.name, member.id]);
         if (reachable.length === 0 || !matches(needle, groupName, label, ...names)) return [];
@@ -154,20 +155,20 @@ function visibleEntries(
     });
 }
 
-function EntryList({ entries, draft, open, shard }: {
+function EntryList({ entries, draft, open, world }: {
     entries: PickerEntry[];
     draft: Draft;
     open: boolean;
-    shard: Shard;
+    world: WorldKind;
 }) {
     return (
             <ul className="picker__items">
                 {entries.map((entry) =>
                         entry.family ? (
                                 <FamilyOption key={entry.family.label} family={entry.family} members={entry.members}
-                                              draft={draft} open={open} shard={shard}/>
+                                              draft={draft} open={open} world={world}/>
                         ) : (
-                                <PrefabOption key={entry.prefab.id} prefab={entry.prefab} draft={draft} shard={shard}/>
+                                <PrefabOption key={entry.prefab.id} prefab={entry.prefab} draft={draft} world={world}/>
                         )
                 )}
             </ul>
@@ -181,8 +182,8 @@ export default function PrefabPicker({
                                          onDone,
                                          onClose
                                      }: PrefabPickerProps) {
-    const shard = useWorldShard();
-    const { byId } = shardCatalog(shard);
+    const world = useWorldKind();
+    const { byId } = shardCatalog(world.shard, world.build);
     const dialog = useRef<HTMLDialogElement>(null);
     const search = useRef<HTMLInputElement>(null);
     const titleId = useId();
@@ -198,14 +199,15 @@ export default function PrefabPicker({
     const needle = query.trim().toLowerCase();
     const groups = useMemo(() => {
         const listed = (prefab: WorldPrefab) => showAll || !prefab.unreachable || selected.includes(prefab.id);
-        return pickerGroups(shard).map((group) => ({
+        return pickerGroups(world.shard, world.build).map((group) => ({
             group,
-            entries: visibleEntries(group.entries, needle, group.name, listed, shard),
+            entries: visibleEntries(group.entries, needle, group.name, listed, world),
             addable: group.pickable ? group.ids.filter((id) => showAll || !byId.get(id)?.unreachable) : []
         })).filter(({ entries }) => entries.length > 0);
-    }, [needle, showAll, selected, shard, byId]);
-    const anchors = anchorPrefabs(shard)
-            .filter((prefab) => matches(needle, prefabName(prefab.id, shard), prefab.name, prefab.id));
+    }, [needle, showAll, selected, world, byId]);
+    const anchors = anchorPrefabs(world)
+            .filter((prefab) =>
+                    matches(needle, prefabName(prefab.id, world.shard, world.build), prefab.name, prefab.id));
 
     const draft: Draft = {
         ids,
@@ -227,7 +229,7 @@ export default function PrefabPicker({
                         </button>
                     </div>
                     <input type="search" aria-label="Search things in the world"
-                           placeholder={SEARCH_EXAMPLES[shard]} value={query}
+                           placeholder={SEARCH_EXAMPLES[world.shard]} value={query}
                            onChange={(event) => setQuery(event.target.value)} ref={search}/>
                     <div className="picker__bar">
           <span className="counter" aria-live="polite">
@@ -249,7 +251,7 @@ export default function PrefabPicker({
                                 <h4>Common places</h4>
                                 <ul className="picker__items">
                                     {anchors.map((prefab) => (
-                                            <PrefabOption key={prefab.id} prefab={prefab} draft={draft} shard={shard}/>
+                                            <PrefabOption key={prefab.id} prefab={prefab} draft={draft} world={world}/>
                                     ))}
                                 </ul>
                             </section>
@@ -260,7 +262,7 @@ export default function PrefabPicker({
                                     <h4>{group.name}</h4>
                                     {addable.length > 1 && <GroupToggle ids={addable} draft={draft}/>}
                                 </div>
-                                <EntryList entries={entries} draft={draft} open={needle !== ""} shard={shard}/>
+                                <EntryList entries={entries} draft={draft} open={needle !== ""} world={world}/>
                             </section>
                     ))}
                 </div>

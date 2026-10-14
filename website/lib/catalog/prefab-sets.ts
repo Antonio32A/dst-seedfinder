@@ -1,6 +1,7 @@
+import { type GameBuild, LATEST_BUILD } from "@/lib/config/game-builds";
 import { MAX_PREFAB_IDS, type Shard } from "@/lib/config/seedfinder-config";
 import { SWAPS } from "./level";
-import { shardCatalog } from "./shard-catalog";
+import { type ShardCatalog, shardCatalog } from "./shard-catalog";
 import type { WorldPrefab } from "./world";
 
 export interface PrefabFamily {
@@ -30,13 +31,9 @@ const SWAP_OPTION_NAMES: ReadonlyMap<string, string> = new Map(
     SWAPS.flatMap((swap) => swap.options.map((option) => [option.id, option.name] as const))
 );
 
-const ANCHOR_LABELS: Record<Shard, ReadonlyMap<string, string>> = {
-    forest: new Map(shardCatalog("forest").anchors.map((anchor) => [anchor.id, anchor.label])),
-    caves: new Map(shardCatalog("caves").anchors.map((anchor) => [anchor.id, anchor.label]))
-};
-
-export function prefabName(id: string, shard: Shard = "forest"): string {
-    return ANCHOR_LABELS[shard].get(id) ?? shardCatalog(shard).byId.get(id)?.name ?? id;
+export function prefabName(id: string, shard: Shard = "forest", build: GameBuild = LATEST_BUILD): string {
+    const { anchors, byId } = shardCatalog(shard, build);
+    return anchors.find((anchor) => anchor.id === id)?.label ?? byId.get(id)?.name ?? id;
 }
 
 function familyLabel(members: WorldPrefab[]): string | undefined {
@@ -67,8 +64,7 @@ interface ShardSets {
     collapsible: PrefabFamily[];
 }
 
-const pickerGroupsOf = (shard: Shard): PickerGroup[] => {
-    const { groups, prefabs } = shardCatalog(shard);
+const pickerGroupsOf = ({ groups, prefabs }: ShardCatalog): PickerGroup[] => {
     return groups.map((group) => ({
         id: group.id,
         name: group.name,
@@ -78,8 +74,8 @@ const pickerGroupsOf = (shard: Shard): PickerGroup[] => {
     }));
 };
 
-function setsOf(shard: Shard): ShardSets {
-    const pickerGroups = pickerGroupsOf(shard);
+function setsAmong(catalog: ShardCatalog): ShardSets {
+    const pickerGroups = pickerGroupsOf(catalog);
     const families = pickerGroups
         .flatMap((group) => group.entries.flatMap((entry) => (entry.family ? [entry.family] : [])));
     const wholeGroups = pickerGroups.filter((group) => group.pickable && group.ids.length > 1).map((group) => ({
@@ -89,56 +85,64 @@ function setsOf(shard: Shard): ShardSets {
     return { pickerGroups, collapsible: [...wholeGroups, ...families] };
 }
 
-const SETS: Record<Shard, ShardSets> = { forest: setsOf("forest"), caves: setsOf("caves") };
+const SETS = new Map<ShardCatalog, ShardSets>();
+
+function setsOf(shard: Shard, build: GameBuild): ShardSets {
+    const catalog = shardCatalog(shard, build);
+    const sets = SETS.get(catalog) ?? setsAmong(catalog);
+    SETS.set(catalog, sets);
+    return sets;
+}
 
 /** The prefab picker's groups of a shard's prefabs. */
-export const pickerGroups = (shard: Shard = "forest"): PickerGroup[] => SETS[shard].pickerGroups;
+export const pickerGroups = (shard: Shard = "forest", build: GameBuild = LATEST_BUILD): PickerGroup[] =>
+    setsOf(shard, build).pickerGroups;
 
-export function setChips(ids: string[], shard: Shard = "forest"): SetChip[] {
+export function setChips(ids: string[], shard: Shard = "forest", build: GameBuild = LATEST_BUILD): SetChip[] {
     const chosen = new Set(ids);
-    const collapsed = SETS[shard].collapsible.reduce<SetChip[]>((chips, family) => {
+    const collapsed = setsOf(shard, build).collapsible.reduce<SetChip[]>((chips, family) => {
         const free = family.ids.every((id) => chosen.has(id));
         if (free) family.ids.forEach((id) => chosen.delete(id));
         return free ? [...chips, family] : chips;
     }, []);
     return [...collapsed, ...ids.filter((id) => chosen.has(id)).map((id) => ({
-        label: prefabName(id, shard),
+        label: prefabName(id, shard, build),
         ids: [id]
     }))];
 }
 
-export function setLabel(ids: string[], shard: Shard = "forest"): string {
-    return ids.length === 0 ? "nothing" : setChips(ids, shard).map((chip) => chip.label).join(", ");
+export function setLabel(ids: string[], shard: Shard = "forest", build: GameBuild = LATEST_BUILD): string {
+    return ids.length === 0 ? "nothing" : setChips(ids, shard, build).map((chip) => chip.label).join(", ");
 }
 
-const prefabOf = (id: string, shard: Shard) => shardCatalog(shard).byId.get(id);
+const prefabOf = (id: string, shard: Shard, build: GameBuild) => shardCatalog(shard, build).byId.get(id);
 
-export function sampleCounts(ids: string[], shard: Shard = "forest"): [number, number, number] {
+export function sampleCounts(ids: string[], shard: Shard = "forest", build: GameBuild = LATEST_BUILD): [number, number, number] {
     return ids.reduce<[number, number, number]>(
         (sum, id) => {
-            const [min, median, max] = prefabOf(id, shard)?.counts ?? [0, 0, 0];
+            const [min, median, max] = prefabOf(id, shard, build)?.counts ?? [0, 0, 0];
             return [sum[0] + min, sum[1] + median, sum[2] + max];
         },
         [0, 0, 0]
     );
 }
 
-export function countHint(ids: string[], shard: Shard = "forest"): string {
-    const [min, median, max] = sampleCounts(ids, shard);
-    const sampled = shardCatalog(shard).sampleWorlds;
+export function countHint(ids: string[], shard: Shard = "forest", build: GameBuild = LATEST_BUILD): string {
+    const [min, median, max] = sampleCounts(ids, shard, build);
+    const sampled = shardCatalog(shard, build).sampleWorlds;
     if (max === 0) return `not seen in ${sampled} sample worlds`;
     return min === max ? `every sample world has ${min}` : `sample worlds have ${min}-${max} (typically ${median})`;
 }
 
-export function fixedCount(ids: string[], shard: Shard = "forest"): number | undefined {
-    const [min, , max] = sampleCounts(ids, shard);
-    const always = ids.every((id) => prefabOf(id, shard)?.always);
+export function fixedCount(ids: string[], shard: Shard = "forest", build: GameBuild = LATEST_BUILD): number | undefined {
+    const [min, , max] = sampleCounts(ids, shard, build);
+    const always = ids.every((id) => prefabOf(id, shard, build)?.always);
     return always && min === max ? min : undefined;
 }
 
-export function countCap(ids: string[], shard: Shard = "forest"): number {
-    if (ids.every((id) => prefabOf(id, shard)?.unique)) return Math.max(ids.length, 1);
-    return Math.max(100, 2 * sampleCounts(ids, shard)[2]);
+export function countCap(ids: string[], shard: Shard = "forest", build: GameBuild = LATEST_BUILD): number {
+    if (ids.every((id) => prefabOf(id, shard, build)?.unique)) return Math.max(ids.length, 1);
+    return Math.max(100, 2 * sampleCounts(ids, shard, build)[2]);
 }
 
 export function prefabTags(prefab: WorldPrefab): string[] {

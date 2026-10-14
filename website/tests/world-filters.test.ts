@@ -18,7 +18,8 @@ import {
 } from "@/lib/criteria/search-state";
 import { NEW_WORLD_ROW } from "@/lib/criteria/world-rules";
 
-const forest = levelCatalogOf("forest");
+const forest = levelCatalogOf("forest", 756039);
+const FOREST = { shard: "forest", build: 756039 } as const;
 const pigking = { from: "multiplayer_portal", to: "pigking", max: 600 };
 const beefalo = { prefab: "beefalo", min: 25 };
 
@@ -26,9 +27,9 @@ const search = (): SearchState => {
     const state = defaultState();
     state.generation.rules = [{ ...newRule("MiscBoon", forest), min: 3 }];
     state.filters = [
-        { ...emptyFilter(), distances: [{ ...NEW_WORLD_ROW.distances("forest"), to: ["pigking"], max: 600 }] },
+        { ...emptyFilter(), distances: [{ ...NEW_WORLD_ROW.distances(FOREST), to: ["pigking"], max: 600 }] },
         emptyFilter(),
-        { ...emptyFilter(), counts: [{ ...NEW_WORLD_ROW.counts("forest"), prefabs: ["beefalo"], min: 25 }] }
+        { ...emptyFilter(), counts: [{ ...NEW_WORLD_ROW.counts(FOREST), prefabs: ["beefalo"], min: 25 }] }
     ];
     return state;
 };
@@ -65,11 +66,11 @@ describe("a search's world generation and world filters", () => {
     });
 
     it("rejects level-table sections in a filter like the finder", () => {
-        expect(validateConfig({ filters: [{ tasks: { required: ["Killer bees!"] } }] })).toEqual({
+        expect(validateConfig({ version: 3, build: 756039, filters: [{ tasks: { required: ["Killer bees!"] } }] })).toEqual({
             ok: false,
             error: "config: unknown key \"tasks\" in filters[0]"
         });
-        expect(validateConfig({ criteria: [] })).toEqual({ ok: false, error: "config: unknown key \"criteria\" in the config" });
+        expect(validateConfig({ version: 3, build: 756039, criteria: [] })).toEqual({ ok: false, error: "config: unknown key \"criteria\" in the config" });
     });
 });
 
@@ -110,12 +111,12 @@ describe("a world filter's name", () => {
     });
 
     it("is a string of at most 40 characters like the finder's", () => {
-        expect(validateConfig({ filters: [{ name: "🐷".repeat(40) }] }).ok).toBe(true);
-        expect(validateConfig({ filters: [{ name: "🐷".repeat(41) }] })).toEqual({
+        expect(validateConfig({ version: 3, build: 756039, filters: [{ name: "🐷".repeat(40) }] }).ok).toBe(true);
+        expect(validateConfig({ version: 3, build: 756039, filters: [{ name: "🐷".repeat(41) }] })).toEqual({
             ok: false,
             error: "config: filters[0].name has 41 characters (at most 40)"
         });
-        expect(validateConfig({ filters: [{ name: 1 }] })).toEqual({
+        expect(validateConfig({ version: 3, build: 756039, filters: [{ name: 1 }] })).toEqual({
             ok: false,
             error: "config: filters[0].name must be a string"
         });
@@ -131,7 +132,8 @@ describe("a v1 config", () => {
             criteria: [{ passive: true, distances: [pigking] }, { ...level, counts: [beefalo] }]
         };
         expect(upgradeConfig(old)).toEqual({
-            version: 2,
+            version: 3,
+            build: 756039,
             generation: level,
             filters: [{ distances: [pigking] }, { counts: [beefalo] }]
         });
@@ -142,15 +144,15 @@ describe("a v1 config", () => {
 
     it("loses the level tables of entries that had other ones, and says so", () => {
         const old = { criteria: [{ ...level, counts: [beefalo] }, { tasks: { required: ["Killer bees!"] } }] };
-        expect(upgradeConfig(old)).toEqual({ version: 2, generation: level, filters: [{ counts: [beefalo] }, {}] });
+        expect(upgradeConfig(old))
+            .toEqual({ version: 3, build: 756039, generation: level, filters: [{ counts: [beefalo] }, {}] });
         expect(dropsLevelTables(old)).toBe(true);
         expect(droppedNotice(old)).toBe(LEVEL_TABLES_DROPPED_NOTICE);
     });
 
-    it("without world rules has no filters, and is left alone once it's v2", () => {
-        expect(upgradeConfig({ version: 1, settings: { boons: "default" }, criteria: [level] })).toEqual({ version: 2, generation: level });
-        const current = { version: 2, generation: level };
-        expect(upgradeConfig(current)).toEqual(current);
-        expect(dropsLevelTables(current)).toBe(false);
+    it("without world rules has no filters", () => {
+        expect(upgradeConfig({ version: 1, settings: { boons: "default" }, criteria: [level] }))
+            .toEqual({ version: 3, build: 756039, generation: level });
+        expect(dropsLevelTables({ version: 2, generation: level })).toBe(false);
     });
 });

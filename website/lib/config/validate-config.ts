@@ -2,14 +2,18 @@ import { CAVE_SWAPS } from "@/lib/catalog/cave-vocab";
 import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { SWAPS } from "@/lib/catalog/level";
 import { shardCatalog } from "@/lib/catalog/shard-catalog";
-import { LAND_TILES, NON_LAND_TILE_NAMES, PREFAB_GROUP_IDS, PREFAB_VARIANTS } from "@/lib/catalog/world";
+import { LAND_TILES, NON_LAND_TILE_NAMES, PREFAB_GROUP_IDS } from "@/lib/catalog/world";
 import { hasAtMostTwoDecimals, MAX_MAX_COST, MIN_MAX_COST, roundCredits } from "@/lib/jobs/credits";
 import { isRecord } from "@/lib/records";
+import { BUILD_NUMBERS_TEXT, gameBuildOf, hasShard } from "./builds";
+import { GAME_BUILDS, type GameBuild } from "./game-builds";
 import {
     CONFIG_VERSION,
     DEFAULT_PLATFORM,
     DEFAULT_SHARD,
     type JobRequest,
+    LEGACY_CONFIG_BUILD,
+    LEGACY_CONFIG_VERSIONS,
     LINKS_KEY,
     MAX_DISTANCE,
     MAX_FILTER_NAME_LENGTH,
@@ -32,20 +36,19 @@ import {
     type Shard,
     SHARDS
 } from "./seedfinder-config";
+import { upgradeConfig } from "./upgrade-config";
 
 const LAND_TILE_NAMES: ReadonlySet<string> = new Set(LAND_TILES.map((tile) => tile.name));
 const TILE_NAMES: ReadonlySet<string> = new Set([...LAND_TILE_NAMES, ...NON_LAND_TILE_NAMES]);
-const PREFAB_GROUP_NAMES: Record<Shard, ReadonlySet<string>> = {
-    forest: new Set([...PREFAB_GROUP_IDS, ...PREFAB_VARIANTS.keys()].filter((name) => !shardCatalog("forest").byId.has(name))),
-    caves: new Set([...PREFAB_GROUP_IDS, ...variantsOf("caves")].filter((name) => !shardCatalog("caves").byId.has(name)))
-};
 const SWAP_OPTIONS: Record<Shard, ReadonlyMap<string, readonly string[]>> = {
     forest: new Map(SWAPS.map((swap) => [swap.id, swap.options.map((option) => option.id)])),
     caves: new Map(CAVE_SWAPS.map((swap) => [swap.category, swap.options]))
 };
 
-function variantsOf(shard: Shard): string[] {
-    return shardCatalog(shard).prefabs.flatMap(({ variantOf }) => (variantOf ? [variantOf] : []));
+function prefabGroupNames(shard: Shard, build: GameBuild): ReadonlySet<string> {
+    const { prefabs, byId } = shardCatalog(shard, build);
+    const variants = prefabs.flatMap(({ variantOf }) => (variantOf ? [variantOf] : []));
+    return new Set([...PREFAB_GROUP_IDS, ...variants].filter((name) => !byId.has(name)));
 }
 
 class ValidationError extends Error {
@@ -141,15 +144,18 @@ const taskListOf = (catalog: LevelCatalog) =>
         "tasks"
     );
 
-const prefabSetOf = (shard: Shard) =>
-    nameSetOf(
+const prefabSetOf = (shard: Shard, build: GameBuild) => {
+    const { byId } = shardCatalog(shard, build);
+    const groupNames = prefabGroupNames(shard, build);
+    return nameSetOf(
         (prefab, path) =>
-            shardCatalog(shard).byId.has(prefab) ||
-            fail(`unknown prefab ${quoted(prefab)} in ${path}${PREFAB_GROUP_NAMES[shard].has(prefab) ? " (a catalog group name: list its prefab ids)" : ""}`),
+            byId.has(prefab) ||
+            fail(`unknown prefab ${quoted(prefab)} in ${path}${groupNames.has(prefab) ? " (a catalog group name: list its prefab ids)" : ""}`),
         MAX_PREFAB_IDS,
         "prefab ids",
         "must be a prefab id or a list of prefab ids"
     );
+};
 
 const tileSet = nameSetOf(
     (tile, path) => {
@@ -218,8 +224,8 @@ const metricFieldsOf = (shard: Shard): Fields => ({
     [LINKS_KEY[shard]]: optional(flag)
 });
 
-const routeShapeOf = (shard: Shard) => {
-    const prefabSet = prefabSetOf(shard);
+const routeShapeOf = (shard: Shard, build: GameBuild) => {
+    const prefabSet = prefabSetOf(shard, build);
     return objectOf({
         from: required(prefabSet),
         visit: required(listOf(prefabSet, MAX_ROUTE_STOPS, "stops", MIN_ROUTE_STOPS)),
@@ -232,8 +238,8 @@ const routeShapeOf = (shard: Shard) => {
 
 const idsOf = (set: unknown): string[] => (set === undefined ? [] : ([] as string[]).concat(set as string | string[]));
 
-const routeOf = (shard: Shard): Parse => {
-    const routeShape = routeShapeOf(shard);
+const routeOf = (shard: Shard, build: GameBuild): Parse => {
+    const routeShape = routeShapeOf(shard, build);
     return (value, path) => {
         const parsed = routeShape(value, path);
         const stopOf = new Map<string, number>();
@@ -263,8 +269,8 @@ const filterName: Parse<string> = (value, path) => {
         : fail(`${path} has ${length} characters (at most ${MAX_FILTER_NAME_LENGTH})`);
 };
 
-const filterOf = (shard: Shard): Parse => {
-    const prefabSet = prefabSetOf(shard);
+const filterOf = (shard: Shard, build: GameBuild): Parse => {
+    const prefabSet = prefabSetOf(shard, build);
     const metricFields = metricFieldsOf(shard);
     return objectOf({
         name: optional(filterName),
@@ -287,7 +293,7 @@ const filterOf = (shard: Shard): Parse => {
         ),
         tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
         bridges: rules(objectOf({ min: optional(distance), max: optional(distance) })),
-        routes: rules(routeOf(shard))
+        routes: rules(routeOf(shard, build))
     });
 };
 
@@ -303,9 +309,20 @@ const generationOf = (catalog: LevelCatalog) => {
 const shardOf: Parse = (value) =>
     SHARDS.includes(value as Shard) ? value : fail(`unknown shard ${quoted(value)} (${SHARDS.join(" or ")})`);
 
-const configShapeOf = (shard: Shard) =>
+const versionOf: Parse = (value) => {
+    if (value === CONFIG_VERSION) return value;
+    return LEGACY_CONFIG_VERSIONS.includes(value)
+        ? fail(`version ${quoted(value)} is an old config format: use version ${CONFIG_VERSION} and set "build" to a game build (${LEGACY_CONFIG_BUILD} for configs written before builds)`)
+        : fail(`unsupported version ${quoted(value)}`);
+};
+
+const buildOf: Parse<GameBuild> = (value) =>
+    gameBuildOf(value) ?? fail(`unknown build ${quoted(value)} (${BUILD_NUMBERS_TEXT})`);
+
+const configShapeOf = (shard: Shard, build: GameBuild) =>
     objectOf({
-        version: optional((value) => (value === CONFIG_VERSION ? value : fail(`unsupported version ${quoted(value)}`))),
+        version: optional(versionOf),
+        build: required(buildOf),
         shard: optional(shardOf),
         platform: optional((value) =>
             PLATFORMS.includes(value as Platform) ? value : fail(`unknown platform ${quoted(value)} (${PLATFORMS.join(" or ")})`)
@@ -314,18 +331,24 @@ const configShapeOf = (shard: Shard) =>
             const custom = Object.entries(recordAt(value, path)).find(([, level]) => level !== "default");
             return custom ? fail(`only default settings are supported (${custom[0]})`) : value;
         }),
-        generation: optional(generationOf(levelCatalogOf(shard))),
-        filters: optional(listOf(filterOf(shard), MAX_FILTERS, "entries"))
+        generation: optional(generationOf(levelCatalogOf(shard, build))),
+        filters: optional(listOf(filterOf(shard, build), MAX_FILTERS, "entries"))
     });
 
-const CONFIG_SHAPES: Record<Shard, Parse<Record<string, unknown>>> = {
-    forest: configShapeOf("forest"),
-    caves: configShapeOf("caves")
-};
+const CONFIG_SHAPES: ReadonlyMap<GameBuild, Record<Shard, Parse<Record<string, unknown>>>> = new Map(
+    GAME_BUILDS.map(({ number }) => [number, { forest: configShapeOf("forest", number), caves: configShapeOf("caves", number) }])
+);
 
-/** The shard a raw config names; anything that isn't a shard name reads as the forest, the shard parse reports it. */
-function shardNamed(value: unknown): Shard {
-    return isRecord(value) && SHARDS.includes(value.shard as Shard) ? (value.shard as Shard) : DEFAULT_SHARD;
+/** The shard a config names; anything that isn't a shard name reads as the forest, the shard parse reports it. */
+function shardNamed(config: Record<string, unknown>): Shard {
+    return SHARDS.includes(config.shard as Shard) ? (config.shard as Shard) : DEFAULT_SHARD;
+}
+
+/** The build a config is for, which decides the names it can use, after its format version. */
+function buildNamed(config: Record<string, unknown>): GameBuild {
+    if (Object.hasOwn(config, "version")) versionOf(config.version, child(ROOT, "version"));
+    if (!Object.hasOwn(config, "build")) fail(`build is required (a game build: ${BUILD_NUMBERS_TEXT})`);
+    return buildOf(config.build, child(ROOT, "build"));
 }
 
 function validated<T>(check: () => T): Validation<T> {
@@ -339,10 +362,15 @@ function validated<T>(check: () => T): Validation<T> {
 
 function parseConfig(value: unknown): SeedfinderConfig {
     try {
-        const { shard, platform, generation, filters } = CONFIG_SHAPES[shardNamed(value)](value, ROOT);
+        const config = recordAt(value, ROOT);
+        const build = buildNamed(config);
+        const shard = shardNamed(config);
+        if (!hasShard(build, shard)) fail(`build ${build} does not support the ${shard} shard yet`);
+        const { platform, generation, filters } = CONFIG_SHAPES.get(build)![shard](config, ROOT);
         return {
             version: CONFIG_VERSION,
-            shard: shard ?? DEFAULT_SHARD,
+            build,
+            shard,
             platform: platform ?? DEFAULT_PLATFORM,
             ...(generation === undefined ? {} : { generation }),
             ...(filters === undefined ? {} : { filters })
@@ -368,8 +396,8 @@ function creditsIn(value: unknown, context: string, min: number, max: number): n
 }
 
 /**
- * Validates against search format v2. `version`, `shard` and `platform` are filled in, every `settings` level must be
- * `"default"` and `settings` is dropped; errors read like the finder's.
+ * Validates against search format v3, with the names of the config's build. `version`, `shard` and `platform` are
+ * filled in, every `settings` level must be `"default"` and `settings` is dropped; errors read like the finder's.
  */
 export function validateConfig(config: unknown): Validation<SeedfinderConfig> {
     return validated(() => parseConfig(config));
@@ -382,7 +410,7 @@ export function validateJobRequest(body: unknown): Validation<JobRequest> {
         if (unknownKey !== undefined) fail(`unknown key ${quoted(unknownKey)} in the request`);
         if (fields.timings !== undefined && typeof fields.timings !== "boolean") fail("\"timings\" must be true or false");
         return {
-            config: parseConfig(fields.config),
+            config: parseConfig(upgradeConfig(fields.config)),
             wanted: integerIn(fields.wanted, "\"wanted\"", MIN_WANTED, MAX_WANTED),
             maxCost: creditsIn(fields.maxCost, "\"maxCost\"", MIN_MAX_COST, MAX_MAX_COST),
             ...(fields.startSeed === undefined ? {} : { startSeed: integerIn(fields.startSeed, "\"startSeed\"", 0, MAX_UINT32) }),

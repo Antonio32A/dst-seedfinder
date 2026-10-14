@@ -12,6 +12,7 @@ import ../data/strings.bend as Strings
 import ../data/layouts.bend as Layouts
 import ../data/constants.bend as Constants
 import ../data/enums.bend as Enums
+import ../data/builds.bend as Builds
 
 # object_layout.lua's LayoutForDefinition + ConvertLayoutToEntitylist on the baked layouts (data/layouts.bend): area
 # contents with their math.random draws, the Lua 5.1 table orders of to_add and of the mutated layout.layout and
@@ -51,8 +52,8 @@ type Walk is Type:
 def none() -> U32:
   4294967295
 
-def skey(+id: U32) -> LuaTable.TKey:
-  LuaTable.string_key(Strings.hash(id), id)
+def skey(+build: Builds.Build, +id: U32) -> LuaTable.TKey:
+  LuaTable.string_key(Strings.hash(build, id), id)
 
 def key_id(+k: LuaTable.TKey) -> U32:
   match k:
@@ -108,9 +109,9 @@ def groups_loop(n: Nat, +props: List<&2, U32>, +row: List<&2, U32>, +k: U32) -> 
     case _ _:
       Nil{}
 
-def groups_of(+v: U32) -> List<&2, Group>:
-  +row = Layouts.groups(v)
-  groups_loop(List.length(&2, U32, row), Layouts.object_props(v), row, 0)
+def groups_of(+build: Builds.Build, +v: U32) -> List<&2, Group>:
+  +row = Layouts.groups(build, v)
+  groups_loop(List.length(&2, U32, row), Layouts.object_props(build, v), row, 0)
 
 def pos_items(poss: List<&2, Pos>, +key: U32) -> List<&2, Item>:
   match poss:
@@ -135,11 +136,11 @@ def groups_items(groups: List<&2, Group>) -> List<&2, Item>:
 
 # util.lua helpers on Lua arrays of string ids, with the game's draws (a draw of 2^32 - 1 reads past the end: nil).
 
-def lits(+c: U32) -> List<&2, U32>:
-  Layouts.closure_literals(c)
+def lits(+build: Builds.Build, +c: U32) -> List<&2, U32>:
+  Layouts.closure_literals(build, c)
 
-def part(+c: U32, +from: U32, +count: U32) -> List<&2, U32>:
-  Blob.first(Blob.drop(lits(c), from), count)
+def part(+build: Builds.Build, +c: U32, +from: U32, +count: U32) -> List<&2, U32>:
+  Blob.first(Blob.drop(lits(build, c), from), count)
 
 def names(xs: List<&2, U32>) -> List<&2, Res>:
   match xs:
@@ -243,9 +244,9 @@ def only_if(got: Bool & Pcg.Rng, +id: U32) -> List<&2, Res> & Pcg.Rng:
   (+hit, s) = got
   (names(keep_if(hit, id, Nil{})), s)
 
-def either(got: Bool & Pcg.Rng, +c: U32) -> List<&2, Res> & Pcg.Rng:
+def either(+build: Builds.Build, got: Bool & Pcg.Rng, +c: U32) -> List<&2, Res> & Pcg.Rng:
   (+hit, s) = got
-  (names([Bool.pick(U32, hit, Blob.at(lits(c), 0), Blob.at(lits(c), 1))]), s)
+  (names([Bool.pick(U32, hit, Blob.at(lits(build, c), 0), Blob.at(lits(build, c), 1))]), s)
 
 def half_drawn(got: F64Repr.F64 & Pcg.Rng, +above: Bool) -> Bool & Pcg.Rng:
   (+x, s) = got
@@ -262,14 +263,14 @@ def repeat(n: Nat, +id: U32, +acc: List<&2, U32>) -> List<&2, U32>:
     case 1n+p:
       repeat(p, id, id <> acc)
 
-def grass_stumps(got: U32 & Pcg.Rng, +grass: List<&2, U32>) -> List<&2, Res> & Pcg.Rng:
+def grass_stumps(+build: Builds.Build, got: U32 & Pcg.Rng, +grass: List<&2, U32>) -> List<&2, Res> & Pcg.Rng:
   (+m, s) = got
-  ended(tries_on((grass, s), U32.to_nat(m), Blob.at(lits(25), 1), 1, 2))
+  ended(tries_on((grass, s), U32.to_nat(m), Blob.at(lits(build, 25), 1), 1, 2))
 
 # layouts.lua grass_area
-def grass_area(got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def grass_area(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+k, s) = got
-  grass_stumps(MathRandom.random_upto(s, 3), repeat(U32.to_nat(k), Blob.at(lits(25), 0), Nil{}))
+  grass_stumps(build, MathRandom.random_upto(s, 3), repeat(U32.to_nat(k), Blob.at(lits(build, 25), 0), Nil{}))
 
 def waterlogged_rest(got: List<&2, U32> & Pcg.Rng, +l: List<&2, U32>) -> List<&2, U32> & Pcg.Rng:
   (+acc, s) = got
@@ -277,207 +278,207 @@ def waterlogged_rest(got: List<&2, U32> & Pcg.Rng, +l: List<&2, U32>) -> List<&2
   tries_on(tries_on(tries_on(tries_on(vines, 3n, Blob.at(l, 5), 3, 10), 3n, Blob.at(l, 6), 3, 10), 2n, Blob.at(l, 7), 3, 10), 10n, Blob.at(l, 8), 2, 5)
 
 # layouts.lua waterlogged_tree_area
-def waterlogged_area(s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
-  +l = lits(26)
+def waterlogged_area(+build: Builds.Build, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  +l = lits(build, 26)
   ended(waterlogged_rest(tries_on(([Blob.at(l, 0)], s), 6n, Blob.at(l, 1), 1, 10), l))
 
-def monkey_tail(got: Bool & Pcg.Rng, +acc: List<&2, U32>) -> List<&2, Res> & Pcg.Rng:
+def monkey_tail(+build: Builds.Build, got: Bool & Pcg.Rng, +acc: List<&2, U32>) -> List<&2, Res> & Pcg.Rng:
   (+hit, s) = got
-  +l = lits(27)
+  +l = lits(build, 27)
   +always = {[Blob.at(l, 6), Blob.at(l, 7), Blob.at(l, 8), Blob.at(l, 9)] : List<&2, U32>}
   (names(List.append(&2, U32, acc, List.append(&2, U32, always, keep_if(hit, Blob.at(l, 10), Nil{})))), s)
 
-def monkey_picked(got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def monkey_picked(+build: Builds.Build, got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+acc, s) = got
-  monkey_tail(half(s, True{}), acc)
+  monkey_tail(build, half(s, True{}), acc)
 
 # layouts.lua monkeyisland_prefabs_area(area)
-def monkey_area(+area: F64Repr.F64, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def monkey_area(+build: Builds.Build, +area: F64Repr.F64, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   +num = F64Repr.to_i32(F64Repr.floor(F64Arith.add(F64Arith.div(area, F64Repr.from_u32(5)), F64Repr.half())))
-  monkey_picked(dups(num, part(27, 0, 6), s))
+  monkey_picked(build, dups(num, part(build, 27, 0, 6), s))
 
-def goodie_appended(got: U32 & Pcg.Rng, +acc: List<&2, U32>) -> List<&2, U32> & Pcg.Rng:
+def goodie_appended(+build: Builds.Build, got: U32 & Pcg.Rng, +acc: List<&2, U32>) -> List<&2, U32> & Pcg.Rng:
   (+r, s) = got
-  (List.append(&2, U32, acc, element_of(lits(43), r)), s)
+  (List.append(&2, U32, acc, element_of(lits(build, 43), r)), s)
 
-def goodie_pick(hit: Bool, +acc: List<&2, U32>, s: Pcg.Rng) -> List<&2, U32> & Pcg.Rng:
+def goodie_pick(+build: Builds.Build, hit: Bool, +acc: List<&2, U32>, s: Pcg.Rng) -> List<&2, U32> & Pcg.Rng:
   match hit:
     case True{}:
-      goodie_appended(MathRandom.random_upto(s, 3), acc)
+      goodie_appended(build, MathRandom.random_upto(s, 3), acc)
     case False{}:
       (acc, s)
 
-def goodie_on(got: Bool & Pcg.Rng, +acc: List<&2, U32>) -> List<&2, U32> & Pcg.Rng:
+def goodie_on(+build: Builds.Build, got: Bool & Pcg.Rng, +acc: List<&2, U32>) -> List<&2, U32> & Pcg.Rng:
   (+hit, s) = got
-  goodie_pick(hit, acc, s)
+  goodie_pick(build, hit, acc, s)
 
-def goodies_loop(n: Nat, got: List<&2, U32> & Pcg.Rng) -> List<&2, U32> & Pcg.Rng:
+def goodies_loop(+build: Builds.Build, n: Nat, got: List<&2, U32> & Pcg.Rng) -> List<&2, U32> & Pcg.Rng:
   match n:
     case 0n:
       got
     case 1n+p:
       (+acc, s) = got
-      goodies_loop(p, goodie_on(chance(s, 1, 2), acc))
+      goodies_loop(build, p, goodie_on(build, chance(s, 1, 2), acc))
 
-def goodies(hit: Bool, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def goodies(+build: Builds.Build, hit: Bool, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match hit:
     case True{}:
-      as_res(goodies_loop(3n, goodie_appended(MathRandom.random_upto(s, 3), Nil{})))
+      as_res(goodies_loop(build, 3n, goodie_appended(build, MathRandom.random_upto(s, 3), Nil{})))
     case False{}:
       (Nil{}, s)
 
-def goodies_drawn(got: Bool & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def goodies_drawn(+build: Builds.Build, got: Bool & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+hit, s) = got
-  goodies(hit, s)
+  goodies(build, hit, s)
 
-def sculpture_pick(hit: Bool, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def sculpture_pick(+build: Builds.Build, hit: Bool, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match hit:
     case True{}:
-      as_res(dups(1, lits(34), s))
+      as_res(dups(1, lits(build, 34), s))
     case False{}:
       (Nil{}, s)
 
-def sculpture_drawn(got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def sculpture_drawn(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+r, s) = got
-  sculpture_pick(U32.is_eq(r, 1), s)
+  sculpture_pick(build, U32.is_eq(r, 1), s)
 
-def pumpkin_drawn(got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def pumpkin_drawn(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (_, s) = got
-  (names(lits(30)), s)
+  (names(lits(build, 30)), s)
 
 def placed_at(+id: U32, +obj: Obj) -> List<&2, Res>:
   match obj:
     case Obj{Pos{+x, +y, _}, _, _}:
       [RPlaced{id, x, y}]
 
-def placed_area(+obj: Obj) -> List<&2, Res>:
-  placed_at(Blob.at(lits(29), 0), obj)
+def placed_area(+build: Builds.Build, +obj: Obj) -> List<&2, Res>:
+  placed_at(Blob.at(lits(build, 29), 0), obj)
 
-def placed_cookpot(+obj: Obj) -> List<&2, Res>:
-  placed_at(Blob.at(lits(136), 0), obj)
+def placed_cookpot(+build: Builds.Build, +obj: Obj) -> List<&2, Res>:
+  placed_at(Blob.at(lits(build, 136), 0), obj)
 
-def cooking_drawn(got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def cooking_drawn(+build: Builds.Build, got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+xs, s) = got
-  (names(List.append(&2, U32, part(8, 0, 3), xs)), s)
+  (names(List.append(&2, U32, part(build, 8, 0, 3), xs)), s)
 
-def fishing_second(got: U32 & Pcg.Rng, +first: U32) -> List<&2, Res> & Pcg.Rng:
+def fishing_second(+build: Builds.Build, got: U32 & Pcg.Rng, +first: U32) -> List<&2, Res> & Pcg.Rng:
   (+second, s) = got
-  (names([Blob.at(lits(10), 0), Blob.at(lits(10), 1), first, second]), s)
+  (names([Blob.at(lits(build, 10), 0), Blob.at(lits(build, 10), 1), first, second]), s)
 
-def fishing_first(got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def fishing_first(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+first, s) = got
-  fishing_second(random_item(part(10, 8, 5), s), first)
+  fishing_second(build, random_item(part(build, 10, 8, 5), s), first)
 
 # Boons 0..7 (map/boons.lua, Hallowed Nights off).
-def boon_a(+c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def boon_a(+build: Builds.Build, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 0:
-      as_res(pick_one(part(0, 4, 2), s))
+      as_res(pick_one(part(build, 0, 4, 2), s))
     case 1:
-      as_res(dups_range(3, 5, part(1, 2, 1), s))
+      as_res(dups_range(3, 5, part(build, 1, 2, 1), s))
     case 2:
-      as_res(pick_one(part(2, 3, 9), s))
+      as_res(pick_one(part(build, 2, 3, 9), s))
     case 3:
-      as_res(dups_range(3, 5, part(3, 2, 5), s))
+      as_res(dups_range(3, 5, part(build, 3, 2, 5), s))
     case 4:
-      as_res(pick_one(part(4, 5, 2), s))
+      as_res(pick_one(part(build, 4, 5, 2), s))
     case 5:
-      as_res(dups_range(3, 5, part(5, 5, 1), s))
+      as_res(dups_range(3, 5, part(build, 5, 5, 1), s))
     case 7:
-      as_res(dups_range(3, 5, part(7, 6, 1), s))
+      as_res(dups_range(3, 5, part(build, 7, 6, 1), s))
     case _:
       (Nil{}, s)
 
 # Boons 8..12.
-def boon_b(+c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def boon_b(+build: Builds.Build, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 8:
-      cooking_drawn(dups_range(3, 4, part(8, 3, 3), s))
+      cooking_drawn(build, dups_range(3, 4, part(build, 8, 3, 3), s))
     case 10:
-      fishing_first(random_item(part(10, 2, 6), s))
+      fishing_first(build, random_item(part(build, 10, 2, 6), s))
     case 11:
       (Nil{}, s)
     case _:
-      (names(lits(c)), s)
+      (names(lits(build, c)), s)
 
-def boon_c_kind(dup: Bool, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def boon_c_kind(+build: Builds.Build, dup: Bool, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match dup:
     case True{}:
-      as_res(dups_range(3, 5, lits(c), s))
+      as_res(dups_range(3, 5, lits(build, c), s))
     case False{}:
-      as_res(pick_one(lits(c), s))
+      as_res(pick_one(lits(build, c), s))
 
 # Boons 13..23: PickSome(1, ...) (odd, 21, 22) or PickSomeWithDups(math.random(3, 5), ...) (14..20 even).
-def boon_c(+c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
-  boon_c_kind(Bool.and(U32.is_eq((c .&. 1 : U32), 0), (c <= 20 : U32)), c, s)
+def boon_c(+build: Builds.Build, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  boon_c_kind(build, Bool.and(U32.is_eq((c .&. 1 : U32), 0), (c <= 20 : U32)), c, s)
 
 # layouts.lua area functions 25..34.
-def layouts_a(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def layouts_a(+build: Builds.Build, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 25:
-      grass_area(MathRandom.random_upto(s, 4))
+      grass_area(build, MathRandom.random_upto(s, 4))
     case 26:
-      waterlogged_area(s)
+      waterlogged_area(build, s)
     case 27:
-      monkey_area(area, s)
+      monkey_area(build, area, s)
     case 28:
-      (names(lits(28)), s)
+      (names(lits(build, 28)), s)
     case 29:
-      (placed_area(obj), s)
+      (placed_area(build, obj), s)
     case 30:
-      pumpkin_drawn(MathRandom.random_upto(s, 3))
+      pumpkin_drawn(build, MathRandom.random_upto(s, 3))
     case 31:
-      as_res(dups_range(2, 4, lits(31), s))
+      as_res(dups_range(2, 4, lits(build, 31), s))
     case 34:
-      sculpture_drawn(MathRandom.random_upto(s, 2))
+      sculpture_drawn(build, MathRandom.random_upto(s, 2))
     case _:
-      as_res(dups(1, lits(c), s))
+      as_res(dups(1, lits(build, c), s))
 
 # layouts.lua area functions 35..44.
-def layouts_b(+c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def layouts_b(+build: Builds.Build, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 39:
-      either(half(s, False{}), c)
+      either(build, half(s, False{}), c)
     case 40:
-      either(half(s, False{}), c)
+      either(build, half(s, False{}), c)
     case 41:
-      either(half(s, False{}), c)
+      either(build, half(s, False{}), c)
     case 42:
-      either(half(s, False{}), c)
+      either(build, half(s, False{}), c)
     case 43:
-      goodies_drawn(chance(s, 3, 4))
+      goodies_drawn(build, chance(s, 3, 4))
     case 44:
-      only_if(chance(s, 3, 10), Blob.at(lits(44), 0))
+      only_if(chance(s, 3, 10), Blob.at(lits(build, 44), 0))
     case _:
-      only_if(chance(s, 9, 10), Blob.at(lits(c), 0))
+      only_if(chance(s, 9, 10), Blob.at(lits(build, c), 0))
 
-def area_high(high: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def area_high(+build: Builds.Build, high: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match high:
     case True{}:
-      layouts_b(c, s)
+      layouts_b(build, c, s)
     case False{}:
-      layouts_a(c, area, obj, s)
+      layouts_a(build, c, area, obj, s)
 
-def area_mid(mid: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def area_mid(+build: Builds.Build, mid: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match mid:
     case True{}:
-      area_high((c >= 35 : U32), c, area, obj, s)
+      area_high(build, (c >= 35 : U32), c, area, obj, s)
     case False{}:
-      boon_c(c, s)
+      boon_c(build, c, s)
 
-def boon_high(high: Bool, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def boon_high(+build: Builds.Build, high: Bool, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match high:
     case True{}:
-      boon_b(c, s)
+      boon_b(build, c, s)
     case False{}:
-      boon_a(c, s)
+      boon_a(build, c, s)
 
-def area_low(low: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def area_low(+build: Builds.Build, low: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match low:
     case True{}:
-      boon_high((c >= 8 : U32), c, s)
+      boon_high(build, (c >= 8 : U32), c, s)
     case False{}:
-      area_mid((c >= 24 : U32), c, area, obj, s)
+      area_mid(build, (c >= 24 : U32), c, area, obj, s)
 
 def scaled_count(+scale: F64Repr.F64, +area: F64Repr.F64) -> U32:
   F64Repr.to_i32(F64Repr.floor(F64Arith.mul(area, scale)))
@@ -489,64 +490,64 @@ def worm_spawners_drawn(got: List<&2, U32> & Pcg.Rng, +lures: List<&2, U32>) -> 
   (+spawners, s) = got
   (names(List.append(&2, U32, lures, spawners)), s)
 
-def worm_lures_drawn(got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def worm_lures_drawn(+build: Builds.Build, got: List<&2, U32> & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   (+lures, s) = got
-  worm_spawners_drawn(dups(3, part(140, 1, 1), s), lures)
+  worm_spawners_drawn(dups(3, part(build, 140, 1, 1), s), lures)
 
-def placed_if(got: Bool & Pcg.Rng, +obj: Obj) -> List<&2, Res> & Pcg.Rng:
+def placed_if(+build: Builds.Build, got: Bool & Pcg.Rng, +obj: Obj) -> List<&2, Res> & Pcg.Rng:
   (+hit, s) = got
-  (Bool.pick(List<&2, Res>, hit, placed_cookpot(obj), Nil{}), s)
+  (Bool.pick(List<&2, Res>, hit, placed_cookpot(build, obj), Nil{}), s)
 
-def cave_area_b(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def cave_area_b(+build: Builds.Build, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 133:
-      dups_scaled(F64Repr.F64{1070596096, 0}, area, lits(c), s)
+      dups_scaled(F64Repr.F64{1070596096, 0}, area, lits(build, c), s)
     case 134:
-      only_if(chance(s, 1, 5), Blob.at(lits(c), 0))
+      only_if(chance(s, 1, 5), Blob.at(lits(build, c), 0))
     case 135:
-      only_if(chance(s, 1, 2), Blob.at(lits(c), 0))
+      only_if(chance(s, 1, 2), Blob.at(lits(build, c), 0))
     case 136:
-      placed_if(chance(s, 1, 5), obj)
+      placed_if(build, chance(s, 1, 5), obj)
     case 137:
-      only_if(chance(s, 2, 25), Blob.at(lits(c), 0))
+      only_if(chance(s, 2, 25), Blob.at(lits(build, c), 0))
     case 138:
-      only_if(chance(s, 1, 4), Blob.at(lits(c), 0))
+      only_if(chance(s, 1, 4), Blob.at(lits(build, c), 0))
     case 121:
-      (names(lits(c)), s)
+      (names(lits(build, c)), s)
     case 139:
-      (names(lits(c)), s)
+      (names(lits(build, c)), s)
     case _:
       (Nil{}, s)
 
 # The caves' layout area closures 117-122 (layouts.lua), 132-138 (maze_layouts.lua) and 139-140 (pointsofinterest.lua,
 # protected_resources.lua).
-def cave_area(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def cave_area(+build: Builds.Build, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 117:
-      dups_scaled(F64Repr.half(), area, lits(c), s)
+      dups_scaled(F64Repr.half(), area, lits(build, c), s)
     case 118:
-      dups_scaled(F64Repr.F64{1070176665, 2576980378}, area, lits(c), s)
+      dups_scaled(F64Repr.F64{1070176665, 2576980378}, area, lits(build, c), s)
     case 119:
-      dups_scaled(F64Repr.F64{1071225241, 2576980378}, area, lits(c), s)
+      dups_scaled(F64Repr.F64{1071225241, 2576980378}, area, lits(build, c), s)
     case 120:
-      dups_scaled(F64Repr.F64{1070805811, 858993459}, area, lits(c), s)
+      dups_scaled(F64Repr.F64{1070805811, 858993459}, area, lits(build, c), s)
     case 122:
-      as_res(dups(15, lits(c), s))
+      as_res(dups(15, lits(build, c), s))
     case 140:
-      worm_lures_drawn(dups(10, part(c, 0, 1), s))
+      worm_lures_drawn(build, dups(10, part(build, c, 0, 1), s))
     case _:
-      cave_area_b(c, area, obj, s)
+      cave_area_b(build, c, area, obj, s)
 
-def area_dispatch(cave: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def area_dispatch(+build: Builds.Build, cave: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match cave:
     case True{}:
-      cave_area(c, area, obj, s)
+      cave_area(build, c, area, obj, s)
     case False{}:
-      area_low((c < 13 : U32), c, area, obj, s)
+      area_low(build, (c < 13 : U32), c, area, obj, s)
 
 # A layout area closure (data/closures.bend category 2) called as area_contents(width * height, data).
-def area_run(+c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
-  area_dispatch((c >= 117 : U32), c, area, obj, s)
+def area_run(+build: Builds.Build, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  area_dispatch(build, (c >= 117 : U32), c, area, obj, s)
 
 # ConvertLayoutToEntitylist's areas: every area object in pairs(layout.layout) x ipairs order, its contents, and
 # their positions (x then y: (c - size / 2) + math.random() * size), collected into to_add.
@@ -574,10 +575,10 @@ def area_jobs(groups: List<&2, Group>, +areas: List<&2, U32>) -> List<&2, Job>:
     case Con{Group{+key, +objs}, rest}:
       List.append(&2, Job, objs_jobs(objs, area_scan(List.length(&2, U32, areas), areas, key)), area_jobs(rest, areas))
 
-def area_closure(on: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def area_closure(+build: Builds.Build, on: Bool, +c: U32, +area: F64Repr.F64, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match on:
     case True{}:
-      area_run(c, area, obj, s)
+      area_run(build, c, area, obj, s)
     case False{}:
       (Nil{}, s)
 
@@ -586,15 +587,15 @@ def obj_area(+obj: Obj) -> F64Repr.F64:
     case Obj{_, +w, +h}:
       F64Arith.mul(w, h)
 
-def contents_of(list: Bool, +kind: U32, +value: U32, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+def contents_of(+build: Builds.Build, list: Bool, +kind: U32, +value: U32, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match list:
     case True{}:
-      (names(Layouts.area_lists(value)), s)
+      (names(Layouts.area_lists(build, value)), s)
     case False{}:
-      area_closure(U32.is_eq(kind, Layouts.kind_closure()), value, obj_area(obj), obj, s)
+      area_closure(build, U32.is_eq(kind, Layouts.kind_closure(build)), value, obj_area(obj), obj, s)
 
-def contents(+kind: U32, +value: U32, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
-  contents_of(U32.is_eq(kind, Layouts.kind_list()), kind, value, obj, s)
+def contents(+build: Builds.Build, +kind: U32, +value: U32, +obj: Obj, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
+  contents_of(build, U32.is_eq(kind, Layouts.kind_list(build)), kind, value, obj, s)
 
 def head_is(adds: List<&2, Add>, +key: U32) -> Bool:
   match adds:
@@ -644,13 +645,13 @@ def placed(got: List<&2, Res> & Pcg.Rng, +obj: Obj, +adds: List<&2, Add>) -> Lis
   (+rs, s) = got
   place_loop(rs, obj, (adds, s))
 
-def jobs_loop(jobs: List<&2, Job>, got: List<&2, Add> & Pcg.Rng) -> List<&2, Add> & Pcg.Rng:
+def jobs_loop(+build: Builds.Build, jobs: List<&2, Job>, got: List<&2, Add> & Pcg.Rng) -> List<&2, Add> & Pcg.Rng:
   match jobs:
     case Nil{}:
       got
     case Con{Job{+kind, +value, +obj}, rest}:
       (+adds, s) = got
-      jobs_loop(rest, placed(contents(kind, value, obj, s), obj, adds))
+      jobs_loop(build, rest, placed(contents(build, kind, value, obj, s), obj, adds))
 
 # Lua tables rebuilt from a baked node layout (data/layouts.bend layout_snapshot / count_snapshot): string keys,
 # U32 values looked up by key in `entries`.
@@ -662,23 +663,23 @@ def entry_value(entries: List<&2, Entry>, +key: U32, +found: U32) -> U32:
     case Con{Entry{+k, +v}, rest}:
       entry_value(rest, key, Bool.pick(U32, U32.is_eq(k, key), v, found))
 
-def snapshot_node(nil: Bool, +key: U32, +link: U32, +live: U32, +entries: List<&2, Entry>) -> LuaTable.Node:
+def snapshot_node(+build: Builds.Build, nil: Bool, +key: U32, +link: U32, +live: U32, +entries: List<&2, Entry>) -> LuaTable.Node:
   match nil:
     case True{}:
       LuaTable.Node{0, 0, 0, link, 0, 0}
     case False{}:
-      LuaTable.Node{2, Strings.hash(key), key, link, live, Bool.pick(U32, U32.is_zero(live), 0, entry_value(entries, key, 0))}
+      LuaTable.Node{2, Strings.hash(build, key), key, link, live, Bool.pick(U32, U32.is_zero(live), 0, entry_value(entries, key, 0))}
 
-def fill_nodes(n: Nat, nodes: Array<U32>, +row: List<&2, U32>, +i: U32, +entries: List<&2, Entry>) -> Array<U32>:
+def fill_nodes(+build: Builds.Build, n: Nat, nodes: Array<U32>, +row: List<&2, U32>, +i: U32, +entries: List<&2, Entry>) -> Array<U32>:
   match n row:
     case 1n+p Con{+key, Con{+next, Con{+live, +rest}}}:
-      fill_nodes(p, LuaTable.write_node(nodes, i, snapshot_node(Blob.is_none(key), key, Bool.pick(U32, Blob.is_none(next), 0, (next + 1 : U32)), live, entries)), rest, (i + 1 : U32), entries)
+      fill_nodes(build, p, LuaTable.write_node(nodes, i, snapshot_node(build, Blob.is_none(key), key, Bool.pick(U32, Blob.is_none(next), 0, (next + 1 : U32)), live, entries)), rest, (i + 1 : U32), entries)
     case _ _:
       nodes
 
-def snapshot_table(+row: List<&2, U32>, +entries: List<&2, Entry>) -> LuaTable.Table:
+def snapshot_table(+build: Builds.Build, +row: List<&2, U32>, +entries: List<&2, Entry>) -> LuaTable.Table:
   +lsize = Blob.at(row, 0)
-  LuaTable.Table{fill_nodes(List.length(&2, U32, row), LuaTable.empty_nodes(lsize), Blob.drop(row, 3), 0, entries),
+  LuaTable.Table{fill_nodes(build, List.length(&2, U32, row), LuaTable.empty_nodes(lsize), Blob.drop(row, 3), 0, entries),
     LuaTable.new_cells(LuaTable.cell_capacity(0)), lsize, U32.is_ne(Blob.at(row, 2), 0), 0, LuaTable.cell_capacity(0), Blob.at(row, 1)}
 
 def keep_entry(hit: Bool, +e: Entry, +acc: List<&2, Entry>) -> List<&2, Entry>:
@@ -713,16 +714,16 @@ def choices_scan(n: Nat, +row: List<&2, U32>, +key: U32) -> List<&2, U32>:
     case _ _:
       Nil{}
 
-def chosen(got: U32 & Pcg.Rng, t: LuaTable.Table, +choices: List<&2, U32>, +key: LuaTable.TKey, +value: U32) -> LuaTable.Table & Pcg.Rng:
+def chosen(+build: Builds.Build, got: U32 & Pcg.Rng, t: LuaTable.Table, +choices: List<&2, U32>, +key: LuaTable.TKey, +value: U32) -> LuaTable.Table & Pcg.Rng:
   (+r, s) = got
-  (LuaTable.remove(LuaTable.set(t, skey(StoryOrder.nth_or_last(choices, (r - 1 : U32), 0)), value), key), s)
+  (LuaTable.remove(LuaTable.set(t, skey(build, StoryOrder.nth_or_last(choices, (r - 1 : U32), 0)), value), key), s)
 
-def replaced(+choices: List<&2, U32>, t: LuaTable.Table, +key: LuaTable.TKey, +value: U32, s: Pcg.Rng) -> LuaTable.Table & Pcg.Rng:
+def replaced(+build: Builds.Build, +choices: List<&2, U32>, t: LuaTable.Table, +key: LuaTable.TKey, +value: U32, s: Pcg.Rng) -> LuaTable.Table & Pcg.Rng:
   match choices:
     case Nil{}:
       (t, s)
     case Con{_, _}:
-      chosen(MathRandom.random_range(s, 1, count_of(choices)), t, choices, key, value)
+      chosen(build, MathRandom.random_range(s, 1, count_of(choices)), t, choices, key, value)
 
 def walk_stepped(got: LuaTable.Table & LuaTable.Step, s: Pcg.Rng) -> Walk:
   (t, +step) = got
@@ -732,7 +733,7 @@ def walk_on(got: LuaTable.Table & Pcg.Rng, +key: LuaTable.TKey) -> Walk:
   (t, s) = got
   walk_stepped(LuaTable.next(t, key), s)
 
-def walk(n: Nat, w: Walk, +defs: List<&2, U32>) -> LuaTable.Table & Pcg.Rng:
+def walk(+build: Builds.Build, n: Nat, w: Walk, +defs: List<&2, U32>) -> LuaTable.Table & Pcg.Rng:
   match n:
     case 0n:
       match w:
@@ -745,12 +746,12 @@ def walk(n: Nat, w: Walk, +defs: List<&2, U32>) -> LuaTable.Table & Pcg.Rng:
             case LuaTable.Step{+status, +key, +value}:
               match status:
                 case 1:
-                  walk(p, walk_on(replaced(choices_scan(List.length(&2, U32, defs), defs, key_id(key)), t, key, value, s), key), defs)
+                  walk(build, p, walk_on(replaced(build, choices_scan(List.length(&2, U32, defs), defs, key_id(key)), t, key, value, s), key), defs)
                 case _:
                   (t, s)
 
-def defs_applied(t: LuaTable.Table, +defs: List<&2, U32>, s: Pcg.Rng) -> LuaTable.Table & Pcg.Rng:
-  walk(256n, walk_stepped(LuaTable.next(t, LuaTable.nil_key()), s), defs)
+def defs_applied(+build: Builds.Build, t: LuaTable.Table, +defs: List<&2, U32>, s: Pcg.Rng) -> LuaTable.Table & Pcg.Rng:
+  walk(build, 256n, walk_stepped(LuaTable.next(t, LuaTable.nil_key()), s), defs)
 
 # The areas and defs passes over layout.layout, then its entries.
 
@@ -768,12 +769,12 @@ def group_store(groups: List<&2, Group>) -> List<&2, List<&2, Pos>>:
     case Con{Group{_, +objs}, rest}:
       obj_poss(objs) <> group_store(rest)
 
-def add_slots(adds: List<&2, Add>) -> List<&2, StoryOrder.Slot>:
+def add_slots(+build: Builds.Build, adds: List<&2, Add>) -> List<&2, StoryOrder.Slot>:
   match adds:
     case Nil{}:
       Nil{}
     case Con{Add{+key, _}, rest}:
-      StoryOrder.Slot{Strings.hash(key), key} <> add_slots(rest)
+      StoryOrder.Slot{Strings.hash(build, key), key} <> add_slots(build, rest)
 
 def poss_of(adds: List<&2, Add>, +key: U32) -> List<&2, Pos>:
   match adds:
@@ -796,7 +797,7 @@ def store_at(store: List<&2, List<&2, Pos>>, +i: U32) -> List<&2, Pos>:
     case Con{+ps, rest}:
       Bool.pick(List<&2, Pos>, U32.is_zero(i), ps, store_at(rest, (i - 1 : U32)))
 
-def merge_one(got: LuaTable.Table & LuaTable.Found, +id: U32, +poss: List<&2, Pos>, +store: List<&2, List<&2, Pos>>) -> LuaTable.Table & List<&2, List<&2, Pos>>:
+def merge_one(+build: Builds.Build, got: LuaTable.Table & LuaTable.Found, +id: U32, +poss: List<&2, Pos>, +store: List<&2, List<&2, Pos>>) -> LuaTable.Table & List<&2, List<&2, Pos>>:
   (t, +found) = got
   match found:
     case LuaTable.Found{+full, +value}:
@@ -804,20 +805,20 @@ def merge_one(got: LuaTable.Table & LuaTable.Found, +id: U32, +poss: List<&2, Po
         case True{}:
           (t, store_update(store, value, poss))
         case False{}:
-          (LuaTable.set(t, skey(id), U32.from_nat(List.length(&2, List<&2, Pos>, store))), List.append(&2, List<&2, Pos>, store, [poss]))
+          (LuaTable.set(t, skey(build, id), U32.from_nat(List.length(&2, List<&2, Pos>, store))), List.append(&2, List<&2, Pos>, store, [poss]))
 
-def merge_loop(order: List<&2, U32>, +adds: List<&2, Add>, got: LuaTable.Table & List<&2, List<&2, Pos>>) -> LuaTable.Table & List<&2, List<&2, Pos>>:
+def merge_loop(+build: Builds.Build, order: List<&2, U32>, +adds: List<&2, Add>, got: LuaTable.Table & List<&2, List<&2, Pos>>) -> LuaTable.Table & List<&2, List<&2, Pos>>:
   match order:
     case Nil{}:
       got
     case Con{+id, rest}:
       (t, +store) = got
-      merge_loop(rest, adds, merge_one(LuaTable.get(t, skey(id)), id, poss_of(adds, id), store))
+      merge_loop(build, rest, adds, merge_one(build, LuaTable.get(t, skey(build, id)), id, poss_of(adds, id), store))
 
-def remove_areas(+row: List<&2, U32>, t: LuaTable.Table) -> LuaTable.Table:
+def remove_areas(+build: Builds.Build, +row: List<&2, U32>, t: LuaTable.Table) -> LuaTable.Table:
   match row:
     case Con{+key, Con{_, Con{_, +rest}}}:
-      remove_areas(rest, LuaTable.remove(t, skey(key)))
+      remove_areas(build, rest, LuaTable.remove(t, skey(build, key)))
     case _:
       t
 
@@ -832,19 +833,19 @@ def table_items(got: LuaTable.Table & Pcg.Rng, +store: List<&2, List<&2, Pos>>) 
   (t, s) = got
   (store_items(entries_of(LuaTable.slot_count(t)), store), s)
 
-def merged(got: LuaTable.Table & List<&2, List<&2, Pos>>, +v: U32, s: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
+def merged(+build: Builds.Build, got: LuaTable.Table & List<&2, List<&2, Pos>>, +v: U32, s: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
   (t, +store) = got
-  table_items(defs_applied(remove_areas(Layouts.areas(v), t), Layouts.defs(v), s), store)
+  table_items(defs_applied(build, remove_areas(build, Layouts.areas(build, v), t), Layouts.defs(build, v), s), store)
 
-def areas_done(got: List<&2, Add> & Pcg.Rng, +v: U32, +groups: List<&2, Group>) -> List<&2, Item> & Pcg.Rng:
+def areas_done(+build: Builds.Build, got: List<&2, Add> & Pcg.Rng, +v: U32, +groups: List<&2, Group>) -> List<&2, Item> & Pcg.Rng:
   (+adds, s) = got
-  t = snapshot_table(Layouts.layout_snapshot(v), group_entries(groups, 0))
-  merged(merge_loop(StoryOrder.order(add_slots(adds)), adds, (t, group_store(groups))), v, s)
+  t = snapshot_table(build, Layouts.layout_snapshot(build, v), group_entries(groups, 0))
+  merged(build, merge_loop(build, StoryOrder.order(add_slots(build, adds)), adds, (t, group_store(groups))), v, s)
 
-def static_part(mutable: Bool, +v: U32, +groups: List<&2, Group>, s: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
+def static_part(+build: Builds.Build, mutable: Bool, +v: U32, +groups: List<&2, Group>, s: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
   match mutable:
     case True{}:
-      areas_done(jobs_loop(area_jobs(groups, Layouts.areas(v)), (Nil{}, s)), v, groups)
+      areas_done(build, jobs_loop(build, area_jobs(groups, Layouts.areas(build, v)), (Nil{}, s)), v, groups)
     case False{}:
       (groups_items(groups), s)
 
@@ -861,12 +862,12 @@ def walked_entries(got: LuaTable.Table & Pcg.Rng) -> List<&2, Entry> & Pcg.Rng:
   (t, s) = got
   (entries_of(LuaTable.slot_count(t)), s)
 
-def count_pairs(walked: Bool, +v: U32, s: Pcg.Rng) -> List<&2, Entry> & Pcg.Rng:
+def count_pairs(+build: Builds.Build, walked: Bool, +v: U32, s: Pcg.Rng) -> List<&2, Entry> & Pcg.Rng:
   match walked:
     case True{}:
-      walked_entries(defs_applied(snapshot_table(Layouts.count_snapshot(v), count_entries(Layouts.count(v))), Layouts.defs(v), s))
+      walked_entries(defs_applied(build, snapshot_table(build, Layouts.count_snapshot(build, v), count_entries(Layouts.count(build, v))), Layouts.defs(build, v), s))
     case False{}:
-      (count_entries(Layouts.count(v)), s)
+      (count_entries(Layouts.count(build, v)), s)
 
 def total_of(entries: List<&2, Entry>, +acc: U32) -> U32:
   match entries:
@@ -990,29 +991,29 @@ def shaped(got: List<&2, Pos> & Pcg.Rng, +entries: List<&2, Entry>, +items: List
   (+poss, s) = got
   (List.append(&2, Item, items, assign(entries, poss)), s)
 
-def counted(got: List<&2, Entry> & Pcg.Rng, +v: U32, +items: List<&2, Item>) -> List<&2, Item> & Pcg.Rng:
+def counted(+build: Builds.Build, got: List<&2, Entry> & Pcg.Rng, +v: U32, +items: List<&2, Item>) -> List<&2, Item> & Pcg.Rng:
   (+entries, s) = got
-  shaped(shape_positions(Layouts.layout_type(v), total_of(entries, 0), s), entries, items)
+  shaped(shape_positions(Layouts.layout_type(build, v), total_of(entries, 0), s), entries, items)
 
-def shapes_part(shape: Bool, +v: U32, +items: List<&2, Item>, s: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
+def shapes_part(+build: Builds.Build, shape: Bool, +v: U32, +items: List<&2, Item>, s: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
   match shape:
     case True{}:
-      counted(count_pairs(Bool.and(Layouts.has(v, Layouts.flag_defs()), Bool.not(List.is_empty(&2, U32, Layouts.count_snapshot(v)))), v, s), v, items)
+      counted(build, count_pairs(build, Bool.and(Layouts.has(build, v, Layouts.flag_defs(build)), Bool.not(List.is_empty(&2, U32, Layouts.count_snapshot(build, v)))), v, s), v, items)
     case False{}:
       (items, s)
 
-def with_shapes(got: List<&2, Item> & Pcg.Rng, +v: U32) -> List<&2, Item> & Pcg.Rng:
+def with_shapes(+build: Builds.Build, got: List<&2, Item> & Pcg.Rng, +v: U32) -> List<&2, Item> & Pcg.Rng:
   (+items, s) = got
-  shapes_part(U32.is_ne(Layouts.layout_type(v), Enums.layout_static()), v, items, s)
+  shapes_part(build, U32.is_ne(Layouts.layout_type(build, v), Enums.layout_static()), v, items, s)
 
-def is_mutable(+v: U32) -> Bool:
-  Bool.and(Bool.or(Layouts.has(v, Layouts.flag_areas()), Layouts.has(v, Layouts.flag_defs())), Bool.not(List.is_empty(&2, U32, Layouts.layout_snapshot(v))))
+def is_mutable(+build: Builds.Build, +v: U32) -> Bool:
+  Bool.and(Bool.or(Layouts.has(build, v, Layouts.flag_areas(build)), Layouts.has(build, v, Layouts.flag_defs(build))), Bool.not(List.is_empty(&2, U32, Layouts.layout_snapshot(build, v))))
 
 # ConvertLayoutToEntitylist(LayoutForDefinition(name)) for layout index `layout` (data/layouts.bend rows) under
 # prefab swap state `state` (level/summary.bend Summary.swaps): the entity list in order and the RNG after its draws.
-def convert(+state: U32, +layout: U32, rng: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
-  +v = Layouts.variant(layout, state)
-  with_shapes(static_part(is_mutable(v), v, groups_of(v), rng), v)
+def convert(+build: Builds.Build, +state: U32, +layout: U32, rng: Pcg.Rng) -> List<&2, Item> & Pcg.Rng:
+  +v = Layouts.variant(build, layout, state)
+  with_shapes(build, static_part(build, is_mutable(build, v), v, groups_of(build, v), rng), v)
 
 def prefab_fold(items: List<&2, Item>, +h: U32) -> U32:
   match items:

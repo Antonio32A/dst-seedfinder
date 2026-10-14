@@ -5,6 +5,7 @@ import ../level/summary.bend as LevelSummary
 import ../level/cave_choose.bend as CaveChoose
 import ../level/cave_prefix.bend as CavePrefix
 import ./catalog.bend as StoryCatalog
+import ../data/builds.bend as Builds
 
 # What storygen takes from the level table of a seed. The forest's is its level summary (regions included). The caves
 # have no regions and no random set pieces: their plan is the chosen tasks in ChooseTasks order (story task ids), the
@@ -22,10 +23,10 @@ def story_ids(tasks: List<&2, U32>) -> List<&2, U32>:
     case Con{+task, rest}:
       StoryCatalog.caves_task_id(task) <> story_ids(rest)
 
-def caves(+world: CaveChoose.World, +entrance: U32) -> Plan:
+def caves(+build: Builds.Build, +world: CaveChoose.World, +entrance: U32) -> Plan:
   match world:
     case CaveChoose.World{_, +picks, +placed, _}:
-      CavePlan{story_ids(CavePrefix.chosen_ids(picks)), placed, entrance}
+      CavePlan{story_ids(CavePrefix.chosen_ids(build, picks)), placed, entrance}
 
 def is_caves(+plan: Plan) -> Bool:
   match plan:
@@ -48,19 +49,19 @@ def with_entrance(+plan: Plan, +entrance: U32) -> Plan:
     case CavePlan{+tasks, +placed, _}:
       CavePlan{tasks, placed, entrance}
 
-def bg_min(+plan: Plan) -> U32:
+def bg_min(+build: Builds.Build, +plan: Plan) -> U32:
   match plan:
     case ForestPlan{_}:
       0
     case CavePlan{_, _, _}:
-      CaveCatalog.background_node_min()
+      CaveCatalog.background_node_min(build)
 
-def bg_max(+plan: Plan) -> U32:
+def bg_max(+build: Builds.Build, +plan: Plan) -> U32:
   match plan:
     case ForestPlan{_}:
       2
     case CavePlan{_, _, _}:
-      CaveCatalog.background_node_max()
+      CaveCatalog.background_node_max(build)
 
 # Story:GenerateNodesForRegion's layout mode for the mainland: the location's layout_mode.
 def restricted(+plan: Plan) -> Bool:
@@ -74,17 +75,17 @@ def cave_piece_names(placed: List<&2, CaveChoose.Placed>, +task: U32) -> List<&2
       +tail = cave_piece_names(rest, task)
       Bool.pick(List<&2, U32>, CavePrefix.is_chosen(lo, hi, StoryCatalog.cave_task(task)), key <> tail, tail)
 
-def caves_valid_starts(n: Nat, +k: U32) -> List<&2, U32>:
+def caves_valid_starts(+build: Builds.Build, n: Nat, +k: U32) -> List<&2, U32>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      StoryCatalog.caves_task_id(CaveCatalog.valid_start_task(k)) <> caves_valid_starts(p, (k + 1 : U32))
+      StoryCatalog.caves_task_id(CaveCatalog.valid_start_task(build, k)) <> caves_valid_starts(build, p, (k + 1 : U32))
 
 # level.valid_start_tasks as story task ids.
-def valid_start_tasks(+plan: Plan) -> List<&2, U32>:
+def valid_start_tasks(+build: Builds.Build, +plan: Plan) -> List<&2, U32>:
   match plan:
     case ForestPlan{_}:
-      Tasks.lists(2)
+      Tasks.lists(build, 2)
     case CavePlan{_, _, _}:
-      caves_valid_starts(U32.to_nat(CaveCatalog.valid_start_task_count()), 0)
+      caves_valid_starts(build, U32.to_nat(CaveCatalog.valid_start_task_count(build)), 0)

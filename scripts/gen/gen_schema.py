@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Writes config.schema.json (JSON Schema 2020-12 for search config v2, docs/config.md) from the caps the finder
-enforces (seedfinder/filters/), the names of scripts/catalog/catalog.json (forest) and of the caves sidecar caves.json.
-`-` prints it instead. Fails when the caps table of docs/config.md (its rows in the order of WEBSITE_CAPS) or the website's caps disagree with the
+"""Writes config.schema.json (JSON Schema 2020-12 for search config v3, docs/config.md) from the caps the finder
+enforces (seedfinder/filters/), the game builds of builds.json and, per build, the names of its forest catalog
+(scripts/catalog/<catalog build>/catalog.json) and of its caves sidecars (scripts/gen/out/<build>/caves.json). The
+name lists of the latest build are the plain $defs; a build whose lists differ gets its own copies of the $defs that
+differ (suffixed with its number), selected by `build`. `-` prints it instead. Fails when the caps table of docs/config.md (its rows in the order of WEBSITE_CAPS) or the website's caps disagree with the
 finder.
 
 Run from the project root (regen.sh runs it after the catalog modules):
@@ -18,8 +20,6 @@ import blob  # noqa: E402
 from gen_cave_catalog import Catalog  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG = ROOT / "scripts" / "catalog" / "catalog.json"
-CAVE_CATALOG = ROOT / "scripts" / "catalog" / "cave_catalog.json"
 OUTPUT = ROOT / "config.schema.json"
 FILTERS = ROOT / "seedfinder" / "filters"
 SPEC = ROOT / "docs" / "config.md"
@@ -164,12 +164,13 @@ def definitions(catalog):
     }
 
 
-def cave_definitions():
-    cat = Catalog(blob.sidecar("caves.json"), blob.sidecar("layouts.json"))
+def cave_definitions(number):
+    sidecars = blob.out_dir().parent / str(number)
+    cat = Catalog(*(json.loads((sidecars / name).read_text()) for name in ("caves.json", "layouts.json")))
     names = {
         "caveTaskId": sorted(cat.tasks),
         "caveSetPieceName": sorted(cat.keys),
-        "cavePrefabId": sorted(prefab["id"] for prefab in json.loads(CAVE_CATALOG.read_text(encoding="utf-8"))["prefabs"]),
+        "cavePrefabId": sorted(prefab["id"] for prefab in catalog(number, "caves")["prefabs"]),
     }
     swaps = {}
     for swap in cat.caves["prefab_swaps"]:
@@ -210,16 +211,92 @@ def cave_definitions():
     }
 
 
-def schema(catalog):
+def catalog(number, shard):
+    return json.loads(blob.registry.catalog_path(number, shard).read_text(encoding="utf-8"))
+
+
+def definitions_of(number):
+    return {**definitions(catalog(number, "forest")), **cave_definitions(number)}
+
+
+def refs_in(value):
+    if isinstance(value, dict):
+        return {ref_name for v in value.values() for ref_name in refs_in(v)} | (
+            {value["$ref"].removeprefix("#/$defs/")} if "$ref" in value else set())
+    if isinstance(value, list):
+        return {ref_name for v in value for ref_name in refs_in(v)}
+    return set()
+
+
+def renamed(value, names, suffix):
+    if isinstance(value, dict):
+        return {k: (f"#/$defs/{v.removeprefix('#/$defs/')}{suffix}" if k == "$ref" and v.removeprefix("#/$defs/") in names
+                    else renamed(v, names, suffix)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [renamed(v, names, suffix) for v in value]
+    return value
+
+
+def own_definitions(base, defs):
+    """The $defs of `defs` that differ from `base`, directly or through a $ref to one that does."""
+    own = {name for name, value in defs.items() if base.get(name) != value}
+    while True:
+        more = {name for name, value in defs.items() if refs_in(value) & own} - own
+        if not more:
+            return own
+        own |= more
+
+
+def shard_switch(own, suffix):
+    def at(name):
+        return ref(name + suffix if name in own else name)
+    return {"if": {"required": ["shard"], "properties": {"shard": {"const": "caves"}}},
+            "then": {"properties": {"generation": at("caveGeneration"), "filters": {"items": at("caveFilter")}}},
+            "else": {"properties": {"generation": at("generation"), "filters": {"items": at("filter")}}}}
+
+
+def build_named(numbers):
+    return {"required": ["build"], "properties": {"build": {"enum": numbers}}}
+
+
+def builds_part():
+    """The $defs of every build and the if/then/else that picks a build's names (the latest build's are unsuffixed)."""
+    latest = blob.registry.latest()
+    base = definitions_of(latest)
+    defs = dict(base)
+    groups = {}
+    for entry in blob.registry.builds():
+        if entry["number"] != latest:
+            own_defs = definitions_of(entry["number"])
+            own = own_definitions(base, own_defs)
+            key = json.dumps({name: own_defs[name] for name in sorted(own)}, sort_keys=True)
+            groups.setdefault(key, (own_defs, own, []))[2].append(entry["number"])
+    switch = shard_switch(set(), "")
+    for own_defs, own, numbers in reversed(list(groups.values())):
+        suffix = f"_{numbers[0]}"
+        defs.update({name + suffix: renamed(own_defs[name], own, suffix) for name in sorted(own)})
+        if own:
+            switch = {"if": build_named(numbers), "then": shard_switch(own, suffix), "else": switch}
+    return switch, defs
+
+
+def schema():
+    numbers = [entry["number"] for entry in blob.registry.builds()]
+    no_caves = [entry["number"] for entry in blob.registry.builds() if "caves" not in entry["shards"]]
+    switch, defs = builds_part()
+    shards = {"allOf": [{"if": build_named(no_caves), "then": {"properties": {"shard": {"not": {"const": "caves"}}}}}]} \
+        if no_caves else {}
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "DST seed finder search config v2",
-        "description": f"Generated by scripts/gen/gen_schema.py from scripts/catalog/catalog.json (game build "
-                       f"{catalog['game_build']}) and the caves sidecar; see docs/config.md.",
+        "title": "DST seed finder search config v3",
+        "description": f"Generated by scripts/gen/gen_schema.py from builds.json, each build's catalogs "
+                       f"(scripts/catalog/<build>/) and caves sidecars; see docs/config.md.",
         "$comment": "Not expressible here and checked by the finder: repeated object keys, integers written with a "
                     "fraction (20.0), and route visit stops that share a prefab id with each other or with from/to. The "
-                    "--shard flag of the finder overrides `shard`.",
-        **closed({"version": {"const": 2},
+                    "--shard and --build flags of the finder override `shard` and `build`.",
+        **closed({"version": {"description": "The config format.", "const": 3},
+                  "build": {"description": "The game build the worlds are generated for; it decides the names "
+                                           "the sections may use (builds.json).", "enum": numbers},
                   "shard": {"description": "The shard whose worlds are searched: the forest (the overworld) or the "
                                            "caves. The caves shard's sections use its own tasks, set pieces and prefabs.",
                             "enum": list(SHARDS), "default": DEFAULT_SHARD},
@@ -232,16 +309,15 @@ def schema(catalog):
                   "generation": {"description": "The level table, shared by every filter: only the worlds of the "
                                                 "seeds it accepts are generated."},
                   "filters": {"description": "Alternatives (OR) on the generated worlds.", "type": "array",
-                              "maxItems": CAPS["entries"]}}),
-        "if": {"required": ["shard"], "properties": {"shard": {"const": "caves"}}},
-        "then": {"properties": {"generation": ref("caveGeneration"), "filters": {"items": ref("caveFilter")}}},
-        "else": {"properties": {"generation": ref("generation"), "filters": {"items": ref("filter")}}},
-        "$defs": {**definitions(catalog), **cave_definitions()},
+                              "maxItems": CAPS["entries"]}}, ("build",)),
+        **shards,
+        **switch,
+        "$defs": defs,
     }
 
 
 def main():
-    text = json.dumps(schema(json.loads(CATALOG.read_text(encoding="utf-8"))), indent=1, ensure_ascii=False) + "\n"
+    text = json.dumps(schema(), indent=1, ensure_ascii=False) + "\n"
     if sys.argv[1:] == ["-"]:
         sys.stdout.write(text)
     else:

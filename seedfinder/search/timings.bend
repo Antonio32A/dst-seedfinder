@@ -3,6 +3,7 @@ import ../filters/evaluate.bend as Evaluate
 import ../filters/rules.bend as Rules
 import ../filters/world.bend as FilterWorld
 import ../filters/par.bend as Par
+import ../data/builds.bend as Builds
 
 # `world find --verbose-timings` (docs/config.md section 8): where the search spends its time, per option (`filters`
 # entry). Each rule of an option is checked on all the worlds of a round at once, between two clock reads, so the
@@ -75,12 +76,21 @@ def with_hits(+t: Timings, +ms: Nat) -> Timings:
 type Open is Data:
   Open{world: Maybe<&2, FilterWorld.World>, found: Maybe<&2, U32>}
 
-def holds_on(job: Evaluate.Job, m: Maybe<&2, FilterWorld.World>) -> Bool:
+def job_holds_on(+build: Builds.Build, job: Evaluate.Job, m: Maybe<&2, FilterWorld.World>) -> Bool:
   match m:
     case None{}:
       True{}
     case Some{world}:
-      Evaluate.job_verdict(world, job)
+      Evaluate.job_verdict(Evaluate.BuildWorld{build, world}, job)
+
+# A rule's job with the game build of the worlds it checks.
+type BuildJob is Data:
+  BuildJob{build: Builds.Build, job: Evaluate.Job}
+
+def holds_on(on: BuildJob, m: Maybe<&2, FilterWorld.World>) -> Bool:
+  match on:
+    case BuildJob{+build, job}:
+      job_holds_on(build, job, m)
 
 def masked(+passed: List<&2, Bool>, +worlds: List<&2, Maybe<&2, FilterWorld.World>>) -> List<&2, Maybe<&2, FilterWorld.World>>:
   match passed worlds:
@@ -107,15 +117,15 @@ def rule_before(+r: Rule, +got: Ran) -> Ran:
 
 # The rules over the worlds, each timed (the routes only on the worlds whose earlier rules held, as
 # Evaluate.parallel_holds checks them): the rules with their ms added, and whether each world passed them all.
-def timed_rules(jobs: List<&2, Evaluate.Job>, rules: List<&2, Rule>, +worlds: List<&2, Maybe<&2, FilterWorld.World>>, +passed: List<&2, Bool>) -> IO(Ran):
+def timed_rules(+build: Builds.Build, jobs: List<&2, Evaluate.Job>, rules: List<&2, Rule>, +worlds: List<&2, Maybe<&2, FilterWorld.World>>, +passed: List<&2, Bool>) -> IO(Ran):
   match jobs rules:
     case Con{+job, js} Con{Rule{+section, +index, +ms}, rs}:
       +targets = Bool.pick(List<&2, Maybe<&2, FilterWorld.World>>, Evaluate.is_route(job), masked(passed, worlds), worlds)
       do IO<Ran>:
         +t0 : Nat <- IO.now()
-        +oks : List<&2, Bool> = Par.map(~Maybe<&2, FilterWorld.World>, ~Bool, ~Evaluate.Job, ~holds_on, job, targets)
+        +oks : List<&2, Bool> = Par.map(~Maybe<&2, FilterWorld.World>, ~Bool, ~BuildJob, ~holds_on, BuildJob{build, job}, targets)
         +t1 : Nat <- IO.now()
-        +after : Ran <- timed_rules(js, rs, worlds, both(passed, oks))
+        +after : Ran <- timed_rules(build, js, rs, worlds, both(passed, oks))
         return rule_before(Rule{section, index, Nat.add(ms, Nat.sub(t1, t0))}, after)
     case _ _:
       IO.pure(Ran, Ran{Nil{}, passed})
@@ -191,13 +201,13 @@ def option_before(+o: Option, +got: Decided) -> Decided:
 
 # The options one after the other on the worlds no earlier option matched: the timed options, and the worlds with the
 # option that matched each.
-def judged_options(laters: List<&2, Rules.Later>, options: List<&2, Option>, +index: U32, +opens: List<&2, Open>) -> IO(Decided):
+def judged_options(+build: Builds.Build, laters: List<&2, Rules.Later>, options: List<&2, Option>, +index: U32, +opens: List<&2, Open>) -> IO(Decided):
   match laters options:
     case Con{+later, ls} Con{Option{+worlds, +rules}, os}:
       +checked = checked_worlds(opens)
       do IO<Decided>:
-        +got : Ran <- timed_rules(Evaluate.jobs_of(later), rules, checked, all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
-        +after : Decided <- judged_options(ls, os, (index + 1 : U32), stepped(opens, checked, held_of(got), index))
+        +got : Ran <- timed_rules(build, Evaluate.jobs_of(later), rules, checked, all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
+        +after : Decided <- judged_options(build, ls, os, (index + 1 : U32), stepped(opens, checked, held_of(got), index))
         return option_before(Option{Nat.add(worlds, checks(checked)), rules_of(got)}, after)
     case _ _:
       IO.pure(Decided, Decided{Nil{}, opens})
@@ -212,11 +222,11 @@ def timed_with(+seeds: Nat, +prefilter_ms: Nat, +generation_ms: Nat, +hits_ms: N
       Judged{Timings{seeds, prefilter_ms, generation_ms, hits_ms, options}, opens}
 
 # The worlds decided option by option, every rule timed (the worlds keep their order).
-def judged(+t: Timings, +laters: List<&2, Rules.Later>, +opens: List<&2, Open>) -> IO(Judged):
+def judged(+build: Builds.Build, +t: Timings, +laters: List<&2, Rules.Later>, +opens: List<&2, Open>) -> IO(Judged):
   match t:
     case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
       do IO<Judged>:
-        +got : Decided <- judged_options(laters, options, 0, opens)
+        +got : Decided <- judged_options(build, laters, options, 0, opens)
         return timed_with(seeds, prefilter_ms, generation_ms, hits_ms, got)
 
 def rule_json(+r: Rule) -> String:

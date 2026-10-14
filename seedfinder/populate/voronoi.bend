@@ -14,6 +14,7 @@ import ./entities.bend as Entities
 import ./counts.bend as PopulateCounts
 import ./nodes.bend as PopulateNodes
 import ./state.bend as PopulateState
+import ../data/builds.bend as Builds
 
 # Node:PopulateVoronoi (graphnode.lua) and Graph:PopulateVoronoi's traversal: GetPointsForSite, the countprefabs,
 # the map tag items, then the distributed prefabs, each through Node:AddEntity (dropped off land, else ReserveTile
@@ -223,12 +224,12 @@ def cache_get(xs: List<&2, Cached>, +tile: U32) -> PopulateCounts.Prepared:
     case Con{Cached{+t, +p}, rest}:
       Bool.pick(PopulateCounts.Prepared, U32.is_eq(t, tile), p, cache_get(rest, tile))
 
-def cache_with(hit: Bool, +cache: List<&2, Cached>, +variant: U32, +tile: U32) -> List<&2, Cached>:
+def cache_with(+build: Builds.Build, hit: Bool, +cache: List<&2, Cached>, +variant: U32, +tile: U32) -> List<&2, Cached>:
   match hit:
     case True{}:
       cache
     case False{}:
-      Cached{tile, PopulateCounts.prepare(variant, tile)} <> cache
+      Cached{tile, PopulateCounts.prepare(build, variant, tile)} <> cache
 
 type Spread is Type:
   Spread{land: PopulateState.Land, cache: List<&2, Cached>}
@@ -238,57 +239,57 @@ def distribute_cached(l: PopulateState.Land, +kept: List<&2, Cached>, +c: Popula
     case PopulateState.Land{g, +rng, +ents, +events}:
       Spread{distribute_pick(PopulateCounts.pick_prepared(cache_get(kept, point_tile(pt)), rng), PopulateState.Land{g, rng, ents, events}, c, pt, data), kept}
 
-def distribute_try(hit: Bool, l: PopulateState.Land, +cache: List<&2, Cached>, +c: PopulateState.Ctx, +variant: U32, +pt: Points.Pt, +data: List<&2, PopulateNodes.Count>) -> Spread:
+def distribute_try(+build: Builds.Build, hit: Bool, l: PopulateState.Land, +cache: List<&2, Cached>, +c: PopulateState.Ctx, +variant: U32, +pt: Points.Pt, +data: List<&2, PopulateNodes.Count>) -> Spread:
   match hit:
     case False{}:
       Spread{l, cache}
     case True{}:
       +tile = point_tile(pt)
-      distribute_cached(l, cache_with(cache_hit(cache, tile), cache, variant, tile), c, pt, data)
+      distribute_cached(l, cache_with(build, cache_hit(cache, tile), cache, variant, tile), c, pt, data)
 
-def distribute_drawn(got: U32 & Pcg.Rng, l: PopulateState.Land, +cache: List<&2, Cached>, +c: PopulateState.Ctx, +variant: U32, +threshold: U32, +pt: Points.Pt, +data: List<&2, PopulateNodes.Count>) -> Spread:
+def distribute_drawn(+build: Builds.Build, got: U32 & Pcg.Rng, l: PopulateState.Land, +cache: List<&2, Cached>, +c: PopulateState.Ctx, +variant: U32, +threshold: U32, +pt: Points.Pt, +data: List<&2, PopulateNodes.Count>) -> Spread:
   (+x, rng) = got
-  distribute_try((x < threshold : U32), PopulateState.with_rng(l, rng), cache, c, variant, pt, data)
+  distribute_try(build, (x < threshold : U32), PopulateState.with_rng(l, rng), cache, c, variant, pt, data)
 
-def distribute_one(sp: Spread, +c: PopulateState.Ctx, +variant: U32, +threshold: U32, +pt: Points.Pt, +data: List<&2, PopulateNodes.Count>) -> Spread:
+def distribute_one(+build: Builds.Build, sp: Spread, +c: PopulateState.Ctx, +variant: U32, +threshold: U32, +pt: Points.Pt, +data: List<&2, PopulateNodes.Count>) -> Spread:
   match sp:
     case Spread{l, +cache}:
       match l:
         case PopulateState.Land{g, +rng, +ents, +events}:
-          distribute_drawn(Pcg.draw(rng), PopulateState.Land{g, rng, ents, events}, cache, c, variant, threshold, pt, data)
+          distribute_drawn(build, Pcg.draw(rng), PopulateState.Land{g, rng, ents, events}, cache, c, variant, threshold, pt, data)
 
-def distribute_loop(pts: List<&2, Points.Pt>, sp: Spread, +c: PopulateState.Ctx, +variant: U32, +threshold: U32, +data: List<&2, PopulateNodes.Count>) -> PopulateState.Land:
+def distribute_loop(+build: Builds.Build, pts: List<&2, Points.Pt>, sp: Spread, +c: PopulateState.Ctx, +variant: U32, +threshold: U32, +data: List<&2, PopulateNodes.Count>) -> PopulateState.Land:
   match pts:
     case Nil{}:
       match sp:
         case Spread{l, _}:
           l
     case Con{+pt, rest}:
-      distribute_loop(rest, distribute_one(sp, c, variant, threshold, pt, data), c, variant, threshold, data)
+      distribute_loop(build, rest, distribute_one(build, sp, c, variant, threshold, pt, data), c, variant, threshold, data)
 
-def distribute_resolved(got: U32 & Pcg.Rng, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32, +pts: List<&2, Points.Pt>) -> PopulateState.Land:
+def distribute_resolved(+build: Builds.Build, got: U32 & Pcg.Rng, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32, +pts: List<&2, Points.Pt>) -> PopulateState.Land:
   (+index, rng) = got
   +s = PopulateState.story_of(c)
-  +room = PopulateNodes.room(s, node)
-  +variant = Distribute.variant(room, StoryGraph.nf(s, node, StoryGraph.f_depth()), ((index * 8 : U32) + PopulateState.swaps_of(c) : U32))
-  distribute_loop(pts, Spread{PopulateState.with_rng(l, rng), Nil{}}, c, variant, Rooms.distribute_threshold(room), PopulateNodes.prefabdata(s, node))
+  +room = PopulateNodes.room(build, s, node)
+  +variant = Distribute.variant(build, room, StoryGraph.nf(s, node, StoryGraph.f_depth()), ((index * 8 : U32) + PopulateState.swaps_of(c) : U32))
+  distribute_loop(build, pts, Spread{PopulateState.with_rng(l, rng), Nil{}}, c, variant, Rooms.distribute_threshold(build, room), PopulateNodes.prefabdata(build, s, node))
 
-def distribute_if(go: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
+def distribute_if(+build: Builds.Build, go: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
   match go:
     case False{}:
       l
     case True{}:
       match l:
         case PopulateState.Land{g, +rng, +ents, +events}:
-          +row = Distribute.cases(PopulateNodes.row(PopulateState.story_of(c), node))
-          distribute_resolved(resolve(U32.to_nat(Blob.at(row, 0)), Blob.drop(row, 1), 0, (0, rng), 0, False{}), PopulateState.Land{g, rng, ents, events}, c, node, pts)
+          +row = Distribute.cases(build, PopulateNodes.row(build, PopulateState.story_of(c), node))
+          distribute_resolved(build, resolve(U32.to_nat(Blob.at(row, 0)), Blob.drop(row, 1), 0, (0, rng), 0, False{}), PopulateState.Land{g, rng, ents, events}, c, node, pts)
 
-def distribute(on: Bool, w: Walk, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
+def distribute(+build: Builds.Build, on: Bool, w: Walk, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
   match w:
     case Walk{l, +pts, +alive}:
-      distribute_if(on && alive, l, pts, c, node)
+      distribute_if(build, on && alive, l, pts, c, node)
 
-def counted_alive(alive: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +c: PopulateState.Ctx, +node: U32) -> Walk:
+def counted_alive(+build: Builds.Build, alive: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>, +c: PopulateState.Ctx, +node: U32) -> Walk:
   match alive:
     case False{}:
       Walk{l, pts, False{}}
@@ -297,17 +298,17 @@ def counted_alive(alive: Bool, l: PopulateState.Land, +pts: List<&2, Points.Pt>,
         case PopulateState.Land{g, +rng, +ents, +events}:
           +s = PopulateState.story_of(c)
           +area = U32.from_nat(List.length(&2, Points.Pt, pts))
-          counted_walk(evaluate(PopulateNodes.countprefabs(s, node), (0, rng), 0, False{}, area, PopulateState.width_of(c), Nil{}, 0),
-            PopulateState.Land{g, rng, ents, events}, pts, area, PopulateNodes.generate_order(s, node), PopulateNodes.prefabdata(s, node), c)
+          counted_walk(evaluate(PopulateNodes.countprefabs(build, s, node), (0, rng), 0, False{}, area, PopulateState.width_of(c), Nil{}, 0),
+            PopulateState.Land{g, rng, ents, events}, pts, area, PopulateNodes.generate_order(build, s, node), PopulateNodes.prefabdata(build, s, node), c)
 
-def counted(on: Bool, w: Walk, +c: PopulateState.Ctx, +node: U32) -> Walk:
+def counted(+build: Builds.Build, on: Bool, w: Walk, +c: PopulateState.Ctx, +node: U32) -> Walk:
   match on:
     case False{}:
       w
     case True{}:
       match w:
         case Walk{l, +pts, +alive}:
-          counted_alive(alive, l, pts, c, node)
+          counted_alive(build, alive, l, pts, c, node)
 
 def points_noted(tracing: Bool, +ev: PopulateState.Ev, +events: List<&2, PopulateState.Ev>) -> List<&2, PopulateState.Ev>:
   match tracing:
@@ -316,55 +317,55 @@ def points_noted(tracing: Bool, +ev: PopulateState.Ev, +events: List<&2, Populat
     case False{}:
       events
 
-def populate_points(p: Points.Picked, +c: PopulateState.Ctx, +node: U32, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
+def populate_points(+build: Builds.Build, p: Points.Picked, +c: PopulateState.Ctx, +node: U32, +before: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land:
   match p:
     case Points.Picked{g, +rng, +n, +shuffled, +kept}:
       +s = PopulateState.story_of(c)
       +alive = Bool.not(List.is_empty(&2, Points.Pt, kept))
-      +on = PopulateNodes.has_distribute_percent(s, node) && PopulateNodes.has_distribute(s, node)
+      +on = PopulateNodes.has_distribute_percent(build, s, node) && PopulateNodes.has_distribute(build, s, node)
       +noted = points_noted(PopulateState.tracing_of(c), PopulateState.EPoints{node, n, before, rng, shuffled, kept}, events)
-      distribute(on, place_extras(PopulateNodes.extra_prefabs(s, node), counted(PopulateNodes.has_countprefabs(s, node),
+      distribute(build, on, place_extras(PopulateNodes.extra_prefabs(build, s, node), counted(build, PopulateNodes.has_countprefabs(build, s, node),
         Walk{PopulateState.Land{g, rng, ents, noted}, kept, alive}, c, node), c), c, node)
 
-def populate_body(skip: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
+def populate_body(+build: Builds.Build, skip: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
   match skip:
     case True{}:
       l
     case False{}:
       match l:
         case PopulateState.Land{g, +rng, +ents, +events}:
-          populate_points(Points.points_for_site(PopulateState.windows_of(c), PopulateState.sites_of(c), PopulateState.site_of(c, node), g, rng), c, node, rng, ents, events)
+          populate_points(build, Points.points_for_site(PopulateState.windows_of(c), PopulateState.sites_of(c), PopulateState.site_of(c, node), g, rng), c, node, rng, ents, events)
 
-def contentless(+s: StoryGraph.St, +node: U32) -> Bool:
-  +none = Bool.not(PopulateNodes.has_countprefabs(s, node)) && Bool.not(PopulateNodes.has_distribute(s, node))
-  StoryData.is_impassable(PopulateNodes.tile(s, node)) || Bool.not(PopulateNodes.has_contents(s, node)) || none
+def contentless(+build: Builds.Build, +s: StoryGraph.St, +node: U32) -> Bool:
+  +none = Bool.not(PopulateNodes.has_countprefabs(build, s, node)) && Bool.not(PopulateNodes.has_distribute(build, s, node))
+  StoryData.is_impassable(build, PopulateNodes.tile(s, node)) || Bool.not(PopulateNodes.has_contents(build, s, node)) || none
 
-def skipped(+s: StoryGraph.St, +node: U32) -> Bool:
-  PopulateNodes.has_custom_tiles(s, node) || contentless(s, node)
+def skipped(+build: Builds.Build, +s: StoryGraph.St, +node: U32) -> Bool:
+  PopulateNodes.has_custom_tiles(build, s, node) || contentless(build, s, node)
 
 def noted_node(got: PopulateState.Land & Pcg.Rng, +node: U32, +before: Pcg.Rng) -> PopulateState.Land:
   (l, +after) = got
   PopulateState.noted(l, PopulateState.EPopulateNode{node, before, after})
 
 # Node:PopulateVoronoi for one story node.
-def populate_node(+c: PopulateState.Ctx, +node: U32, l: PopulateState.Land) -> PopulateState.Land:
+def populate_node(+build: Builds.Build, +c: PopulateState.Ctx, +node: U32, l: PopulateState.Land) -> PopulateState.Land:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      noted_node(PopulateState.rng_of(populate_body(skipped(PopulateState.story_of(c), node), PopulateState.Land{g, rng, ents, events}, c, node)), node, rng)
+      noted_node(PopulateState.rng_of(populate_body(build, skipped(build, PopulateState.story_of(c), node), PopulateState.Land{g, rng, ents, events}, c, node)), node, rng)
 
-def populate_loop(nodes: List<&2, U32>, l: PopulateState.Land, +c: PopulateState.Ctx) -> PopulateState.Land:
+def populate_loop(+build: Builds.Build, nodes: List<&2, U32>, l: PopulateState.Land, +c: PopulateState.Ctx) -> PopulateState.Land:
   match nodes:
     case Nil{}:
       l
     case Con{+node, rest}:
-      populate_loop(rest, populate_node(c, node, l), c)
+      populate_loop(build, rest, populate_node(build, c, node, l), c)
 
 def noted_land(got: PopulateState.Land & Pcg.Rng, +c: PopulateState.Ctx, +before: Pcg.Rng) -> PopulateState.Land:
   (l, +after) = got
   PopulateState.digest(PopulateState.noted(l, PopulateState.ELand{True{}, before, after}), c, 2)
 
 # Graph:PopulateVoronoi on the root: every node of every child graph in traversal order.
-def populate(+c: PopulateState.Ctx, l: PopulateState.Land) -> PopulateState.Land:
+def populate(+build: Builds.Build, +c: PopulateState.Ctx, l: PopulateState.Land) -> PopulateState.Land:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      noted_land(PopulateState.rng_of(populate_loop(PopulateNodes.populate_order(PopulateState.story_of(c)), PopulateState.Land{g, rng, ents, events}, c)), c, rng)
+      noted_land(PopulateState.rng_of(populate_loop(build, PopulateNodes.populate_order(PopulateState.story_of(c)), PopulateState.Land{g, rng, ents, events}, c)), c, rng)

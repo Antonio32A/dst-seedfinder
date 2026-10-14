@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { GAME_BUILD } from "@/lib/catalog/world";
+import { buildLabel } from "@/lib/config/builds";
+import { WEBSITE_BUILDS } from "@/lib/config/game-builds";
 
 export default function Intro() {
     return (
             <section>
                 <h1 className="sr-only">DST Seedfinder</h1>
                 <p className="lead">
-                    Don&apos;t Starve Together seed finding tool. Currently supports DST v{GAME_BUILD}.
+                    Don&apos;t Starve Together seed finding tool. Currently supports DST {WEBSITE_BUILDS.map((build) => `v${buildLabel(build)}`).join(", ")}.
                     <br/>
                     This is mostly a hobby project, no future support is guaranteed.
                     <br/>

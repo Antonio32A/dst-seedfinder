@@ -2,14 +2,16 @@
 """Compares the seedfinder's caves world dumps with the real cave worlds, section by section (the SETP section is
 the seedfinder's own: the game's savedata does not record where layouts and mazes went).
 
-usage: compare_caves_world.py BINARY [SEEDS] [--platform linux|windows] [--worlds DIR] [--jobs N] [--no-attempts]
+usage: compare_caves_world.py BINARY [SEEDS] [--platform linux|windows] [--build BUILD] [--worlds DIR] [--jobs N] [--no-attempts]
 
-Every seed is one `BINARY -- world dump SEED --shard caves --platform PLATFORM -o TMP.dstw`, compared with the world JSON
+Every seed is one `BINARY -- world dump SEED --shard caves --platform PLATFORM --build BUILD -o TMP.dstw`, compared with the world JSON
 of that platform's server (scripts/groundtruth/run_worldgen.sh) converted by world_dump.py (the same code path the
 forest's dumps use). A seed that differs reports its first differing section and, inside it, the first differing tile, prefab or pillar link; and
-every seed reports the attempts the seedfinder needed (`gen SEED --shard caves`) next to the real world's.
+every seed reports the attempts the seedfinder needed (`gen SEED --shard caves --build BUILD`) next to the real world's.
 
-SEEDS: `1-120` (default) or `1,5,9`. WORLDS: the world JSONs (default build/groundtruth/data/worlds_caves).
+SEEDS: `1-120` (default) or `1,5,9`. BUILD: the game build (default the latest of builds.json). WORLDS: the world JSONs
+(default the build's ground truth of the main checkout, or $GT_ROOT: <BUILD>/data/worlds_caves, <BUILD>/windows_caves
+with --platform windows).
 """
 import argparse
 import concurrent.futures
@@ -22,7 +24,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from compare_common import CAVE_WORLDS, seeds_of  # noqa: E402
+from compare_common import cave_worlds, latest_build, seeds_of  # noqa: E402
 from world_dump import dump_of  # noqa: E402
 
 HEADER_BYTES = 36
@@ -86,28 +88,29 @@ def entity_problems(ours, real):
     return [f"{name}: ours {a.get(name, 0)} real {b.get(name, 0)}" for name in sorted(set(a) | set(b)) if a.get(name) != b.get(name)][:8]
 
 
-def attempts_of(binary, seed, platform):
-    out = subprocess.run([binary, "--threads", "2", "--", "gen", str(seed), "--shard", "caves", "--platform", platform],
+def attempts_of(binary, seed, platform, build):
+    out = subprocess.run([binary, "--threads", "2", "--", "gen", str(seed), "--shard", "caves", "--platform", platform,
+                          "--build", str(build)],
                          capture_output=True, text=True, timeout=3600).stdout
     found = re.search(r"\ba=(\d+)", out)
     return int(found.group(1)) if found else None
 
 
-def check(binary, world_path, with_attempts, platform):
+def check(binary, world_path, with_attempts, platform, build):
     world = json.loads(Path(world_path).read_text())
     seed = world["seed"]
     real = dump_of(world, platform)
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / f"{seed}.dstw"
         run = subprocess.run([binary, "--threads", "2", "--", "world", "dump", str(seed), "--shard", "caves", "--platform", platform,
-                              "-o", str(target)], capture_output=True, text=True, timeout=3600)
+                              "--build", str(build), "-o", str(target)], capture_output=True, text=True, timeout=3600)
         if not target.exists():
             return seed, [f"no dump ({run.stdout.strip() or run.stderr.strip()[:200]})"], None
         ours = target.read_bytes()
     problems = compare_sections(ours, real)
     if problems and "ENTS" in "".join(problems):
         problems += entity_problems(ours, real)
-    attempts = f"attempts ours {attempts_of(binary, seed, platform)} real {world.get('attempts')}" if with_attempts else None
+    attempts = f"attempts ours {attempts_of(binary, seed, platform, build)} real {world.get('attempts')}" if with_attempts else None
     return seed, problems, attempts
 
 
@@ -116,14 +119,15 @@ def main():
     ap.add_argument("binary")
     ap.add_argument("seeds", nargs="?", default="1-120")
     ap.add_argument("--platform", choices=["linux", "windows"], default="linux")
-    ap.add_argument("--worlds", default=str(CAVE_WORLDS))
+    ap.add_argument("--build", type=int, default=latest_build())
+    ap.add_argument("--worlds")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--no-attempts", action="store_true", help="skip the `gen` run that counts the attempts")
     args = ap.parse_args()
-    paths = [Path(args.worlds) / f"{seed}.json" for seed in seeds_of(args.seeds)]
+    paths = [Path(args.worlds or cave_worlds(args.build, args.platform)) / f"{seed}.json" for seed in seeds_of(args.seeds)]
     failed = 0
     with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
-        futures = [pool.submit(check, args.binary, path, not args.no_attempts, args.platform) for path in paths]
+        futures = [pool.submit(check, args.binary, path, not args.no_attempts, args.platform, args.build) for path in paths]
         for future in concurrent.futures.as_completed(futures):
             seed, problems, attempts = future.result()
             failed += bool(problems)

@@ -1,8 +1,7 @@
-import type { Shard } from "@/lib/config/seedfinder-config";
 import { mapPreviewPath } from "@/lib/world-map/map-preview-url";
 import { parseMapRoute, parseMapView } from "@/lib/world-map/map-route";
 
-const MAP_PAGE = /^\/map\/([^/]+)\/(?:(forest|caves)\/)?([^/]+)$/;
+const MAP_PAGE = /^\/map\/([^/]+)\/(.+)$/;
 const UNFURL_CRAWLER =
     /Discordbot|Slackbot|Twitterbot|facebookexternalhit|meta-externalagent|TelegramBot|WhatsApp|LinkedInBot|redditbot|Mastodon|Bluesky|Iframely|Embedly|SkypeUriPreview|vkShare|Pinterest/i;
 
@@ -14,12 +13,11 @@ export function prewarmMapPreview(request: Request, env: Cloudflare.Env, ctx: Ex
     const page = MAP_PAGE.exec(url.pathname);
     if (page === null) return;
 
-    const [, platform, , seed] = page;
-    const shard = page.at(2);
-    const route = parseMapRoute(platform, seed, (shard ?? "forest") as Shard);
+    const [, platform, segments] = page;
+    const route = parseMapRoute(platform, segments.split("/"));
     if ("error" in route) return;
 
-    const preview = new URL(mapPreviewPath(route.platform, route.seed, route.shard, parseMapView(url.searchParams.get("v") ?? undefined)), url);
+    const preview = new URL(mapPreviewPath(route, parseMapView(url.searchParams.get("v") ?? undefined)), url);
     const client = request.headers.get("CF-Connecting-IP");
     ctx.waitUntil(
         env.MAP_PREVIEW.fetch(preview, { headers: client === null ? {} : { "CF-Connecting-IP": client } })

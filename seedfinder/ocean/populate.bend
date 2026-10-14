@@ -17,6 +17,7 @@ import ../populate/setpiece.bend as PopulateSetpiece
 import ./ents.bend as OceanEnts
 import ./state.bend as OceanState
 import ./place.bend as OceanPlace
+import ../data/builds.bend as Builds
 
 # ocean_gen.lua's PopulateOcean: for each ocean room of the level (Shore, Coastal, Swell, Rough, Hazardous) on its
 # tile, PopulateWaterType: the room's set pieces (Ocean_PlaceSetPieces), the countprefabs point search
@@ -32,8 +33,8 @@ def specs_loop(xs: List<&2, U32>) -> List<&2, OceanPlace.Spec>:
       Nil{}
 
 # A room's depth-1 countstaticlayouts as set piece entries.
-def room_specs(+room: U32) -> List<&2, OceanPlace.Spec>:
-  specs_loop(Rooms.room_countstaticlayouts((room * 2 : U32)))
+def room_specs(+build: Builds.Build, +room: U32) -> List<&2, OceanPlace.Spec>:
+  specs_loop(Rooms.room_countstaticlayouts(build, (room * 2 : U32)))
 
 def prefill_loop(xs: List<&2, U32>) -> List<&2, OceanPlace.Spec>:
   match xs:
@@ -43,8 +44,8 @@ def prefill_loop(xs: List<&2, U32>) -> List<&2, OceanPlace.Spec>:
       Nil{}
 
 # level.ocean_prefill_setpieces as set piece entries.
-def prefill_specs() -> List<&2, OceanPlace.Spec>:
-  prefill_loop(Tasks.lists(5))
+def prefill_specs(+build: Builds.Build) -> List<&2, OceanPlace.Spec>:
+  prefill_loop(Tasks.lists(build, 5))
 
 # GetRandomWaterPoints' scan state: points found so far, the wrapped start and extents, the step and the tile.
 type Points is Data:
@@ -157,10 +158,10 @@ def shuffled_points(got: Grid.Grid & Points & Pcg.Rng) -> Grid.Grid & Pcg.Rng:
 
 # GetRandomWaterPoints(tile, width, height, edge, needed) as far as the draws go: the scans at each increment while
 # fewer than `needed` points are found (2 draws each), then shuffleArray over the points.
-def water_points(g: Grid.Grid, +width: U32, +height: U32, +edge: U32, +tile: U32, +needed: U32, rng: Pcg.Rng) -> Grid.Grid & Pcg.Rng:
+def water_points(+build: Builds.Build, g: Grid.Grid, +width: U32, +height: U32, +edge: U32, +tile: U32, +needed: U32, rng: Pcg.Rng) -> Grid.Grid & Pcg.Rng:
   +w = (width - 2 * edge : U32)
   +h = (height - 2 * edge : U32)
-  shuffled_points(incs_loop(OceanPostData.water_point_incs(0), (g, Points{0, 0, 0, w, h, 1, edge, tile, needed}, rng)))
+  shuffled_points(incs_loop(OceanPostData.water_point_incs(build, 0), (g, Points{0, 0, 0, w, h, 1, edge, tile, needed}, rng)))
 
 # The distribute scan's constants: the room's tile, the math.random() < distributepercent threshold and
 # pickspawnprefab's items (data/distribute.bend ocean_picks units, in its order).
@@ -187,20 +188,20 @@ def picked(got: U32 & Pcg.Rng, g: Grid.Grid, +c: OceanState.Ctx, +x: U32, +y: U3
   (+prefab, rng) = got
   add_if(U32.is_ne(prefab, OceanPlace.none()), g, c, prefab, x, y, ids, rng, ents, topo, events)
 
-def below(yes: Bool, g: Grid.Grid, +c: OceanState.Ctx, +d: Dist, +x: U32, +y: U32, ids: Grid.Grid, rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
+def below(+build: Builds.Build, yes: Bool, g: Grid.Grid, +c: OceanState.Ctx, +d: Dist, +x: U32, +y: U32, ids: Grid.Grid, rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   match yes:
     case False{}:
       OceanState.Sea{g, ids, rng, ents, topo, events}
     case True{}:
       match d:
         case Dist{_, _, +units}:
-          picked(PopulateCounts.pick_units(units, rng), g, c, x, y, ids, ents, topo, events)
+          picked(PopulateCounts.pick_units(build, units, rng), g, c, x, y, ids, ents, topo, events)
 
-def drawn(got: U32 & Pcg.Rng, g: Grid.Grid, +c: OceanState.Ctx, +d: Dist, +x: U32, +y: U32, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
+def drawn(+build: Builds.Build, got: U32 & Pcg.Rng, g: Grid.Grid, +c: OceanState.Ctx, +d: Dist, +x: U32, +y: U32, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (+r, rng) = got
   match d:
     case Dist{+tile, +threshold, +units}:
-      below((r < threshold : U32), g, c, Dist{tile, threshold, units}, x, y, ids, rng, ents, topo, events)
+      below(build, (r < threshold : U32), g, c, Dist{tile, threshold, units}, x, y, ids, rng, ents, topo, events)
 
 def keep_cell(hit: Bool, +p: U32, acc: List<&2, U32>) -> List<&2, U32>:
   match hit:
@@ -239,36 +240,36 @@ def candidates(g: Grid.Grid, +edge: U32, +tile: U32) -> Grid.Grid & List<&2, U32
       +cols = U32.to_nat((w - 2 * edge : U32))
       candidates_done(cand_rows(U32.to_nat((h - 2 * edge : U32)), (cells, Nil{}), cols, w, edge, edge, tile), w, h)
 
-def dist_at(+c: OceanState.Ctx, +d: Dist, +p: U32, s: OceanState.Sea) -> OceanState.Sea:
+def dist_at(+build: Builds.Build, +c: OceanState.Ctx, +d: Dist, +p: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      drawn(Pcg.draw(rng), g, c, d, (p .&. 65535 : U32), (p >> 16n : U32), ids, ents, topo, events)
+      drawn(build, Pcg.draw(rng), g, c, d, (p .&. 65535 : U32), (p >> 16n : U32), ids, ents, topo, events)
 
-def dist_list(ps: List<&2, U32>, s: OceanState.Sea, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
+def dist_list(+build: Builds.Build, ps: List<&2, U32>, s: OceanState.Sea, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
   match ps:
     case Nil{}:
       s
     case Con{+p, rest}:
-      dist_list(rest, dist_at(c, d, p, s), c, d)
+      dist_list(build, rest, dist_at(build, c, d, p, s), c, d)
 
-def dist_found(got: Grid.Grid & List<&2, U32>, ids: Grid.Grid, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
+def dist_found(+build: Builds.Build, got: Grid.Grid & List<&2, U32>, ids: Grid.Grid, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
   (g, +ps) = got
-  dist_list(ps, OceanState.Sea{g, ids, rng, ents, topo, events}, c, d)
+  dist_list(build, ps, OceanState.Sea{g, ids, rng, ents, topo, events}, c, d)
 
 # The distribute scan: y = edge .. height - edge - 1, x = edge .. width - edge - 1, row-major; ReserveTile does not
 # change tiles, so the tiles to draw for are found first.
-def distribute(+c: OceanState.Ctx, +d: Dist, s: OceanState.Sea) -> OceanState.Sea:
+def distribute(+build: Builds.Build, +c: OceanState.Ctx, +d: Dist, s: OceanState.Sea) -> OceanState.Sea:
   match d s:
     case Dist{+tile, +threshold, +units} OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      found = candidates(g, OceanPostData.ocean_population_edge_dist(), tile)
-      dist_found(found, ids, rng, ents, topo, events, c, Dist{tile, threshold, units})
+      found = candidates(g, OceanPostData.ocean_population_edge_dist(build), tile)
+      dist_found(build, found, ids, rng, ents, topo, events, c, Dist{tile, threshold, units})
 
-def distribute_if(on: Bool, +c: OceanState.Ctx, +d: Dist, s: OceanState.Sea) -> OceanState.Sea:
+def distribute_if(+build: Builds.Build, on: Bool, +c: OceanState.Ctx, +d: Dist, s: OceanState.Sea) -> OceanState.Sea:
   match on:
     case False{}:
       s
     case True{}:
-      distribute(c, d, s)
+      distribute(build, c, d, s)
 
 def count_sum(xs: List<&2, U32>, +acc: U32) -> U32:
   match xs:
@@ -281,42 +282,42 @@ def points_done(got: Grid.Grid & Pcg.Rng, ids: Grid.Grid, +ents: List<&2, OceanE
   (g, +rng) = got
   OceanState.Sea{g, ids, rng, ents, topo, events}
 
-def points_if(on: Bool, +c: OceanState.Ctx, +room: U32, +tile: U32, s: OceanState.Sea) -> OceanState.Sea:
+def points_if(+build: Builds.Build, on: Bool, +c: OceanState.Ctx, +room: U32, +tile: U32, s: OceanState.Sea) -> OceanState.Sea:
   match on:
     case False{}:
       s
     case True{}:
       match s:
         case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-          +needed = (2 * count_sum(Rooms.room_countprefabs((room * 2 : U32)), 0) + 10 : U32)
-          points_done(water_points(g, OceanState.width_of(c), OceanState.height_of(c), OceanPostData.ocean_population_edge_dist(), tile, needed, rng), ids, ents, topo, events)
+          +needed = (2 * count_sum(Rooms.room_countprefabs(build, (room * 2 : U32)), 0) + 10 : U32)
+          points_done(water_points(build, g, OceanState.width_of(c), OceanState.height_of(c), OceanPostData.ocean_population_edge_dist(build), tile, needed, rng), ids, ents, topo, events)
 
-def pieces_if(some: Bool, +c: OceanState.Ctx, +specs: List<&2, OceanPlace.Spec>, +tile: U32, s: OceanState.Sea) -> OceanState.Sea:
+def pieces_if(+build: Builds.Build, some: Bool, +c: OceanState.Ctx, +specs: List<&2, OceanPlace.Spec>, +tile: U32, s: OceanState.Sea) -> OceanState.Sea:
   match some:
     case False{}:
       s
     case True{}:
-      OceanPlace.place_set_pieces(specs, c, tile, OceanData.config_ocean_prefill_setpieces_min_land_dist(), PopulateSetpiece.ocean_room(), s)
+      OceanPlace.place_set_pieces(build, specs, c, tile, OceanData.config_ocean_prefill_setpieces_min_land_dist(), PopulateSetpiece.ocean_room(), s)
 
-def picks_of(+i: U32) -> List<&2, U32>:
-  Blob.drop(Distribute.ocean_picks(i), 2)
+def picks_of(+build: Builds.Build, +i: U32) -> List<&2, U32>:
+  Blob.drop(Distribute.ocean_picks(build, i), 2)
 
 # PopulateWaterType for the i-th ocean room of the level.
-def water_type(+c: OceanState.Ctx, +room: U32, +i: U32, s: OceanState.Sea) -> OceanState.Sea:
-  +tile = Rooms.value(room)
-  +specs = room_specs(room)
-  placed = pieces_if(Bool.not(List.is_empty(&2, OceanPlace.Spec, specs)), c, specs, tile, s)
-  pointed = points_if(Rooms.has(room, Rooms.flag_countprefabs()), c, room, tile, placed)
-  +on = Rooms.has(room, Rooms.flag_distribute_percent()) && Rooms.has(room, Rooms.flag_distributeprefabs())
-  distribute_if(on, c, Dist{tile, Rooms.distribute_threshold(room), picks_of(i)}, pointed)
+def water_type(+build: Builds.Build, +c: OceanState.Ctx, +room: U32, +i: U32, s: OceanState.Sea) -> OceanState.Sea:
+  +tile = Rooms.value(build, room)
+  +specs = room_specs(build, room)
+  placed = pieces_if(build, Bool.not(List.is_empty(&2, OceanPlace.Spec, specs)), c, specs, tile, s)
+  pointed = points_if(build, Rooms.has(build, room, Rooms.flag_countprefabs(build)), c, room, tile, placed)
+  +on = Rooms.has(build, room, Rooms.flag_distribute_percent(build)) && Rooms.has(build, room, Rooms.flag_distributeprefabs(build))
+  distribute_if(build, on, c, Dist{tile, Rooms.distribute_threshold(build, room), picks_of(build, i)}, pointed)
 
-def rooms_loop(rooms: List<&2, U32>, +c: OceanState.Ctx, +i: U32, s: OceanState.Sea) -> OceanState.Sea:
+def rooms_loop(+build: Builds.Build, rooms: List<&2, U32>, +c: OceanState.Ctx, +i: U32, s: OceanState.Sea) -> OceanState.Sea:
   match rooms:
     case Nil{}:
       s
     case Con{+room, rest}:
-      rooms_loop(rest, c, (i + 1 : U32), water_type(c, room, i, s))
+      rooms_loop(build, rest, c, (i + 1 : U32), water_type(build, c, room, i, s))
 
 # PopulateOcean(SpawnFunctions, entities, width, height, storygen.ocean_population) for the level's ocean rooms.
-def populate(+c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
-  rooms_loop(Tasks.lists(9), c, 0, s)
+def populate(+build: Builds.Build, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
+  rooms_loop(build, Tasks.lists(build, 9), c, 0, s)

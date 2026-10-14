@@ -14,6 +14,7 @@ import ../worldsim/tiles/groups.bend as TileGroups
 import ../worldsim/tiles/world.bend as TileWorld
 import ../worldsim/cave/automaton.bend as CaveAutomaton
 import ./graph.bend as GenGraph
+import ../data/builds.bend as Builds
 
 # The caves' custom tile pass, forest_map.Generate's `for k, node in pairs(topology_save.root:GetNodes(true)) do
 # node:SetTilesViaFunction(...)`: every node whose room has custom_tiles (RUNCA, map/room_functions.lua) runs the cellular
@@ -123,18 +124,18 @@ def centroid_step(has: Bool, st: Ca, +tile: U32, +item: U32, +x: U32, +y: U32, +
     case False{}:
       st
 
-def centroid_at(st: Ca, +room: U32, +site: TileWorld.Site) -> Ca:
+def centroid_at(+build: Builds.Build, st: Ca, +room: U32, +site: TileWorld.Site) -> Ca:
   match site:
     case TileWorld.Site{_, _, _, +cx, +cy, _}:
-      centroid_step(Bool.not(Blob.is_none(CaveStory.room_ca_centroid_tile(room))), st, CaveStory.room_ca_centroid_tile(room),
-        CaveStory.room_ca_centroid_item(room), F32Ops.to_i32(cx), F32Ops.to_i32(cy), F32.bits(cx), F32.bits(cy))
+      centroid_step(Bool.not(Blob.is_none(CaveStory.room_ca_centroid_tile(build, room))), st, CaveStory.room_ca_centroid_tile(build, room),
+        CaveStory.room_ca_centroid_item(build, room), F32Ops.to_i32(cx), F32Ops.to_i32(cy), F32.bits(cx), F32.bits(cy))
 
-def site_translated(empty: Bool, st: Ca, kept: List<&2, Points.Pt>, +layers: List<&2, U32>, +count: U32, +room: U32, +site: TileWorld.Site) -> Ca:
+def site_translated(+build: Builds.Build, empty: Bool, st: Ca, kept: List<&2, Points.Pt>, +layers: List<&2, U32>, +count: U32, +room: U32, +site: TileWorld.Site) -> Ca:
   match empty:
     case True{}:
       st
     case False{}:
-      centroid_at(points_loop(kept, st, layers, count), room, site)
+      centroid_at(build, points_loop(kept, st, layers, count), room, site)
 
 def initial_left(n: Nat, +layers: List<&2, U32>, +k: U32) -> List<&2, U32>:
   match n:
@@ -143,38 +144,38 @@ def initial_left(n: Nat, +layers: List<&2, U32>, +k: U32) -> List<&2, U32>:
     case 1n+p:
       Blob.at(layers, (k * 3 + 1 : U32)) <> initial_left(p, layers, (k + 1 : U32))
 
-def picked_translated(picked: Points.Picked, placed: List<&2, Placed>, +room: U32, +site: TileWorld.Site) -> Ca:
+def picked_translated(+build: Builds.Build, picked: Points.Picked, placed: List<&2, Placed>, +room: U32, +site: TileWorld.Site) -> Ca:
   match picked:
     case Points.Picked{g, rng, _, _, +kept}:
-      site_translated(List.is_empty(&2, Points.Pt, kept), Ca{g, rng, initial_left(U32.to_nat(CaveStory.room_ca_layer_count(room)), CaveStory.room_ca_layers(room), 0), placed},
-        kept, CaveStory.room_ca_layers(room), CaveStory.room_ca_layer_count(room), room, site)
+      site_translated(build, List.is_empty(&2, Points.Pt, kept), Ca{g, rng, initial_left(U32.to_nat(CaveStory.room_ca_layer_count(build, room)), CaveStory.room_ca_layers(build, room), 0), placed},
+        kept, CaveStory.room_ca_layers(build, room), CaveStory.room_ca_layer_count(build, room), room, site)
 
-def automaton_ran(ran: CaveAutomaton.Painted, +windows: Bool, +sites: Points.Sites, +vertex: U32, placed: List<&2, Placed>, +room: U32, +site: TileWorld.Site) -> Ca:
+def automaton_ran(+build: Builds.Build, ran: CaveAutomaton.Painted, +windows: Bool, +sites: Points.Sites, +vertex: U32, placed: List<&2, Placed>, +room: U32, +site: TileWorld.Site) -> Ca:
   match ran:
     case CaveAutomaton.Painted{g, rng}:
-      picked_translated(Points.points_for_site(windows, sites, vertex, g, rng), placed, room, site)
+      picked_translated(build, Points.points_for_site(windows, sites, vertex, g, rng), placed, room, site)
 
 # RUNCA.GeneratorFunction on one node: WorldSim:RunCA, GetPointsForSite (one more shuffle of the site's points) and the
 # translate loop over what it returns, then the centroid layer.
-def node_pass(st: Ca, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +vertex: U32, +room: U32) -> Ca:
+def node_pass(+build: Builds.Build, st: Ca, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +vertex: U32, +room: U32) -> Ca:
   match st:
     case Ca{g, rng, _, placed}:
-      automaton_ran(CaveAutomaton.run(windows, TileWorld.site(world, vertex), CaveStory.room_ca_iterations(room), CaveStory.room_ca_seed_mode(room),
-        CaveStory.room_ca_random_points(room), g, rng), windows, sites, vertex, placed, room, TileWorld.site(world, vertex))
+      automaton_ran(build, CaveAutomaton.run(windows, TileWorld.site(world, vertex), CaveStory.room_ca_iterations(build, room), CaveStory.room_ca_seed_mode(build, room),
+        CaveStory.room_ca_random_points(build, room), g, rng), windows, sites, vertex, placed, room, TileWorld.site(world, vertex))
 
-def custom_room(+s: StoryGraph.St, +n: U32) -> Bool:
+def custom_room(+build: Builds.Build, +s: StoryGraph.St, +n: U32) -> Bool:
   +room = StoryGraph.nf(s, n, StoryGraph.f_room())
   +kind = StoryGraph.nf(s, n, StoryGraph.f_kind())
   (U32.is_eq(kind, StoryGraph.id_room()) || U32.is_eq(kind, StoryGraph.id_start())) && StoryCatalog.is_cave_room(room)
-    && U32.is_ne((CaveStory.room_flags(StoryCatalog.cave_room(room)) .&. 1 : U32), 0)
+    && U32.is_ne((CaveStory.room_flags(build, StoryCatalog.cave_room(room)) .&. 1 : U32), 0)
 
-def custom_nodes(nodes: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
+def custom_nodes(+build: Builds.Build, nodes: List<&2, U32>, +s: StoryGraph.St) -> List<&2, U32>:
   match nodes:
     case Nil{}:
       Nil{}
     case Con{+n, rest}:
-      +tail = custom_nodes(rest, s)
-      Bool.pick(List<&2, U32>, custom_room(s, n), n <> tail, tail)
+      +tail = custom_nodes(build, rest, s)
+      Bool.pick(List<&2, U32>, custom_room(build, s, n), n <> tail, tail)
 
 def child_slots(graphs: List<&2, U32>, +s: StoryGraph.St) -> List<&2, StoryOrder.Slot>:
   match graphs:
@@ -187,12 +188,12 @@ def child_slots(graphs: List<&2, U32>, +s: StoryGraph.St) -> List<&2, StoryOrder
 def nodes_order(+s: StoryGraph.St) -> List<&2, U32>:
   StoryOrder.order(child_slots(StoryGraph.children_order(s), s))
 
-def nodes_loop(nodes: List<&2, U32>, st: Ca, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +s: StoryGraph.St, +k: GenGraph.Klei) -> Ca:
+def nodes_loop(+build: Builds.Build, nodes: List<&2, U32>, st: Ca, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +s: StoryGraph.St, +k: GenGraph.Klei) -> Ca:
   match nodes:
     case Nil{}:
       st
     case Con{+n, rest}:
-      nodes_loop(rest, node_pass(st, windows, sites, world, GenGraph.vertex_of(k, n), StoryCatalog.cave_room(StoryGraph.nf(s, n, StoryGraph.f_room()))), windows, sites, world, s, k)
+      nodes_loop(build, rest, node_pass(build, st, windows, sites, world, GenGraph.vertex_of(k, n), StoryCatalog.cave_room(StoryGraph.nf(s, n, StoryGraph.f_room()))), windows, sites, world, s, k)
 
 def world_of(sites: Points.Sites) -> TileWorld.World:
   match sites:
@@ -207,8 +208,8 @@ def any_crashes(nodes: List<&2, U32>, +world: TileWorld.World, +k: GenGraph.Klei
       CaveAutomaton.crashes(TileWorld.site(world, GenGraph.vertex_of(k, n))) || any_crashes(rest, world, k)
 
 # Whether the pass crashes the game: RunCA on a custom-tile node whose site has no polygon (CaveAutomaton.crashes).
-def crashes(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
-  any_crashes(custom_nodes(nodes_order(s), s), world_of(sites), k)
+def crashes(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> Bool:
+  any_crashes(custom_nodes(build, nodes_order(s), s), world_of(sites), k)
 
 # The tile map, the PCG32 stream and the items placed (in placement order) once every custom-tile node has run.
 type Tiles is Type:
@@ -220,15 +221,15 @@ def finished(st: Ca) -> Tiles:
       Tiles{g, rng, List.reverse(&2, Placed, placed)}
 
 # The custom tile pass over the tile map after ForceConnectivity, from the PCG32 stream after ConvertToTileMap.
-def run(+s: StoryGraph.St, +k: GenGraph.Klei, +windows: Bool, +sites: Points.Sites, g: Grid.Grid, rng: Pcg.Rng) -> Tiles:
-  finished(nodes_loop(custom_nodes(nodes_order(s), s), Ca{g, rng, Nil{}, Nil{}}, windows, sites, world_of(sites), s, k))
+def run(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +windows: Bool, +sites: Points.Sites, g: Grid.Grid, rng: Pcg.Rng) -> Tiles:
+  finished(nodes_loop(build, custom_nodes(build, nodes_order(s), s), Ca{g, rng, Nil{}, Nil{}}, windows, sites, world_of(sites), s, k))
 
-def item_prefabs(n: Nat, +item: U32) -> List<&2, U32>:
+def item_prefabs(+build: Builds.Build, n: Nat, +item: U32) -> List<&2, U32>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      PopulateNames.string_id(CaveStory.ca_item_name(item)) <> item_prefabs(p, (item + 1 : U32))
+      PopulateNames.string_id(build, CaveStory.ca_item_name(build, item)) <> item_prefabs(build, p, (item + 1 : U32))
 
 def entities_loop(placed: List<&2, Placed>, +prefabs: List<&2, U32>, +width: U32, +height: U32, +rng: Pcg.Rng, +acc: List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
   match placed:
@@ -240,5 +241,5 @@ def entities_loop(placed: List<&2, Placed>, +prefabs: List<&2, U32>, +width: U32
 # The savedata entities of the items the custom tile pass placed (Node:AddEntity with rand_offset = true, offsets from
 # the pass's own draws), newest first: the start of the land's entity list, before any Labyrinth, Maze or ConvertGround
 # entity. `rng` is the stream after the pass.
-def entities(placed: List<&2, Placed>, +width: U32, +height: U32, +rng: Pcg.Rng) -> List<&2, Entities.Ent>:
-  entities_loop(placed, item_prefabs(U32.to_nat(CaveStory.ca_items_count()), 0), width, height, rng, Nil{})
+def entities(+build: Builds.Build, placed: List<&2, Placed>, +width: U32, +height: U32, +rng: Pcg.Rng) -> List<&2, Entities.Ent>:
+  entities_loop(placed, item_prefabs(build, U32.to_nat(CaveStory.ca_items_count(build)), 0), width, height, rng, Nil{})

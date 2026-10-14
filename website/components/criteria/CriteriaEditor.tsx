@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import SetPieceSection from "@/components/criteria/set-pieces/SetPieceSection";
 import { levelCatalogOf } from "@/lib/catalog/level-catalog";
 import { MAX_FILTERS } from "@/lib/config/seedfinder-config";
@@ -26,8 +26,9 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
             onChange((current) => ({ ...current, generation: { ...current.generation, ...change } }));
     const setFilters = (update: (filters: WorldFilter[]) => WorldFilter[]) =>
             onChange((current) => ({ ...current, filters: update(current.filters) }));
-    const catalog = levelCatalogOf(state.shard);
-    const { generation, filters } = state;
+    const { shard, build, generation, filters } = state;
+    const catalog = levelCatalogOf(shard, build);
+    const world = useMemo(() => ({ shard, build }), [shard, build]);
 
     return (
             <>
@@ -67,7 +68,7 @@ export default function CriteriaEditor({ state, onChange }: CriteriaEditorProps)
                                 )}
                                 <WorldFilterCard
                                         filter={filter}
-                                        shard={state.shard}
+                                        world={world}
                                         index={index}
                                         total={filters.length}
                                         onChange={(changed) => setFilters((current) => replaceByKey(current, changed))}

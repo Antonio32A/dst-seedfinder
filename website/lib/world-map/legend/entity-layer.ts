@@ -1,5 +1,7 @@
 import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import { PREFAB_GROUP_IDS, PREFAB_GROUPS, type PrefabGroupId } from "@/lib/catalog/world";
+import { generatedBy } from "@/lib/config/builds";
+import { type GameBuild, LATEST_BUILD } from "@/lib/config/game-builds";
 import type { Shard } from "@/lib/config/seedfinder-config";
 import type { GeneratedWorld } from "@/lib/world-map/world/world-dump";
 
@@ -81,11 +83,12 @@ export interface EntityLayer {
     /** Interleaved `x, z` of the entry then the exit wormhole, or tentacle pillar in the caves, per link. */
     links: Float32Array;
     shard: Shard;
+    build: GameBuild;
     linkGroup: number;
 }
 
-export const groupOf = (prefab: string, shard: Shard = "forest") => {
-    const group = shardCatalog(shard).byId.get(prefab)?.group;
+export const groupOf = (prefab: string, shard: Shard = "forest", build: GameBuild = LATEST_BUILD) => {
+    const group = shardCatalog(shard, build).byId.get(prefab)?.group;
     return group === undefined ? OTHER : PREFAB_GROUP_IDS.indexOf(group);
 };
 
@@ -106,18 +109,19 @@ function linkEnds(world: Pick<GeneratedWorld, "prefabs" | "links"> & Partial<Pic
 
 /** One dot per entity, the groups listed first last, so they're drawn on top. */
 export function entityLayer(
-    world: Pick<GeneratedWorld, "prefabs" | "links"> & Partial<Pick<GeneratedWorld, "shard" | "pillarLinks">>
+    world: Pick<GeneratedWorld, "prefabs" | "links"> & Partial<Pick<GeneratedWorld, "shard" | "gameBuild" | "pillarLinks">>
 ): EntityLayer {
     const shard = world.shard ?? "forest";
+    const build = generatedBy(world);
     const counts = MAP_GROUPS.map(() => 0);
-    for (const { name, positions } of world.prefabs) counts[groupOf(name, shard)] += positions.length / 2;
+    for (const { name, positions } of world.prefabs) counts[groupOf(name, shard, build)] += positions.length / 2;
     const next = counts.map((_, group) => counts.slice(group + 1).reduce((sum, count) => sum + count, 0));
     const total = counts.reduce((sum, count) => sum + count, 0);
     const positions = new Float32Array(2 * total);
     const groups = new Uint8Array(total);
     const prefabs = new Uint16Array(total);
     world.prefabs.forEach(({ name, positions: centi }, prefab) => {
-        const group = groupOf(name, shard);
+        const group = groupOf(name, shard, build);
         const dot = next[group];
         groups.fill(group, dot, dot + centi.length / 2);
         prefabs.fill(prefab, dot, dot + centi.length / 2);
@@ -126,5 +130,6 @@ export function entityLayer(
     });
     const links = linkEnds(world, shard);
     const names = world.prefabs.map(({ name }) => name);
-    return { positions, groups, names, prefabs, links, shard, linkGroup: groupOf(LINK_PREFAB[shard], shard) };
+    const linkGroup = groupOf(LINK_PREFAB[shard], shard, build);
+    return { positions, groups, names, prefabs, links, shard, build, linkGroup };
 }

@@ -20,7 +20,7 @@ export interface IconLayer {
 }
 
 export function iconLayer(layer: EntityLayer): IconLayer {
-    const { byId } = shardCatalog(layer.shard);
+    const { byId } = shardCatalog(layer.shard, layer.build);
     const iconed = Uint8Array.from(layer.names, (name) => (byId.get(name)?.icon === undefined ? 0 : 1));
     const dots = Array.from(layer.prefabs.keys()).filter((dot) => iconed[layer.prefabs[dot]] === 1);
     const instances = new Float32Array(ICON_STRIDE * dots.length);

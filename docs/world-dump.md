@@ -29,12 +29,15 @@ game data.
 | 12 | u32 | status | `1` generated, `0` the world generation gave up |
 | 16 | u32 | platform | the OS of the host that generated the world: `0` unknown, `1` Windows, `2` Linux |
 | 20 | u32 | shard | the shard the world belongs to: `0` forest (`SURVIVAL_TOGETHER`), `1` caves (`DST_CAVE`) |
-| 24 | u32 | game build | the game's build number (e.g. `756039`), `0` when unknown |
+| 24 | u32 | game build | the build the world was generated for (`seedfinder world dump --build`, e.g. `756039`), `0` when unknown |
 | 28 | u32 | width | tiles along x |
 | 32 | u32 | height | tiles along z |
 | 36 | | sections | until the end of the file (§ 3) |
 
 A file whose world generation gave up ends after `shard`: it is exactly 24 bytes.
+
+`seedfinder world eval --world` and `world find --worlds` reject a dump whose game build is neither `0` nor the
+config's `build`.
 
 A reader rejects a file with another magic, and one with another version with an error that names the version
 (format 1 files have no sections, format 2 files have no shard field and are 4 bytes shorter in the header; regenerate

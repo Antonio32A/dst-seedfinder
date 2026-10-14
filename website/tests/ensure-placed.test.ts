@@ -12,7 +12,7 @@ import {
     validateSearch
 } from "@/lib/criteria/search-state";
 
-const forest = levelCatalogOf("forest");
+const forest = levelCatalogOf("forest", 756039);
 
 const ensured = (pieceId: string) => ({ ...newRule(pieceId, forest), ensurePlaced: true });
 
@@ -48,7 +48,8 @@ describe("an ensure placed set piece", () => {
 });
 
 describe("validating `placed` like the finder", () => {
-    const rule = (placed: unknown) => ({ generation: { setpieces: [{ required: { MooseNest: 1 }, placed }] } });
+    const rule = (placed: unknown) =>
+        ({ version: 3, build: 756039, generation: { setpieces: [{ required: { MooseNest: 1 }, placed }] } });
 
     it("only takes names of the rule's `required`, each once", () => {
         expect(validateConfig(rule(["Chessy_1"]))).toEqual({
@@ -64,7 +65,7 @@ describe("validating `placed` like the finder", () => {
     });
 
     it("is unknown in the caves", () => {
-        expect(validateConfig({ shard: "caves", generation: { setpieces: [{ required: { MiscBoon: 1 }, placed: ["MiscBoon"] }] } })).toEqual({
+        expect(validateConfig({ version: 3, build: 756039, shard: "caves", generation: { setpieces: [{ required: { MiscBoon: 1 }, placed: ["MiscBoon"] }] } })).toEqual({
             ok: false,
             error: "config: unknown key \"placed\" in generation.setpieces[0]"
         });

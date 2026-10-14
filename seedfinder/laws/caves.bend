@@ -23,28 +23,29 @@ import ../ocean/post.bend as OceanPost
 import ../data/ocean_post.bend as OceanPostData
 import ../filters/dump.bend as FilterDump
 import ../post/archive.bend as Archive
+import ../data/builds.bend as Builds
 
 # The golden values are the real caves worlds of builds 747465 and 756039 (scripts/groundtruth, seed 1 of
-# build/groundtruth/data/worlds_caves): the level table decodes byte for byte into the dumped tasks and set pieces,
+# build/groundtruth/756039/data/worlds_caves): the level table decodes byte for byte into the dumped tasks and set pieces,
 # and the draw counts are the dump's rng_checkpoints (choose_tasks 21).
 
 # Prefab swaps (twiggy trees, the grass gekko is excluded in the caves), the picked optional tasks as optional indices
 # in chosen order, the chosen task masks and the PCG32 state after 21 draws.
 law cave_seed_1_prefix:
-  {CavePrefix.chosen(1) == CavePrefix.Chosen{2, [9, 1, 11, 8, 3, 16, 6, 14], CavePrefix.Masks{4294967295, 169621, 2148007682, False{}}, Pcg.at_counter(1, 21)} : CavePrefix.Chosen}
+  {CavePrefix.chosen(Builds.Build{756039}, 1) == CavePrefix.Chosen{2, [9, 1, 11, 8, 3, 16, 6, 14], CavePrefix.Masks{4294967295, 169621, 2148007682, False{}}, Pcg.at_counter(1, 21)} : CavePrefix.Chosen}
 
 def cave_seed_1_prefix():
   {==}
 
 # AddSetPeices (Ice Hounds, the boons, lures_and_worms), ChooseSetPieces and the pairs() order of level.set_pieces.
 law cave_seed_1_level_table:
-  {CaveSummary.summary_json(1) == "{\"prefab_swaps\":{\"grass\":\"regular grass\",\"twigs\":\"twiggy trees\",\"berries\":\"regular berries\"},\"tasks\":[{\"task\":\"MudWorld\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MudCave\",\"set_pieces\":[\"WoodBoon\"],\"random_set_pieces\":[]},{\"task\":\"MudLights\",\"set_pieces\":[\"TentaclePillar\",\"ResurrectionStone\"],\"random_set_pieces\":[]},{\"task\":\"MudPit\",\"set_pieces\":[\"Level2GrassBoon\",\"Ice Hounds\"],\"random_set_pieces\":[]},{\"task\":\"BigBatCave\",\"set_pieces\":[\"TentaclePillarToAtrium\"],\"random_set_pieces\":[]},{\"task\":\"RockyLand\",\"set_pieces\":[\"TentaclePillar\",\"skeleton_notplayer\"],\"random_set_pieces\":[]},{\"task\":\"RedForest\",\"set_pieces\":[\"ResurrectionStone\"],\"random_set_pieces\":[]},{\"task\":\"GreenForest\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"BlueForest\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"SpillagmiteCaverns\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MoonCaveForest\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"ArchiveMaze\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask1\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask2\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask3\",\"set_pieces\":[\"MiscBoon\"],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask4\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask5\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask6\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask7\",\"set_pieces\":[\"Level2WoodBoon\"],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask8\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask9\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask10\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CentipedeCaveTask\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"ToadStoolTask1\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"ToadStoolTask2\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"ToadStoolTask3\",\"set_pieces\":[\"RockBoon\"],\"random_set_pieces\":[]},{\"task\":\"LichenLand\",\"set_pieces\":[\"lures_and_worms\"],\"random_set_pieces\":[]},{\"task\":\"Residential\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"Military\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"Sacred\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"TheLabyrinth\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"SacredAltar\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"AtriumMaze\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"SpiderLand\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"CaveSwamp\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MoreAltars\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"RabbitCity\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"PleasantSinkhole\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"Residential2\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"BatCloister\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MilitaryPits\",\"set_pieces\":[],\"random_set_pieces\":[]}]}" : String}
+  {CaveSummary.summary_json(Builds.Build{756039}, 1) == "{\"prefab_swaps\":{\"grass\":\"regular grass\",\"twigs\":\"twiggy trees\",\"berries\":\"regular berries\"},\"tasks\":[{\"task\":\"MudWorld\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MudCave\",\"set_pieces\":[\"WoodBoon\"],\"random_set_pieces\":[]},{\"task\":\"MudLights\",\"set_pieces\":[\"TentaclePillar\",\"ResurrectionStone\"],\"random_set_pieces\":[]},{\"task\":\"MudPit\",\"set_pieces\":[\"Level2GrassBoon\",\"Ice Hounds\"],\"random_set_pieces\":[]},{\"task\":\"BigBatCave\",\"set_pieces\":[\"TentaclePillarToAtrium\"],\"random_set_pieces\":[]},{\"task\":\"RockyLand\",\"set_pieces\":[\"TentaclePillar\",\"skeleton_notplayer\"],\"random_set_pieces\":[]},{\"task\":\"RedForest\",\"set_pieces\":[\"ResurrectionStone\"],\"random_set_pieces\":[]},{\"task\":\"GreenForest\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"BlueForest\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"SpillagmiteCaverns\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MoonCaveForest\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"ArchiveMaze\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask1\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask2\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask3\",\"set_pieces\":[\"MiscBoon\"],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask4\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask5\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask6\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask7\",\"set_pieces\":[\"Level2WoodBoon\"],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask8\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask9\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CaveExitTask10\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"CentipedeCaveTask\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"ToadStoolTask1\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"ToadStoolTask2\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"ToadStoolTask3\",\"set_pieces\":[\"RockBoon\"],\"random_set_pieces\":[]},{\"task\":\"LichenLand\",\"set_pieces\":[\"lures_and_worms\"],\"random_set_pieces\":[]},{\"task\":\"Residential\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"Military\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"Sacred\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"TheLabyrinth\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"SacredAltar\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"AtriumMaze\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"SpiderLand\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"CaveSwamp\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MoreAltars\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"RabbitCity\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"PleasantSinkhole\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"Residential2\",\"set_pieces\":[],\"random_set_pieces\":[]},{\"task\":\"BatCloister\",\"set_pieces\":[\"TentaclePillar\"],\"random_set_pieces\":[]},{\"task\":\"MilitaryPits\",\"set_pieces\":[],\"random_set_pieces\":[]}]}" : String}
 
 def cave_seed_1_level_table():
   {==}
 
 law cave_grass_gekko_is_excluded:
-  {CaveCatalog.swaps_possible() == 6 : U32}
+  {CaveCatalog.swaps_possible(Builds.Build{756039}) == 6 : U32}
 
 def cave_grass_gekko_is_excluded():
   {==}
@@ -56,13 +57,13 @@ def shard_flag_values():
   {==}
 
 law forest_config_accepts_the_shard_key:
-  {Config.config_of("{\"shard\": \"forest\"}") == Done{Config.Config{True{}, Config.anything(), [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"shard\": \"forest\"}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.anything(), [Config.no_later()], None{}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def forest_config_accepts_the_shard_key():
   {==}
 
 law config_rejects_an_unknown_shard:
-  {Config.config_of("{\"shard\": \"nether\"}") == Fail{(2, "config: unknown shard \"nether\" (forest or caves)")} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"shard\": \"nether\"}", None{}) == Fail{(2, "config: unknown shard \"nether\" (forest or caves)")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_rejects_an_unknown_shard():
   {==}
@@ -74,117 +75,117 @@ def config_names_its_shard():
   {==}
 
 law cave_config_tasks:
-  {CaveConfig.config_of("{\"shard\": \"caves\", \"generation\": {\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, [], []}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"shard\": \"caves\", \"generation\": {\"tasks\": {\"required\": [\"MoreAltars\"], \"excluded\": [\"MudWorld\"]}}}", None{}) == Done{CaveConfig.Config{True{}, Builds.Build{756039}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{1, 0}, 0, 0, [], []}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_tasks():
   {==}
 
 law cave_config_rejects_forest_tasks:
-  {CaveConfig.config_of("{\"generation\": {\"tasks\": {\"required\": [\"Great Plains\"]}}}") == Fail{(2, "config: unknown task \"Great Plains\" in generation.tasks.required")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"tasks\": {\"required\": [\"Great Plains\"]}}}", None{}) == Fail{(2, "config: unknown task \"Great Plains\" in generation.tasks.required")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_rejects_forest_tasks():
   {==}
 
 law cave_config_rejects_the_gekko:
-  {CaveConfig.config_of("{\"generation\": {\"prefab_swaps\": {\"grass\": \"grass gekko\"}}}") == Fail{(2, "config: unknown prefab swap \"grass\": \"grass gekko\" in generation.prefab_swaps")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"prefab_swaps\": {\"grass\": \"grass gekko\"}}}", None{}) == Fail{(2, "config: unknown prefab swap \"grass\": \"grass gekko\" in generation.prefab_swaps")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_rejects_the_gekko():
   {==}
 
 def later_of(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match compiled:
-    case Done{CaveConfig.Config{_, _, +later, _}}:
+    case Done{CaveConfig.Config{_, _, _, +later, _}}:
       Done{later}
     case Fail{failure}:
       Fail{failure}
 
 def cave_later(+text: String) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
-  later_of(CaveConfig.config_of(text))
+  later_of(CaveConfig.config_of(text, None{}))
 
 law cave_config_counts_cave_prefabs:
-  {cave_later("{\"filters\": [{\"counts\": [{\"prefab\": \"cave_exit\", \"min\": 3}]}]}") == Done{[Rules.Later{[], [Rules.Count{[370], Some{3}, None{}, None{}}], [], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+  {cave_later("{\"version\": 3, \"build\": 756039, \"filters\": [{\"counts\": [{\"prefab\": \"cave_exit\", \"min\": 3}]}]}") == Done{[Rules.Later{[], [Rules.Count{[370], Some{3}, None{}, None{}}], [], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_counts_cave_prefabs():
   {==}
 
 law cave_config_pillars_replace_wormholes:
-  {cave_later("{\"filters\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": [\"tentacle_pillar\", \"tentacle_pillar_atrium\"], \"pillars\": true}]}]}") == Done{[Rules.Later{[], [], [Rules.Distance{[370], [454, 455], None{}, None{}, Rules.Metric{False{}, True{}, True{}}}], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+  {cave_later("{\"version\": 3, \"build\": 756039, \"filters\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": [\"tentacle_pillar\", \"tentacle_pillar_atrium\"], \"pillars\": true}]}]}") == Done{[Rules.Later{[], [], [Rules.Distance{[370], [454, 455], None{}, None{}, Rules.Metric{False{}, True{}, True{}}}], [], [], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_pillars_replace_wormholes():
   {==}
 
 law cave_config_rejects_wormholes:
-  {cave_later("{\"filters\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": \"cave_exit\", \"wormholes\": true}]}]}") == Fail{(2, "config: unknown key \"wormholes\" in filters[0].distances[0]")} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+  {cave_later("{\"version\": 3, \"build\": 756039, \"filters\": [{\"distances\": [{\"from\": \"cave_exit\", \"to\": \"cave_exit\", \"wormholes\": true}]}]}") == Fail{(2, "config: unknown key \"wormholes\" in filters[0].distances[0]")} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_rejects_wormholes():
   {==}
 
 law cave_config_rejects_forest_prefabs:
-  {cave_later("{\"filters\": [{\"counts\": [{\"prefab\": \"beefalo\"}]}]}") == Fail{(2, "config: unknown prefab \"beefalo\" in filters[0].counts[0].prefab")} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
+  {cave_later("{\"version\": 3, \"build\": 756039, \"filters\": [{\"counts\": [{\"prefab\": \"beefalo\"}]}]}") == Fail{(2, "config: unknown prefab \"beefalo\" in filters[0].counts[0].prefab")} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_rejects_forest_prefabs():
   {==}
 
 law forest_config_rejects_cave_prefabs_and_pillars:
-  {(Config.config_of("{\"filters\": [{\"counts\": [{\"prefab\": \"cave_exit\"}]}]}"), Config.config_of("{\"filters\": [{\"distances\": [{\"from\": \"rook\", \"to\": \"rook\", \"pillars\": true}]}]}")) == (Fail{(2, "config: unknown prefab \"cave_exit\" in filters[0].counts[0].prefab")}, Fail{(2, "config: unknown key \"pillars\" in filters[0].distances[0]")}) : (Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>)}
+  {(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"counts\": [{\"prefab\": \"cave_exit\"}]}]}", None{}), Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"distances\": [{\"from\": \"rook\", \"to\": \"rook\", \"pillars\": true}]}]}", None{})) == (Fail{(2, "config: unknown prefab \"cave_exit\" in filters[0].counts[0].prefab")}, Fail{(2, "config: unknown key \"pillars\" in filters[0].distances[0]")}) : (Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>)}
 
 def forest_config_rejects_cave_prefabs_and_pillars():
   {==}
 
 law cave_config_rejects_forest_set_pieces:
-  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"required\": {\"CaveEntrance\": 1}}]}}") == Fail{(2, "config: unknown set piece \"CaveEntrance\" in generation.setpieces[0].required")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"required\": {\"CaveEntrance\": 1}}]}}", None{}) == Fail{(2, "config: unknown set piece \"CaveEntrance\" in generation.setpieces[0].required")} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_rejects_forest_set_pieces():
   {==}
 
 law cave_config_set_pieces:
-  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], []}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}]}}", None{}) == Done{CaveConfig.Config{True{}, Builds.Build{756039}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], []}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_set_pieces():
   {==}
 
 # A caves setpieces group and its total, kept apart from the rules like in the forest.
 law cave_config_set_piece_group:
-  {CaveConfig.config_of("{\"generation\": {\"setpieces\": [{\"any\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}, {\"required\": {\"MiscBoon\": 3}}], \"total\": 5}]}}") == Done{CaveConfig.Config{True{}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [], [CaveConfig.Group{[[CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], [CaveConfig.Rule{32, CaveConfig.TaskSet{4294967295, 4294967295}, 3, 4294967295}]], Some{LevelChecks.Total{5, None{}}}}]}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
+  {CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"tasks\": [\"MudWorld\"], \"required\": {\"MiscBoon\": [1, 2]}}, {\"required\": {\"MiscBoon\": 3}}], \"total\": 5}]}}", None{}) == Done{CaveConfig.Config{True{}, Builds.Build{756039}, CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 0, 0, [], [CaveConfig.Group{[[CaveConfig.Rule{32, CaveConfig.TaskSet{1, 0}, 1, 2}], [CaveConfig.Rule{32, CaveConfig.TaskSet{4294967295, 4294967295}, 3, 4294967295}]], Some{LevelChecks.Total{5, None{}}}}]}, [Rules.nothing_later()], []}} : Result<&1, &1, U32 & String, CaveConfig.Config>}
 
 def cave_config_set_piece_group():
   {==}
 
 # Seed 1 has MoreAltars (id 44, bit 12 of the second word) and seed 3 has not.
 law cave_config_matches_by_task:
-  {(CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, [], []}], 1), CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, [], []}], 3)) == (True{}, False{}) : (Bool & Bool)}
+  {(CaveConfig.matches(Builds.Build{756039}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, [], []}], 1), CaveConfig.matches(Builds.Build{756039}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 4096}, CaveConfig.TaskSet{0, 0}, 0, 0, [], []}], 3)) == (True{}, False{}) : (Bool & Bool)}
 
 def cave_config_matches_by_task():
   {==}
 
 # Seed 1 has twiggy trees (bit 1 of the swaps) and no grass gekko (bit 0, which the caves never take).
 law cave_config_matches_by_swap:
-  {(CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 2, 2, [], []}], 1), CaveConfig.matches([CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 1, 1, [], []}], 1)) == (True{}, False{}) : (Bool & Bool)}
+  {(CaveConfig.matches(Builds.Build{756039}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 2, 2, [], []}], 1), CaveConfig.matches(Builds.Build{756039}, [CaveConfig.Criteria{CaveConfig.TaskSet{0, 0}, CaveConfig.TaskSet{0, 0}, 1, 1, [], []}], 1)) == (True{}, False{}) : (Bool & Bool)}
 
 def cave_config_matches_by_swap():
   {==}
 
 law cave_setpiece_filter:
-  {CaveFilter.parse(["MiscBoon:2", "TentaclePillar:1:10"], Done{Nil{}}) == Done{[CaveFilter.Bound{2, 1, 10}, CaveFilter.Bound{32, 2, 255}]} : Result<&1, &1, U32 & String, List<&2, CaveFilter.Bound>>}
+  {CaveFilter.parse(Builds.Build{756039}, ["MiscBoon:2", "TentaclePillar:1:10"], Done{Nil{}}) == Done{[CaveFilter.Bound{2, 1, 10}, CaveFilter.Bound{32, 2, 255}]} : Result<&1, &1, U32 & String, List<&2, CaveFilter.Bound>>}
 
 def cave_setpiece_filter():
   {==}
 
 law cave_setpiece_filter_rejects_forest_pieces:
-  {CaveFilter.parse(["MooseNest"], Done{Nil{}}) == Fail{(2, "unknown set piece: MooseNest")} : Result<&1, &1, U32 & String, List<&2, CaveFilter.Bound>>}
+  {CaveFilter.parse(Builds.Build{756039}, ["MooseNest"], Done{Nil{}}) == Fail{(2, "unknown set piece: MooseNest")} : Result<&1, &1, U32 & String, List<&2, CaveFilter.Bound>>}
 
 def cave_setpiece_filter_rejects_forest_pieces():
   {==}
 
 # Caves room and task ids sit above the forest's rows, so one id says which table it belongs to.
 law cave_ids_sit_above_the_forest_rows:
-  {((Rooms.forest_room_count() <= StoryCatalog.cave_room_base() : U32), (Tasks.task_count() <= StoryCatalog.cave_task_base() : U32)) == (True{}, True{}) : (Bool & Bool)}
+  {((Rooms.forest_room_count(Builds.Build{756039}) <= StoryCatalog.cave_room_base() : U32), (Tasks.task_count(Builds.Build{756039}) <= StoryCatalog.cave_task_base() : U32)) == (True{}, True{}) : (Bool & Bool)}
 
 def cave_ids_sit_above_the_forest_rows():
   {==}
 
 law story_catalog_names_both_shards:
-  {(StoryCatalog.task_name(0), (StoryCatalog.task_name(StoryCatalog.caves_task_id(0)), StoryCatalog.task_name(StoryCatalog.caves_task_id(8)))) == ("Make a pick", ("MudWorld", "BlueForest")) : (String & (String & String))}
+  {(StoryCatalog.task_name(Builds.Build{756039}, 0), (StoryCatalog.task_name(Builds.Build{756039}, StoryCatalog.caves_task_id(0)), StoryCatalog.task_name(Builds.Build{756039}, StoryCatalog.caves_task_id(8)))) == ("Make a pick", ("MudWorld", "BlueForest")) : (String & (String & String))}
 
 def story_catalog_names_both_shards():
   {==}
@@ -196,7 +197,7 @@ def cave_custom_layer_counts_run_down():
   {==}
 
 def marker(+x: U32) -> OceanEnts.Ent:
-  OceanEnts.Ent{OceanPostData.wormhole_marker(), F64Repr.from_u32(x), F64Repr.zero(), 0, 0, 0}
+  OceanEnts.Ent{OceanPostData.wormhole_marker(Builds.Build{756039}), F64Repr.from_u32(x), F64Repr.zero(), 0, 0, 0}
 
 def paired(+prefab: U32, +x: U32, +id: U32, +target: U32) -> OceanEnts.Ent:
   OceanEnts.Ent{prefab, F64Repr.from_u32(x), F64Repr.zero(), id, target, 0}
@@ -204,7 +205,7 @@ def paired(+prefab: U32, +x: U32, +id: U32, +target: U32) -> OceanEnts.Ent:
 # The tentacle pillars the real seed 1 saved: ids from MIN_WORMHOLE_ID in marker order, each targeting the other of its
 # pair; an odd last marker is dropped (entities are newest first).
 law cave_pillars_pair_in_marker_order:
-  {OceanPost.swap_wormholes(900, [marker(4), marker(3), marker(2), marker(1), marker(0)]) == [paired(900, 3, 2300003, 2300002), paired(900, 2, 2300002, 2300003), paired(900, 1, 2300001, 2300000), paired(900, 0, 2300000, 2300001)] : List<&2, OceanEnts.Ent>}
+  {OceanPost.swap_wormholes(Builds.Build{756039}, 900, [marker(4), marker(3), marker(2), marker(1), marker(0)]) == [paired(900, 3, 2300003, 2300002), paired(900, 2, 2300002, 2300003), paired(900, 1, 2300001, 2300000), paired(900, 0, 2300000, 2300001)] : List<&2, OceanEnts.Ent>}
 
 def cave_pillars_pair_in_marker_order():
   {==}

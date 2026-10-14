@@ -16,6 +16,7 @@ import ./parse.bend as Parse
 import ./json.bend as Json
 import ./level_checks.bend as LevelChecks
 import ../level/summary.bend as LevelSummary
+import ../data/builds.bend as Builds
 
 # The checks of the world rules (criteria.py check_count, check_distance, check_tiles, check_route, and the setpieces
 # rules' `placed` names): whether a rule holds and its witness fields, as evaluate.py --json prints them after "ok".
@@ -56,67 +57,67 @@ def point_at(+points: List<&2, Anchor.Point>, +i: U32) -> Anchor.Point:
 def json_list(+items: List<&2, String>) -> String:
   "[" ++ String.join(items, ",") ++ "]"
 
-def hop_items(hops: List<&2, Metric.Hop>) -> List<&2, String>:
+def hop_items(+build: Builds.Build, hops: List<&2, Metric.Hop>) -> List<&2, String>:
   match hops:
     case Nil{}:
       Nil{}
     case Con{Metric.Hop{+entry, +exit}, rest}:
-      ("{\"entry\":" ++ Witness.instance(entry) ++ ",\"exit\":" ++ Witness.instance(exit) ++ "}") <> hop_items(rest)
+      ("{\"entry\":" ++ Witness.instance(build, entry) ++ ",\"exit\":" ++ Witness.instance(build, exit) ++ "}") <> hop_items(build, rest)
 
-def hops_json(hops: List<&2, Metric.Hop>) -> String:
-  json_list(hop_items(hops))
+def hops_json(+build: Builds.Build, hops: List<&2, Metric.Hop>) -> String:
+  json_list(hop_items(build, hops))
 
-def hops_field(+metric: Rules.Metric, hops: List<&2, Metric.Hop>) -> String:
+def hops_field(+build: Builds.Build, +metric: Rules.Metric, hops: List<&2, Metric.Hop>) -> String:
   match metric:
     case Rules.Metric{_, _, +caves}:
-      ",\"" ++ Rules.links_key(caves) ++ "\":" ++ hops_json(hops)
+      ",\"" ++ Rules.links_key(caves) ++ "\":" ++ hops_json(build, hops)
 
-def counted_items(targets: List<&2, Anchor.Point>, relaxed: List<&2, Metric.Relaxed>, +anchors: List<&2, Anchor.Point>, +within: F64Repr.F64, +acc: List<&2, String>) -> List<&2, String>:
+def counted_items(+build: Builds.Build, targets: List<&2, Anchor.Point>, relaxed: List<&2, Metric.Relaxed>, +anchors: List<&2, Anchor.Point>, +within: F64Repr.F64, +acc: List<&2, String>) -> List<&2, String>:
   match targets relaxed:
     case Con{+t, ts} Con{Metric.Relaxed{+cost, +seed}, rs}:
-      +item = "{" ++ Witness.instance_fields(point_inst(t)) ++ ",\"near\":" ++ Witness.instance(point_inst(point_at(anchors, seed))) ++ ",\"distance\":" ++ cost_text(cost) ++ "}"
-      counted_items(ts, rs, anchors, within, Bool.pick(List<&2, String>, Metric.is_reached(cost) && Metric.within_max(cost, Some{within}), item <> acc, acc))
+      +item = "{" ++ Witness.instance_fields(build, point_inst(t)) ++ ",\"near\":" ++ Witness.instance(build, point_inst(point_at(anchors, seed))) ++ ",\"distance\":" ++ cost_text(cost) ++ "}"
+      counted_items(build, ts, rs, anchors, within, Bool.pick(List<&2, String>, Metric.is_reached(cost) && Metric.within_max(cost, Some{within}), item <> acc, acc))
     case _ _:
       List.reverse(&2, String, acc)
 
 def length_u32(+items: List<&2, String>) -> U32:
   U32.from_nat(List.length(&2, String, items))
 
-def count_near(+world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, near: Rules.Near, +min: Maybe<&2, U32>, +max: Maybe<&2, U32>) -> Check:
+def count_near(+build: Builds.Build, +world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, near: Rules.Near, +min: Maybe<&2, U32>, +max: Maybe<&2, U32>) -> Check:
   match near:
     case Rules.Near{+prefabs, +within, +metric}:
       +s = Relax.space(world, metric)
       +anchors = Relax.points(s, FilterWorld.instances(world, prefabs))
       +targets = Relax.points(s, insts)
-      +items = counted_items(targets, Relax.relax(s, Relax.zero_sources(s, anchors), targets, True{}, None{}), anchors, within, Nil{})
+      +items = counted_items(build, targets, Relax.relax(s, Relax.zero_sources(s, anchors), targets, True{}, None{}), anchors, within, Nil{})
       +n = length_u32(items)
       Check{at_least(n, min) && at_most(n, max), ",\"count\":" ++ U32.show(n) ++ ",\"total\":" ++ U32.show(U32.from_nat(List.length(&2, FilterWorld.Inst, insts)))
         ++ ",\"instances\":" ++ json_list(items)}
 
-def count_with(near: Maybe<&2, Rules.Near>, +world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, +min: Maybe<&2, U32>, +max: Maybe<&2, U32>) -> Check:
+def count_with(+build: Builds.Build, near: Maybe<&2, Rules.Near>, +world: FilterWorld.World, +insts: List<&2, FilterWorld.Inst>, +min: Maybe<&2, U32>, +max: Maybe<&2, U32>) -> Check:
   match near:
     case None{}:
       +n = U32.from_nat(List.length(&2, FilterWorld.Inst, insts))
       Check{at_least(n, min) && at_most(n, max), ",\"count\":" ++ U32.show(n)}
     case Some{rule}:
-      count_near(world, insts, rule, min, max)
+      count_near(build, world, insts, rule, min, max)
 
 # criteria.py check_count.
-def count(+world: FilterWorld.World, rule: Rules.Count) -> Check:
+def count(+build: Builds.Build, +world: FilterWorld.World, rule: Rules.Count) -> Check:
   match rule:
     case Rules.Count{+prefabs, +min, +max, near}:
-      count_with(near, world, FilterWorld.instances(world, prefabs), min, max)
+      count_with(build, near, world, FilterWorld.instances(world, prefabs), min, max)
 
-def distance_leg(leg: Metric.Leg, +metric: Rules.Metric, +cost: Metric.Cost, +source: Anchor.Point, +goal: Anchor.Point, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
+def distance_leg(+build: Builds.Build, leg: Metric.Leg, +metric: Rules.Metric, +cost: Metric.Cost, +source: Anchor.Point, +goal: Anchor.Point, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
   match leg:
     case Metric.Leg{_, hops}:
-      Check{Metric.within(cost, min, max), ",\"distance\":" ++ cost_text(cost) ++ ",\"from\":" ++ Witness.instance(point_inst(source)) ++ ",\"to\":"
-        ++ Witness.instance(point_inst(goal)) ++ hops_field(metric, hops)}
+      Check{Metric.within(cost, min, max), ",\"distance\":" ++ cost_text(cost) ++ ",\"from\":" ++ Witness.instance(build, point_inst(source)) ++ ",\"to\":"
+        ++ Witness.instance(build, point_inst(goal)) ++ hops_field(build, metric, hops)}
 
-def distance_found(reached: Bool, +metric: Rules.Metric, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
+def distance_found(+build: Builds.Build, reached: Bool, +metric: Rules.Metric, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
   match reached best:
     case True{} Routes.Best{+cost, +seed, +target}:
-      distance_leg(Relax.leg(s, point_at(sources, seed), point_at(targets, target)), metric, cost, point_at(sources, seed), point_at(targets, target), min, max)
+      distance_leg(build, Relax.leg(s, point_at(sources, seed), point_at(targets, target)), metric, cost, point_at(sources, seed), point_at(targets, target), min, max)
     case False{} _:
       Check{Metric.within(Metric.Unreached{}, min, max), ",\"distance\":null"}
 
@@ -125,17 +126,17 @@ def best_cost(+b: Routes.Best) -> Metric.Cost:
     case Routes.Best{+cost, _, _}:
       cost
 
-def distance_best(+metric: Rules.Metric, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
-  distance_found(Metric.is_reached(best_cost(best)), metric, s, best, sources, targets, min, max)
+def distance_best(+build: Builds.Build, +metric: Rules.Metric, +s: Relax.Space, +best: Routes.Best, +sources: List<&2, Anchor.Point>, +targets: List<&2, Anchor.Point>, +min: Maybe<&2, F64Repr.F64>, +max: Maybe<&2, F64Repr.F64>) -> Check:
+  distance_found(build, Metric.is_reached(best_cost(best)), metric, s, best, sources, targets, min, max)
 
 # criteria.py check_distance.
-def distance(+world: FilterWorld.World, rule: Rules.Distance) -> Check:
+def distance(+build: Builds.Build, +world: FilterWorld.World, rule: Rules.Distance) -> Check:
   match rule:
     case Rules.Distance{+from, +to, +min, +max, +metric}:
       +s = Relax.space(world, metric)
       +sources = Relax.points(s, FilterWorld.instances(world, from))
       +targets = Relax.points(s, FilterWorld.instances(world, to))
-      distance_best(metric, s, Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{}, None{})), sources, targets, min, max)
+      distance_best(build, metric, s, Routes.argmin(Relax.relax(s, Relax.zero_sources(s, sources), targets, True{}, None{})), sources, targets, min, max)
 
 def world_size(+world: FilterWorld.World) -> U32:
   match world:
@@ -175,41 +176,41 @@ def end_points(+s: Relax.Space, +world: FilterWorld.World, to: Maybe<&2, List<&2
     case Some{+ids}:
       Some{Relax.points(s, FilterWorld.instances(world, ids))}
 
-def leg_item(leg: Metric.Leg, +metric: Rules.Metric, +a: Anchor.Point, +b: Anchor.Point) -> String:
+def leg_item(+build: Builds.Build, leg: Metric.Leg, +metric: Rules.Metric, +a: Anchor.Point, +b: Anchor.Point) -> String:
   match leg:
     case Metric.Leg{+cost, hops}:
-      "{\"from\":" ++ Witness.instance(point_inst(a)) ++ ",\"to\":" ++ Witness.instance(point_inst(b)) ++ ",\"distance\":" ++ cost_text(cost)
-        ++ hops_field(metric, hops) ++ "}"
+      "{\"from\":" ++ Witness.instance(build, point_inst(a)) ++ ",\"to\":" ++ Witness.instance(build, point_inst(b)) ++ ",\"distance\":" ++ cost_text(cost)
+        ++ hops_field(build, metric, hops) ++ "}"
 
-def leg_items(+metric: Rules.Metric, +s: Relax.Space, path: List<&2, Anchor.Point>) -> List<&2, String>:
+def leg_items(+build: Builds.Build, +metric: Rules.Metric, +s: Relax.Space, path: List<&2, Anchor.Point>) -> List<&2, String>:
   match path:
     case Con{+a, Con{+b, rest}}:
-      leg_item(Relax.leg(s, a, b), metric, a, b) <> leg_items(metric, s, Con{b, rest})
+      leg_item(build, Relax.leg(s, a, b), metric, a, b) <> leg_items(build, metric, s, Con{b, rest})
     case _:
       Nil{}
 
-def stop_items(path: List<&2, Anchor.Point>) -> List<&2, String>:
+def stop_items(+build: Builds.Build, path: List<&2, Anchor.Point>) -> List<&2, String>:
   match path:
     case Nil{}:
       Nil{}
     case Con{+p, rest}:
-      Witness.instance(point_inst(p)) <> stop_items(rest)
+      Witness.instance(build, point_inst(p)) <> stop_items(build, rest)
 
-def route_found(last: Maybe<&2, Routes.Path>, +metric: Rules.Metric, +s: Relax.Space, +max: F64Repr.F64) -> Check:
+def route_found(+build: Builds.Build, last: Maybe<&2, Routes.Path>, +metric: Rules.Metric, +s: Relax.Space, +max: F64Repr.F64) -> Check:
   match last:
     case None{}:
       Check{False{}, ",\"length\":null"}
     case Some{+p}:
       +path = Routes.unwind(p)
-      Check{Metric.within_max(Routes.path_cost(p), Some{max}), ",\"length\":" ++ cost_text(Routes.path_cost(p)) ++ ",\"stops\":" ++ json_list(stop_items(path))
-        ++ ",\"legs\":" ++ json_list(leg_items(metric, s, path))}
+      Check{Metric.within_max(Routes.path_cost(p), Some{max}), ",\"length\":" ++ cost_text(Routes.path_cost(p)) ++ ",\"stops\":" ++ json_list(stop_items(build, path))
+        ++ ",\"legs\":" ++ json_list(leg_items(build, metric, s, path))}
 
 # criteria.py check_route.
-def route(+world: FilterWorld.World, rule: Rules.Route) -> Check:
+def route(+build: Builds.Build, +world: FilterWorld.World, rule: Rules.Route) -> Check:
   match rule:
     case Rules.Route{+from, +visit, +to, +max, +fixed, +metric}:
       +s = Relax.space(world, metric)
-      route_found(Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed, None{}), metric, s, max)
+      route_found(build, Routes.shortest(s, Relax.points(s, FilterWorld.instances(world, from)), stop_points(s, world, visit), end_points(s, world, to), fixed, None{}), metric, s, max)
 
 def bound_length(+b: Walk.Bound) -> Maybe<&2, Walk.Length>:
   match b:
@@ -350,14 +351,14 @@ def world_seed(+world: FilterWorld.World) -> U32:
 
 # A setpieces rule's `placed` names: each bound holds on the copies the world placed. A setpieces group holds when one
 # of its rules holds on the level table (of the world's seed) and on the copies the world placed, and its total does.
-def placed(+world: FilterWorld.World, rule: Rules.Placed) -> Check:
+def placed(+build: Builds.Build, +world: FilterWorld.World, rule: Rules.Placed) -> Check:
   match rule:
     case Rules.Placed{_, +tasks, +bounds}:
       +plan = FilterWorld.planned(world)
       Check{placed_hold(bounds, plan, tasks), ",\"pieces\":" ++ json_list(placed_items(bounds, plan, tasks))}
     case Rules.AnyPlaced{_, +members, +total}:
       +plan = FilterWorld.planned(world)
-      +levels = LevelChecks.placed(LevelSummary.summary(world_seed(world)))
+      +levels = LevelChecks.placed(build, LevelSummary.summary(build, world_seed(world)))
       +sum = world_total(members, levels, plan)
       Check{member_holds(members, levels, plan) && LevelChecks.total_holds(total, sum),
         ",\"any\":[" ++ String.join(member_items(members, levels, plan), ",") ++ "]" ++ LevelChecks.total_field(total, sum)}

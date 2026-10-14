@@ -48,7 +48,7 @@ def name(+id: U32) -> String:
     m.emit()
     if sys.argv[1:] != ["-"]:
         side = [{"id": i, "string": s, "hash": lua_hash(s)} for i, s in enumerate(t["strings"])]
-        (blob.GEN / "out" / "strings.json").write_text(json.dumps({
+        (blob.out_dir() / "strings.json").write_text(json.dumps({
             "others_base": t["others_base"],
             "strings": side}, indent=0) + "\n")
 

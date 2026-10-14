@@ -7,6 +7,7 @@ import ../filters/checks.bend as Checks
 import ../filters/bridges.bend as Bridges
 import ../filters/config.bend as Config
 import ../filters/cave_config.bend as CaveConfig
+import ../data/builds.bend as Builds
 
 # Turf bridges laws: the GRPH section and the bridges rules. Golden bytes: Python struct.pack.
 
@@ -38,7 +39,7 @@ def loaded_has_graph(loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>) -
       False{}
 
 law world_has_graph_of_its_dump:
-  {(loaded_has_graph(FilterWorld.of_bytes_in(FilterDump.bytes(caves_dump(Some{two_nodes()})), True{})), loaded_has_graph(FilterWorld.of_bytes_in(FilterDump.bytes(caves_dump(None{})), True{})))
+  {(loaded_has_graph(FilterWorld.of_bytes_in(Builds.Build{756039}, FilterDump.bytes(caves_dump(Some{two_nodes()})), True{})), loaded_has_graph(FilterWorld.of_bytes_in(Builds.Build{756039}, FilterDump.bytes(caves_dump(None{})), True{})))
     == (True{}, False{}) : Bool & Bool}
 
 def world_has_graph_of_its_dump():
@@ -78,13 +79,13 @@ def no_bridge_is_null():
 
 def later_of(compiled: Result<&1, &1, U32 & String, CaveConfig.Config>) -> Result<&1, &1, U32 & String, List<&2, Rules.Later>>:
   match compiled:
-    case Done{CaveConfig.Config{_, _, +later, _}}:
+    case Done{CaveConfig.Config{_, _, _, +later, _}}:
       Done{later}
     case Fail{failure}:
       Fail{failure}
 
 law cave_config_reads_bridges:
-  {later_of(CaveConfig.config_of("{\"shard\": \"caves\", \"filters\": [{\"bridges\": [{\"min\": 1000}, {\"max\": 200.5}]}]}"))
+  {later_of(CaveConfig.config_of("{\"version\": 3, \"build\": 756039, \"shard\": \"caves\", \"filters\": [{\"bridges\": [{\"min\": 1000}, {\"max\": 200.5}]}]}", None{}))
     == Done{[Rules.Later{[], [], [], [], [Rules.Bridge{Some{F64Repr.from_u32(1000)}, None{}}, Rules.Bridge{None{}, Some{F64Repr.F64{1080627200, 0}}}], []}]} : Result<&1, &1, U32 & String, List<&2, Rules.Later>>}
 
 def cave_config_reads_bridges():
@@ -98,8 +99,8 @@ def error_of(compiled: Result<&1, &1, U32 & String, Config.Config>) -> String:
       ""
 
 law bridges_config_errors:
-  {(error_of(Config.config_of("{\"filters\": [{\"bridges\": [{\"min\": -1}]}]}")), error_of(Config.config_of("{\"filters\": [{\"bridges\": [{\"length\": 3}]}]}")),
-    error_of(Config.config_of("{\"filters\": [{\"bridges\": {\"min\": 3}}]}")))
+  {(error_of(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"bridges\": [{\"min\": -1}]}]}", None{})), error_of(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"bridges\": [{\"length\": 3}]}]}", None{})),
+    error_of(Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{\"bridges\": {\"min\": 3}}]}", None{})))
     == ("config: filters[0].bridges[0].min must be a number in 0..1000000", "config: unknown key \"length\" in filters[0].bridges[0]",
       "config: filters[0].bridges must be a list") : String & String & String}
 

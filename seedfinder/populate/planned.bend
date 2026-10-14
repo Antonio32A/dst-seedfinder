@@ -5,6 +5,7 @@ import ../storygen/graph.bend as StoryGraph
 import ../storygen/plan.bend as StoryPlan
 import ../storygen/setpieces.bend as StorySetpieces
 import ./state.bend as PopulateState
+import ../data/builds.bend as Builds
 
 # The level plan's task set pieces and whether an attempt placed them (the world dump's PLAN section). A piece is
 # placed when Story:InsertAdditionalSetPieces put it in a node's countstaticlayouts and that node's ReserveSpace found
@@ -91,21 +92,21 @@ def names_of(pieces: List<&2, U32>) -> List<&2, U32>:
     case Con{+piece, rest}:
       (piece >> 16n : U32) <> names_of(rest)
 
-def chosen_loop(n: Nat, +plan: StoryPlan.Plan, +lo: U32, +slots: List<&2, Slot>, +c: U32) -> List<&2, Planned>:
+def chosen_loop(+build: Builds.Build, n: Nat, +plan: StoryPlan.Plan, +lo: U32, +slots: List<&2, Slot>, +c: U32) -> List<&2, Planned>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      +task = LevelPrefix.chosen_task(lo, c)
-      +names = names_of(List.append(&2, U32, StorySetpieces.set_pieces(plan, task), StorySetpieces.random_set_pieces(plan, task)))
-      List.append(&2, Planned, matched(names, task, task_slots(slots, task)), chosen_loop(p, plan, lo, slots, (c + 1 : U32)))
+      +task = LevelPrefix.chosen_task(build, lo, c)
+      +names = names_of(List.append(&2, U32, StorySetpieces.set_pieces(build, plan, task), StorySetpieces.random_set_pieces(build, plan, task)))
+      List.append(&2, Planned, matched(names, task, task_slots(slots, task)), chosen_loop(build, p, plan, lo, slots, (c + 1 : U32)))
 
 # The level plan's task set pieces in plan order (the forest's chosen tasks in chosen order, each task's set_pieces then
 # random_set_pieces; none for the caves), each with whether the attempt with this story and these land events placed it.
-def planned(+plan: StoryPlan.Plan, +s: StoryGraph.St, +events: List<&2, PopulateState.Ev>) -> List<&2, Planned>:
+def planned(+build: Builds.Build, +plan: StoryPlan.Plan, +s: StoryGraph.St, +events: List<&2, PopulateState.Ev>) -> List<&2, Planned>:
   match plan:
     case StoryPlan.ForestPlan{LevelSummary.Summary{_, +lo, _, _, _, _, _}}:
       +slots = slots_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_pieces())), s, reservations(events, False{}, Nil{}), 0, Nil{})
-      chosen_loop(LevelSummary.chosen_count(), plan, lo, slots, 0)
+      chosen_loop(build, LevelSummary.chosen_count(), plan, lo, slots, 0)
     case StoryPlan.CavePlan{_, _, _}:
       Nil{}

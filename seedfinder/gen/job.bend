@@ -31,6 +31,7 @@ import ./maze_pieces.bend as MazePieces
 import ./cave_names.bend as CaveNames
 import ./cave_required.bend as CaveRequired
 import ./topology.bend as Topology
+import ../data/builds.bend as Builds
 
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
 # rounds: `step` does one bounded stage transition; at a KK pass the job waits for a layout engine (gen/layout.bend):
@@ -83,21 +84,21 @@ type Job is Type:
   JDone{c: Generate.Seed, a: U32, outcome: Outcome}
 
 # A new job for seed on the platform, recording the layouts it places when `pieces` (Final.pieces).
-def start(+seed: U32, +windows: Bool, +pieces: Bool) -> Job:
-  +c = Generate.seed_inputs(seed, windows, pieces)
-  JStart{c, 1, Generate.first_rng(c)}
+def start(+build: Builds.Build, +seed: U32, +windows: Bool, +pieces: Bool) -> Job:
+  +c = Generate.seed_inputs(build, seed, windows, pieces)
+  JStart{c, 1, Generate.first_rng(build, c)}
 
-def cave_start(first: Bool, +c: Generate.Seed, +seed: U32, +draws: U32) -> Job:
+def cave_start(+build: Builds.Build, first: Bool, +c: Generate.Seed, +seed: U32, +draws: U32) -> Job:
   match first:
     case True{}:
-      JStart{c, 1, Generate.first_rng(c)}
+      JStart{c, 1, Generate.first_rng(build, c)}
     case False{}:
       JStart{Generate.entrance_resolved(c), 1, Pcg.at_counter(seed, draws)}
 
 # A new caves job for seed on the platform, recording the mazes and layouts it places when `pieces` (Final.pieces). With draws > 0 the attempt starts that many draws into the seed's stream
 # (the counter of a real later attempt), with the entrance list pick as the earlier attempts made it.
-def start_caves(+seed: U32, +windows: Bool, +draws: U32, +pieces: Bool) -> Job:
-  cave_start(U32.is_zero(draws), Generate.cave_inputs(seed, windows, pieces), seed, draws)
+def start_caves(+build: Builds.Build, +seed: U32, +windows: Bool, +draws: U32, +pieces: Bool) -> Job:
+  cave_start(build, U32.is_zero(draws), Generate.cave_inputs(build, seed, windows, pieces), seed, draws)
 
 def retry_if(more: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
   match more:
@@ -110,12 +111,12 @@ def retry_if(more: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
 def retry(+c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
   retry_if((a < Generate.max_attempts() : U32), c, a, rng)
 
-def started(crashed: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
+def started(+build: Builds.Build, crashed: Bool, +c: Generate.Seed, +a: U32, +rng: Pcg.Rng) -> Job:
   match crashed:
     case True{}:
       JDone{c, a, Crashed{}}
     case False{}:
-      +s = Generate.first_story(c, rng)
+      +s = Generate.first_story(build, c, rng)
       JFirst{c, a, s, GenGraph.klei(s)}
 
 # The KK pass the job waits for, if any.
@@ -138,16 +139,16 @@ def second_by(caves: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +first
 
 # The story after pass 1 (Story:AddRegionsToMainland): the forest adds the moon island and waits for its KK pass 2; the
 # caves have no regions, so their Commit follows pass 1.
-def second_of(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, LayoutSpace.Vec>) -> Job:
+def second_of(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, LayoutSpace.Vec>) -> Job:
   +first = Generate.pass_of(c, s, k, ps, Nil{})
-  second_by(Generate.is_caves(c), c, a, Generate.second_story(c, s, k, Generate.pass_site_list(first)), first)
+  second_by(Generate.is_caves(c), c, a, Generate.second_story(build, c, s, k, Generate.pass_site_list(first)), first)
 
 # The waiting job resumed with its pass's positions (VoronoiPass's BuildVoronoi, and after pass 1 the story up to
 # pass 2); any other job as it is.
-def laid(job: Job, +ps: List<&2, LayoutSpace.Vec>) -> Job:
+def laid(+build: Builds.Build, job: Job, +ps: List<&2, LayoutSpace.Vec>) -> Job:
   match job:
     case JFirst{+c, +a, +s, +k}:
-      second_of(c, a, s, k, ps)
+      second_of(build, c, a, s, k, ps)
     case JSecond{+c, +a, +s, +k, +first}:
       JCommit{c, a, s, k, Generate.pass_of(c, s, k, ps, Generate.pass_polys(first))}
     case other:
@@ -172,63 +173,63 @@ def committed(cm: Commit.Committed, +c: Generate.Seed, +a: U32, +s: StoryGraph.S
 def commit(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +second: Generate.Pass) -> Job:
   committed(Generate.commit(c, second), c, a, s, k)
 
-def areas_checked(ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+def areas_checked(+build: Builds.Build, ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   match ok:
     case True{}:
       JLand{c, a, s, k, w, world, lists, sites}
     case False{}:
-      retry(Generate.carried(c, s), a, Generate.rng_after_land(c, s, k, w, world, lists, sites))
+      retry(Generate.carried(c, s), a, Generate.rng_after_land(build, c, s, k, w, world, lists, sites))
 
-def crash_checked(crashed: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+def crash_checked(+build: Builds.Build, crashed: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   match crashed:
     case True{}:
       JDone{c, a, Crashed{}}
     case False{}:
-      areas_checked(Generate.site_areas_ok(s, k, sites), c, a, s, k, w, world, lists, sites)
+      areas_checked(build, Generate.site_areas_ok(s, k, sites), c, a, s, k, w, world, lists, sites)
 
-def tiled(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World) -> Job:
+def tiled(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World) -> Job:
   +counted = TileConvert.counted_site_tiles(world)
   +lists = TileConvert.lists_of(counted)
   +sites = Points.sized_sites(world, lists, TileConvert.sizes_of(counted))
-  crash_checked(Generate.custom_crashes(c, s, k, sites), c, a, s, k, w, world, lists, sites)
+  crash_checked(build, Generate.custom_crashes(build, c, s, k, sites), c, a, s, k, w, world, lists, sites)
 
 # ConvertToTileMap's build and the GetSiteArea < 8 check; a failure retries from the RNG after ConvertToTileMap (the
 # caves: after their custom tile pass, which crashes the game first when Generate.custom_crashes).
-def tiles(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Job:
+def tiles(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Job:
   +w = Generate.tile_size(size)
-  tiled(c, a, s, k, w, Generate.tile_world(s, k, w, Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)))
+  tiled(build, c, a, s, k, w, Generate.tile_world(build, s, k, w, Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)))
 
-def landed_of(l: PopulateState.Land, +roads: List<&2, List<&2, TileWorld.Point>>, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph, +plan: StoryPlan.Plan) -> Landed:
+def landed_of(+build: Builds.Build, l: PopulateState.Land, +roads: List<&2, List<&2, TileWorld.Point>>, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph, +plan: StoryPlan.Plan) -> Landed:
   match l:
     case PopulateState.Land{g, +rng, +ents, +events}:
-      Landed{g, rng, ents, s, w, PopulateState.pieces(events), roads, graph, PopulatePlanned.planned(plan, s, events)}
+      Landed{g, rng, ents, s, w, PopulateState.pieces(events), roads, graph, PopulatePlanned.planned(build, plan, s, events)}
 
-def grounded(got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>, +ctx: PopulateState.Ctx, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph, +plan: StoryPlan.Plan) -> Landed:
+def grounded(+build: Builds.Build, got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>, +ctx: PopulateState.Ctx, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph, +plan: StoryPlan.Plan) -> Landed:
   (g, +roads) = got
-  landed_of(Generate.land(ctx, g, w), roads, s, w, graph, plan)
+  landed_of(build, Generate.land(build, ctx, g, w), roads, s, w, graph, plan)
 
-def land_forest(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+def land_forest(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   +ctx = Generate.land_context(c, s, k, sites, w, False{})
-  JOcean{c, a, grounded(Generate.tile_grid(Generate.windows_of(c), world, lists), ctx, s, w, Topology.graph(s, k, world), Generate.plan_of(c))}
+  JOcean{c, a, grounded(build, Generate.tile_grid(Generate.windows_of(c), world, lists), ctx, s, w, Topology.graph(build, s, k, world), Generate.plan_of(c))}
 
 def tiled_by(done: CaveCustom.Tiles, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
   match done:
     case CaveCustom.Tiles{g, rng, placed}:
       JTiled{c, a, s, k, w, g, rng, placed, sites}
 
-def land_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
-  tiled_by(Generate.cave_land(c, s, k, w, world, lists, sites), c, a, s, k, w, sites)
+def land_caves(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+  tiled_by(Generate.cave_land(build, c, s, k, w, world, lists, sites), c, a, s, k, w, sites)
 
-def land_by(caves: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+def land_by(+build: Builds.Build, caves: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   match caves:
     case True{}:
-      land_caves(c, a, s, k, w, world, lists, sites)
+      land_caves(build, c, a, s, k, w, world, lists, sites)
     case False{}:
-      land_forest(c, a, s, k, w, world, lists, sites)
+      land_forest(build, c, a, s, k, w, world, lists, sites)
 
 # The tile stages and the land population, up to land_done (the caves stop after ForceConnectivity).
-def land(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
-  land_by(Generate.is_caves(c), c, a, s, k, w, world, lists, sites)
+def land(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
+  land_by(build, Generate.is_caves(c), c, a, s, k, w, world, lists, sites)
 
 # #save.map.topology.ids: every story node (graph nodes and exit nodes of every graph).
 def topology_count(+s: StoryGraph.St) -> U32:
@@ -275,11 +276,11 @@ def oceaned(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +w: U32, +ro
   verdict(ok, c, a, sea, w, roads, graph, plan)
 
 # The ocean stage from land_done to the required prefab check (no node-id map, no tracing).
-def ocean(+c: Generate.Seed, +a: U32, landed: Landed) -> Job:
+def ocean(+build: Builds.Build, +c: Generate.Seed, +a: U32, landed: Landed) -> Job:
   match landed:
     case Landed{g, +rng, +ents, +s, +w, +pieces, +roads, +graph, +plan}:
       +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
-      oceaned(Ocean.run(ctx, OceanRequired.required(s), sea_of(Landed{g, rng, ents, s, w, pieces, roads, graph, plan})), c, a, w, roads, graph, plan)
+      oceaned(Ocean.run(build, ctx, OceanRequired.required(build, s), sea_of(Landed{g, rng, ents, s, w, pieces, roads, graph, plan})), c, a, w, roads, graph, plan)
 
 def maze_landed(m: CaveMaze.Mazed, +cave: List<&2, Entities.Ent>, +w: U32) -> PopulateState.Land:
   match m:
@@ -291,8 +292,8 @@ def mazed_job(land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGra
   JMazed{c, a, s, k, w, land, sites}
 
 # The Labyrinth and Maze passes (cave_maze.bend) on the tile map, with the custom tile pass's items as the first entities.
-def mazes(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, +placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> Job:
-  mazed_job(maze_landed(CaveMaze.run(c, s, k, w, g, rng, placed, sites), CaveCustom.entities(placed, w, w, rng), w), c, a, s, k, w, sites)
+def mazes(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, +placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> Job:
+  mazed_job(maze_landed(CaveMaze.run(build, c, s, k, w, g, rng, placed, sites), CaveCustom.entities(build, placed, w, w, rng), w), c, a, s, k, w, sites)
 
 def cave_failed(land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGraph.St) -> Job:
   match land:
@@ -307,18 +308,18 @@ def cave_populated(got: PopulateState.Land & Bool, +c: Generate.Seed, +a: U32, +
     case False{}:
       cave_failed(land, c, a, s)
 
-def sites_graph(+s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> FilterDump.Graph:
+def sites_graph(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> FilterDump.Graph:
   match sites:
     case Points.Sites{_, _, +world}:
-      Topology.graph(s, k, world)
+      Topology.graph(build, s, k, world)
 
-def cave_land_of(start: U32 & U32, land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
+def cave_land_of(+build: Builds.Build, start: U32 & U32, land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
   (+sx, +sy) = start
-  cave_populated(PopulateLand.land_caves(Generate.land_context(c, s, k, sites, w, False{}), sx, sy, land), c, a, s, w, sites_graph(s, k, sites))
+  cave_populated(PopulateLand.land_caves(build, Generate.land_context(c, s, k, sites, w, False{}), sx, sy, land), c, a, s, w, sites_graph(build, s, k, sites))
 
 # ConvertGround to PopulateVoronoi; a failed DetectDisconnect retries from the RNG then.
-def populate_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, land: PopulateState.Land, +sites: Points.Sites) -> Job:
-  cave_land_of(Generate.cave_start(s, k, sites), land, c, a, s, k, w, sites)
+def populate_caves(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, land: PopulateState.Land, +sites: Points.Sites) -> Job:
+  cave_land_of(build, Generate.cave_start(s, k, sites), land, c, a, s, k, w, sites)
 
 # The layouts and mazes the land placed, when the job records them.
 def cave_pieces(recording: Bool, +events: List<&2, PopulateState.Ev>) -> List<&2, PopulateSetpiece.Piece>:
@@ -328,8 +329,8 @@ def cave_pieces(recording: Bool, +events: List<&2, PopulateState.Ev>) -> List<&2
     case False{}:
       Nil{}
 
-def cave_shard() -> Finish.Shard:
-  Finish.Shard{CaveNames.wormhole(), CaveNames.dispenser(), CaveNames.temporary()}
+def cave_shard(+build: Builds.Build) -> Finish.Shard:
+  Finish.Shard{CaveNames.wormhole(build), CaveNames.dispenser(build), CaveNames.temporary(build)}
 
 def cave_verdict(ok: Bool, sea: OceanState.Sea, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph) -> Job:
   match ok:
@@ -346,64 +347,64 @@ def cave_posted(got: OceanState.Sea & Bool, +c: Generate.Seed, +a: U32, +s: Stor
   (sea, +ok) = got
   cave_verdict(ok, sea, c, a, s, w, graph)
 
-def atriumed(got: OceanState.Sea & List<&2, OceanEnts.Ent>) -> OceanState.Sea:
+def atriumed(+build: Builds.Build, got: OceanState.Sea & List<&2, OceanEnts.Ent>) -> OceanState.Sea:
   (s, +ents) = got
-  OceanState.with_ents(s, Atrium.paired(ents, CaveNames.atrium()))
+  OceanState.with_ents(s, Atrium.paired(ents, CaveNames.atrium(build)))
 
 # GlobalPostPopulate to the required prefab check on the caves' land (no roads: the world has no road length draw).
-def post_caves(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, land: PopulateState.Land, +graph: FilterDump.Graph) -> Job:
+def post_caves(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +w: U32, land: PopulateState.Land, +graph: FilterDump.Graph) -> Job:
   match land:
     case PopulateState.Land{g, +rng, +ents, +events}:
       +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
-      cave_posted(Finish.run(ctx, cave_shard(), CaveRequired.required(s), atriumed(OceanState.ents_of(sea_of(Landed{g, rng, ents, s, w, cave_pieces(Generate.pieces_of(c), events), Nil{}, graph, Nil{}})))), c, a, s, w, graph)
+      cave_posted(Finish.run(build, ctx, cave_shard(build), CaveRequired.required(build, s), atriumed(build, OceanState.ents_of(sea_of(Landed{g, rng, ents, s, w, cave_pieces(Generate.pieces_of(c), events), Nil{}, graph, Nil{}})))), c, a, s, w, graph)
 
 # One stage transition. JFirst and JSecond wait (see layout), JWorld and JDone stay as they are.
-def step(job: Job) -> Job:
+def step(+build: Builds.Build, job: Job) -> Job:
   match job:
     case JStart{+c, +a, +rng}:
-      started(Generate.crashed(c), c, a, rng)
+      started(build, Generate.crashed(c), c, a, rng)
     case JCommit{+c, +a, +s, +k, +second}:
       commit(c, a, s, k, second)
     case JTiles{+c, +a, +s, +k, +size, +sites}:
-      tiles(c, a, s, k, size, sites)
+      tiles(build, c, a, s, k, size, sites)
     case JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
-      land(c, a, s, k, w, world, lists, sites)
+      land(build, c, a, s, k, w, world, lists, sites)
     case JOcean{+c, +a, landed}:
-      ocean(c, a, landed)
+      ocean(build, c, a, landed)
     case JTiled{+c, +a, +s, +k, +w, grid, +rng, +placed, +sites}:
-      mazes(c, a, s, k, w, grid, rng, placed, sites)
+      mazes(build, c, a, s, k, w, grid, rng, placed, sites)
     case JMazed{+c, +a, +s, +k, +w, land, +sites}:
-      populate_caves(c, a, s, k, w, land, sites)
+      populate_caves(build, c, a, s, k, w, land, sites)
     case JPost{+c, +a, +s, +w, land, +graph}:
-      post_caves(c, a, s, w, land, graph)
+      post_caves(build, c, a, s, w, land, graph)
     case other:
       other
 
-def advanced(got: Job & Maybe<&2, GenLayout.Layout>) -> Job:
+def advanced(+build: Builds.Build, got: Job & Maybe<&2, GenLayout.Layout>) -> Job:
   (job, pass) = got
   match pass:
     case Some{+l}:
-      laid(job, GenLayout.local(l))
+      laid(build, job, GenLayout.local(l))
     case None{}:
-      step(job)
+      step(build, job)
 
 # One step, a waiting job's whole KK pass on this thread (GenLayout.local) included.
-def advance(job: Job) -> Job:
-  advanced(layout(job))
+def advance(+build: Builds.Build, job: Job) -> Job:
+  advanced(build, layout(job))
 
-def solved(got: Job & Maybe<&2, GenLayout.Layout>, +native: Bool) -> IO(Job):
+def solved(+build: Builds.Build, got: Job & Maybe<&2, GenLayout.Layout>, +native: Bool) -> IO(Job):
   (job, pass) = got
   match pass:
     case Some{+l}:
       do IO<Job>:
         +ps : List<&2, LayoutSpace.Vec> <- GenLayout.solve(native, l)
-        return laid(job, ps)
+        return laid(build, job, ps)
     case None{}:
-      IO.pure(Job, step(job))
+      IO.pure(Job, step(build, job))
 
 # One step, a waiting job's KK pass from GenLayout.solve included.
-def advance_io(+native: Bool, job: Job) -> IO(Job):
-  solved(layout(job), native)
+def advance_io(+build: Builds.Build, +native: Bool, job: Job) -> IO(Job):
+  solved(build, layout(job), native)
 
 # Where a job is: its stage number (see Job) and attempt.
 type Where is Data:

@@ -1,3 +1,5 @@
+import { type CatalogBuild, catalogBuild } from "@/lib/config/builds";
+import type { GameBuild } from "@/lib/config/game-builds";
 import type { Shard } from "@/lib/config/seedfinder-config";
 import {
     CAVE_ANCHORS,
@@ -42,35 +44,38 @@ const groupsOf = (prefabs: readonly WorldPrefab[]): PrefabGroup[] =>
         prefabs: prefabs.filter((prefab) => prefab.group === id).map((prefab) => prefab.id)
     })).filter((group) => group.prefabs.length > 0);
 
-const CATALOGS: Record<Shard, ShardCatalog> = {
-    forest: {
-        prefabs: PREFABS,
-        byId: PREFAB_BY_ID,
-        groups: groupsOf(PREFABS),
-        anchors: NAMED_ANCHORS,
-        landTiles: LAND_TILES,
-        sampleWorlds: SAMPLE_WORLDS,
-        spawn: "multiplayer_portal",
-        links: { noun: "wormhole", plural: "wormholes", prefabs: ["wormhole"] }
-    },
-    caves: {
-        prefabs: CAVE_PREFABS,
-        byId: CAVE_PREFAB_BY_ID,
-        groups: groupsOf(CAVE_PREFABS),
-        anchors: CAVE_ANCHORS,
-        landTiles: CAVE_LAND_TILES,
-        sampleWorlds: CAVE_SAMPLE_WORLDS,
-        spawn: "cave_exit",
-        links: {
-            noun: "tentacle pillar",
-            plural: "tentacle pillars",
-            prefabs: ["tentacle_pillar", "tentacle_pillar_atrium"]
+const CATALOGS: Record<CatalogBuild, Record<Shard, ShardCatalog>> = {
+    756039: {
+        forest: {
+            prefabs: PREFABS,
+            byId: PREFAB_BY_ID,
+            groups: groupsOf(PREFABS),
+            anchors: NAMED_ANCHORS,
+            landTiles: LAND_TILES,
+            sampleWorlds: SAMPLE_WORLDS,
+            spawn: "multiplayer_portal",
+            links: { noun: "wormhole", plural: "wormholes", prefabs: ["wormhole"] }
+        },
+        caves: {
+            prefabs: CAVE_PREFABS,
+            byId: CAVE_PREFAB_BY_ID,
+            groups: groupsOf(CAVE_PREFABS),
+            anchors: CAVE_ANCHORS,
+            landTiles: CAVE_LAND_TILES,
+            sampleWorlds: CAVE_SAMPLE_WORLDS,
+            spawn: "cave_exit",
+            links: {
+                noun: "tentacle pillar",
+                plural: "tentacle pillars",
+                prefabs: ["tentacle_pillar", "tentacle_pillar_atrium"]
+            }
         }
     }
 };
 
 /**
- * The prefabs a shard's worlds can contain, with their display names, groups and map icons, and what its world filters
- * start from.
+ * The prefabs a shard's worlds can contain in the build, with their display names, groups and map icons, and what its
+ * world filters start from.
  */
-export const shardCatalog = (shard: Shard): ShardCatalog => CATALOGS[shard];
+export const shardCatalog = (shard: Shard, build: GameBuild): ShardCatalog =>
+    CATALOGS[catalogBuild(build, shard)][shard];

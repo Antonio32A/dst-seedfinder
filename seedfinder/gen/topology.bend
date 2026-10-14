@@ -8,6 +8,7 @@ import ../worldsim/tiles/table.bend as TileTable
 import ../worldsim/tiles/topology.bend as TileTopology
 import ../filters/dump.bend as FilterDump
 import ./graph.bend as GenGraph
+import ../data/builds.bend as Builds
 
 # The world's topology as the GRPH section holds it (filters/dump.bend Graph): savedata.map.topology's nodes
 # (Node:SaveEncode's id, type and position) and the graph edges ForceConnectivity sees (after ApplyPoisonTag).
@@ -21,15 +22,15 @@ def saved_units(+p: F32, +w: U32) -> U32:
   +half = F64Arith.mul(F64Repr.from_u32(w), F64Repr.half())
   (F64Repr.to_i32(F64Repr.floor(F64Arith.mul(F64Arith.sub(F32Ops.to_f64(p), half), F64Repr.from_u32(4)))) * 100 : U32)
 
-def keyed_of(+s: StoryGraph.St, +w: U32, +vertex: U32, +story: U32, site: TileWorld.Site) -> Keyed:
+def keyed_of(+build: Builds.Build, +s: StoryGraph.St, +w: U32, +vertex: U32, +story: U32, site: TileWorld.Site) -> Keyed:
   match site:
     case TileWorld.Site{+node, +x, +y, _, _, _}:
-      Keyed{vertex, FilterDump.Node{StoryGraph.node_name(s, story), TileTopology.kind_of(node), saved_units(x, w), saved_units(y, w)}}
+      Keyed{vertex, FilterDump.Node{StoryGraph.node_name(build, s, story), TileTopology.kind_of(node), saved_units(x, w), saved_units(y, w)}}
 
-def keyed_loop(stories: List<&2, U32>, sites: List<&2, TileWorld.Site>, +s: StoryGraph.St, +w: U32, +vertex: U32) -> List<&2, Keyed>:
+def keyed_loop(+build: Builds.Build, stories: List<&2, U32>, sites: List<&2, TileWorld.Site>, +s: StoryGraph.St, +w: U32, +vertex: U32) -> List<&2, Keyed>:
   match stories sites:
     case Con{+story, more} Con{site, rest}:
-      keyed_of(s, w, vertex, story, site) <> keyed_loop(more, rest, s, w, (vertex + 1 : U32))
+      keyed_of(build, s, w, vertex, story, site) <> keyed_loop(build, more, rest, s, w, (vertex + 1 : U32))
     case _ _:
       Nil{}
 
@@ -85,7 +86,7 @@ def graph_of(+sorted: List<&2, Keyed>, edges: List<&2, TileWorld.Edge>) -> Filte
   FilterDump.Graph{nodes_of(sorted), List.sort(~FilterDump.Edge, ~edge_le, renumbered(edges, rank))}
 
 # The topology of story s laid out as the tile world (sites in vertex order, the edges left after ApplyPoisonTag).
-def graph(+s: StoryGraph.St, +k: GenGraph.Klei, world: TileWorld.World) -> FilterDump.Graph:
+def graph(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, world: TileWorld.World) -> FilterDump.Graph:
   match world:
     case TileWorld.World{+w, _, _, +sites, _, _, +edges, _, _}:
-      graph_of(List.sort(~Keyed, ~id_le, keyed_loop(GenGraph.vertices_of(k), sites, s, w, 0)), edges)
+      graph_of(List.sort(~Keyed, ~id_le, keyed_loop(build, GenGraph.vertices_of(k), sites, s, w, 0)), edges)

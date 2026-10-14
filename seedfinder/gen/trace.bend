@@ -22,6 +22,7 @@ import ./graph.bend as GenGraph
 import ./generate.bend as Generate
 import ./job.bend as GenJob
 import ../filters/dump.bend as FilterDump
+import ../data/builds.bend as Builds
 
 # The `gen` trace stage: forest_map.Generate from the seed alone, every attempt, through the job state machine
 # (gen/job.bend) with the ocean between attempts. On entering each job stage it prints the oracle's records of what
@@ -85,12 +86,12 @@ def digest_line(+a: U32, +at: String, +ctr: U32, +w: U32, +sites: List<&2, Voron
     Canon.field("poly_hash", hash_text(poly_fold(polys, Grid.fnv_offset()))), Canon.field("tiles", hash_text(tiles)),
     Canon.field("flags", hash_text(flags)), Canon.field("node_ids", hash_text(zero_hash()))])
 
-def names_of(vs: List<&2, U32>, +s: StoryGraph.St) -> List<&2, String>:
+def names_of(+build: Builds.Build, vs: List<&2, U32>, +s: StoryGraph.St) -> List<&2, String>:
   match vs:
     case Nil{}:
       Nil{}
     case Con{+x, rest}:
-      StoryGraph.node_name(s, x) <> names_of(rest, s)
+      StoryGraph.node_name(build, s, x) <> names_of(build, rest, s)
 
 def poly_loop(ss: List<&2, VoronoiPolygon.SiteIn>, ps: List<&2, VoronoiPolygon.Poly>, +head: List<&2, String>, +names: List<&2, String>, +i: U32) -> List<&2, String>:
   match ss ps:
@@ -105,13 +106,13 @@ def poly_lines(+a: U32, +at: String, +ss: List<&2, VoronoiPolygon.SiteIn>, +ps: 
 def build_lines(+a: U32, +at: String, +ctr: U32, +w: U32, +ss: List<&2, VoronoiPolygon.SiteIn>, +ps: List<&2, VoronoiPolygon.Poly>, +names: List<&2, String>) -> List<&2, String>:
   digest_line(a, at, ctr, w, ss, ps, zero_hash(), zero_hash()) <> poly_lines(a, at, ss, ps, names)
 
-def vertex_lines(vs: List<&2, U32>, +s: StoryGraph.St, +a: U32, +g: U32, +v: U32) -> List<&2, String>:
+def vertex_lines(+build: Builds.Build, vs: List<&2, U32>, +s: StoryGraph.St, +a: U32, +g: U32, +v: U32) -> List<&2, String>:
   match vs:
     case Nil{}:
       Nil{}
     case Con{+x, rest}:
-      Canon.record("vertex", [Canon.number("a", a), Canon.number("g", g), Canon.number("v", v), Canon.field("name", Canon.quoted(StoryGraph.node_name(s, x)))])
-        <> vertex_lines(rest, s, a, g, (v + 1 : U32))
+      Canon.record("vertex", [Canon.number("a", a), Canon.number("g", g), Canon.number("v", v), Canon.field("name", Canon.quoted(StoryGraph.node_name(build, s, x)))])
+        <> vertex_lines(build, rest, s, a, g, (v + 1 : U32))
 
 def target_lines(ts: List<&2, U32>, +a: U32, +g: U32, +v: U32, +k: U32) -> List<&2, String>:
   match ts:
@@ -129,8 +130,8 @@ def outedge_lines(rows: List<&2, List<&2, U32>>, +a: U32, +g: U32, +v: U32, +k: 
       List.append(&2, String, target_lines(ts, a, g, v, k),
         outedge_lines(rest, a, g, (v + 1 : U32), (k + U32.from_nat(List.length(&2, U32, ts)) : U32)))
 
-def graph_lines(+s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +g: U32) -> List<&2, String>:
-  List.append(&2, String, vertex_lines(GenGraph.vertices_of(k), s, a, g, 0), outedge_lines(GenGraph.adjacency(GenGraph.count_of(k), GenGraph.edges_of(k)), a, g, 0, 0))
+def graph_lines(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +g: U32) -> List<&2, String>:
+  List.append(&2, String, vertex_lines(build, GenGraph.vertices_of(k), s, a, g, 0), outedge_lines(GenGraph.adjacency(GenGraph.count_of(k), GenGraph.edges_of(k)), a, g, 0, 0))
 
 def kkpos_lines(ps: List<&2, LayoutSpace.Vec>, +a: U32, +g: U32, +run: U32, +v: U32) -> List<&2, String>:
   match ps:
@@ -162,20 +163,20 @@ def pass_calls(evs: List<&2, StoryGraph.Ev>, +seed: U32) -> List<&2, U32>:
 def pass_counter(+s: StoryGraph.St, +n: Nat, +seed: U32) -> U32:
   Maybe.default(&2, U32, List.get(&2, U32, pass_calls(List.reverse(&2, StoryGraph.Ev, StoryGraph.log_of(s)), seed), n), 0)
 
-def story_lines(+st: Tr, +s: StoryGraph.St, +a: U32) -> List<&2, String>:
+def story_lines(+build: Builds.Build, +st: Tr, +s: StoryGraph.St, +a: U32) -> List<&2, String>:
   match st:
     case Tr{+seed, _, _, +ctr, _}:
-      StoryTrace.story_lines(s, seed, U32.show(a), ctr)
+      StoryTrace.story_lines(build, s, seed, U32.show(a), ctr)
 
 def seed_of(+st: Tr) -> U32:
   match st:
     case Tr{+seed, _, _, _, _}:
       seed
 
-def first_lines(+st: Tr, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +first: Generate.Pass) -> List<&2, String>:
-  +names = names_of(GenGraph.vertices_of(k), s)
+def first_lines(+build: Builds.Build, +st: Tr, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +first: Generate.Pass) -> List<&2, String>:
+  +names = names_of(build, GenGraph.vertices_of(k), s)
   +ctr = pass_counter(s, 0n, seed_of(st))
-  List.append(&2, String, story_lines(st, s, a), List.append(&2, String, graph_lines(s, k, a, 2),
+  List.append(&2, String, story_lines(build, st, s, a), List.append(&2, String, graph_lines(build, s, k, a, 2),
     List.append(&2, String, kkpos_lines(Generate.pass_positions(first), a, 1, 100, 0),
       build_lines(a, "VoronoiPass(100)", ctr, Generate.world_size(), Generate.pass_site_list(first), Generate.pass_polys(first), names))))
 
@@ -184,8 +185,8 @@ def commit_lines(cm: Commit.Committed, +ctr: U32, +a: U32, +names: List<&2, Stri
     case Commit.Committed{+size, +sites, _, cells}:
       build_lines(a, "Commit", ctr, size, sites, Generate.cells_polys(cells), names)
 
-def second_lines(+st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +second: Generate.Pass) -> List<&2, String>:
-  +names = names_of(GenGraph.vertices_of(k), s)
+def second_lines(+build: Builds.Build, +st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +second: Generate.Pass) -> List<&2, String>:
+  +names = names_of(build, GenGraph.vertices_of(k), s)
   +seed = seed_of(st)
   List.append(&2, String, kkpos_lines(Generate.pass_positions(second), a, 2, 50, 0),
     List.append(&2, String, build_lines(a, "VoronoiPass(50)", pass_counter(s, 1n, seed), Generate.world_size(), Generate.pass_site_list(second), Generate.pass_polys(second), names),
@@ -249,12 +250,12 @@ def tiles_world_lines(+windows: Bool, +names: List<&2, String>, +world: TileWorl
     case At{+a, _, _, +centred, +polys, _}:
       List.append(&2, String, grid_lines(windows, world, at), poly_lines(a, "ConvertToTileMap", centred, polys, names))
 
-def tiles_polys_lines(+st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +w: U32, +centred: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, cells: VoronoiPolygon.Cells) -> List<&2, String>:
-  tiles_world_lines(Generate.windows_of(c), names_of(GenGraph.vertices_of(k), s), Generate.tile_world(s, k, w, centred, cells),
+def tiles_polys_lines(+build: Builds.Build, +st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +w: U32, +centred: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, cells: VoronoiPolygon.Cells) -> List<&2, String>:
+  tiles_world_lines(Generate.windows_of(c), names_of(build, GenGraph.vertices_of(k), s), Generate.tile_world(build, s, k, w, centred, cells),
     At{a, Pcg.counter(seed_of(st), Generate.rng_after_tiles(s, w)), w, centred, polys, StoryGraph.rng_of(s)})
 
-def tiles_stage_lines(+st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> List<&2, String>:
-  tiles_polys_lines(st, c, s, k, a, Generate.tile_size(size), Generate.tile_centred(size, sites), Generate.cells_polys(Generate.tile_build(c, size, sites)), Generate.tile_build(c, size, sites))
+def tiles_stage_lines(+build: Builds.Build, +st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> List<&2, String>:
+  tiles_polys_lines(build, st, c, s, k, a, Generate.tile_size(size), Generate.tile_centred(size, sites), Generate.cells_polys(Generate.tile_build(c, size, sites)), Generate.tile_build(c, size, sites))
 
 def unshuffled(evs: List<&2, PopulateState.Ev>) -> List<&2, PopulateState.Ev>:
   match evs:
@@ -276,8 +277,8 @@ def grid_only(got: Grid.Grid & List<&2, List<&2, TileWorld.Point>>) -> Grid.Grid
   (g, _) = got
   g
 
-def land_lines(+st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> List<&2, String>:
-  PopulateTrace.land_lines(land_events(Generate.land(Generate.land_context(c, s, k, sites, w, True{}), grid_only(Generate.tile_grid(Generate.windows_of(c), world, lists)), w)),
+def land_lines(+build: Builds.Build, +st: Tr, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +a: U32, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> List<&2, String>:
+  PopulateTrace.land_lines(build, land_events(Generate.land(build, Generate.land_context(c, s, k, sites, w, True{}), grid_only(Generate.tile_grid(Generate.windows_of(c), world, lists)), w)),
     PopulateTrace.Out{seed_of(st), U32.show(a), w, w, s, 0, 0, 0, 0, 0, 0})
 
 def landed_flags(got: Grid.Grid & Grid.Hash, +st: Tr, +a: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +s: StoryGraph.St, +w: U32, +roads: List<&2, List<&2, TileWorld.Point>>, +graph: FilterDump.Graph, +tiles: Grid.Hash) -> GenJob.Landed & List<&2, String>:
@@ -311,20 +312,20 @@ def outcome_name(+o: GenJob.Outcome) -> String:
       "gaveup"
 
 # The records of a stage the job has just entered, and the job handed back.
-def entered(job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
+def entered(+build: Builds.Build, job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&2, String>:
   match job:
     case GenJob.JStart{+c, +a, +rng}:
       (GenJob.JStart{c, a, rng}, Nil{})
     case GenJob.JFirst{+c, +a, +s, +k}:
-      (GenJob.JFirst{c, a, s, k}, graph_lines(s, k, a, 1))
+      (GenJob.JFirst{c, a, s, k}, graph_lines(build, s, k, a, 1))
     case GenJob.JSecond{+c, +a, +s, +k, +first}:
-      (GenJob.JSecond{c, a, s, k, first}, first_lines(st, s, k, a, first))
+      (GenJob.JSecond{c, a, s, k, first}, first_lines(build, st, s, k, a, first))
     case GenJob.JCommit{+c, +a, +s, +k, +second}:
-      (GenJob.JCommit{c, a, s, k, second}, second_lines(st, c, s, k, a, second))
+      (GenJob.JCommit{c, a, s, k, second}, second_lines(build, st, c, s, k, a, second))
     case GenJob.JTiles{+c, +a, +s, +k, +size, +sites}:
-      (GenJob.JTiles{c, a, s, k, size, sites}, tiles_stage_lines(st, c, s, k, a, size, sites))
+      (GenJob.JTiles{c, a, s, k, size, sites}, tiles_stage_lines(build, st, c, s, k, a, size, sites))
     case GenJob.JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
-      (GenJob.JLand{c, a, s, k, w, world, lists, sites}, land_lines(st, c, s, k, a, w, world, lists, sites))
+      (GenJob.JLand{c, a, s, k, w, world, lists, sites}, land_lines(build, st, c, s, k, a, w, world, lists, sites))
     case GenJob.JOcean{+c, +a, landed}:
       ocean_entered(landed_lines(landed, st, a), c, a)
     case GenJob.JWorld{+c, +a, world}:
@@ -359,43 +360,43 @@ def tr_ctr(+st: Tr) -> U32:
     case Tr{_, _, _, +ctr, _}:
       ctr
 
-def entered_rng(got: GenJob.Job & Pcg.Rng, +st: Tr, +stage: U32, +a: U32) -> GenJob.Job & Tr:
+def entered_rng(+build: Builds.Build, got: GenJob.Job & Pcg.Rng, +st: Tr, +stage: U32, +a: U32) -> GenJob.Job & Tr:
   (job, +rng) = got
-  with_lines(entered(job, Tr{seed_of(st), stage, a, start_counter(stage, seed_of(st), tr_ctr(st), rng), Nil{}}), st, stage, a, rng)
+  with_lines(entered(build, job, Tr{seed_of(st), stage, a, start_counter(stage, seed_of(st), tr_ctr(st), rng), Nil{}}), st, stage, a, rng)
 
 def changed(+st: Tr, +stage: U32, +a: U32) -> Bool:
   match st:
     case Tr{_, +was, +wa, _, _}:
       U32.is_ne(was, stage) || U32.is_ne(wa, a)
 
-def enter_if(on: Bool, job: GenJob.Job, +st: Tr, +stage: U32, +a: U32) -> GenJob.Job & Tr:
+def enter_if(+build: Builds.Build, on: Bool, job: GenJob.Job, +st: Tr, +stage: U32, +a: U32) -> GenJob.Job & Tr:
   match on:
     case True{}:
-      entered_rng(job_rng(job), st, stage, a)
+      entered_rng(build, job_rng(job), st, stage, a)
     case False{}:
       (job, st)
 
-def moved_final(final: Bool, job: GenJob.Job) -> Step:
+def moved_final(+build: Builds.Build, final: Bool, job: GenJob.Job) -> Step:
   match final:
     case True{}:
       Stop{}
     case False{}:
-      Go{GenJob.advance(job)}
+      Go{GenJob.advance(build, job)}
 
-def visited(got: GenJob.Job & Tr, +stage: U32) -> Tr & Step:
+def visited(+build: Builds.Build, got: GenJob.Job & Tr, +stage: U32) -> Tr & Step:
   (job, +st) = got
-  (st, moved_final(GenJob.settled(stage), job))
+  (st, moved_final(build, GenJob.settled(stage), job))
 
-def visit_at(job: GenJob.Job, +at: GenJob.Where, +st: Tr) -> Tr & Step:
+def visit_at(+build: Builds.Build, job: GenJob.Job, +at: GenJob.Where, +st: Tr) -> Tr & Step:
   match at:
     case GenJob.Where{+stage, +a}:
-      visited(enter_if(changed(st, stage, a), job, st, stage, a), stage)
+      visited(build, enter_if(build, changed(st, stage, a), job, st, stage, a), stage)
 
-def visit(got: GenJob.Job & GenJob.Where, +st: Tr) -> Tr & Step:
+def visit(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +st: Tr) -> Tr & Step:
   (job, +sa) = got
-  visit_at(job, sa, st)
+  visit_at(build, job, sa, st)
 
-def trace_loop(fuel: Nat, got: Tr & Step) -> Tr:
+def trace_loop(+build: Builds.Build, fuel: Nat, got: Tr & Step) -> Tr:
   match fuel:
     case 0n:
       (+st, _) = got
@@ -406,7 +407,7 @@ def trace_loop(fuel: Nat, got: Tr & Step) -> Tr:
         case Stop{}:
           st
         case Go{job}:
-          trace_loop(f, visit(GenJob.stage(job), st))
+          trace_loop(build, f, visit(build, GenJob.stage(job), st))
 
 def flatten(chunks: List<&2, List<&2, String>>, acc: List<&2, String>) -> List<&2, String>:
   match chunks:
@@ -421,5 +422,5 @@ def lines_of(+st: Tr) -> List<&2, String>:
       flatten(chunks, Nil{})
 
 # The stage's records for a seed on the platform (the input is not used).
-def run(+stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
-  lines_of(trace_loop(8192n, (Tr{seed, 9, 0, 0, Nil{}}, Go{GenJob.start(seed, windows, False{})})))
+def run(+build: Builds.Build, +stage: String, +seed: U32, +windows: Bool, +input: String) -> List<&2, String>:
+  lines_of(trace_loop(build, 8192n, (Tr{seed, 9, 0, 0, Nil{}}, Go{GenJob.start(build, seed, windows, False{})})))

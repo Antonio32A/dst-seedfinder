@@ -8,6 +8,7 @@ import ../worldsim/tiles/table.bend as TileTable
 import ../worldsim/tiles/world.bend as TileWorld
 import ./graph.bend as GenGraph
 import ./tags.bend as GenTags
+import ../data/builds.bend as Builds
 
 # The committed map as the tile stages read it (TileWorld.World, the input of the tile code): the Klei node of every site
 # and the cells of the ConvertToTileMap build, with the double points DrawVoronoiEdge rasterises.
@@ -46,22 +47,22 @@ def parent_objects(+k: GenGraph.Klei) -> List<&2, U32>:
 def parent_number(+objects: List<&2, U32>, +count: U32, +o: U32) -> U32:
   Bool.pick(U32, TileWorld.is_none(o), TileWorld.none(), (count + index_of(objects, o, 0) : U32))
 
-def node_of(+s: StoryGraph.St, +k: GenGraph.Klei, +objects: List<&2, U32>, +i: U32, +x: U32) -> TileWorld.Node:
+def node_of(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +objects: List<&2, U32>, +i: U32, +x: U32) -> TileWorld.Node:
   +parent = parent_number(objects, GenGraph.count_of(k), GenGraph.parent_of(k, x))
   +parent_kind = Bool.pick(U32, TileWorld.is_none(parent), TileWorld.none(), 0)
-  TileWorld.Node{i, cpp_type(StoryGraph.nf(s, x, StoryGraph.f_type())), cpp_itype(StoryGraph.nf(s, x, StoryGraph.f_itype())), StoryGraph.nf(s, x, StoryGraph.f_value()), GenTags.site_flags(s, x),
-    parent, TileWorld.none(), parent_kind, TileWorld.none(), pig_of(StoryGraph.node_name(s, x))}
+  TileWorld.Node{i, cpp_type(StoryGraph.nf(s, x, StoryGraph.f_type())), cpp_itype(StoryGraph.nf(s, x, StoryGraph.f_itype())), StoryGraph.nf(s, x, StoryGraph.f_value()), GenTags.site_flags(build, s, x),
+    parent, TileWorld.none(), parent_kind, TileWorld.none(), pig_of(StoryGraph.node_name(build, s, x))}
 
-def nodes_loop(vs: List<&2, U32>, +s: StoryGraph.St, +k: GenGraph.Klei, +objects: List<&2, U32>, +i: U32) -> List<&2, TileWorld.Node>:
+def nodes_loop(+build: Builds.Build, vs: List<&2, U32>, +s: StoryGraph.St, +k: GenGraph.Klei, +objects: List<&2, U32>, +i: U32) -> List<&2, TileWorld.Node>:
   match vs:
     case Nil{}:
       Nil{}
     case Con{+x, rest}:
-      node_of(s, k, objects, i, x) <> nodes_loop(rest, s, k, objects, (i + 1 : U32))
+      node_of(build, s, k, objects, i, x) <> nodes_loop(build, rest, s, k, objects, (i + 1 : U32))
 
 # The Klei node of every site (vertex order).
-def nodes(+s: StoryGraph.St, +k: GenGraph.Klei) -> List<&2, TileWorld.Node>:
-  nodes_loop(GenGraph.vertices_of(k), s, k, parent_objects(k), 0)
+def nodes(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei) -> List<&2, TileWorld.Node>:
+  nodes_loop(build, GenGraph.vertices_of(k), s, k, parent_objects(k), 0)
 
 def poly_listed(got: Array<VoronoiPolygon.Poly> & VoronoiPolygon.Poly, +acc: List<&2, VoronoiPolygon.Poly>) -> Array<VoronoiPolygon.Poly> & List<&2, VoronoiPolygon.Poly>:
   (polys, +q) = got

@@ -1,17 +1,18 @@
 import Base
 import ../level/summary.bend as LevelSummary
+import ../data/builds.bend as Builds
 
-def world_line(+seed: U32) -> String:
-  U32.show(seed) ++ " " ++ LevelSummary.summary_json(LevelSummary.summary(seed))
+def world_line(+build: Builds.Build, +seed: U32) -> String:
+  U32.show(seed) ++ " " ++ LevelSummary.summary_json(build, LevelSummary.summary(build, seed))
 
-def world_print_seeds(n: Nat, +seed: U32) -> IO(Unit):
+def world_print_seeds(+build: Builds.Build, n: Nat, +seed: U32) -> IO(Unit):
   match n:
     case 0n:
       IO.pure(Unit, Unit{})
     case 1n+p:
       do IO<Unit>:
-        IO.print(world_line(seed))
-        world_print_seeds(p, (seed + 1 : U32))
+        IO.print(world_line(build, seed))
+        world_print_seeds(build, p, (seed + 1 : U32))
 
 def stop_name(+code: U32) -> String:
   Bool.pick(String, U32.is_eq(code, 1), "limit", Bool.pick(String, U32.is_eq(code, 2), "end", "time"))
@@ -56,19 +57,19 @@ def name_at(+names: List<&2, String>, +index: U32) -> String:
   Maybe.default(&2, String, List.get(&2, String, names, U32.to_nat(index)), "")
 
 # A level-table hit's fields: without world rules, the first filter (named `name`) matches every candidate.
-def hit_fields(+name: String, +seed: U32) -> String:
-  entry_json(0, name) ++ ",\"level\":" ++ LevelSummary.summary_json(LevelSummary.summary(seed)) ++ ",\"results\":[]"
+def hit_fields(+build: Builds.Build, +name: String, +seed: U32) -> String:
+  entry_json(0, name) ++ ",\"level\":" ++ LevelSummary.summary_json(build, LevelSummary.summary(build, seed)) ++ ",\"results\":[]"
 
 # A hit: its seed and the fields of its JSON object after the seed.
 type Hit is Data:
   Hit{seed: U32, fields: String}
 
-def hits_of(+name: String, hits: List<&2, U32>) -> List<&2, Hit>:
+def hits_of(+build: Builds.Build, +name: String, hits: List<&2, U32>) -> List<&2, Hit>:
   match hits:
     case Nil{}:
       Nil{}
     case Con{+seed, rest}:
-      Hit{seed, hit_fields(name, seed)} <> hits_of(name, rest)
+      Hit{seed, hit_fields(build, name, seed)} <> hits_of(build, name, rest)
 
 def hits_json(hits: List<&2, Hit>) -> List<&2, String>:
   match hits:
@@ -112,9 +113,9 @@ def print_hits_report(
         exit_status(found)
 
 def print_report(
-  json: Bool, windows: Bool, +name: String, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
+  +build: Builds.Build, json: Bool, windows: Bool, +name: String, +hits: List<&2, U32>, +start: U32, +scanned: Nat, +found: U32, +code: U32
 ) -> IO(Unit):
-  print_hits_report(json, windows, hits_of(name, hits), start, scanned, found, code)
+  print_hits_report(json, windows, hits_of(build, name, hits), start, scanned, found, code)
 
 def print_error(failure: U32 & String) -> IO(Unit):
   (code, +message) = failure

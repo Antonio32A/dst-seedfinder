@@ -10,6 +10,7 @@ import ../worldsim/points.bend as Points
 import ../populate/entities.bend as Entities
 import ../populate/layout.bend as PopulateLayout
 import ../populate/place.bend as PopulatePlace
+import ../data/builds.bend as Builds
 
 # obj_layout.Place(position, shape, add_fn, choices) for the maze layouts: LayoutForDefinition picks one of the maze
 # choices, ConvertLayoutToEntitylist runs the layout's area closures, and ReserveAndPlaceLayout with a position paints
@@ -90,31 +91,31 @@ def add_objects(items: List<&2, PopulateLayout.Item>, +f: PopulatePlace.Frame, +
           add_objects(rest, f, width, add_object(PopulatePlace.item_prefab(i), F64Arith.add(cx, F64Arith.mul(PopulatePlace.item_x(t, i), scale)),
             F64Arith.add(cy, F64Arith.mul(PopulatePlace.item_y(t, i), scale)), width, l))
 
-def painted_and_placed(+v: U32, +items: List<&2, PopulateLayout.Item>, +sized: F64Repr.F64, +t: PopulatePlace.Turn, +spot: Spot, l: Laid) -> Laid:
+def painted_and_placed(+build: Builds.Build, +v: U32, +items: List<&2, PopulateLayout.Item>, +sized: F64Repr.F64, +t: PopulatePlace.Turn, +spot: Spot, l: Laid) -> Laid:
   match l:
     case Laid{g, +rng, +ents}:
-      +side = Layouts.ground_size(v)
+      +side = Layouts.ground_size(build, v)
       +centre = F64Arith.add(F64Arith.add(F64Repr.from_u32(x_of(spot)), sized), F64Repr.half())
-      add_objects(items, PopulatePlace.Frame{centre, F64Arith.add(F64Arith.add(F64Repr.from_u32(y_of(spot)), sized), F64Repr.half()), t, PopulatePlace.scale_of(Layouts.scale(v))},
-        width_of(spot), Laid{paint_cells(PopulatePlace.ground(v, t), g, side, spot, 0), rng, ents})
+      add_objects(items, PopulatePlace.Frame{centre, F64Arith.add(F64Arith.add(F64Repr.from_u32(y_of(spot)), sized), F64Repr.half()), t, PopulatePlace.scale_of(Layouts.scale(build, v))},
+        width_of(spot), Laid{paint_cells(PopulatePlace.ground(build, v, t), g, side, spot, 0), rng, ents})
 
-def turned(got: PopulatePlace.Turn & Pcg.Rng, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
+def turned(+build: Builds.Build, got: PopulatePlace.Turn & Pcg.Rng, +v: U32, +items: List<&2, PopulateLayout.Item>, +size: F64Repr.F64, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
   (+random, rng) = got
-  painted_and_placed(v, items, PopulatePlace.ground_size(v, size), transform(random, Layouts.force_rotation(v)), spot, Laid{g, rng, ents})
+  painted_and_placed(build, v, items, PopulatePlace.ground_size(build, v, size), transform(random, Layouts.force_rotation(build, v)), spot, Laid{g, rng, ents})
 
-def converted(got: List<&2, PopulateLayout.Item> & Pcg.Rng, +v: U32, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
+def converted(+build: Builds.Build, got: List<&2, PopulateLayout.Item> & Pcg.Rng, +v: U32, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
   (+items, rng) = got
   +start = {PopulatePlace.Box{PopulatePlace.million(), F64Repr.neg(PopulatePlace.million()), PopulatePlace.million(), F64Repr.neg(PopulatePlace.million())} : PopulatePlace.Box}
-  turned(PopulatePlace.turn(Layouts.has(v, Layouts.flag_disable_transform()), rng), v, items, F64Arith.mul(PopulatePlace.scale_of(Layouts.scale(v)),
+  turned(build, PopulatePlace.turn(Layouts.has(build, v, Layouts.flag_disable_transform(build)), rng), v, items, F64Arith.mul(PopulatePlace.scale_of(Layouts.scale(build, v)),
     PopulatePlace.half_extent(PopulatePlace.bounds(items, start))), spot, g, ents)
 
-def picked(got: U32 & Pcg.Rng, +cell: U32, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
+def picked(+build: Builds.Build, got: U32 & Pcg.Rng, +cell: U32, +spot: Spot, g: Grid.Grid, +ents: List<&2, Entities.Ent>) -> Laid:
   (+choice, rng) = got
-  +layout = CaveStory.maze_layout(choice, cell)
-  converted(PopulateLayout.convert(swaps_of(spot), layout, rng), Layouts.variant(layout, swaps_of(spot)), spot, g, ents)
+  +layout = CaveStory.maze_layout(build, choice, cell)
+  converted(build, PopulateLayout.convert(build, swaps_of(spot), layout, rng), Layouts.variant(build, layout, swaps_of(spot)), spot, g, ents)
 
 # obj_layout.Place(position, MAZE_CELL_EXITS_INV[cell], add_fn, choices).
-def place(+spot: Spot, +cell: U32, +choices: List<&2, U32>, l: Laid) -> Laid:
+def place(+build: Builds.Build, +spot: Spot, +cell: U32, +choices: List<&2, U32>, l: Laid) -> Laid:
   match l:
     case Laid{g, rng, +ents}:
-      picked(PopulateLayout.random_item(choices, rng), cell, spot, g, ents)
+      picked(build, PopulateLayout.random_item(choices, rng), cell, spot, g, ents)

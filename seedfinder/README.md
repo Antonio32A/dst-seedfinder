@@ -14,7 +14,8 @@ and cave worlds by their level table (`--shard caves`).
 - Only for the WebAssembly build: [Emscripten](https://emscripten.org) 3.1.45 or newer (`emcc` on `PATH`, or `EMCC`)
 
 Only to regenerate `seedfinder/data/` (it's committed, since it only changes every DST update):
-- Don't Starve Together installed through Steam (`DST_GAME` overrides the install path).
+- Don't Starve Together installed through Steam (`DST_GAME` overrides the install path), once per game build of
+  `builds.json`.
 - python3, clang, curl, tar, unzip.
 
 ## Building
@@ -62,11 +63,16 @@ build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves       
 build/seedfinder -- world dump 123456 --platform linux -o 123456.dstw
 build/seedfinder -- world dump 123456 --platform linux --shard caves -o 123456.dstw
 build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # worlds/<seed>.dstw, worlds must exist
+build/seedfinder -- world dump 123456 --platform linux --build 757748 -o 123456.dstw  # another game build
 ```
 
 `world find` flags on top of the ones in [docs/config.md](../docs/config.md):
 - `--config F`: the search config (without one every seed matches).
 - `--platform windows|linux`: overrides the config's `platform`.
+- `--build NUMBER`: the game build the worlds are generated for, one of `builds.json`; overrides the config's `build`.
+  Without a config it defaults to the latest build. Also on `world show`, `world odds`, `world eval`, `world dump`,
+  `gen`, `setpiece` and the trace binary. A build without the caves shard rejects `--shard caves` (`build 757748 does
+  not support the caves shard yet`).
 - `--shard forest|caves`: overrides the config's `shard` (default forest); also on `world show`, `world dump`, `gen` and
   `setpiece`. The caves shard has the level table (`world find`, `world show`, `setpiece find|show`) and its whole
   worldgen (`gen`, `world dump`, see below). A caves config's world sections (`counts`, `distances`, `tiles`, `bridges`, `routes`)
@@ -90,15 +96,18 @@ JSON line), bit 4 the entities of the Labyrinth and Maze passes with the stream 
 (one JSON line) and bit 8 the tile map after them (a `tiles` record); `--draws N` starts the attempt N draws into the seed's
 stream (the position of a real attempt's `generate_begin`) to check the attempts after the first.
 
-`world odds FROM [TO] [--config F] [--shard forest|caves]` generates the level tables of the seeds `FROM..TO` and prints one
+`world odds FROM [TO] [--config F] [--shard forest|caves] [--build NUMBER]` generates the level tables of the seeds `FROM..TO` and prints one
 line, `odds {"seeds":N,"candidates":C,"tasks":{...},"setpieces":{...}}`: `seeds` is how many have a level table, `candidates` how
 many of them are candidates of the config (all without one), and the two objects count the seeds that choose each task or
 place each set piece at least once (names that no seed has are left out). The website sums the lines of its workers.
 
-`world eval --config F --world DUMP.dstw [--json] [--fast]` checks one config against one world dump. Both read the
-format of [docs/world-dump.md](../docs/world-dump.md) (version 3, older dumps have to be regenerated; only forest dumps can be read).
+`world eval --config F --world DUMP.dstw [--build NUMBER] [--json] [--fast]` checks one config against one world dump.
+Both read the format of [docs/world-dump.md](../docs/world-dump.md) (version 3, older dumps have to be regenerated), and
+both reject a dump of another game build than the config's (`world dump is build X, the config is build Y`; a dump
+whose build word is 0 is accepted).
 
-`world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--kk native|bend] -o PATH` generates worlds and writes their dumps:
+`world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] -o PATH`
+generates worlds and writes their dumps, with the build in the header:
 `PATH` is the dump of `SEED`, or with `TO` an existing folder that gets `PATH/<seed>.dstw` for every seed, ready for
 `world find --worlds PATH`. It prints one line per seed (`dump seed=S platform=P outcome=world|gaveup|crashed ents=N
 ms=T`). A seed whose world generation gave up gets the 24-byte gave-up dump, and a crashed one gets none (the exit
@@ -136,13 +145,17 @@ spawn) decides about 15 to 17 seeds/s at `--threads 8` (about 20.5 at `--threads
 After a game update:
 
 ```sh
-scripts/setup.sh              # once: game scripts, Lua 5.1.5 and Boost 1.52 into build/deps/, builds lua-dst
-scripts/gen/regen.sh          # rewrites seedfinder/data/*.bend and config.schema.json
+scripts/setup.sh              # per install: its game build into build/deps/builds/<build>/, Lua 5.1.5, Boost 1.52, lua-dst
+scripts/gen/regen.sh          # rewrites seedfinder/data/, config.schema.json and the website's generated tables
 scripts/gen/regen.sh --check  # fails if any generated file is stale
 ```
 
-Then rebuild and run the proofs. `DST_WINDOWS_EXE` can point at the Windows server exe for an extra check. The
-prefab catalog (`scripts/catalog/catalog.json`) has its own regen, see
+`builds.json` lists the game builds the finder supports; `regen.sh` generates every module once per build (sidecars
+in `scripts/gen/out/<build>/`), keeps one copy per distinct content in `seedfinder/data/b<build>/` and writes a
+dispatch module `seedfinder/data/<module>.bend` that picks the copy by the game build. Modules every build must share
+(the blob codec, pow tables, enums, tile groups, ocean, constants and the `*_types.bend` modules) stay single, and
+regen fails naming one that differs. Then rebuild and run the proofs. `DST_WINDOWS_EXE` can point at the Windows
+server exe for an extra check. The prefab catalogs (`scripts/catalog/<build>/`) have their own regen, see
 [scripts/catalog/README.md](../scripts/catalog/README.md).
 
 ## Dumping real worlds
@@ -152,13 +165,19 @@ feed `world find --worlds` / `world eval`:
 
 ```sh
 ln -s "$PWD/scripts/groundtruth/groundtruth-worldgen" "<DST install>/mods/"  # once
-scripts/groundtruth/run_worldgen.sh fresh 1-10  # one launch per seed -> build/groundtruth/data/worlds/<seed>.json
-python3 scripts/groundtruth/world_dump.py --platform linux build/groundtruth/data/worlds/1.json 1.dstw
-python3 scripts/groundtruth/world_dump.py --platform linux --worlds build/groundtruth/data/worlds build/groundtruth/dstw
+scripts/groundtruth/run_worldgen.sh fresh 1-10  # one launch per seed -> build/groundtruth/<build>/data/worlds/<seed>.json
+python3 scripts/groundtruth/world_dump.py --platform linux build/groundtruth/756039/data/worlds/1.json 1.dstw
+python3 scripts/groundtruth/world_dump.py --platform linux --worlds build/groundtruth/756039/data/worlds build/groundtruth/756039/dstw
 ```
 
+The game build is the install's `version.txt` (`DST_GAME` picks the install), and every build has its own folder
+`build/groundtruth/<build>/` (`data/worlds`, `data/worlds_caves`, `dstw`, `dstw_caves`, `windows_caves`, `logs`). The
+scripts use the main checkout's `build/groundtruth`, also from a git worktree; `GT_ROOT` overrides it. The compare
+scripts and `parse_worldgen.py` take `--build B` (default the latest of `builds.json`): it picks the build's folder and
+is passed to the binary.
+
 The third argument picks the shard: `scripts/groundtruth/run_worldgen.sh fresh 1-10 caves` generates the caves shard
-(preset `DST_CAVE`) into `build/groundtruth/data/worlds_caves/`. The dump script reads the shard from the world JSON
+(preset `DST_CAVE`) into `build/groundtruth/<build>/data/worlds_caves/`. The dump script reads the shard from the world JSON
 and writes it into the `.dstw` header. Besides the tiles, entities and topology, a caves world JSON holds probes of
 the caves-only engine calls (`runca` with the tiles around the site, `runmaze`, `metamaze` and `disconnect` records, and
 the tiles right before the
@@ -180,3 +199,18 @@ from the real probes; with `--draws` it also checks the random-draw counts of ev
 the converted real ones and reports the attempts each needed.
 `--platform windows --worlds DIR` compares against Windows server dumps instead: the Windows caves differ from the Linux ones only
 by the VC9 `random_shuffle` over `rand()` with RAND_MAX 0x7fff and MSVCR90's `powf` in the growing-tree maze.
+
+## Adding a game build
+
+1. `DST_GAME=<install> scripts/setup.sh`: extracts the install's scripts into `build/deps/builds/<build>/`.
+2. Add the build to `builds.json` with `"website": false` (and the shards it supports).
+3. `scripts/gen/regen.sh`: identical module copies are shared. When a module that must stay single differs, regen
+   names it: split it into a per-build module and thread `+build: Builds.Build` to its callers.
+4. `scripts/groundtruth/run_worldgen.sh` with `DST_GAME` on the new install, into `build/groundtruth/<build>/`; then
+   the compare scripts with `--build <build>`, and `world dump --build <build>` against its dumps.
+5. `scripts/proof.sh -j 3`. When its worlds differ from the previous build's, add a golden law pinned to the build.
+6. When the catalog changed, regenerate it with the catalog scripts' `--build <build>` (`scripts/catalog/README.md`)
+   and point the registry's `catalog` at it.
+7. Set `"website": true` once the website offers it, and move `latest` when the build goes public.
+
+Code changes are needed only when the world generation logic changed: a data-driven feature or a generated flag.

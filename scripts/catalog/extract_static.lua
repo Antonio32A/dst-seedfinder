@@ -3,10 +3,13 @@
 -- forest_map.Generate, then walks the game's own loaded tables (tasksets, tasks, rooms, layouts, sandboxes, map tags,
 -- bunches, prefab swaps, tiles, strings) and prints one JSON document on stdout.
 -- With CATALOG_SHARD=caves it walks the caves shard instead (DST_CAVE, task set cave_default).
--- usage: ../harness/bin/lua-dst extract_static.lua > build/static.json
+-- --build NUMBER walks that game build's scripts (build/deps/builds/NUMBER/scripts) instead of build/deps/game-scripts.
+-- usage: ../harness/bin/lua-dst extract_static.lua [--build NUMBER] > build/static.json
 
 local HERE = arg[0]:match("^(.*)/[^/]*$") or "."
-HARNESS_SCRIPTS_DIR = HERE .. "/../../build/deps/game-scripts"
+HARNESS_SCRIPTS_DIR = arg[1] == "--build" and (HERE .. "/../../build/deps/builds/" .. arg[2] .. "/scripts")
+    or (HERE .. "/../../build/deps/game-scripts")
+local SCRIPTS_SOURCE = "@" .. HARNESS_SCRIPTS_DIR .. "/"
 HARNESS_VERBOSE = false
 local SAMPLE_TRIALS = tonumber(os.getenv("CATALOG_TRIALS") or "400")
 
@@ -516,7 +519,7 @@ for spawner, data in pairs(bunches.Bunches) do
     local prefab = data.prefab
     if type(prefab) == "function" then
         local info = debug.getinfo(prefab, "S")
-        bunches_out[spawner] = { prefab_fn = { file = info.source:match("game%-scripts/(.*)$"), first = info.linedefined, last = info.lastlinedefined },
+        bunches_out[spawner] = { prefab_fn = { file = (info.source:sub(1, #SCRIPTS_SOURCE) == SCRIPTS_SOURCE and info.source:sub(#SCRIPTS_SOURCE + 1) or nil), first = info.linedefined, last = info.lastlinedefined },
             min = data.min, max = data.max }
     else
         bunches_out[spawner] = { prefab = prefab, min = data.min, max = data.max }
