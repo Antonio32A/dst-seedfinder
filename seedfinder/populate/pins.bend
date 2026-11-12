@@ -3,18 +3,28 @@ import ../data/closures.bend as Closures
 import ../data/builds.bend as Builds
 
 # The hand-ported closures, each pinned to the game code it ports: the id in data/closures.bend (the same in every
-# build) and the fingerprint of that closure variant. A regeneration that renumbers or changes a closure breaks the pin
-# (LawsWorldGeneration.ported_closures_line_up) instead of leaving the port to count 0 silently. Rows:
-# scripts/gen/closure_pins.py.
+# build) and the fingerprint of a closure variant the port handles, one row per variant when builds differ. A
+# regeneration that renumbers or changes a closure breaks the pin (LawsWorldGeneration.ported_closures_line_up) instead
+# of leaving the port to count 0 silently. Rows: scripts/gen/closure_pins.py.
 type Pin is Data:
   Pin{id: U32, fingerprint: U32}
 
-def line_up(+build: Builds.Build, pins: List<&2, Pin>) -> Bool:
+def is_listed(pins: List<&2, Pin>, +id: U32, +fingerprint: U32) -> Bool:
+  match pins:
+    case Nil{}:
+      False{}
+    case Con{Pin{+pinned, +listed}, rest}:
+      (U32.is_eq(pinned, id) && U32.is_eq(listed, fingerprint)) || is_listed(rest, id, fingerprint)
+
+def each_listed(+build: Builds.Build, +all: List<&2, Pin>, pins: List<&2, Pin>) -> Bool:
   match pins:
     case Nil{}:
       True{}
-    case Con{Pin{+id, +fingerprint}, rest}:
-      U32.is_eq(Closures.closure_fingerprint(build, id), fingerprint) && line_up(build, rest)
+    case Con{Pin{+id, _}, rest}:
+      is_listed(all, id, Closures.closure_fingerprint(build, id)) && each_listed(build, all, rest)
+
+def line_up(+build: Builds.Build, +pins: List<&2, Pin>) -> Bool:
+  each_listed(build, pins, pins)
 
 def is_pinned(pins: List<&2, Pin>, +id: U32) -> Bool:
   match pins:
@@ -39,7 +49,7 @@ def all_pinned(+build: Builds.Build, n: Nat, +pins: List<&2, Pin>, +id: U32) -> 
     case 1n+p:
       (Bool.not(is_ported_category(Closures.closure_categories(build, id))) || is_pinned(pins, id)) && all_pinned(build, p, pins, (id + 1 : U32))
 
-# counts.bend: the room count closures of countprefabs and countstaticlayouts (66-97; the Halloween ones count 0) and the caves' 100 and 141-143, and the prefabdata closures 85, 144 and 145.
+# counts.bend: the room count closures of countprefabs and countstaticlayouts (66-97; the Halloween ones 66, 67, 78 and 82 count 0 with events disabled) and the caves' 100 and 141-143, and the prefabdata closures 85, 144 and 145.
 def room_counts() -> List<&2, Pin>:
   [
     Pin{66, 174856483},
@@ -86,13 +96,17 @@ def room_counts() -> List<&2, Pin>:
 def layout_areas() -> List<&2, Pin>:
   [
     Pin{0, 17657100},
+    Pin{0, 2795307625},
     Pin{1, 1703926460},
     Pin{2, 505030364},
     Pin{3, 3531382424},
     Pin{4, 5188855},
+    Pin{4, 3608101107},
     Pin{5, 3082611440},
     Pin{6, 281286396},
+    Pin{6, 4259319841},
     Pin{7, 4221329158},
+    Pin{7, 1319824574},
     Pin{8, 2195007775},
     Pin{9, 1342917352},
     Pin{10, 1155159405},

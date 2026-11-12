@@ -1,5 +1,7 @@
 -- Shared setup for the lua generators in scripts/gen: runs the unmodified worldgen_main.lua (default forest,
 -- SURVIVAL_TOGETHER, seed 1) under the harness stubs up to forest_map.Generate and exposes the loaded game state.
+-- The world is generated with events disabled (the world option specialevent "none", which forest_map.Generate applies
+-- before any event check of the map scripts runs), whatever the build's default event.
 -- GEN_SHARD=caves makes BOOT.level the DST_CAVE level data and lib/reach.lua reach the caves' tasks and rooms.
 -- GEN_SCRIPTS names the game build's scripts (regen.sh sets it; build/deps/game-scripts without it).
 -- usage: local BOOT = dofile(<gen>/lib/boot.lua)
@@ -25,6 +27,7 @@ HARNESS_LOAD_HOOKS = {
         BOOT.generate = forest_map.Generate
         forest_map.Generate = function(prefab, w, h, tasks, level, level_type)
             captured = { prefab = prefab, tasks = tasks, level = level, level_type = level_type }
+            ApplySpecialEvent(SPECIAL_EVENTS.NONE)
             error(SENTINEL, 0)
         end
         return forest_map

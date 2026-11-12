@@ -36,6 +36,9 @@ def main():
     m = blob.Module("closures", "scripts/gen/gen_closures.py",
                     "Closure variants referenced by the data modules (bodies in scripts/gen/out/<build>/closures.json).",
                     imports=("./blob.bend as Blob",))
+    active = {g["name"] for c in closures for g in c["globals"]
+              if g["name"].startswith("IsSpecialEventActive(") and g["value"] is not False}
+    assert not active, f"the closures were evaluated with an event on ({', '.join(sorted(active))}): see lib/boot.lua"
     m.comment("Categories: " + ", ".join(f"{i} {c}" for i, c in enumerate(CATEGORIES)) + ".",
               "Evaluated in this build: IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) is false, SIZE_VARIATION 3.")
     for c in closures:

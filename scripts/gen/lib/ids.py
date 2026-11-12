@@ -232,14 +232,19 @@ def closures():
     contexts; the caves' ones are in cave_sites and cave_contexts.
 
     The ids are the first registered build's (its sidecars are generated first): a later build keeps them for every
-    variant it shares with that build, so the hand ports keyed by closure id (seedfinder/populate/) hold for every
-    build, and numbers its new variants after them in the same order."""
+    variant it shares with that build, a variant that replaces one of them at the same source sites takes its id, so
+    the hand ports keyed by closure id (seedfinder/populate/) hold for every build, and its new variants are numbered
+    after them in the same order."""
     forest, caves, ordered = _closure_variants(blob.out_dir())
     first = registry.builds()[0]["number"]
     if first != blob.build():
-        known = [e["key"] for e in _closure_variants(blob.out_dir().parent / str(first))[2]]
-        gone = set(known) - {e["key"] for e in ordered}
-        assert not gone, f"build {blob.build()} lacks {len(gone)} closure variants of build {first}, so ids would move"
+        keys = {e["key"] for e in ordered}
+        by_sites = {frozenset(e["sites"]): e["key"] for e in ordered}
+        known = [e["key"] if e["key"] in keys else by_sites.get(frozenset(e["sites"]))
+                 for e in _closure_variants(blob.out_dir().parent / str(first))[2]]
+        gone = known.count(None)
+        assert not gone, f"build {blob.build()} lacks {gone} closure variants of build {first}, so ids would move"
+        assert len(set(known)) == len(known), f"build {blob.build()} merges closure variants of build {first}"
         rank = {key: i for i, key in enumerate(known)}
         ordered = sorted(ordered, key=lambda e: rank.get(e["key"], len(known)))
     for i, e in enumerate(ordered):

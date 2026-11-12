@@ -1,7 +1,8 @@
 -- Static worldgen extraction for the catalog.
 -- Runs the unmodified game worldgen_main.lua (default forest, SURVIVAL_TOGETHER) under the harness stubs up to
--- forest_map.Generate, then walks the game's own loaded tables (tasksets, tasks, rooms, layouts, sandboxes, map tags,
--- bunches, prefab swaps, tiles, strings) and prints one JSON document on stdout.
+-- forest_map.Generate with events disabled (specialevent "none"), then walks the game's own loaded tables (tasksets,
+-- tasks, rooms, layouts, sandboxes, map tags, bunches, prefab swaps, tiles, strings) and prints one JSON document on
+-- stdout.
 -- With CATALOG_SHARD=caves it walks the caves shard instead (DST_CAVE, task set cave_default).
 -- --build NUMBER walks that game build's scripts (build/deps/builds/NUMBER/scripts) instead of build/deps/game-scripts.
 -- usage: ../harness/bin/lua-dst extract_static.lua [--build NUMBER] > build/static.json
@@ -19,6 +20,7 @@ HARNESS_LOAD_HOOKS = {
     ["map/forest_map"] = function(forest_map)
         forest_map.Generate = function(prefab, w, h, tasks, level, level_type)
             captured = { prefab = prefab, tasks = tasks, level = level }
+            ApplySpecialEvent(SPECIAL_EVENTS.NONE)
             error(SENTINEL, 0)
         end
         return forest_map

@@ -170,7 +170,9 @@ python3 scripts/groundtruth/world_dump.py --platform linux build/groundtruth/756
 python3 scripts/groundtruth/world_dump.py --platform linux --worlds build/groundtruth/756039/data/worlds build/groundtruth/756039/dstw
 ```
 
-The game build is the install's `version.txt` (`DST_GAME` picks the install), and every build has its own folder
+Every world is generated with events disabled, as the finder models them: the cluster template's
+`worldgenoverride.lua` files set `specialevent` to `"none"` (the server log then prints `Overriding World Event to:
+none`). The game build is the install's `version.txt` (`DST_GAME` picks the install), and every build has its own folder
 `build/groundtruth/<build>/` (`data/worlds`, `data/worlds_caves`, `dstw`, `dstw_caves`, `windows_caves`, `logs`). The
 scripts use the main checkout's `build/groundtruth`, also from a git worktree; `GT_ROOT` overrides it. The compare
 scripts and `parse_worldgen.py` take `--build B` (default the latest of `builds.json`): it picks the build's folder and
@@ -206,9 +208,14 @@ by the VC9 `random_shuffle` over `rand()` with RAND_MAX 0x7fff and MSVCR90's `po
 2. Add the build to `builds.json` with `"website": false` (and the shards it supports).
 3. `scripts/gen/regen.sh`: identical module copies are shared. When a module that must stay single differs, regen
    names it: split it into a per-build module and thread `+build: Builds.Build` to its callers. Closure ids are the
-   first registered build's in every build (a new closure variant takes the next free id), so the hand ports of
-   `populate/` keep their ids; a new room count or layout area closure fails the pins law until it is ported. regen
-   also fails when the build's caves level table differs from the latest build's, which the website uses for every build.
+   first registered build's in every build (a variant that replaces one at the same source sites keeps its id, a new
+   closure variant takes the next free id), so the hand ports of `populate/` keep their ids; a new or changed room
+   count or layout area closure fails the pins law until it is ported and pinned (`populate/pins.bend` lists one row
+   per variant). The finder models every build with events disabled, whatever its default event (constants.lua
+   `WORLD_SPECIAL_EVENT`): the extractors apply specialevent `"none"` where `forest_map.Generate` does
+   (`scripts/gen/lib/boot.lua`), so the event branches of the closures and layouts never run, and regen fails if a
+   closure was evaluated with an event on. regen also fails when the build's caves level table differs from the latest
+   build's, which the website uses for every build.
 4. `scripts/groundtruth/run_worldgen.sh` with `DST_GAME` on the new install, into `build/groundtruth/<build>/`; then
    the compare scripts with `--build <build>`, and `world dump --build <build>` against its dumps.
 5. `scripts/proof.sh -j 3`. When its worlds differ from the previous build's, add a golden law pinned to the build.

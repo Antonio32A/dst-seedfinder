@@ -14,7 +14,8 @@
    "description": "The game build the worlds are generated for; it decides the names the sections may use (builds.json).",
    "enum": [
     756039,
-    757748
+    757748,
+    762172
    ]
   },
   "shard": {
@@ -59,7 +60,7 @@
   "properties": {
    "build": {
     "enum": [
-     757748
+     756039
     ]
    }
   }
@@ -82,7 +83,7 @@
     },
     "filters": {
      "items": {
-      "$ref": "#/$defs/caveFilter_757748"
+      "$ref": "#/$defs/caveFilter_756039"
      }
     }
    }
@@ -1191,10 +1192,12 @@
     "atrium_rubble",
     "atrium_statue",
     "atrium_statue_facing",
+    "atriummarker_gate_center",
     "axe",
     "backpack",
     "bat",
     "batbat",
+    "batbosscave",
     "batcave",
     "batwing",
     "beardhair",
@@ -1737,12 +1740,12 @@
     }
    }
   },
-  "caveCountRule_757748": {
+  "caveCountRule_756039": {
    "type": "object",
    "additionalProperties": false,
    "properties": {
     "prefab": {
-     "$ref": "#/$defs/cavePrefabs_757748"
+     "$ref": "#/$defs/cavePrefabs_756039"
     },
     "min": {
      "$ref": "#/$defs/uint32"
@@ -1751,22 +1754,22 @@
      "$ref": "#/$defs/uint32"
     },
     "near": {
-     "$ref": "#/$defs/caveNear_757748"
+     "$ref": "#/$defs/caveNear_756039"
     }
    },
    "required": [
     "prefab"
    ]
   },
-  "caveDistanceRule_757748": {
+  "caveDistanceRule_756039": {
    "type": "object",
    "additionalProperties": false,
    "properties": {
     "from": {
-     "$ref": "#/$defs/cavePrefabs_757748"
+     "$ref": "#/$defs/cavePrefabs_756039"
     },
     "to": {
-     "$ref": "#/$defs/cavePrefabs_757748"
+     "$ref": "#/$defs/cavePrefabs_756039"
     },
     "min": {
      "$ref": "#/$defs/distance"
@@ -1787,7 +1790,7 @@
     "to"
    ]
   },
-  "caveFilter_757748": {
+  "caveFilter_756039": {
    "description": "World rules: all sections and all rules must hold (AND). Counts, distances and routes use the caves' prefabs, and `pillars` lets a distance use the tentacle pillar links.",
    "type": "object",
    "additionalProperties": false,
@@ -1799,14 +1802,14 @@
      "type": "array",
      "maxItems": 16,
      "items": {
-      "$ref": "#/$defs/caveCountRule_757748"
+      "$ref": "#/$defs/caveCountRule_756039"
      }
     },
     "distances": {
      "type": "array",
      "maxItems": 16,
      "items": {
-      "$ref": "#/$defs/caveDistanceRule_757748"
+      "$ref": "#/$defs/caveDistanceRule_756039"
      }
     },
     "tiles": {
@@ -1827,17 +1830,17 @@
      "type": "array",
      "maxItems": 16,
      "items": {
-      "$ref": "#/$defs/caveRouteRule_757748"
+      "$ref": "#/$defs/caveRouteRule_756039"
      }
     }
    }
   },
-  "caveNear_757748": {
+  "caveNear_756039": {
    "type": "object",
    "additionalProperties": false,
    "properties": {
     "prefab": {
-     "$ref": "#/$defs/cavePrefabs_757748"
+     "$ref": "#/$defs/cavePrefabs_756039"
     },
     "within": {
      "$ref": "#/$defs/distance"
@@ -1855,7 +1858,7 @@
     "within"
    ]
   },
-  "cavePrefabId_757748": {
+  "cavePrefabId_756039": {
    "enum": [
     "amulet",
     "ancient_altar_broken_spawner",
@@ -1886,12 +1889,10 @@
     "atrium_rubble",
     "atrium_statue",
     "atrium_statue_facing",
-    "atriummarker_gate_center",
     "axe",
     "backpack",
     "bat",
     "batbat",
-    "batbosscave",
     "batcave",
     "batwing",
     "beardhair",
@@ -2148,39 +2149,39 @@
     "wormlight_plant"
    ]
   },
-  "cavePrefabs_757748": {
+  "cavePrefabs_756039": {
    "description": "A caves prefab id or a list of them (their union).",
    "oneOf": [
     {
-     "$ref": "#/$defs/cavePrefabId_757748"
+     "$ref": "#/$defs/cavePrefabId_756039"
     },
     {
      "type": "array",
      "minItems": 1,
      "maxItems": 16,
      "items": {
-      "$ref": "#/$defs/cavePrefabId_757748"
+      "$ref": "#/$defs/cavePrefabId_756039"
      }
     }
    ]
   },
-  "caveRouteRule_757748": {
+  "caveRouteRule_756039": {
    "type": "object",
    "additionalProperties": false,
    "properties": {
     "from": {
-     "$ref": "#/$defs/cavePrefabs_757748"
+     "$ref": "#/$defs/cavePrefabs_756039"
     },
     "visit": {
      "type": "array",
      "minItems": 1,
      "maxItems": 6,
      "items": {
-      "$ref": "#/$defs/cavePrefabs_757748"
+      "$ref": "#/$defs/cavePrefabs_756039"
      }
     },
     "to": {
-     "$ref": "#/$defs/cavePrefabs_757748"
+     "$ref": "#/$defs/cavePrefabs_756039"
     },
     "max": {
      "$ref": "#/$defs/distance"

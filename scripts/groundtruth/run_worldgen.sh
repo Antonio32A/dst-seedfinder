@@ -4,6 +4,7 @@
 #   fresh (default): one launch per seed, so every world is a genuine fresh generation
 #   seeds          : comma separated seeds or ranges, default 1-10
 #   shard          : forest (default, the Master shard) or caves (the Caves shard, preset DST_CAVE)
+# Every world is generated with events disabled (specialevent "none" in cluster_template's worldgenoverride.lua files).
 # Needs groundtruth-worldgen copied or symlinked into the game's mods/ folder.
 # The game build is the install's version.txt. Logs go to build/groundtruth/<build>/logs/worldgen/ (worldgen_caves/ for
 # the caves), worlds to build/groundtruth/<build>/data/worlds/ (worlds_caves/ for the caves), in the main checkout;

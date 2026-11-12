@@ -33,6 +33,8 @@ describe("the build registry", () => {
         expect(shardCatalog("forest", 757748)).toBe(shardCatalog("forest", 756039));
         expect(shardCatalog("caves", 757748).byId.has("batbosscave")).toBe(true);
         expect(shardCatalog("caves", 756039).byId.has("batbosscave")).toBe(false);
+        expect(shardCatalog("forest", 762172)).toBe(shardCatalog("forest", 756039));
+        expect(shardCatalog("caves", 762172)).toBe(shardCatalog("caves", 757748));
         expect(levelCatalogOf(undefined, 756039).shard).toBe("forest");
     });
 });
@@ -68,10 +70,10 @@ describe("validating a config's version and build", () => {
         [{ version: 2 }, `version 2 ${OLD_FORMAT}`],
         [{ version: 4, build: 756039 }, "unsupported version 4"],
         [{ version: "3", build: 756039 }, "unsupported version \"3\""],
-        [{ version: 3 }, "build is required (a game build: 756039 or 757748)"],
-        [{}, "build is required (a game build: 756039 or 757748)"],
-        [{ version: 3, build: 123 }, "unknown build 123 (756039 or 757748)"],
-        [{ version: 3, build: "756039" }, "unknown build \"756039\" (756039 or 757748)"]
+        [{ version: 3 }, "build is required (a game build: 756039, 757748 or 762172)"],
+        [{}, "build is required (a game build: 756039, 757748 or 762172)"],
+        [{ version: 3, build: 123 }, "unknown build 123 (756039, 757748 or 762172)"],
+        [{ version: 3, build: "756039" }, "unknown build \"756039\" (756039, 757748 or 762172)"]
     ])("refuses %j like the finder", (config, error) => {
         expect(validateConfig(config)).toEqual({ ok: false, error: `config: ${error}` });
     });
@@ -118,7 +120,7 @@ describe("a search request from an old browser", () => {
 
     it("is refused when its config names a build the finder doesn't have", () => {
         expect(validateJobRequest({ config: { version: 3, build: 1 }, wanted: 1, maxCost: 20 }))
-            .toEqual({ ok: false, error: "config: unknown build 1 (756039 or 757748)" });
+            .toEqual({ ok: false, error: "config: unknown build 1 (756039, 757748 or 762172)" });
     });
 });
 
@@ -132,7 +134,7 @@ describe("a search's build", () => {
 
     it("starts on the latest build", () => {
         expect(defaultState().build).toBe(LATEST_BUILD);
-        expect(toSeedfinderConfig(defaultState())).toEqual({ ...V3, shard: "forest", platform: "windows" });
+        expect(toSeedfinderConfig(defaultState())).toEqual({ version: 3, build: 762172, shard: "forest", platform: "windows" });
     });
 
     it("is written into its config and read back", () => {
@@ -171,7 +173,7 @@ describe("a map preview", () => {
 
     it("keeps the storage keys of build 756039's previews", () => {
         expect(MAP_PREVIEW_VERSION).toBe(1);
-        for (const path of ["/og/map/linux/1234.png", "/og/map/linux/756039/1234.png", "/og/map/linux/forest/756039/1234.png"]) {
+        for (const path of ["/og/map/linux/756039/1234.png", "/og/map/linux/forest/756039/1234.png"]) {
             expect(preview(path)).toEqual({
                 platform: "linux",
                 shard: "forest",
@@ -186,7 +188,11 @@ describe("a map preview", () => {
             key: "previews/756039.1/windows/caves/7/1_2_300_45.png",
             dumpKey: "dumps/756039.1/windows/caves/7.dstw"
         });
-        expect(preview("/og/map/windows/caves/7.png")).toMatchObject({ key: "previews/756039.1/windows/caves/7/full.png" });
+    });
+
+    it("is the latest build's without one", () => {
+        expect(preview("/og/map/linux/1234.png")).toMatchObject({ build: 762172, key: "previews/762172.1/linux/forest/1234/full.png" });
+        expect(preview("/og/map/windows/caves/7.png")).toMatchObject({ key: "previews/762172.1/windows/caves/7/full.png" });
     });
 
     it("keeps another build's previews apart", () => {

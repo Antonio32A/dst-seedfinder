@@ -142,6 +142,9 @@ def lits(+build: Builds.Build, +c: U32) -> List<&2, U32>:
 def part(+build: Builds.Build, +c: U32, +from: U32, +count: U32) -> List<&2, U32>:
   Blob.first(Blob.drop(lits(build, c), from), count)
 
+def last(+build: Builds.Build, +c: U32, +count: U32) -> List<&2, U32>:
+  Blob.drop(lits(build, c), (count_of(lits(build, c)) - count : U32))
+
 def names(xs: List<&2, U32>) -> List<&2, Res>:
   match xs:
     case Nil{}:
@@ -342,10 +345,6 @@ def sculpture_drawn(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> &
   (+r, s) = got
   sculpture_pick(build, U32.is_eq(r, 1), s)
 
-def pumpkin_drawn(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
-  (_, s) = got
-  (names(lits(build, 30)), s)
-
 def placed_at(+id: U32, +obj: Obj) -> List<&2, Res>:
   match obj:
     case Obj{Pos{+x, +y, _}, _, _}:
@@ -369,23 +368,23 @@ def fishing_first(+build: Builds.Build, got: U32 & Pcg.Rng) -> List<&2, Res> & P
   (+first, s) = got
   fishing_second(build, random_item(part(build, 10, 8, 5), s), first)
 
-# Boons 0..7 (map/boons.lua, Hallowed Nights off).
+# Boons 0..7 (map/boons.lua) with events disabled: the else branch, whose literals are the closure's last ones.
 def boon_a(+build: Builds.Build, +c: U32, s: Pcg.Rng) -> List<&2, Res> & Pcg.Rng:
   match c:
     case 0:
-      as_res(pick_one(part(build, 0, 4, 2), s))
+      as_res(pick_one(last(build, 0, 2), s))
     case 1:
-      as_res(dups_range(3, 5, part(build, 1, 2, 1), s))
+      as_res(dups_range(3, 5, last(build, 1, 1), s))
     case 2:
-      as_res(pick_one(part(build, 2, 3, 9), s))
+      as_res(pick_one(last(build, 2, 9), s))
     case 3:
-      as_res(dups_range(3, 5, part(build, 3, 2, 5), s))
+      as_res(dups_range(3, 5, last(build, 3, 5), s))
     case 4:
-      as_res(pick_one(part(build, 4, 5, 2), s))
+      as_res(pick_one(last(build, 4, 2), s))
     case 5:
-      as_res(dups_range(3, 5, part(build, 5, 5, 1), s))
+      as_res(dups_range(3, 5, last(build, 5, 1), s))
     case 7:
-      as_res(dups_range(3, 5, part(build, 7, 6, 1), s))
+      as_res(dups_range(3, 5, last(build, 7, 1), s))
     case _:
       (Nil{}, s)
 
@@ -425,8 +424,6 @@ def layouts_a(+build: Builds.Build, +c: U32, +area: F64Repr.F64, +obj: Obj, s: P
       (names(lits(build, 28)), s)
     case 29:
       (placed_area(build, obj), s)
-    case 30:
-      pumpkin_drawn(build, MathRandom.random_upto(s, 3))
     case 31:
       as_res(dups_range(2, 4, lits(build, 31), s))
     case 34:

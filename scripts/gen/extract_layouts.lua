@@ -107,6 +107,17 @@ local function unescape(raw)
     return (loadstring("return " .. raw))()
 end
 
+-- A literal followed by ..math.random(COUNT) stands for the names it can make, literal..1 to literal..COUNT.
+local function literal_names(text, stop, literal)
+    if not text:match("^%s*%.%.%s*math%.random%(", stop + 1) then return { literal } end
+    local name = text:match("^%s*%.%.%s*math%.random%(%s*([%a_][%w_]*)%s*%)", stop + 1)
+    local count = name and rawget(_G, name)
+    assert(type(count) == "number", "can't resolve the count of " .. literal .. "..math.random(...)")
+    local names = {}
+    for i = 1, count do names[i] = literal .. i end
+    return names
+end
+
 local function lex_step(text, pos, state)
     local c = text:sub(pos, pos)
     if text:sub(pos, pos + 1) == "--" then
@@ -115,7 +126,11 @@ local function lex_step(text, pos, state)
     end
     if c == "\"" or c == "'" then
         local stop = quoted_end(text, pos)
-        if state.depth > 0 then state.literals[#state.literals + 1] = unescape(text:sub(pos, stop)) end
+        if state.depth > 0 then
+            for _, literal in ipairs(literal_names(text, stop, unescape(text:sub(pos, stop)))) do
+                state.literals[#state.literals + 1] = literal
+            end
+        end
         return stop + 1
     end
     local word = text:match("^[%a_][%w_]*", pos)

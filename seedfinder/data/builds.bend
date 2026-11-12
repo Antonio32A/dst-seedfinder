@@ -7,7 +7,7 @@ type Build is Data:
 
 # The latest public build, the default one.
 def latest() -> Build:
-  Build{756039}
+  Build{762172}
 
 # The registered build with this number (None for any other number).
 def of_number(+n: U32) -> Maybe<&2, Build>:
@@ -16,6 +16,8 @@ def of_number(+n: U32) -> Maybe<&2, Build>:
       Some{Build{756039}}
     case 757748:
       Some{Build{757748}}
+    case 762172:
+      Some{Build{762172}}
     case _:
       None{}
 
@@ -26,17 +28,19 @@ def number(+build: Build) -> U32:
 
 # Every registered build number, in builds.json order.
 def numbers() -> List<&2, U32>:
-  [756039, 757748]
+  [756039, 757748, 762172]
 
 # The registered build numbers as messages list them.
 def numbers_text() -> String:
-  "756039 or 757748"
+  "756039, 757748 or 762172"
 
 def has_caves_of_number(+number: U32) -> Bool:
   match number:
     case 756039:
       True{}
     case 757748:
+      True{}
+    case 762172:
       True{}
     case _:
       False{}

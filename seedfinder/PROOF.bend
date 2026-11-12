@@ -12,6 +12,7 @@ import ./laws/caves.bend as LawsCaves
 import ./laws/caves_757748.bend as LawsCaves757748
 import ./laws/data_tables.bend as LawsDataTables
 import ./laws/distances.bend as LawsDistances
+import ./laws/events_off_762172.bend as LawsEventsOff762172
 import ./laws/f64.bend as LawsF64
 import ./laws/gen_and_search.bend as LawsGenAndSearch
 import ./laws/kk.bend as LawsKK

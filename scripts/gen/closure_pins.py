@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Prints the `Pin{id, fingerprint}` rows of seedfinder/populate/pins.bend for the closure ids given as arguments
-(a single id or FIRST-LAST), from the current sidecars. After a regeneration that renumbers closures, re-check each
-hand port against its closure body in scripts/gen/out/closures.json, then paste the printed rows.
+(a single id or FIRST-LAST), from the sidecars of GEN_BUILD (the latest build by default). After a regeneration that
+renumbers closures, re-check each hand port against its closure body in scripts/gen/out/<build>/closures.json, then
+paste the printed rows. A build whose variant replaces another at the same id adds its row next to the older one.
 
-usage: python3 scripts/gen/closure_pins.py 68-77 79-81 83
+usage: GEN_BUILD=762172 python3 scripts/gen/closure_pins.py 68-77 79-81 83
 """
 import sys
 from pathlib import Path

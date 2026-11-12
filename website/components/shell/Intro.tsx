@@ -29,8 +29,8 @@ export default function Intro() {
                             </li>
                             <li>
                                 Do not tweak any other &quot;World Generation&quot; settings that are unsupported,
-                                changing any of these settings will result in a
-                                completely different world.
+                                changing any of these settings will result in a completely different world. Make sure
+                                your events are also disabled, as they are not supported.
                             </li>
                         </ol>
                     </div>

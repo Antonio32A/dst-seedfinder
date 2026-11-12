@@ -70,7 +70,7 @@ describe("every response carries the security headers", () => {
     });
 
     it.each([
-        ["/map/windows/123/1", "There&#x27;s no build &quot;123&quot;. Use 756039 or 757748."]
+        ["/map/windows/123/1", "There&#x27;s no build &quot;123&quot;. Use 756039 or 762172."]
     ])("on the world map %s, which says it isn't one", async (path, error) => {
         const response = await api(path);
         expect(response.status).toBe(200);

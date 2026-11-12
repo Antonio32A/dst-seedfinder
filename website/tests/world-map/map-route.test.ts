@@ -19,28 +19,30 @@ const world = (map: Partial<MapSeed>): MapSeed => ({ platform: "linux", shard: "
 
 describe("the map route", () => {
     it.each([
-        ["linux/1234", world({})],
-        ["windows/4294967295", world({ platform: "windows", seed: 4294967295 })],
-        ["linux/forest/1234", world({})],
-        ["linux/caves/1234", world({ shard: "caves" })],
+        ["linux/1234", world({ build: 762172 })],
+        ["windows/4294967295", world({ platform: "windows", build: 762172, seed: 4294967295 })],
+        ["linux/forest/1234", world({ build: 762172 })],
+        ["linux/caves/1234", world({ shard: "caves", build: 762172 })],
         ["linux/756039/1234", world({})],
         ["linux/forest/756039/1234", world({})],
         ["linux/caves/756039/1234", world({ shard: "caves" })],
         ["linux/757748/1234", world({ build: 757748 })],
         ["linux/forest/757748/0007", world({ build: 757748, seed: 7 })],
-        ["linux/caves/757748/1234", world({ shard: "caves", build: 757748 })]
+        ["linux/caves/757748/1234", world({ shard: "caves", build: 757748 })],
+        ["linux/762172/1234", world({ build: 762172 })],
+        ["linux/caves/762172/1234", world({ shard: "caves", build: 762172 })]
     ])("opens %s", (path, expected) => {
         expect(route(path)).toEqual(expected);
     });
 
     it("reads a number after the shard as the seed, and two as the build and the seed", () => {
-        expect(route("linux/caves/123")).toEqual(world({ shard: "caves", seed: 123 }));
+        expect(route("linux/caves/123")).toEqual(world({ shard: "caves", build: 762172, seed: 123 }));
         expect(route("linux/caves/756039/123")).toEqual(world({ shard: "caves", seed: 123 }));
-        expect(route("linux/caves/756039")).toEqual(world({ shard: "caves", seed: 756039 }));
+        expect(route("linux/caves/756039")).toEqual(world({ shard: "caves", build: 762172, seed: 756039 }));
     });
 
     it.each(["linux/123/1234", "linux/caves/1/1234", "linux/abc/1234", "linux/forest/-1/1234", "linux/forest/caves/1"])("refuses the unknown build of %s", (path) => {
-        expect(route(path)).toEqual({ error: expect.stringMatching(/^There's no build "[^"]+"\. Use 756039 or 757748\.$/) });
+        expect(route(path)).toEqual({ error: expect.stringMatching(/^There's no build "[^"]+"\. Use 756039 or 762172\.$/) });
     });
 
     it.each(["linux/caves", "linux/756039/1234/5", "linux/caves/756039/1/2"])("refuses %s, which isn't a map", (path) => {

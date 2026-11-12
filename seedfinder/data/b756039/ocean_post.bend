@@ -21,7 +21,7 @@ def min_wormhole_id() -> U32:
   2300000
 
 def wormhole_prefab() -> U32:
-  611
+  614
 
 def wormhole_marker() -> U32:
   546
@@ -68,7 +68,7 @@ def endpoint_prefabs_count() -> U32:
 def endpoint_prefabs_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      ["𐉡𓿨𐀀𐀀𐀀𜀀𐀀"]
+      ["𐉤𓿨𐀀𐀀𐀀𜀀𐀀"]
     case _:
       Nil{}
 
@@ -111,7 +111,7 @@ def randomization_proxies_count() -> U32:
 def randomization_proxies_chunk(+c: U32) -> List<&2, String>:
   match c:
     case 0:
-      ["𐉢𐄾𐃚𐆰"]
+      ["𐉥𐄾𐃚𐆰"]
     case _:
       Nil{}
 
