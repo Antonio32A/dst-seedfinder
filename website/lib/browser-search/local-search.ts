@@ -4,6 +4,14 @@ import type { SearchOutput } from "@/lib/jobs/job-result";
 import { type DoneSummary, exitKind, type OutputLine, parseOutputLine } from "@/lib/jobs/runner-output";
 import { type SearchSpeeds, SpeedMeter } from "@/lib/jobs/search-speed";
 import { inRealTime, type SearchTimings } from "@/lib/jobs/search-timings";
+import {
+    appendTail,
+    browserEnvironment,
+    type FailureReport,
+    formatFailureReport,
+    workerErrorDetails,
+    workerErrorMessage
+} from "./failure-report";
 import { type Chunk, LocalScan } from "./local-scan";
 import { compileSeedfinder } from "./seedfinder-wasm";
 
@@ -50,7 +58,10 @@ export interface LocalSearchState {
     timings: SearchTimings | null;
     generatesWorlds: boolean;
     error: string | null;
+    errorReport: string | null;
 }
+
+type Failure = Pick<FailureReport, "error" | "event" | "exit">;
 
 interface Slot {
     worker: Worker;
@@ -59,6 +70,8 @@ interface Slot {
     summary: DoneSummary | null;
     configError: string | null;
     lastError: string | null;
+    stderr: string[];
+    heard: boolean;
 }
 
 /**
@@ -69,9 +82,11 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
     const scan = new LocalScan(request.startSeed, request.wanted);
     const config = JSON.stringify(request.config);
     const slots: Slot[] = [];
+    const startedAt = performance.now();
     let module: WebAssembly.Module | null = null;
     let status: LocalSearchState["status"] = "starting";
     let error: string | null = null;
+    let errorReport: string | null = null;
     let meter: SpeedMeter | null = null;
     let generatesWorlds = false;
     let updateTimer = 0;
@@ -88,7 +103,8 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
             speeds: meter?.speeds() ?? null,
             timings,
             generatesWorlds,
-            error
+            error,
+            errorReport
         };
     };
 
@@ -102,13 +118,25 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
         if (updateTimer === 0) updateTimer = window.setTimeout(flush, UPDATE_MS);
     };
 
-    const end = (next: LocalSearchState["status"], reason: string | null = null) => {
+    const end = (next: LocalSearchState["status"], reason: string | null = null, report: string | null = null) => {
         if (status !== "starting" && status !== "running") return;
         status = next;
         error = reason;
+        errorReport = report;
         for (const slot of slots) slot.worker.terminate();
         flush();
     };
+
+    const fail = (slot: Slot | null, failure: Failure) => end("failed", failure.error, formatFailureReport({
+        ...failure,
+        time: new Date().toISOString(),
+        elapsedMs: performance.now() - startedAt,
+        chunk: slot?.chunk ? { from: slot.chunk.from, to: slot.chunk.to } : null,
+        stderr: slot?.stderr ?? [],
+        counts: { ...scan.counts(), hits: scan.output().hits.length },
+        request: { ...request, config },
+        environment: browserEnvironment()
+    }));
 
     const assign = (slot: Slot) => {
         const chunk = scan.claim();
@@ -140,8 +168,12 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
 
     const exited = (slot: Slot, chunk: Chunk, { code, error: crash }: Extract<WorkerMessage, { type: "exit" }>) => {
         const kind = exitKind(code, slot.summary, slot.configError);
-        if (kind === "config-error") return end("failed", `The search couldn't run: ${slot.configError}`);
-        if (kind === "crash" || slot.summary === null) return end("failed", `The seedfinder stopped unexpectedly: ${crash ?? slot.lastError ?? `exit ${code}`}`);
+        const exit = { code, error: crash };
+        if (kind === "config-error") return fail(slot, { error: `The search couldn't run: ${slot.configError}`, event: null, exit });
+        if (kind === "crash" || slot.summary === null) {
+            const error = `The seedfinder stopped unexpectedly: ${crash ?? slot.lastError ?? `exit ${code}`}`;
+            return fail(slot, { error, event: null, exit });
+        }
         scan.finish(chunk, slot.summary.scanned, performance.now() - slot.startedAt);
         if (scan.stopReason() !== null) return end("done");
         assign(slot);
@@ -149,6 +181,8 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
 
     const listen = (slot: Slot) => {
         slot.worker.onmessage = ({ data }: MessageEvent<WorkerMessage>) => {
+            slot.heard = true;
+            if (data.type === "line" && data.stderr) appendTail(slot.stderr, data.line);
             const chunk = slot.chunk;
             if (chunk === null || (status !== "running" && status !== "starting")) return;
             if (data.type === "line") readLine(slot, chunk, data);
@@ -157,7 +191,9 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
         };
         slot.worker.onerror = (event) => {
             event.preventDefault();
-            end("failed", "The seedfinder couldn't load in this browser.");
+            const details = workerErrorDetails(event);
+            const ran = slots.some((each) => each.heard);
+            fail(slot, { error: workerErrorMessage(details, ran, slot.lastError), event: details, exit: null });
         };
     };
 
@@ -174,7 +210,9 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
                     startedAt: 0,
                     summary: null,
                     configError: null,
-                    lastError: null
+                    lastError: null,
+                    stderr: [],
+                    heard: false
                 };
                 slots.push(slot);
                 listen(slot);
@@ -182,7 +220,11 @@ export function startLocalSearch(request: LocalSearchRequest, onChange: (state: 
             }
             flush();
         },
-        (caught: unknown) => end("failed", `The seedfinder couldn't be downloaded: ${caught instanceof Error ? caught.message : String(caught)}`)
+        (caught: unknown) => fail(null, {
+            error: `The seedfinder couldn't be downloaded: ${caught instanceof Error ? caught.message : String(caught)}`,
+            event: null,
+            exit: null
+        })
     );
     flush();
 

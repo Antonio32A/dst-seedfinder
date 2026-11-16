@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { LocalSearchState } from "@/lib/browser-search/local-search";
+import ErrorNotice from "./ErrorNotice";
 import JobResults, { type JobResultsProps, type ShownJob } from "./JobResults";
 import LiveStats, { checkedNote } from "./LiveStats";
 import SearchSpeeds from "./SearchSpeeds";
@@ -22,7 +23,7 @@ interface LocalSearchProps {
 }
 
 export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: LocalSearchProps) {
-    const { request, status, search, speeds, timings, generatesWorlds, error } = state;
+    const { request, status, search, speeds, timings, generatesWorlds, error, errorReport } = state;
     const headline = HEADLINES[status];
     const scanned = search.scanned ?? 0;
 
@@ -64,11 +65,7 @@ export default function LocalSearch({ state, onStop, onSearchFurther, onCopy }: 
                         </div>
                 )}
                 {status === "cancelled" && <p className="muted">You stopped this search.</p>}
-                {error && (
-                        <p className="notice notice--error" role="alert">
-                            {error}
-                        </p>
-                )}
+                {error && <ErrorNotice message={error} report={errorReport}/>}
                 <JobResults job={job} onCopy={onCopy} further={{ busy: false, onStart: onSearchFurther }}/>
             </section>
     );
