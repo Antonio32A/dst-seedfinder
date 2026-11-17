@@ -21,13 +21,14 @@ import ../data/builds.bend as Builds
 # header; a crashed seed has none, and the exit status is 1 after the other seeds when a seed crashed or a dump could
 # not be written.
 
-# A slot: free, a seed with CPU work, at a KK pass, waiting for its pass's positions, or finished (outcome 0 world,
-# 1 gave up, 2 crashed; count: the entities of its dump). `since`: when its generation started (ms).
+# A slot: free, a seed with CPU work, at a KK pass, waiting for its pass's positions, given them, or finished (outcome
+# 0 world, 1 gave up, 2 crashed; count: the entities of its dump). `since`: when its generation started (ms).
 type Slot is Type:
   Free{}
   Busy{seed: U32, job: GenJob.Job, since: Nat}
   Laying{seed: U32, job: GenJob.Job, layout: GenLayout.Layout, since: Nat}
   Waiting{seed: U32, job: GenJob.Job, laid: Chan(List<&2, LayoutSpace.Vec>), since: Nat}
+  Laid{seed: U32, job: GenJob.Job, ps: List<&2, LayoutSpace.Vec>, since: Nat}
   Finished{seed: U32, outcome: U32, count: U32, bytes: List<&2, U32>, since: Nat}
 
 type Slots is Type:
@@ -156,6 +157,8 @@ def work(+build: Builds.Build, slot: Slot, +ctx: Ctx) -> Slot:
   match slot:
     case Busy{+seed, job, +since}:
       rushed(build, rush_steps(), job, seed, since, ctx)
+    case Laid{+seed, job, +ps, +since}:
+      rushed(build, rush_steps(), GenJob.laid(build, job, ps), seed, since, ctx)
     case other:
       other
 
@@ -238,7 +241,7 @@ def joined(+build: Builds.Build, xs: List<&1, Slot>, acc: List<&1, Slot>) -> IO(
         case Waiting{+seed, job, laid, +since}:
           do IO<List<&1, Slot>>:
             +ps : List<&2, LayoutSpace.Vec> <- IO.join(List<&2, LayoutSpace.Vec>, laid)
-            joined(build, rest, Busy{seed, GenJob.laid(build, job, ps), since} <> acc)
+            joined(build, rest, Laid{seed, job, ps, since} <> acc)
         case other:
           joined(build, rest, other <> acc)
 
