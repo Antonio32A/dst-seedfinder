@@ -3,7 +3,6 @@ import ../cli/args.bend as Args
 import ../cli/files.bend as Files
 import ../filters/dump.bend as FilterDump
 import ../filters/par.bend as Par
-import ../search/threads.bend as SearchThreads
 import ../trace/canon.bend as Canon
 import ../worldsim/layout/space.bend as LayoutSpace
 import ./job.bend as GenJob
@@ -384,5 +383,5 @@ def started(+q: Args.Dump, +threads: U32) -> IO(Unit):
 def run(+args: List<&2, String>) -> IO(Unit):
   do IO<Unit>:
     +q : Args.Dump <- IO.pass(Args.Dump, Args.dump_of(args))
-    +threads : U32 <- SearchThreads.threads()
+    +threads : U32 <- IO.thread_count()
     started(q, threads)

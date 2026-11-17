@@ -3,8 +3,8 @@
 
 usage: compare_caves_land.py BINARY [SEEDS] [--build BUILD] [--worlds DIR] [--jobs N] [--first-attempts] [--label LABEL]
 
-Every attempt of every seed is one `BINARY -- gen SEED --shard caves --platform linux --build BUILD --dump 3`
-run. The first attempt
+Every attempt of every seed is one run of
+`BINARY +RTS --threads 2 -RTS gen SEED --shard caves --platform linux --build BUILD --dump 3`. The first attempt
 starts from the seed's level table; attempt k > 1 starts at the position of the PCG32 stream at the real attempt's
 generate_begin (the third field of the `generate_begin` rng_checkpoints entry, which counts the engine's draws too), so
 every attempt is checked on its own. The tile map of the run must equal the world JSON's tiles probe of that attempt
@@ -35,8 +35,8 @@ def start_positions(world):
 
 
 def run(binary, seed, position, build):
-    cmd = [binary, "--threads", "2", "--", "gen", str(seed), "--shard", "caves", "--platform", "linux", "--build", str(build),
-           "--dump", "3"]
+    cmd = [binary, "+RTS", "--threads", "2", "-RTS", "gen", str(seed), "--shard", "caves", "--platform", "linux",
+           "--build", str(build), "--dump", "3"]
     if position:
         cmd += ["--draws", str(position)]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=1800).stdout

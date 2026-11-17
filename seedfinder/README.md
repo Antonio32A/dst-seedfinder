@@ -34,8 +34,7 @@ scripts/proof.sh -j 3                              # the laws (LAWS.bend, laws/)
 - The website's build copies `build/wasm/`, so build wasm first.
 - `wasm-single` runs on the caller's thread (no Web Workers, no SharedArrayBuffer) in growable memory: 102 to 105 MB a
   world with its 80 MB corpus (`BUILD_CORPUS_MB`; 76 is the least that dumps every tested world, though only the
-  windows forest of seed 59233 needs over 36). Give it its precompiled `WebAssembly.Module` through the factory's `instantiateWasm`, a fresh instance per run, and no
-  `/proc/self/cmdline` (reading it takes a 16 MB buffer the memory keeps).
+  windows forest of seed 59233 needs over 36). Give it its precompiled `WebAssembly.Module` through the factory's `instantiateWasm`, and a fresh instance per run.
 
 Keep in mind that these binaries may not be portable, so you may have to rebuild it on the system.
 
@@ -46,24 +45,24 @@ clang -std=c11 -O3 -mllvm -inline-threshold=3000 seedfinder.c -lpthread -lm -o s
 
 ## Running
 
-Runtime options (`--threads`, see `--bend-help`) go before `--`, the seedfinder's arguments after it.
+Runtime options (`--threads`, see `+RTS --help -RTS`) go between `+RTS` and `-RTS` before the command.
 
 ```sh
-build/seedfinder --threads 16 -- world find --limit 5 --time-limit 120 --config config.json
-build/seedfinder --threads 16 -- world find --start-seed 123456 --limit 1 --json --config config.json
-build/seedfinder -- world show 123456 --config config.json
-build/seedfinder --threads 16 -- setpiece find 0 4294967295 MiscBoon:7
-build/seedfinder -- setpiece show 123456
-build/seedfinder --threads 16 -- world find --shard caves --limit 5 --config caves.json  # cave seeds by level table
-build/seedfinder -- world show 123456 --shard caves                                     # the caves level table
-build/seedfinder --threads 16 -- world odds 0 9999999 --config config.json              # how common each task and set piece is
-build/seedfinder --threads 1 -- gen 123456 --platform windows
-build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves --dump 3  # the caves up to the mazes
-build/seedfinder --threads 1 -- gen 123456 --platform linux --shard caves            # the whole caves worldgen
-build/seedfinder -- world dump 123456 --platform linux -o 123456.dstw
-build/seedfinder -- world dump 123456 --platform linux --shard caves -o 123456.dstw
-build/seedfinder --threads 16 -- world dump 0 999 --platform linux -o worlds  # worlds/<seed>.dstw, worlds must exist
-build/seedfinder -- world dump 123456 --platform linux --build 757748 -o 123456.dstw  # another game build
+build/seedfinder +RTS --threads 16 -RTS world find --limit 5 --time-limit 120 --config config.json
+build/seedfinder +RTS --threads 16 -RTS world find --start-seed 123456 --limit 1 --json --config config.json
+build/seedfinder world show 123456 --config config.json
+build/seedfinder +RTS --threads 16 -RTS setpiece find 0 4294967295 MiscBoon:7
+build/seedfinder setpiece show 123456
+build/seedfinder +RTS --threads 16 -RTS world find --shard caves --limit 5 --config caves.json  # cave seeds by level table
+build/seedfinder world show 123456 --shard caves                                                # the caves level table
+build/seedfinder +RTS --threads 16 -RTS world odds 0 9999999 --config config.json               # how common each task and set piece is
+build/seedfinder +RTS --threads 1 -RTS gen 123456 --platform windows
+build/seedfinder +RTS --threads 1 -RTS gen 123456 --platform linux --shard caves --dump 3  # the caves up to the mazes
+build/seedfinder +RTS --threads 1 -RTS gen 123456 --platform linux --shard caves           # the whole caves worldgen
+build/seedfinder world dump 123456 --platform linux -o 123456.dstw
+build/seedfinder world dump 123456 --platform linux --shard caves -o 123456.dstw
+build/seedfinder +RTS --threads 16 -RTS world dump 0 999 --platform linux -o worlds  # worlds/<seed>.dstw, worlds must exist
+build/seedfinder world dump 123456 --platform linux --build 757748 -o 123456.dstw  # another game build
 ```
 
 `world find` flags on top of the ones in [docs/config.md](../docs/config.md):
@@ -114,7 +113,7 @@ ms=T`). A seed whose world generation gave up gets the 24-byte gave-up dump, and
 status is then 1). The platform defaults to windows, like `gen`.
 
 - `--time-limit` stops the search, `--start-seed` with the printed `next_seed` continues it.
-- Pass `--threads` in a container, the runtime's default is the host's CPU count, not the quota.
+- Pass `+RTS --threads N -RTS` in a container, the runtime's default is the host's CPU count, not the quota.
 - Don't run it under a low `ulimit -v`, each thread reserves a lot of virtual memory.
 
 ## Throughput

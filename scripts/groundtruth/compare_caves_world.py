@@ -4,8 +4,8 @@ the seedfinder's own: the game's savedata does not record where layouts and maze
 
 usage: compare_caves_world.py BINARY [SEEDS] [--platform linux|windows] [--build BUILD] [--worlds DIR] [--jobs N] [--no-attempts]
 
-Every seed is one `BINARY -- world dump SEED --shard caves --platform PLATFORM --build BUILD -o TMP.dstw`, compared with the world JSON
-of that platform's server (scripts/groundtruth/run_worldgen.sh) converted by world_dump.py (the same code path the
+Every seed is one `BINARY +RTS --threads 2 -RTS world dump SEED --shard caves --platform PLATFORM --build BUILD -o TMP.dstw`,
+compared with the world JSON of that platform's server (scripts/groundtruth/run_worldgen.sh) converted by world_dump.py (the same code path the
 forest's dumps use). A seed that differs reports its first differing section and, inside it, the first differing tile, prefab or pillar link; and
 every seed reports the attempts the seedfinder needed (`gen SEED --shard caves --build BUILD`) next to the real world's.
 
@@ -89,8 +89,8 @@ def entity_problems(ours, real):
 
 
 def attempts_of(binary, seed, platform, build):
-    out = subprocess.run([binary, "--threads", "2", "--", "gen", str(seed), "--shard", "caves", "--platform", platform,
-                          "--build", str(build)],
+    out = subprocess.run([binary, "+RTS", "--threads", "2", "-RTS", "gen", str(seed), "--shard", "caves",
+                          "--platform", platform, "--build", str(build)],
                          capture_output=True, text=True, timeout=3600).stdout
     found = re.search(r"\ba=(\d+)", out)
     return int(found.group(1)) if found else None
@@ -102,8 +102,9 @@ def check(binary, world_path, with_attempts, platform, build):
     real = dump_of(world, platform)
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / f"{seed}.dstw"
-        run = subprocess.run([binary, "--threads", "2", "--", "world", "dump", str(seed), "--shard", "caves", "--platform", platform,
-                              "--build", str(build), "-o", str(target)], capture_output=True, text=True, timeout=3600)
+        run = subprocess.run([binary, "+RTS", "--threads", "2", "-RTS", "world", "dump", str(seed), "--shard", "caves",
+                              "--platform", platform, "--build", str(build), "-o", str(target)],
+                             capture_output=True, text=True, timeout=3600)
         if not target.exists():
             return seed, [f"no dump ({run.stdout.strip() or run.stderr.strip()[:200]})"], None
         ours = target.read_bytes()

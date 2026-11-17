@@ -114,6 +114,9 @@ def usage() -> IO(Unit):
 def trace_moved() -> IO(Unit):
   IO.die(Unit, 2, "seedfinder: trace is in the debug binary: seedfinder_trace trace SEED --stage NAME [--platform windows|linux] [--build NUMBER] [--input FILE] (scripts/build.sh trace)")
 
+def runtime_options_moved(+command: String) -> IO(Unit):
+  IO.die(Unit, 2, "seedfinder: " ++ command ++ " is not a command; runtime options go between +RTS and -RTS before the command, with no `--`: seedfinder +RTS --threads N -RTS world find ...")
+
 def setpiece_on(+build: Builds.Build, +mode: String, +args: List<&2, String>, +shard: U32) -> IO(Unit):
   +plain = Args.without_value_flag(Args.without_value_flag(args, "--shard"), "--build")
   Bool.pick(IO(Unit), U32.is_eq(shard, 2),
@@ -140,7 +143,8 @@ def run(+command: String, +args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(command, "setpiece"), setpiece(args),
     Bool.pick(IO(Unit), String.eq(command, "world"), world(args),
       Bool.pick(IO(Unit), String.eq(command, "gen"), gen(args),
-        Bool.pick(IO(Unit), String.eq(command, "trace"), trace_moved(), usage()))))
+        Bool.pick(IO(Unit), String.eq(command, "trace"), trace_moved(),
+          Bool.pick(IO(Unit), String.starts_with(command, "--"), runtime_options_moved(command), usage())))))
 
 def main() -> IO(Unit):
   do IO<Unit>:

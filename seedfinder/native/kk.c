@@ -382,10 +382,10 @@ static Term native_kk_pack(Env e, IoWork* w) {
   Kn* k = (Kn*)w->data;
   u32 cls = 1;
   while ((1ull << cls) < 1 + 4ull * k->n) cls++;
-  u64 l = heap_alloc(e, buf_wcls(cls));
+  u64 l = heap_alloc(e, blk_wcls(false, cls));
   if (err_seen(e.mem)) {
     free(k->x); free(k->arc); free(k);
-    return term_buf(0, l);
+    return term_blk(false, 0, l);
   }
   u32a* out = blk_ptr(e.mem, l, 0);
   memset((void*)out, 0, 4ull << cls);
@@ -423,5 +423,5 @@ Term native_kk_run(Env e, Term* f, IoWork* w) {
 }
 
 static void __attribute__((constructor)) native_kk_use(void) {
-  io_eff(CID(native_kk), native_kk_run, 0);
+  io_eff(CID(native_kk), native_kk_run);
 }

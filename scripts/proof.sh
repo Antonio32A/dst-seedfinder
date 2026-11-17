@@ -36,7 +36,8 @@ holds() {
     fi
     [[ "$(head -1 "$1")" == "SOME PROOFS FAIL" ]] \
         && sed -n 2p "$1" | grep -Eqx 'Error: [0-9]+ defs? rel(y|ies) on unsafe or foreign code:' \
-        && ! tail -n +3 "$1" | grep -Ev '^- (\.\./)?[a-z_]+/' | grep -q . \
+        && tail -n 1 "$1" | grep -q '^Hint: no law or proof uses these defs\.' \
+        && ! sed '1,2d;$d' "$1" | grep -Ev '^defs that depend on (@unsafe|foreign effects): ' | grep -q . \
         && ! tail -n +3 "$1" | grep -q 'laws/'
 }
 

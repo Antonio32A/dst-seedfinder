@@ -1,12 +1,11 @@
 export interface SeedfinderFS {
-    mkdirTree: (path: string) => void;
     writeFile: (path: string, data: string | Uint8Array) => void;
     readFile: (path: string) => Uint8Array<ArrayBuffer>;
 }
 
 export interface SeedfinderRun {
     module: WebAssembly.Module;
-    /** The runtime's arguments, then `--`, then the seedfinder's own. */
+    /** The runtime's options between `+RTS` and `-RTS`, then the seedfinder's own arguments. */
     args: string[];
     files?: Record<string, string | Uint8Array>;
     print?: (line: string) => void;
@@ -50,8 +49,6 @@ export function runSeedfinder({ module, args, files = {}, print, printErr }: See
             preRun: [
                 (runtime: { FS: SeedfinderFS }) => {
                     fs = runtime.FS;
-                    fs.mkdirTree("/proc/self");
-                    fs.writeFile("/proc/self/cmdline", ["seedfinder", ...args].map((arg) => `${arg}\0`).join(""));
                     for (const [path, data] of Object.entries(files)) fs.writeFile(path, data);
                 }
             ],

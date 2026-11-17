@@ -7,7 +7,7 @@ onmessage = async ({ data: { module, seed, platform, shard, build } }: MessageEv
     let crashed = false as boolean;
     const { code, error, fs } = await runSeedfinder({
         module,
-        args: ["--threads", "1", "--", ...dumpArgs(seed, platform, shard, build)],
+        args: ["+RTS", "--threads", "1", "-RTS", ...dumpArgs(seed, platform, shard, build)],
         print: (line) => {
             crashed ||= CRASHED_LINE.test(line);
         },

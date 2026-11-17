@@ -8,7 +8,6 @@ import ../cli/args.bend as Args
 import ./report.bend as SearchReport
 import ./worlds.bend as SearchWorlds
 import ./order.bend as SearchOrder
-import ./threads.bend as SearchThreads
 import ./bins.bend as SearchBins
 import ./speed.bend as Speed
 import ./timings.bend as Timings
@@ -37,7 +36,7 @@ import ../data/builds.bend as Builds
 type Slot is Type:
   Free{}
   Cpu{seed: U32, job: GenJob.Job, cost: U32}
-  Wait{seed: U32, job: GenJob.Job, cost: U32}
+  Awaiting{seed: U32, job: GenJob.Job, cost: U32}
   Back{seed: U32, job: GenJob.Job, answer: GenLayout.Answer, cost: U32}
   Rush{seed: U32, job: GenJob.Job, answer: GenLayout.Answer, back: Bool}
   Asked{seed: U32, job: GenJob.Job, pass: GenLayout.Ready, cost: U32}
@@ -491,7 +490,7 @@ def merge(xs: List<&1, Slot>, done: List<&1, Slot>, +tag: U32, acc: List<&1, Slo
             case Con{w, more}:
               match w:
                 case Asked{+seed, job, pass, +cost}:
-                  merge(rest, more, (tag + 1 : U32), Wait{seed, job, cost} <> acc, Request{tag, pass} <> asked, (count + 1 : U32))
+                  merge(rest, more, (tag + 1 : U32), Awaiting{seed, job, cost} <> acc, Request{tag, pass} <> asked, (count + 1 : U32))
                 case other:
                   merge(rest, more, (tag + 1 : U32), other <> acc, asked, count)
         case other:
@@ -519,12 +518,12 @@ def pulled(gots: List<&1, Got>, +tag: U32) -> Pulled:
 
 def back(x: Slot, found: Maybe<&1, GenLayout.Answer>) -> Slot:
   match x:
-    case Wait{+seed, job, +cost}:
+    case Awaiting{+seed, job, +cost}:
       match found:
         case Some{answer}:
           Back{seed, job, answer, cost}
         case None{}:
-          Wait{seed, job, cost}
+          Awaiting{seed, job, cost}
     case other:
       other
 
@@ -580,9 +579,9 @@ def fill(+build: Builds.Build, xs: List<&1, Slot>, +pending: List<&2, U32>, +win
         case Cpu{+seed, job, +cost}:
           +p = SearchOrder.position(seed, start)
           fill(build, rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Cpu{seed, job, cost} <> acc)
-        case Wait{+seed, job, +cost}:
+        case Awaiting{+seed, job, +cost}:
           +p = SearchOrder.position(seed, start)
-          fill(build, rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), ready, p <> at, Wait{seed, job, cost} <> acc)
+          fill(build, rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), ready, p <> at, Awaiting{seed, job, cost} <> acc)
         case Back{+seed, job, answer, +cost}:
           +p = SearchOrder.position(seed, start)
           fill(build, rest, pending, windows, caves, start, lesser(first, p), (busy + 1 : U32), (ready + 1 : U32), p <> at, Back{seed, job, answer, cost} <> acc)
@@ -1112,8 +1111,8 @@ def native_of(+ctx: Ctx) -> Bool:
       native
 
 # A pass as its own computation: its answer goes to the search's channel.
-def solved(+tag: U32, pass: GenLayout.Ready, +ctx: Ctx) -> IO(Bool):
-  do IO<Bool>:
+def solved(+tag: U32, pass: GenLayout.Ready, +ctx: Ctx) -> IO(Result<&1, &1, Note, Unit>):
+  do IO<Result<&1, &1, Note, Unit>>:
     answer : GenLayout.Answer <- GenLayout.answer(pass)
     Chan.send(Note, laid_of(ctx), Laid{tag, answer})
 
@@ -1123,7 +1122,7 @@ def launched(reqs: List<&1, Request>, +ctx: Ctx) -> IO(Unit):
       IO.pure(Unit, Unit{})
     case Con{Request{+tag, pass}, rest}:
       do IO<Unit>:
-        IO.spawn(Bool, solved(tag, pass, ctx))
+        IO.spawn(Result<&1, &1, Note, Unit>, solved(tag, pass, ctx))
         launched(rest, ctx)
 
 # The finished passes in the channel up to the marker.
@@ -1153,7 +1152,7 @@ def taken(+idle: Bool, +flying: U32, +ctx: Ctx) -> IO(Taken):
   +ch = laid_of(ctx)
   do IO<Taken>:
     IO.sleep(Bool.pick(U32, idle, idle_ms(), 0))
-    sent : Bool <- Chan.send(Note, ch, Mark{})
+    sent : Result<&1, &1, Note, Unit> <- Chan.send(Note, ch, Mark{})
     first : Maybe<&1, Note> <- Chan.recv(Note, ch)
     drained(U32.to_nat((flying + 2 : U32)), first, ch, Nil{}, 0n)
 
@@ -1247,7 +1246,7 @@ def run(+build: Builds.Build, +q: Args.Query, +config: ShardSearch.Search) -> IO
   match q:
     case Args.Query{+start, +total, +limit, +time_ms, +json, _, _, _, +native, +timings, _}:
       do IO<Unit>:
-        +threads : U32 <- SearchThreads.threads()
+        +threads : U32 <- IO.thread_count()
         +started_ms : Nat <- IO.now()
         +slots : U32 = slots_for(threads)
         +laid : Chan(Note) <- Chan.new(Note, (slots + 2 : U32))

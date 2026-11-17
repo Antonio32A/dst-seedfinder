@@ -28,7 +28,7 @@ function runDump({ seed, platform, shard, build }: MapSeed): Promise<GeneratedDu
             resolve({ status: "dumped", bytes: runtime.FS.readFile(DUMP_PATH) });
         };
         createSeedfinder({
-            arguments: ["--", ...dumpArgs(seed, platform, shard, build)],
+            arguments: dumpArgs(seed, platform, shard, build),
             instantiateWasm: (
                 imports: WebAssembly.Imports,
                 receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void

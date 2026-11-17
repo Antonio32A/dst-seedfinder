@@ -6,7 +6,6 @@ import ../worldsim/tiles/world.bend as TileWorld
 import ../f64/repr.bend as F64Repr
 import ../gen/centi.bend as Centi
 import ../search/order.bend as SearchOrder
-import ../search/threads.bend as SearchThreads
 import ../search/bins.bend as SearchBins
 
 # Goldens from Boost's undirected adjacency_list semantics (out-edge lists in insertion order) and ClearNodeLinks
@@ -72,34 +71,6 @@ law search_scan_order_wraps:
   {SearchOrder.merged(~U32, ~SearchOrder.seed_itself, [3, 4294967295], [1], 4294967290) == [4294967295, 1, 3] : List<&2, U32>}
 
 def search_scan_order_wraps():
-  {==}
-
-# The runtime's own --threads flag comes before `--`; a --threads after it belongs to the program (none: 0).
-law search_threads_flag:
-  {SearchThreads.flag_in(["seedfinder", "--threads", "16", "--", "world", "--threads", "3"]) == 16 : U32}
-
-def search_threads_flag():
-  {==}
-
-# A sysfs cpu list "0-3,8-11" holds 8 CPUs.
-law search_threads_cpu_list:
-  {SearchThreads.cpus_in(["0-3", "8-11"]) == 8 : U32}
-
-def search_threads_cpu_list():
-  {==}
-
-# The default thread count respects the cgroup CPU quota: cpu.max "1360000 100000" (13.6 cores) caps 64 CPUs at 14.
-law search_threads_quota:
-  {SearchThreads.capped(64, SearchThreads.quota_cores(["1360000", "100000"])) == 14 : U32}
-
-def search_threads_quota():
-  {==}
-
-# cpu.max "max 100000" is no quota: the online CPUs stay.
-law search_threads_no_quota:
-  {SearchThreads.capped(64, SearchThreads.quota_cores(["max", "100000"])) == 64 : U32}
-
-def search_threads_no_quota():
   {==}
 
 # A round's bins: the heaviest slot first, each to the least loaded bin, and the bins laid out heaviest first in the

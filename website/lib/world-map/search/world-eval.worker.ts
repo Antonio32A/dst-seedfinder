@@ -10,7 +10,7 @@ onmessage = async ({ data: { module, bytes, config } }: MessageEvent<EvalRequest
     let evaluation = null as WorldEval | null;
     const { code, error } = await runSeedfinder({
         module,
-        args: ["--threads", "1", "--", "world", "eval", "--config", CONFIG_PATH, "--world", WORLD_PATH, "--json"],
+        args: ["+RTS", "--threads", "1", "-RTS", "world", "eval", "--config", CONFIG_PATH, "--world", WORLD_PATH, "--json"],
         files: { [CONFIG_PATH]: config, [WORLD_PATH]: bytes },
         print: (line) => (evaluation ??= parseWorldEval(line)),
         printErr: (line) => errors.push(line)
