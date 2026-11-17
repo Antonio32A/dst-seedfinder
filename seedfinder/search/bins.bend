@@ -7,9 +7,13 @@ import Base
 # least loaded bin) and laid out heaviest first in that order: a thread that finishes early takes a light bin while
 # the heavy ones are still under way.
 
-# The bins of a round: one slot each when they fit.
+# The leaves of a round's cube: eight rows of eight.
 def leaves() -> Nat:
   64n
+
+# The bins of a round, one slot each when they fit: seven of each row's eight leaves (see leaf_at).
+def bins() -> Nat:
+  56n
 
 type Rank is Data:
   Rank{cost: U32, at: U32}
@@ -89,12 +93,12 @@ def numbered(+order: List<&2, Rank>, +k: Nat) -> List<&2, Placed>:
       Placed{at, k} <> numbered(rest, Nat.add(k, 1n))
 
 # The cube's order of a row's leaves: a row's balanced tree of eight puts leaf i on the row's ring 7 + i, and the
-# threads take the rings by their index mod 8, so leaf 1 first and leaf 0 last.
+# threads take the rings by their index mod 8, so leaf 1 first and leaf 0 last. Leaf 0 stays empty: the thread that
+# grows a row runs the head task of its rings in ring order until one ends without forking, and the empty leaf ends at
+# once, before the grow reaches a leaf with work (which it would otherwise run alone up to that leaf's first fork).
 def leaf_at(+rank: Nat) -> Nat:
   +r = U32.from_nat(rank)
-  +row = ((r >> 3n : U32) << 3n : U32)
-  +q = (r - row : U32)
-  U32.to_nat((row + Bool.pick(U32, U32.is_eq(q, 7), 0, (q + 1 : U32)) : U32))
+  U32.to_nat((((r / 7 : U32) * 8 : U32) + ((r % 7 : U32) + 1 : U32) : U32))
 
 def spots(+bins: List<&2, Nat>, +ranked: List<&2, Nat>) -> List<&2, Nat>:
   match bins:
@@ -106,8 +110,8 @@ def spots(+bins: List<&2, Nat>, +ranked: List<&2, Nat>) -> List<&2, Nat>:
 # The leaf of each slot of these costs (slot order) among leaves(): its bin's place in the cube's order by estimated work.
 def placed_leaves(+costs: List<&2, U32>) -> List<&2, Nat>:
   +n = List.length(&2, U32, costs)
-  +bins = Bool.pick(Nat, Nat.is_lt(n, leaves()), n, leaves())
-  +units = assigned(costs, bins)
-  +loads = unit_loads(costs, units, List.replicate(U32, bins, 0))
+  +used = Bool.pick(Nat, Nat.is_lt(n, bins()), n, bins())
+  +units = assigned(costs, used)
+  +loads = unit_loads(costs, units, List.replicate(U32, used, 0))
   spots(units, bins_of(List.sort(~Placed, ~placed_le, numbered(List.sort(~Rank, ~heavier, ranks(loads, 0)), 0n))))
 

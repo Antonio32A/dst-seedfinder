@@ -74,7 +74,7 @@ def search_scan_order_wraps():
   {==}
 
 # A round's bins: the heaviest slot first, each to the least loaded bin, and the bins laid out heaviest first in the
-# cube's order (leaf 1 to 7 of a row, then its leaf 0, then the next row).
+# cube's order (leaf 1 to 7 of a row, then the next row; leaf 0 of a row stays empty).
 law search_bins_one_slot_each:
   {SearchBins.placed_leaves([10, 300, 20, 300, 5]) == [4n, 1n, 3n, 2n, 5n] : List<&2, Nat>}
 
@@ -82,7 +82,17 @@ def search_bins_one_slot_each():
   {==}
 
 law search_bins_rows_in_order:
-  {SearchBins.placed_leaves([9, 8, 7, 6, 5, 4, 3, 2, 1, 50]) == [2n, 3n, 4n, 5n, 6n, 7n, 0n, 9n, 10n, 1n] : List<&2, Nat>}
+  {SearchBins.placed_leaves([9, 8, 7, 6, 5, 4, 3, 2, 1, 50]) == [2n, 3n, 4n, 5n, 6n, 7n, 9n, 10n, 11n, 1n] : List<&2, Nat>}
 
 def search_bins_rows_in_order():
+  {==}
+
+def search_bins_row_start(leaf: Nat) -> Bool:
+  Nat.is_eq(Nat.mod(leaf, 8n), 0n)
+
+# With more slots than bins, still no slot lands on leaf 0 of a row.
+law search_bins_row_start_empty:
+  {List.filter(~Nat, ~search_bins_row_start, SearchBins.placed_leaves(List.replicate(U32, 60n, 1))) == [] : List<&2, Nat>}
+
+def search_bins_row_start_empty():
   {==}
