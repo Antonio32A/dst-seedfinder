@@ -126,7 +126,7 @@ def world_group_by_name():
 
 # The ROAD section of two roads: weight 3 with three points and weight 1 with one, positions in hundredths (int32 bits).
 law dump_writes_roads:
-  {FilterDump.roads_section([FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}, FilterDump.Position{4294967295, 6}]}, FilterDump.Road{1, [FilterDump.Position{10, 20}]}]) == [82, 79, 65, 68, 52, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 255, 255, 255, 255, 6, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 20, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.roads_section([FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}, FilterDump.Position{4294967295, 6}]}, FilterDump.Road{1, [FilterDump.Position{10, 20}]}], Nil{}) == [82, 79, 65, 68, 52, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 255, 255, 255, 255, 6, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 20, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_roads():
   {==}
@@ -197,25 +197,25 @@ def dump_roads_dropped_when_short():
 
 # The world dump writer, section by section, on the same world as the reader laws above.
 law dump_writes_tile_names:
-  {FilterDump.tile_names_section([FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}]) == [84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0] : List<&2, U32>}
+  {FilterDump.tile_names_section([FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], Nil{}) == [84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0] : List<&2, U32>}
 
 def dump_writes_tile_names():
   {==}
 
 law dump_writes_tiles:
-  {FilterDump.tiles_section([393222, 1]) == [84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.tiles_section([393222, 1], Nil{}) == [84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_tiles():
   {==}
 
 law dump_writes_entities:
-  {FilterDump.entities_section([FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}]) == [69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255] : List<&2, U32>}
+  {FilterDump.entities_section([FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], Nil{}) == [69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255] : List<&2, U32>}
 
 def dump_writes_entities():
   {==}
 
 law dump_writes_links:
-  {FilterDump.links_section([FilterDump.Link{0, 1}, FilterDump.Link{1, 0}]) == [87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.links_section([FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], Nil{}) == [87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_links():
   {==}
@@ -223,7 +223,7 @@ def dump_writes_links():
 # A set piece "Hut" (source 1, transform 5) centred at (8, -4), bounds (0, -12) to (16, 4), with instance 1 of the
 # first ENTS prefab and instance 0 of the second.
 law dump_writes_set_pieces:
-  {FilterDump.set_pieces_section([FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}]) == [83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.set_pieces_section([FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}], Nil{}) == [83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_set_pieces():
   {==}
@@ -244,6 +244,23 @@ law dump_writes_generated_set_pieces:
   {FilterDump.bytes(FilterDump.Generated{7, 2, 0, 756039, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 1], [FilterDump.Prefab{"moonbase", [FilterDump.Position{60200, 10600}]}, FilterDump.Prefab{"wormhole", [FilterDump.Position{28400, 4294955696}, FilterDump.Position{4294918896, 4294953246}]}], [FilterDump.Link{0, 1}, FilterDump.Link{1, 0}], [], Some{[FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{0, 1}, FilterDump.Member{1, 0}]}]}, None{}, None{}, None{}}) == [68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 71, 137, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 1, 0, 0, 0, 69, 78, 84, 83, 60, 0, 0, 0, 2, 0, 0, 0, 8, 0, 0, 0, 109, 111, 111, 110, 98, 97, 115, 101, 1, 0, 0, 0, 40, 235, 0, 0, 104, 41, 0, 0, 8, 0, 0, 0, 119, 111, 114, 109, 104, 111, 108, 101, 2, 0, 0, 0, 240, 110, 0, 0, 176, 210, 255, 255, 240, 66, 255, 255, 30, 201, 255, 255, 87, 79, 82, 77, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 83, 69, 84, 80, 64, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_generated_set_pieces():
+  {==}
+
+def every_section() -> FilterDump.Dump:
+  FilterDump.Generated{7, 2, 1, 756039, 3, 1, [FilterDump.TileName{6, "GRASS"}, FilterDump.TileName{1, "IMPASSABLE"}], [393222, 6], [FilterDump.Prefab{"cave_exit", [FilterDump.Position{0, 0}]}, FilterDump.Prefab{"tentacle_pillar", [FilterDump.Position{1, 2}, FilterDump.Position{3, 4}]}], [FilterDump.Link{0, 1}], [FilterDump.Pillar{1, 0, 1, 1}], Some{[FilterDump.Piece{"Hut", 1, 5, 800, 4294966896, 0, 4294966096, 1600, 400, [FilterDump.Member{1, 0}]}]}, Some{[FilterDump.Planned{"Make a pick", "MooseNest", True{}}]}, Some{[FilterDump.Road{3, [FilterDump.Position{1, 2}, FilterDump.Position{4294967295, 6}]}]}, Some{FilterDump.Graph{[FilterDump.Node{"ab", 5, 100, 4294967096}, FilterDump.Node{"node", 1, 0, 300}], [FilterDump.Edge{0, 1}]}}}
+
+# A caves world with every section: three tiles (a zero high half in the last word), strings of every length modulo 4,
+# a wormhole link, a pillar link, a set piece, a level plan, a road and a topology.
+law dump_writes_every_section:
+  {FilterDump.bytes(every_section()) == [68, 83, 84, 87, 3, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 71, 137, 11, 0, 3, 0, 0, 0, 1, 0, 0, 0, 84, 78, 65, 77, 40, 0, 0, 0, 2, 0, 0, 0, 6, 0, 0, 0, 5, 0, 0, 0, 71, 82, 65, 83, 83, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 73, 77, 80, 65, 83, 83, 65, 66, 76, 69, 0, 0, 84, 73, 76, 69, 8, 0, 0, 0, 6, 0, 6, 0, 6, 0, 0, 0, 69, 78, 84, 83, 72, 0, 0, 0, 2, 0, 0, 0, 9, 0, 0, 0, 99, 97, 118, 101, 95, 101, 120, 105, 116, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 116, 101, 110, 116, 97, 99, 108, 101, 95, 112, 105, 108, 108, 97, 114, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 87, 79, 82, 77, 12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 80, 73, 76, 76, 20, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 83, 69, 84, 80, 56, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 72, 117, 116, 0, 1, 0, 0, 0, 5, 0, 0, 0, 32, 3, 0, 0, 112, 254, 255, 255, 0, 0, 0, 0, 80, 251, 255, 255, 64, 6, 0, 0, 144, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 80, 76, 65, 78, 40, 0, 0, 0, 1, 0, 0, 0, 11, 0, 0, 0, 77, 97, 107, 101, 32, 97, 32, 112, 105, 99, 107, 0, 9, 0, 0, 0, 77, 111, 111, 115, 101, 78, 101, 115, 116, 0, 0, 0, 1, 0, 0, 0, 82, 79, 65, 68, 28, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 255, 255, 255, 255, 6, 0, 0, 0, 71, 82, 80, 72, 56, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 97, 98, 0, 0, 5, 0, 0, 0, 100, 0, 0, 0, 56, 255, 255, 255, 4, 0, 0, 0, 110, 111, 100, 101, 1, 0, 0, 0, 0, 0, 0, 0, 44, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0] : List<&2, U32>}
+
+def dump_writes_every_section():
+  {==}
+
+law dump_round_trip_every_section:
+  {FilterDump.of_bytes(FilterDump.bytes(every_section())) == Done{every_section()} : Result<&1, &1, U32 & String, FilterDump.Dump>}
+
+def dump_round_trip_every_section():
   {==}
 
 # A 3 x 3 world on Linux (IMPASSABLE in the middle of GRASS) with, oldest first, a wormhole, a wormhole_MARKER (outside
@@ -278,7 +295,7 @@ def plan() -> List<&2, FilterDump.Planned>:
 
 # The PLAN section of a level plan with a MooseNest the world generation dropped and one it placed.
 law dump_writes_plan:
-  {FilterDump.plan_section(plan()) == [80, 76, 65, 78, 76, 0, 0, 0, 2, 0, 0, 0, 11, 0, 0, 0, 77, 97, 107, 101, 32, 97, 32, 112, 105, 99, 107, 0, 9, 0, 0, 0, 77, 111, 111, 115, 101, 78, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 77, 97, 103, 105, 99, 32, 109, 101, 97, 100, 111, 119, 9, 0, 0, 0, 77, 111, 111, 115, 101, 78, 101, 115, 116, 0, 0, 0, 1, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.plan_section(plan(), Nil{}) == [80, 76, 65, 78, 76, 0, 0, 0, 2, 0, 0, 0, 11, 0, 0, 0, 77, 97, 107, 101, 32, 97, 32, 112, 105, 99, 107, 0, 9, 0, 0, 0, 77, 111, 111, 115, 101, 78, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 77, 97, 103, 105, 99, 32, 109, 101, 97, 100, 111, 119, 9, 0, 0, 0, 77, 111, 111, 115, 101, 78, 101, 115, 116, 0, 0, 0, 1, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_plan():
   {==}

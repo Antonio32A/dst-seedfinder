@@ -69,15 +69,9 @@ def path_of(+ctx: Ctx, +seed: U32) -> String:
     case Ctx{Args.Dump{_, _, _, _, +out, +folder, _, _}, _}:
       Bool.pick(String, folder, out ++ "/" ++ U32.show(seed) ++ ".dstw", out)
 
-def instance_count(prefabs: List<&2, FilterDump.Prefab>, +n: U32) -> U32:
-  match prefabs:
-    case Nil{}:
-      n
-    case Con{FilterDump.Prefab{_, +positions}, rest}:
-      instance_count(rest, (n + U32.from_nat(List.length(&2, FilterDump.Position, positions)) : U32))
-
-def world_finished(+d: FilterDump.Dump, +seed: U32, +since: Nat) -> Slot:
-  Finished{seed, 0, instance_count(FilterDump.prefabs(d), 0), FilterDump.bytes(d), since}
+def world_finished(encoded: List<&2, U32> & U32, +seed: U32, +since: Nat) -> Slot:
+  (bytes, count) = encoded
+  Finished{seed, 0, count, bytes, since}
 
 def dumped(+build: Builds.Build, caves: Bool, +seed: U32, +windows: Bool, final: GenJob.Final) -> FilterDump.Dump:
   match caves:
@@ -92,7 +86,7 @@ def gave_up(+seed: U32, +ctx: Ctx) -> List<&2, U32>:
 def finished(+build: Builds.Build, job: GenJob.Job, +seed: U32, +since: Nat, +ctx: Ctx) -> Slot:
   match job:
     case GenJob.JWorld{_, _, final}:
-      world_finished(dumped(build, caves_of(ctx), seed, windows_of(ctx), final), seed, since)
+      world_finished(FilterDump.encoded(dumped(build, caves_of(ctx), seed, windows_of(ctx), final)), seed, since)
     case GenJob.JDone{_, _, GenJob.Crashed{}}:
       Finished{seed, 2, 0, Nil{}, since}
     case _:

@@ -15,7 +15,7 @@ def two_nodes() -> FilterDump.Graph:
   FilterDump.Graph{[FilterDump.Node{"ab", 5, 100, 4294967096}, FilterDump.Node{"c", 1, 0, 300}], [FilterDump.Edge{1, 0}]}
 
 law dump_writes_graph:
-  {FilterDump.graph_section(two_nodes()) == [71, 82, 80, 72, 56, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 97, 98, 0, 0, 5, 0, 0, 0, 100, 0, 0, 0, 56, 255, 255, 255, 1, 0, 0, 0, 99, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 44, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+  {FilterDump.graph_section(two_nodes(), Nil{}) == [71, 82, 80, 72, 56, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 97, 98, 0, 0, 5, 0, 0, 0, 100, 0, 0, 0, 56, 255, 255, 255, 1, 0, 0, 0, 99, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 44, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
 
 def dump_writes_graph():
   {==}
