@@ -53,6 +53,30 @@ def count_loop(ents: List<&2, Ent>, +prefab: U32, +n: U32) -> U32:
 def count(+ents: List<&2, Ent>, +prefab: U32) -> U32:
   count_loop(ents, prefab, 0)
 
+def bumped(got: Array<U32> & U32, +prefab: U32) -> Array<U32>:
+  (counts, +n) = got
+  counts[prefab] <- (n + 1 : U32)
+  counts
+
+def bumped_if(fits: Bool, counts: Array<U32>, +prefab: U32) -> Array<U32>:
+  match fits:
+    case False{}:
+      counts
+    case True{}:
+      bumped(counts[prefab], prefab)
+
+def tally_loop(ents: List<&2, Ent>, +size: U32, counts: Array<U32>) -> Array<U32>:
+  match ents:
+    case Nil{}:
+      counts
+    case Con{+e, rest}:
+      +prefab = prefab_of(e)
+      tally_loop(rest, size, bumped_if((prefab < size : U32), counts, prefab))
+
+# count(ents, prefab) at [prefab] for every prefab below 2^depth, in one walk.
+def tally(+ents: List<&2, Ent>, +depth: Nat) -> Array<U32>:
+  tally_loop(ents, U32.from_nat(Nat.pow(2n, depth)), Array.new(U32, depth, 0))
+
 def without_loop(ents: List<&2, Ent>, +prefab: U32) -> List<&2, Ent>:
   match ents:
     case Nil{}:

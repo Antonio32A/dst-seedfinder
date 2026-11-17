@@ -153,14 +153,28 @@ def ocean_required(+build: Builds.Build, rooms: List<&2, U32>, +reqs: List<&2, R
 def double_check(+build: Builds.Build, +root: List<&2, Req>) -> List<&2, Req>:
   ocean_required(build, Tasks.lists(build, 9), add_all(root, add_ones(OceanPostData.level_required_prefabs(build, 0), Nil{})))
 
-def check_loop(reqs: List<&2, Req>, +ents: List<&2, OceanEnts.Ent>, +c: OceanState.Ctx, s: OceanState.Sea, +missing: List<&2, U32>) -> OceanState.Sea & List<&2, U32>:
+def largest_prefab(reqs: List<&2, Req>, +largest: U32) -> U32:
+  match reqs:
+    case Nil{}:
+      largest
+    case Con{Req{+prefab, _}, rest}:
+      largest_prefab(rest, U32.max(largest, prefab))
+
+def first_prefab(+reqs: List<&2, Req>) -> U32:
+  match reqs:
+    case Nil{}:
+      0
+    case Con{Req{+prefab, _}, _}:
+      prefab
+
+def check_loop(+reqs: List<&2, Req>, got: Array<U32> & U32, +c: OceanState.Ctx, s: OceanState.Sea, +missing: List<&2, U32>) -> OceanState.Sea & List<&2, U32>:
   match reqs:
     case Nil{}:
       (s, List.reverse(&2, U32, missing))
-    case Con{Req{+prefab, +count}, rest}:
-      +have = OceanEnts.count(ents, prefab)
+    case Con{Req{+prefab, +count}, +rest}:
+      (counts, +have) = got
       +short = (have < count : U32)
-      check_loop(rest, ents, c, OceanState.noted(c, s, OceanState.EReq{prefab, count, have}), Bool.pick(List<&2, U32>, short, prefab <> missing, missing))
+      check_loop(rest, counts[first_prefab(rest)], c, OceanState.noted(c, s, OceanState.EReq{prefab, count, have}), Bool.pick(List<&2, U32>, short, prefab <> missing, missing))
 
 def checked(got: OceanState.Sea & List<&2, U32>, +c: OceanState.Ctx) -> OceanState.Sea & Bool:
   (s, +missing) = got
@@ -173,4 +187,5 @@ def checked(got: OceanState.Sea & List<&2, U32>, +c: OceanState.Ctx) -> OceanSta
 def required(+reqs: List<&2, Req>, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea & Bool:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      checked(check_loop(reqs, ents, c, OceanState.Sea{g, ids, rng, ents, topo, events}, Nil{}), c)
+      counts = OceanEnts.tally(ents, Nat.add(U32.log2(largest_prefab(reqs, 1)), 1n))
+      checked(check_loop(reqs, counts[first_prefab(reqs)], c, OceanState.Sea{g, ids, rng, ents, topo, events}, Nil{}), c)

@@ -254,6 +254,70 @@ law cave_required_prefabs_need_their_count:
 def cave_required_prefabs_need_their_count():
   {==}
 
+def ent(+prefab: U32) -> OceanEnts.Ent:
+  OceanEnts.Ent{prefab, F64Repr.zero(), F64Repr.zero(), 0, 0, 0}
+
+def tally_sample() -> List<&2, OceanEnts.Ent>:
+  [ent(5), ent(13), ent(5), ent(2), ent(9), ent(5)]
+
+def tallied_count(got: Array<U32> & U32) -> U32:
+  (_, +n) = got
+  n
+
+def tallied_counts(prefabs: List<&2, U32>) -> List<&2, U32>:
+  match prefabs:
+    case Nil{}:
+      Nil{}
+    case Con{+prefab, rest}:
+      tallied_count(OceanEnts.tally(tally_sample(), 3n)[prefab]) <> tallied_counts(rest)
+
+def walked_counts(prefabs: List<&2, U32>) -> List<&2, U32>:
+  match prefabs:
+    case Nil{}:
+      Nil{}
+    case Con{+prefab, rest}:
+      OceanEnts.count(tally_sample(), prefab) <> walked_counts(rest)
+
+# A tally of 8 slots holds each prefab's count; the entities 9 and 13, past its end, are left out (not counted as 1
+# and 5).
+law ocean_tally_counts_each_prefab:
+  {(tallied_counts([0, 1, 2, 5, 7]), walked_counts([0, 1, 2, 5, 7])) == ([0, 0, 1, 3, 0], [0, 0, 1, 3, 0]) : (List<&2, U32> & List<&2, U32>)}
+
+def ocean_tally_counts_each_prefab():
+  {==}
+
+def walked_verdict(reqs: List<&2, OceanPost.Req>, +ents: List<&2, OceanEnts.Ent>) -> Bool:
+  match reqs:
+    case Nil{}:
+      True{}
+    case Con{OceanPost.Req{+prefab, +count}, rest}:
+      (OceanEnts.count(ents, prefab) >= count : U32) && walked_verdict(rest, ents)
+
+def required_verdicts(cases: List<&2, List<&2, OceanPost.Req>>) -> List<&2, Bool>:
+  match cases:
+    case Nil{}:
+      Nil{}
+    case Con{+reqs, rest}:
+      required_verdict(reqs, tally_sample()) <> required_verdicts(rest)
+
+def walked_verdicts(cases: List<&2, List<&2, OceanPost.Req>>) -> List<&2, Bool>:
+  match cases:
+    case Nil{}:
+      Nil{}
+    case Con{+reqs, rest}:
+      walked_verdict(reqs, tally_sample()) <> walked_verdicts(rest)
+
+def required_cases() -> List<&2, List<&2, OceanPost.Req>>:
+  [[OceanPost.Req{5, 3}, OceanPost.Req{2, 1}, OceanPost.Req{5, 3}], [OceanPost.Req{5, 4}], [OceanPost.Req{13, 1}, OceanPost.Req{9, 1}, OceanPost.Req{2, 2}], [OceanPost.Req{2, 1}, OceanPost.Req{13, 1}], []]
+
+# The required prefab check gives the verdict of one count walk per requirement, with a requirement repeated and
+# entities past the tally of the smaller requirements.
+law required_prefabs_match_their_count_walks:
+  {(required_verdicts(required_cases()), walked_verdicts(required_cases())) == ([True{}, False{}, False{}, True{}, True{}], [True{}, False{}, False{}, True{}, True{}]) : (List<&2, Bool> & List<&2, Bool>)}
+
+def required_prefabs_match_their_count_walks():
+  {==}
+
 def pil(+prefab: U32, +index: U32, +id: U32, +target: U32) -> SaveData.Pil:
   SaveData.Pil{prefab, index, id, target}
 
