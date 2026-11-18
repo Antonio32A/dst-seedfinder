@@ -63,6 +63,7 @@ build/seedfinder world dump 123456 --platform linux -o 123456.dstw
 build/seedfinder world dump 123456 --platform linux --shard caves -o 123456.dstw
 build/seedfinder +RTS --threads 16 -RTS world dump 0 999 --platform linux -o worlds  # worlds/<seed>.dstw, worlds must exist
 build/seedfinder world dump 123456 --platform linux --build 757748 -o 123456.dstw  # another game build
+build/seedfinder selftest --cases 20000000                                       # the F64 fast paths
 ```
 
 `world find` flags on top of the ones in [docs/config.md](../docs/config.md):
@@ -115,6 +116,12 @@ status is then 1). The platform defaults to windows, like `gen`. `--early` (cave
 search's early check: an attempt whose early world passes the required prefab check is dumped as that early world (the
 attempt once ConvertGround and DetectDisconnect are done, with the post steps but without PopulateVoronoi and the bunch
 spawner); `scripts/groundtruth/compare_caves_early.py` compares those with the worlds.
+
+`selftest [--cases N]` checks the native fast paths of the soft F64 (`seedfinder/native/f64.c`: add, sub, mul, div,
+sqrt, fma, the compares, `from_u32_signed`, `to_i32`, `floor` and `ceil` on the FPU wherever IEEE-754 fixes every
+result bit; any other input runs the Bend body). It runs N operand sets (default 1000000) through each fast path and
+its Bend body and exits with status 1 when a result differs. Every build has it (native, wasm, wasm-single): run it
+on each after changing the compiler, its flags or the libm.
 
 - `--time-limit` stops the search, `--start-seed` with the printed `next_seed` continues it.
 - Pass `+RTS --threads N -RTS` in a container, the runtime's default is the host's CPU count, not the quota.

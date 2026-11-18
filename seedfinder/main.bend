@@ -13,6 +13,7 @@ import ./search/odds.bend as SearchOdds
 import ./search/eval.bend as SearchEval
 import ./gen/run.bend as GenRun
 import ./gen/dump.bend as GenDump
+import ./native/f64.bend as NativeF64
 
 # Usage (default world settings):
 #   seedfinder setpiece find [FROM] [TO] [Name[:min[:max]] ...] [--shard forest|caves] [--build NUMBER]
@@ -38,6 +39,8 @@ import ./gen/dump.bend as GenDump
 #     runs up to ForceConnectivity: `--dump` adds the attempt's tile map (1) and story graph (2), `--draws` starts an attempt
 #     N draws into the seed's stream
 #   the worldgen trace stages are in the debug binary built from trace.bend (seedfinder_trace trace ...)
+#   seedfinder selftest [--cases N]
+#     runs N operand sets (default 1000000) through every native fast path and its Bend body, exit status 1 on a difference
 #   --build NUMBER: the game build to generate for (data/builds.bend); it overrides the config's `build`, and without a
 #   config it defaults to the latest build
 
@@ -139,12 +142,20 @@ def world(+args: List<&2, String>) -> IO(Unit):
         Bool.pick(IO(Unit), String.eq(mode, "odds"), world_odds(args),
         Bool.pick(IO(Unit), String.eq(mode, "dump"), GenDump.run(args), usage())))))
 
+def selftest(+args: List<&2, String>) -> IO(Unit):
+  +cases = Args.read_or(Args.flag_value(args, "--cases"), 1000000)
+  do IO<Unit>:
+    +differ : U32 <- NativeF64.native_f64_check(cases)
+    Bool.pick(IO(Unit), U32.is_zero(differ), IO.print("selftest: the F64 fast paths give the Bend body's results on " ++ U32.show(cases) ++ " operand sets"),
+      IO.die(Unit, 1, "selftest: " ++ U32.show(differ) ++ " F64 fast path results differ from the Bend body's"))
+
 def run(+command: String, +args: List<&2, String>) -> IO(Unit):
   Bool.pick(IO(Unit), String.eq(command, "setpiece"), setpiece(args),
     Bool.pick(IO(Unit), String.eq(command, "world"), world(args),
       Bool.pick(IO(Unit), String.eq(command, "gen"), gen(args),
-        Bool.pick(IO(Unit), String.eq(command, "trace"), trace_moved(),
-          Bool.pick(IO(Unit), String.starts_with(command, "--"), runtime_options_moved(command), usage())))))
+        Bool.pick(IO(Unit), String.eq(command, "selftest"), selftest(args),
+          Bool.pick(IO(Unit), String.eq(command, "trace"), trace_moved(),
+            Bool.pick(IO(Unit), String.starts_with(command, "--"), runtime_options_moved(command), usage()))))))
 
 def main() -> IO(Unit):
   do IO<Unit>:

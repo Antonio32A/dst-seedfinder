@@ -5,6 +5,8 @@ import ./repr.bend as F64Repr
 # IEEE-754 double arithmetic on F64Repr.F64, round to nearest even, bit-exact with x86-64 SSE2 (addsd, subsd, mulsd,
 # divsd, sqrtsd): subnormals, signed zeros, infinities, and NaNs (the first NaN operand quieted; invalid
 # operations give the default NaN 0xFFF8000000000000).
+# The C targets run add, sub, mul, div, sqrt and fma (and a few F64Cmp and F64Repr defs) on the FPU first, wherever
+# IEEE fixes every bit (native/f64.c; `seedfinder selftest` compares it with these bodies).
 
 def nan_or_inf(+ah: U32, +al: U32, +bh: U32, +bl: U32, invalid: Bool, +inf_sign: U32) -> F64Repr.F64:
   F64Repr.pick(F64Repr.is_nan_words(ah, al) || F64Repr.is_nan_words(bh, bl), F64Repr.first_nan(ah, al, bh, bl),
