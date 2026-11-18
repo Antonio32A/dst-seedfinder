@@ -1,5 +1,4 @@
 import Base
-import ../f64/repr.bend as F64Repr
 import ../worldsim/layout/space.bend as LayoutSpace
 import ../worldsim/voronoi/polygon.bend as VoronoiPolygon
 import ../worldsim/tiles/world.bend as TileWorld
@@ -38,227 +37,251 @@ type Ahead is Data:
 type Answer is Data:
   Answer{ps: List<&2, LayoutSpace.Vec>, polys: List<&2, VoronoiPolygon.Poly>, ahead: Maybe<&2, Ahead>}
 
-# Decoding: each step takes the answer's words and gives what it read with the words after it.
+# Decoding: each step reads the answer's words from a cursor and gives what it read with the cursor after it. Lists of
+# fixed-size items are read from their last word, so they need no reversal.
+type Cursor is Type:
+  Cursor{ws: Array<U32>, at: U32}
 
-def cons(-A: Data, +x: A, got: List<&2, A> & List<&2, U32>) -> List<&2, A> & List<&2, U32>:
-  (+xs, +rest) = got
+def cons(-A: Data, +x: A, got: List<&2, A> & Cursor) -> List<&2, A> & Cursor:
+  (+xs, rest) = got
   (x <> xs, rest)
 
-def words(n: Nat, +ws: List<&2, U32>) -> List<&2, U32> & List<&2, U32>:
+def word_cons(got: Array<U32> & U32, acc: List<&2, U32>) -> Array<U32> & List<&2, U32>:
+  (ws, +w) = got
+  (ws, w <> acc)
+
+# The `n` words before `end`.
+def words_before(n: Nat, +end: U32, got: Array<U32> & List<&2, U32>) -> Array<U32> & List<&2, U32>:
   match n:
     case 0n:
-      (Nil{}, ws)
+      got
     case 1n+p:
-      match ws:
-        case Con{+w, +rest}:
-          cons(U32, w, words(p, rest))
-        case Nil{}:
-          (Nil{}, Nil{})
+      (ws, acc) = got
+      words_before(p, (end - 1 : U32), word_cons(ws[(end - 1 : U32)], acc))
 
-def vecs(n: Nat, +ws: List<&2, U32>) -> List<&2, LayoutSpace.Vec> & List<&2, U32>:
+def p32_cons(got: Array<U32> & U32, +x: U32, acc: List<&2, VoronoiPolygon.P32>) -> Array<U32> & List<&2, VoronoiPolygon.P32>:
+  (ws, +y) = got
+  (ws, VoronoiPolygon.P32{x, y} <> acc)
+
+def p32_read(got: Array<U32> & U32, +at: U32, acc: List<&2, VoronoiPolygon.P32>) -> Array<U32> & List<&2, VoronoiPolygon.P32>:
+  (ws, +x) = got
+  p32_cons(ws[(at + 1 : U32)], x, acc)
+
+# The `n` points (x, y) before `end`.
+def p32s_before(n: Nat, +end: U32, got: Array<U32> & List<&2, VoronoiPolygon.P32>) -> Array<U32> & List<&2, VoronoiPolygon.P32>:
   match n:
     case 0n:
-      (Nil{}, ws)
+      got
     case 1n+p:
-      match ws:
-        case Con{+a, Con{+b, Con{+c, Con{+d, +rest}}}}:
-          cons(LayoutSpace.Vec, LayoutSpace.Vec{F64Repr.F64{a, b}, F64Repr.F64{c, d}}, vecs(p, rest))
-        case _:
-          (Nil{}, Nil{})
+      (ws, acc) = got
+      p32s_before(p, (end - 2 : U32), p32_read(ws[(end - 2 : U32)], (end - 2 : U32), acc))
 
-def p32s(n: Nat, +ws: List<&2, U32>) -> List<&2, VoronoiPolygon.P32> & List<&2, U32>:
+def vec_cons(got: Array<U32> & LayoutSpace.Vec, acc: List<&2, LayoutSpace.Vec>) -> Array<U32> & List<&2, LayoutSpace.Vec>:
+  (ws, v) = got
+  (ws, v <> acc)
+
+# The `n` vectors (x hi, x lo, y hi, y lo) before `end`.
+def vecs_before(n: Nat, +end: U32, got: Array<U32> & List<&2, LayoutSpace.Vec>) -> Array<U32> & List<&2, LayoutSpace.Vec>:
   match n:
     case 0n:
-      (Nil{}, ws)
+      got
     case 1n+p:
-      match ws:
-        case Con{+x, Con{+y, +rest}}:
-          cons(VoronoiPolygon.P32, VoronoiPolygon.P32{x, y}, p32s(p, rest))
-        case _:
-          (Nil{}, Nil{})
+      (ws, acc) = got
+      vecs_before(p, (end - 4 : U32), vec_cons(LayoutSpace.get_vec(ws, (end - 4 : U32)), acc))
 
-def poly_state(+pts: List<&2, VoronoiPolygon.P32>, +cx: U32, +cy: U32, +nbs: List<&2, U32>, +ws: List<&2, U32>) -> VoronoiPolygon.Poly & List<&2, U32>:
-  match ws:
-    case Con{+state, +rest}:
-      (VoronoiPolygon.Poly{pts, cx, cy, nbs, state}, rest)
-    case Nil{}:
-      (VoronoiPolygon.Poly{pts, cx, cy, nbs, 0}, Nil{})
+def dpoint(v: LayoutSpace.Vec) -> TileWorld.DPoint:
+  match v:
+    case LayoutSpace.Vec{x, y}:
+      TileWorld.DPoint{x, y}
 
-def poly_nbs(+pts: List<&2, VoronoiPolygon.P32>, +cx: U32, +cy: U32, got: List<&2, U32> & List<&2, U32>) -> VoronoiPolygon.Poly & List<&2, U32>:
-  (+nbs, +rest) = got
-  poly_state(pts, cx, cy, nbs, rest)
+def dpoint_cons(got: Array<U32> & LayoutSpace.Vec, acc: List<&2, TileWorld.DPoint>) -> Array<U32> & List<&2, TileWorld.DPoint>:
+  (ws, v) = got
+  (ws, dpoint(v) <> acc)
 
-def poly_centroid(+pts: List<&2, VoronoiPolygon.P32>, +ws: List<&2, U32>) -> VoronoiPolygon.Poly & List<&2, U32>:
-  match ws:
-    case Con{+cx, Con{+cy, Con{+nn, +rest}}}:
-      poly_nbs(pts, cx, cy, words(U32.to_nat(nn), rest))
-    case _:
-      (VoronoiPolygon.Poly{pts, 0, 0, Nil{}, 0}, Nil{})
+# The `n` points (x hi, x lo, y hi, y lo) before `end`.
+def dpoints_before(n: Nat, +end: U32, got: Array<U32> & List<&2, TileWorld.DPoint>) -> Array<U32> & List<&2, TileWorld.DPoint>:
+  match n:
+    case 0n:
+      got
+    case 1n+p:
+      (ws, acc) = got
+      dpoints_before(p, (end - 4 : U32), dpoint_cons(LayoutSpace.get_vec(ws, (end - 4 : U32)), acc))
 
-def poly_points(got: List<&2, VoronoiPolygon.P32> & List<&2, U32>) -> VoronoiPolygon.Poly & List<&2, U32>:
-  (+pts, +rest) = got
-  poly_centroid(pts, rest)
+def poly_state(got: Array<U32> & U32, +pts: List<&2, VoronoiPolygon.P32>, +cx: U32, +cy: U32, +nbs: List<&2, U32>, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +state) = got
+  (VoronoiPolygon.Poly{pts, cx, cy, nbs, state}, Cursor{ws, (at + 1 : U32)})
+
+def poly_nbs(got: Array<U32> & List<&2, U32>, +pts: List<&2, VoronoiPolygon.P32>, +cx: U32, +cy: U32, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +nbs) = got
+  poly_state(ws[at], pts, cx, cy, nbs, at)
+
+def poly_nn(got: Array<U32> & U32, +pts: List<&2, VoronoiPolygon.P32>, +cx: U32, +cy: U32, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +nn) = got
+  +end = (at + 1 + nn : U32)
+  poly_nbs(words_before(U32.to_nat(nn), end, (ws, Nil{})), pts, cx, cy, end)
+
+def poly_cy(got: Array<U32> & U32, +pts: List<&2, VoronoiPolygon.P32>, +cx: U32, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +cy) = got
+  poly_nn(ws[(at + 1 : U32)], pts, cx, cy, (at + 1 : U32))
+
+def poly_cx(got: Array<U32> & U32, +pts: List<&2, VoronoiPolygon.P32>, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +cx) = got
+  poly_cy(ws[(at + 1 : U32)], pts, cx, (at + 1 : U32))
+
+def poly_points(got: Array<U32> & List<&2, VoronoiPolygon.P32>, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +pts) = got
+  poly_cx(ws[at], pts, at)
+
+def poly_counted(got: Array<U32> & U32, +at: U32) -> VoronoiPolygon.Poly & Cursor:
+  (ws, +npts) = got
+  +end = (at + 1 + npts * 2 : U32)
+  poly_points(p32s_before(U32.to_nat(npts), end, (ws, Nil{})), end)
 
 # A polygon: its point count, points, centroid, neighbour count, neighbours and state; with `n` 0, none.
-def poly(n: Nat, +ws: List<&2, U32>) -> VoronoiPolygon.Poly & List<&2, U32>:
+def poly(n: Nat, cur: Cursor) -> VoronoiPolygon.Poly & Cursor:
   match n:
     case 0n:
-      (VoronoiPolygon.Poly{Nil{}, 0, 0, Nil{}, 0}, ws)
+      (VoronoiPolygon.Poly{Nil{}, 0, 0, Nil{}, 0}, cur)
     case 1n+_:
-      match ws:
-        case Con{+npts, +rest}:
-          poly_points(p32s(U32.to_nat(npts), rest))
-        case Nil{}:
-          (VoronoiPolygon.Poly{Nil{}, 0, 0, Nil{}, 0}, Nil{})
+      match cur:
+        case Cursor{ws, +at}:
+          poly_counted(ws[at], at)
 
 # `n` polygons, the first one read in `got`.
-def polys_read(n: Nat, got: VoronoiPolygon.Poly & List<&2, U32>) -> List<&2, VoronoiPolygon.Poly> & List<&2, U32>:
+def polys_read(n: Nat, got: VoronoiPolygon.Poly & Cursor) -> List<&2, VoronoiPolygon.Poly> & Cursor:
   match n:
     case 0n:
-      (_, +rest) = got
+      (_, rest) = got
       (Nil{}, rest)
     case 1n+(+p):
-      (+first, +rest) = got
+      (+first, rest) = got
       cons(VoronoiPolygon.Poly, first, polys_read(p, poly(p, rest)))
 
-def polys(+n: Nat, +ws: List<&2, U32>) -> List<&2, VoronoiPolygon.Poly> & List<&2, U32>:
-  polys_read(n, poly(n, ws))
+def polys(+n: Nat, cur: Cursor) -> List<&2, VoronoiPolygon.Poly> & Cursor:
+  polys_read(n, poly(n, cur))
 
-def dpoints(n: Nat, +ws: List<&2, U32>) -> List<&2, TileWorld.DPoint> & List<&2, U32>:
-  match n:
-    case 0n:
-      (Nil{}, ws)
-    case 1n+p:
-      match ws:
-        case Con{+a, Con{+b, Con{+c, Con{+d, +rest}}}}:
-          cons(TileWorld.DPoint, TileWorld.DPoint{F64Repr.F64{a, b}, F64Repr.F64{c, d}}, dpoints(p, rest))
-        case _:
-          (Nil{}, Nil{})
-
-def vertex(has: Bool, +x: F64Repr.F64, +y: F64Repr.F64) -> Maybe<&2, TileWorld.DPoint>:
+def vertex(has: Bool, v: LayoutSpace.Vec) -> Maybe<&2, TileWorld.DPoint>:
   match has:
     case True{}:
-      Some{TileWorld.DPoint{x, y}}
+      Some{dpoint(v)}
     case False{}:
       None{}
 
-def vedge_points(+twin: U32, +v0: Maybe<&2, TileWorld.DPoint>, +v1: Maybe<&2, TileWorld.DPoint>, got: List<&2, TileWorld.DPoint> & List<&2, U32>) -> TileWorld.VEdge & List<&2, U32>:
-  (+pts, +rest) = got
-  (TileWorld.VEdge{twin, v0, v1, pts}, rest)
+def vedge_points(got: Array<U32> & List<&2, TileWorld.DPoint>, +twin: U32, +v0: Maybe<&2, TileWorld.DPoint>, +v1: Maybe<&2, TileWorld.DPoint>, +end: U32) -> TileWorld.VEdge & Cursor:
+  (ws, +pts) = got
+  (TileWorld.VEdge{twin, v0, v1, pts}, Cursor{ws, end})
 
-# A half-edge: its twin cell's source, vertex flags, both vertices, point count and points.
-def vedge_words(+ws: List<&2, U32>) -> TileWorld.VEdge & List<&2, U32>:
-  match ws:
-    case Con{+twin, Con{+flags, Con{+a, Con{+b, Con{+c, Con{+d, Con{+e, Con{+f, Con{+g, Con{+h, Con{+npts, +rest}}}}}}}}}}}:
-      +v0 = vertex(U32.is_eq((flags .&. 1 : U32), 1), F64Repr.F64{a, b}, F64Repr.F64{c, d})
-      +v1 = vertex(U32.is_eq((flags .&. 2 : U32), 2), F64Repr.F64{e, f}, F64Repr.F64{g, h})
-      vedge_points(twin, v0, v1, dpoints(U32.to_nat(npts), rest))
-    case _:
-      (TileWorld.VEdge{0, None{}, None{}, Nil{}}, Nil{})
+def vedge_counted(got: Array<U32> & U32, +twin: U32, +v0: Maybe<&2, TileWorld.DPoint>, +v1: Maybe<&2, TileWorld.DPoint>, +at: U32) -> TileWorld.VEdge & Cursor:
+  (ws, +npts) = got
+  +end = (at + 1 + npts * 4 : U32)
+  vedge_points(dpoints_before(U32.to_nat(npts), end, (ws, Nil{})), twin, v0, v1, end)
 
-# The next half-edge; with `n` 0, none.
-def vedge(n: Nat, +ws: List<&2, U32>) -> TileWorld.VEdge & List<&2, U32>:
+def vedge_v1(got: Array<U32> & LayoutSpace.Vec, +twin: U32, +flags: U32, +v0: Maybe<&2, TileWorld.DPoint>, +at: U32) -> TileWorld.VEdge & Cursor:
+  (ws, v) = got
+  vedge_counted(ws[(at + 10 : U32)], twin, v0, vertex(U32.is_eq((flags .&. 2 : U32), 2), v), (at + 10 : U32))
+
+def vedge_v0(got: Array<U32> & LayoutSpace.Vec, +twin: U32, +flags: U32, +at: U32) -> TileWorld.VEdge & Cursor:
+  (ws, v) = got
+  vedge_v1(LayoutSpace.get_vec(ws, (at + 6 : U32)), twin, flags, vertex(U32.is_eq((flags .&. 1 : U32), 1), v), at)
+
+def vedge_flags(got: Array<U32> & U32, +twin: U32, +at: U32) -> TileWorld.VEdge & Cursor:
+  (ws, +flags) = got
+  vedge_v0(LayoutSpace.get_vec(ws, (at + 2 : U32)), twin, flags, at)
+
+def vedge_twin(got: Array<U32> & U32, +at: U32) -> TileWorld.VEdge & Cursor:
+  (ws, +twin) = got
+  vedge_flags(ws[(at + 1 : U32)], twin, at)
+
+# A half-edge: its twin cell's source, vertex flags, both vertices, point count and points; with `n` 0, none.
+def vedge(n: Nat, cur: Cursor) -> TileWorld.VEdge & Cursor:
   match n:
     case 0n:
-      (TileWorld.VEdge{0, None{}, None{}, Nil{}}, ws)
+      (TileWorld.VEdge{0, None{}, None{}, Nil{}}, cur)
     case 1n+_:
-      vedge_words(ws)
+      match cur:
+        case Cursor{ws, +at}:
+          vedge_twin(ws[at], at)
 
-def vedges_read(n: Nat, got: TileWorld.VEdge & List<&2, U32>) -> List<&2, TileWorld.VEdge> & List<&2, U32>:
+def vedges_read(n: Nat, got: TileWorld.VEdge & Cursor) -> List<&2, TileWorld.VEdge> & Cursor:
   match n:
     case 0n:
-      (_, +rest) = got
+      (_, rest) = got
       (Nil{}, rest)
     case 1n+(+p):
-      (+first, +rest) = got
+      (+first, rest) = got
       cons(TileWorld.VEdge, first, vedges_read(p, vedge(p, rest)))
 
-def cell_edges(+src: U32, got: List<&2, TileWorld.VEdge> & List<&2, U32>) -> TileWorld.Cell & List<&2, U32>:
-  (+edges, +rest) = got
+def cell_edges(+src: U32, got: List<&2, TileWorld.VEdge> & Cursor) -> TileWorld.Cell & Cursor:
+  (+edges, rest) = got
   (TileWorld.Cell{src, edges}, rest)
 
+def cell_counted(got: Array<U32> & U32, +src: U32, +at: U32) -> TileWorld.Cell & Cursor:
+  (ws, +count) = got
+  +edges = U32.to_nat(count)
+  cell_edges(src, vedges_read(edges, vedge(edges, Cursor{ws, (at + 1 : U32)})))
+
+def cell_src(got: Array<U32> & U32, +at: U32) -> TileWorld.Cell & Cursor:
+  (ws, +src) = got
+  cell_counted(ws[(at + 1 : U32)], src, (at + 1 : U32))
+
 # A tile cell: its source, edge count and edges; with `n` 0, none.
-def cell(n: Nat, +ws: List<&2, U32>) -> TileWorld.Cell & List<&2, U32>:
+def cell(n: Nat, cur: Cursor) -> TileWorld.Cell & Cursor:
   match n:
     case 0n:
-      (TileWorld.Cell{0, Nil{}}, ws)
+      (TileWorld.Cell{0, Nil{}}, cur)
     case 1n+_:
-      match ws:
-        case Con{+src, Con{+count, +rest}}:
-          +edges = U32.to_nat(count)
-          cell_edges(src, vedges_read(edges, vedge(edges, rest)))
-        case _:
-          (TileWorld.Cell{0, Nil{}}, Nil{})
+      match cur:
+        case Cursor{ws, +at}:
+          cell_src(ws[at], at)
 
-def cells(n: Nat, got: TileWorld.Cell & List<&2, U32>) -> List<&2, TileWorld.Cell>:
+def cells(n: Nat, got: TileWorld.Cell & Cursor) -> List<&2, TileWorld.Cell>:
   match n:
     case 0n:
       Nil{}
     case 1n+(+p):
-      (+first, +rest) = got
+      (+first, rest) = got
       first <> cells(p, cell(p, rest))
 
-def counted_cells(+ws: List<&2, U32>) -> List<&2, TileWorld.Cell>:
-  match ws:
-    case Con{+count, +rest}:
-      +n = U32.to_nat(count)
-      cells(n, cell(n, rest))
-    case Nil{}:
-      Nil{}
+def counted_cells(got: Array<U32> & U32, +at: U32) -> List<&2, TileWorld.Cell>:
+  (ws, +count) = got
+  +n = U32.to_nat(count)
+  cells(n, cell(n, Cursor{ws, (at + 1 : U32)}))
 
-def ahead_tile(+commit: List<&2, VoronoiPolygon.Poly>, got: List<&2, VoronoiPolygon.Poly> & List<&2, U32>) -> Ahead:
-  (+tile, +rest) = got
-  Ahead{commit, tile, counted_cells(rest)}
+def ahead_tile(+commit: List<&2, VoronoiPolygon.Poly>, got: List<&2, VoronoiPolygon.Poly> & Cursor) -> Ahead:
+  (+tile, rest) = got
+  match rest:
+    case Cursor{ws, +at}:
+      Ahead{commit, tile, counted_cells(ws[at], at)}
 
-def ahead_commit(+n: Nat, got: List<&2, VoronoiPolygon.Poly> & List<&2, U32>) -> Ahead:
-  (+commit, +rest) = got
+def ahead_commit(+n: Nat, got: List<&2, VoronoiPolygon.Poly> & Cursor) -> Ahead:
+  (+commit, rest) = got
   ahead_tile(commit, polys(n, rest))
 
-def ahead(last: Bool, +n: Nat, +ws: List<&2, U32>) -> Maybe<&2, Ahead>:
+def ahead(last: Bool, +n: Nat, cur: Cursor) -> Maybe<&2, Ahead>:
   match last:
     case True{}:
-      Some{ahead_commit(n, polys(n, ws))}
+      Some{ahead_commit(n, polys(n, cur))}
     case False{}:
       None{}
 
-def answer_polys(+ps: List<&2, LayoutSpace.Vec>, +last: U32, +n: Nat, got: List<&2, VoronoiPolygon.Poly> & List<&2, U32>) -> Answer:
-  (+polys, +rest) = got
+def answer_polys(+ps: List<&2, LayoutSpace.Vec>, +last: U32, +n: Nat, got: List<&2, VoronoiPolygon.Poly> & Cursor) -> Answer:
+  (+polys, rest) = got
   Answer{ps, polys, ahead(U32.is_eq(last, 1), n, rest)}
 
-def answer_flag(+ps: List<&2, LayoutSpace.Vec>, +n: Nat, +ws: List<&2, U32>) -> Answer:
-  match ws:
-    case Con{+last, +rest}:
-      answer_polys(ps, last, n, polys(n, rest))
-    case Nil{}:
-      Answer{ps, Nil{}, None{}}
+def answer_flag(got: Array<U32> & U32, +ps: List<&2, LayoutSpace.Vec>, +n: Nat, +at: U32) -> Answer:
+  (ws, +last) = got
+  answer_polys(ps, last, n, polys(n, Cursor{ws, (at + 1 : U32)}))
 
-def answer_vecs(+n: Nat, got: List<&2, LayoutSpace.Vec> & List<&2, U32>) -> Answer:
-  (+ps, +rest) = got
-  answer_flag(ps, n, rest)
+def answer_vecs(got: Array<U32> & List<&2, LayoutSpace.Vec>, +n: Nat, +at: U32) -> Answer:
+  (ws, +ps) = got
+  answer_flag(ws[at], ps, n, at)
 
-def answer_words(+ws: List<&2, U32>) -> Answer:
-  match ws:
-    case Con{+n, +rest}:
-      +count = U32.to_nat(n)
-      answer_vecs(count, vecs(count, rest))
-    case Nil{}:
-      Answer{Nil{}, Nil{}, None{}}
-
-# The words 1..at of an array, `got` holding word `at`, before `acc`; `n` is at - 1.
-def listed(n: Nat, got: Array<U32> & U32, +at: U32, +acc: List<&2, U32>) -> List<&2, U32>:
-  match n:
-    case 0n:
-      (_, +w) = got
-      w <> acc
-    case 1n+p:
-      (ws, +w) = got
-      listed(p, ws[(at - 1 : U32)], (at - 1 : U32), w <> acc)
-
-def counted(got: Array<U32> & U32) -> Answer:
+def answer_counted(got: Array<U32> & U32) -> Answer:
   (ws, +count) = got
-  +last = (count - 1 : U32)
-  answer_words(listed(U32.to_nat((last - 1 : U32)), ws[last], last, Nil{}))
+  +end = (2 + count * 4 : U32)
+  answer_vecs(vecs_before(U32.to_nat(count), end, (ws, Nil{})), U32.to_nat(count), end)
 
-# The answer's words decoded (read on this thread, the effect's thread only copies them).
+# The answer's words decoded (read on this thread, the effect's thread only copies them): word 0 holds the word count,
+# word 1 the KK's vertex count.
 def answer(ws: Array<U32>) -> Answer:
-  counted(ws[0])
+  answer_counted(ws[1])

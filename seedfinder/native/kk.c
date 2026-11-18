@@ -7,6 +7,10 @@
 // the pairs in index order. The matrices are symmetric: the partial of (i, m) is the negated (m, i) one, so row m's
 // mirrors (i, m) are built from row m once its Newton steps end, wait in c*, then go to column m. The hop graph must be
 // undirected (every arc in both directions, as the Bend side builds it).
+// The x and y partials share a matrix of 64-byte blocks, four x then four y of one row, so a mirror's x and y land in
+// one cache line.
+// The vector kernels and the inner loop stay separate functions: V8 tiers a WebAssembly function up only for the calls
+// after it got hot, so a loop inlined into a function entered once per pass would run unoptimized.
 // A vector row refresh takes the distances in one pass and the partials in a second (shorter dependency chains per
 // lane group); when the gradient norm before a Newton step is at least 0.25, another step almost always follows, so
 // that step's partials pass also sums the next step's Hessian, whose add chain then overlaps the divisions.
@@ -21,7 +25,8 @@
 
 typedef struct {
   u32 n, left, arcs, *arc, *ph;
-  double *x, *y, *px, *py, *pd, *cx, *cy, *pck, *gx, *gy, *qx, *qy, *cl, *ck, *ckl;
+  size_t xy_row;
+  double *x, *y, *pxy, *pd, *cx, *cy, *pck, *gx, *gy, *qx, *qy, *cl, *ck, *ckl;
 } Kn;
 
 static uint64_t kn_bits(double x) { uint64_t u; memcpy(&u, &x, 8); return u; }
@@ -40,6 +45,9 @@ static double kn_hypot(double x, double y) {
 static double kn_norm(double dx, double dy) { return kn_hypot(kn_quiet(fabs(dx)), dy); }
 
 #define KN_AT(k, m, i) ((size_t)(m) * (k)->n + (i))
+#define KN_B 4
+#define KN_X(k, m, i) ((size_t)(m) * (k)->xy_row + ((i) & ~(KN_B - 1u)) * 2 + ((i) & (KN_B - 1u)))
+#define KN_Y(k, m, i) (KN_X(k, m, i) + KN_B)
 
 static void kn_partial(Kn* k, u32 m, u32 i, double* ox, double* oy, double* od) {
   double dx = k->x[m] - k->x[i], dy = k->y[m] - k->y[i];
@@ -52,7 +60,10 @@ static void kn_partial(Kn* k, u32 m, u32 i, double* ox, double* oy, double* od) 
 }
 static int kn_nonzero(double x) { return x != 0.0 && x == x; }
 static void kn_flush(Kn* k, u32 m, u32 i, u32 end) {
-  for (; i < end; i++) { size_t at = KN_AT(k, i, m); k->px[at] = k->cx[i]; k->py[at] = k->cy[i]; k->pd[at] = k->pd[KN_AT(k, m, i)]; }
+  for (; i < end; i++) {
+    size_t at = KN_X(k, i, m);
+    k->pxy[at] = k->cx[i]; k->pxy[at + KN_B] = k->cy[i]; k->pd[KN_AT(k, i, m)] = k->pd[KN_AT(k, m, i)];
+  }
 }
 
 static int kn_gradient_contends(Kn* k, u32 u, double x, double y, double delta) {
@@ -70,16 +81,19 @@ static void kn_pick(Kn* k, u32 u, double x, double y, u32* p, double* delta) {
 #if defined(__x86_64__)
 #define KN_W 4
 #define KN_WIDE __attribute__((target("avx2")))
+#define KN_KERNEL __attribute__((noinline, target("avx2")))
 #define KN_WIDE_OK() __builtin_cpu_supports("avx2")
 #elif defined(__wasm__)
 #define KN_W 2
 #define KN_WIDE __attribute__((target("simd128")))
+#define KN_KERNEL __attribute__((noinline, target("simd128")))
 #define KN_WIDE_OK() 1
 #else
+#define KN_W 1
 #define KN_WIDE_OK() 0
 #endif
 
-#ifdef KN_W
+#if KN_W > 1
 typedef double KnV __attribute__((vector_size(8 * KN_W)));
 typedef int64_t KnM __attribute__((vector_size(8 * KN_W)));
 typedef u32 KnH __attribute__((vector_size(4 * KN_W)));
@@ -129,71 +143,82 @@ KN_WIDE static inline int kn_v_none_contend(Kn* k, u32 u, KnV x, KnV y, double d
   return __builtin_reduce_and(delta < 0x1p450 ? loose | tight : loose) != 0;
 }
 
-KN_WIDE static inline Kn4 kn_v_hessian_add(Kn4 h, KnV dx, KnV dy, KnV d, KnV l, KnV c, KnV cl) {
+KN_WIDE static inline __attribute__((always_inline)) Kn4 kn_v_hessian_add(Kn4 h, KnV dx, KnV dy, KnV d, KnV l, KnV c, KnV cl, u32 skip) {
   KnV d2 = d * d, inv = 1.0 / (d2 * d);
   KnV t[4] = {c * (1.0 + (l * (dx * dx - d2)) * inv), ((cl * dx) * dy) * inv, ((cl * dy) * dx) * inv,
     c * (1.0 + (l * (dy * dy - d2)) * inv)};
 #if KN_W == 4
   kn_v_transpose(t);
-  for (int j = 0; j < 4; j++) h = h + t[j];
+  for (u32 j = 0; j < 4; j++)
+    if (j != skip) h = h + t[j];
 #else
-  h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 0, 2), __builtin_shufflevector(t[2], t[3], 0, 2), 0, 1, 2, 3);
-  h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 1, 3), __builtin_shufflevector(t[2], t[3], 1, 3), 0, 1, 2, 3);
+  if (skip != 0) h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 0, 2), __builtin_shufflevector(t[2], t[3], 0, 2), 0, 1, 2, 3);
+  if (skip != 1) h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 1, 3), __builtin_shufflevector(t[2], t[3], 1, 3), 0, 1, 2, 3);
 #endif
   return h;
 }
 
-KN_WIDE static inline __attribute__((always_inline)) u32 kn_v_partials(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs, int ahead) {
+// The partials of one lane group of row m from column i (a multiple of KN_W); lane `skip` (KN_W: none) is the diagonal,
+// whose partials stay 0 and add 0 to the gradient sums but nothing to the Hessian.
+KN_WIDE static inline __attribute__((always_inline)) void kn_v_partials_at(Kn* k, u32 m, u32 i, u32 skip, Kn2* s, Kn4* h, int ahead) {
+  size_t row = KN_AT(k, m, 0), at = KN_X(k, m, i);
+  KnV dx = k->x[m] - kn_v_load(k->x + i), dy = k->y[m] - kn_v_load(k->y + i), d = kn_v_load(k->pd + row + i), l, c, cl;
+  kn_v_hop_coefs(k, row + i, &l, &c, &cl);
+  KnV r = l / d, x = c * (dx - r * dx), y = c * (dy - r * dy);
+  if (skip < KN_W) { x[skip] = 0.0; y[skip] = 0.0; }
+  kn_v_save(k->pxy + at, x); kn_v_save(k->pxy + at + KN_B, y);
+#if KN_W == 4
+  KnV lo = __builtin_shufflevector(x, y, 0, 4, 2, 6), hi = __builtin_shufflevector(x, y, 1, 5, 3, 7);
+  *s = *s + __builtin_shufflevector(lo, lo, 0, 1); *s = *s + __builtin_shufflevector(hi, hi, 0, 1);
+  *s = *s + __builtin_shufflevector(lo, lo, 2, 3); *s = *s + __builtin_shufflevector(hi, hi, 2, 3);
+#else
+  *s = *s + __builtin_shufflevector(x, y, 0, 2); *s = *s + __builtin_shufflevector(x, y, 1, 3);
+#endif
+  if (ahead) *h = kn_v_hessian_add(*h, dx, dy, d, l, c, cl, skip);
+}
+
+// Columns i.. (i a multiple of KN_W) of row m in whole lane groups, `skip` the diagonal when it is among them; answers
+// the first column left.
+KN_WIDE static inline __attribute__((always_inline)) u32 kn_v_partials(Kn* k, u32 m, u32 i, u32 end, u32 skip, double* sums, double* hs, int ahead) {
   size_t row = KN_AT(k, m, 0);
   double xm = k->x[m], ym = k->y[m];
-  for (u32 j = i; j + KN_W <= end; j += KN_W)
+  u32 stop = end - (end - i) % KN_W, cut = skip >= i && skip < stop ? skip - skip % KN_W : stop;
+  for (u32 j = i; j < stop; j += KN_W)
     kn_v_save(k->pd + row + j, kn_v_norm(xm - kn_v_load(k->x + j), ym - kn_v_load(k->y + j)));
   Kn2 s = {sums[0], sums[1]};
   Kn4 h = {hs[0], hs[1], hs[2], hs[3]};
-  for (; i + KN_W <= end; i += KN_W) {
-    KnV dx = xm - kn_v_load(k->x + i), dy = ym - kn_v_load(k->y + i), d = kn_v_load(k->pd + row + i), l, c, cl;
-    kn_v_hop_coefs(k, row + i, &l, &c, &cl);
-    KnV r = l / d, x = c * (dx - r * dx), y = c * (dy - r * dy);
-    kn_v_save(k->px + row + i, x); kn_v_save(k->py + row + i, y);
-#if KN_W == 4
-    KnV lo = __builtin_shufflevector(x, y, 0, 4, 2, 6), hi = __builtin_shufflevector(x, y, 1, 5, 3, 7);
-    s = s + __builtin_shufflevector(lo, lo, 0, 1); s = s + __builtin_shufflevector(hi, hi, 0, 1);
-    s = s + __builtin_shufflevector(lo, lo, 2, 3); s = s + __builtin_shufflevector(hi, hi, 2, 3);
-#else
-    s = s + __builtin_shufflevector(x, y, 0, 2); s = s + __builtin_shufflevector(x, y, 1, 3);
-#endif
-    if (ahead) h = kn_v_hessian_add(h, dx, dy, d, l, c, cl);
-  }
+  for (; i < cut; i += KN_W) kn_v_partials_at(k, m, i, KN_W, &s, &h, ahead);
+  if (cut < stop) kn_v_partials_at(k, m, cut, skip - cut, &s, &h, ahead);
+  for (i = cut < stop ? cut + KN_W : stop; i < stop; i += KN_W) kn_v_partials_at(k, m, i, KN_W, &s, &h, ahead);
   sums[0] = s[0]; sums[1] = s[1];
   hs[0] = h[0]; hs[1] = h[1]; hs[2] = h[2]; hs[3] = h[3];
-  return i;
+  return stop;
 }
 
-KN_WIDE static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
+KN_KERNEL static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, u32 skip, double* sums) {
   double unused[4] = {0.0, 0.0, 0.0, 0.0};
-  return kn_v_partials(k, m, i, end, sums, unused, 0);
+  return kn_v_partials(k, m, i, end, skip, sums, unused, 0);
 }
 
-KN_WIDE static u32 kn_v_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs) {
-  return kn_v_partials(k, m, i, end, sums, hs, 1);
+KN_KERNEL static u32 kn_v_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, u32 skip, double* sums, double* hs) {
+  return kn_v_partials(k, m, i, end, skip, sums, hs, 1);
 }
 
-KN_WIDE static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
+KN_KERNEL static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
   size_t row = KN_AT(k, p, 0);
   Kn4 h = {hs[0], hs[1], hs[2], hs[3]};
   for (; i + KN_W <= end; i += KN_W) {
     KnV dx = k->x[p] - kn_v_load(k->x + i), dy = k->y[p] - kn_v_load(k->y + i), d = kn_v_load(k->pd + row + i), l, c, cl;
     kn_v_hop_coefs(k, row + i, &l, &c, &cl);
-    h = kn_v_hessian_add(h, dx, dy, d, l, c, cl);
+    h = kn_v_hessian_add(h, dx, dy, d, l, c, cl, KN_W);
   }
   hs[0] = h[0]; hs[1] = h[1]; hs[2] = h[2]; hs[3] = h[3];
   return i;
 }
 
-KN_WIDE static u32 kn_v_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, double* oy) {
-  size_t row = KN_AT(k, m, 0);
+KN_KERNEL static u32 kn_v_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, double* oy) {
   for (; i + KN_W <= end; i += KN_W) {
-    KnV x = kn_v_load(k->px + row + i), y = kn_v_load(k->py + row + i);
+    KnV x = kn_v_load(k->pxy + KN_X(k, m, i)), y = kn_v_load(k->pxy + KN_Y(k, m, i));
     kn_v_save(ox + i, -x); kn_v_save(oy + i, -y);
     KnM exact = (KnM)(x != 0.0) & (KnM)(x == x) & (KnM)(y != 0.0) & (KnM)(y == y);
     if (__builtin_reduce_and(exact) == 0)
@@ -203,31 +228,51 @@ KN_WIDE static u32 kn_v_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, doubl
   return i;
 }
 
-KN_WIDE static u32 kn_v_pick_row_sums(Kn* k, u32* p, double* delta) {
+// Adds the partials of rows u..u+KN_W-1 (a lane each) in columns i..i+KN_W-1 to their gradient sums, in column order.
+KN_WIDE static inline __attribute__((always_inline)) void kn_v_row_sums_at(Kn* k, u32 u, u32 i, KnV* sx, KnV* sy) {
+  KnV bx[KN_W], by[KN_W];
+  for (int r = 0; r < KN_W; r++) { bx[r] = kn_v_load(k->pxy + KN_X(k, u + r, i)); by[r] = kn_v_load(k->pxy + KN_Y(k, u + r, i)); }
+  kn_v_transpose(bx); kn_v_transpose(by);
+  for (int j = 0; j < KN_W; j++) { *sx = *sx + bx[j]; *sy = *sy + by[j]; }
+}
+
+// The same from column i to the row's end.
+KN_WIDE static inline __attribute__((always_inline)) void kn_v_row_sums(Kn* k, u32 u, u32 i, KnV* sx, KnV* sy) {
+  for (; i + KN_W <= k->n; i += KN_W) kn_v_row_sums_at(k, u, i, sx, sy);
+  for (; i < k->n; i++) {
+    KnV cx, cy;
+    for (int r = 0; r < KN_W; r++) { cx[r] = k->pxy[KN_X(k, u + r, i)]; cy[r] = k->pxy[KN_Y(k, u + r, i)]; }
+    *sx = *sx + cx; *sy = *sy + cy;
+  }
+}
+
+KN_WIDE static inline __attribute__((always_inline)) void kn_v_pick_sums(Kn* k, u32 u, KnV sx, KnV sy, u32* p, double* delta) {
+  if (kn_v_none_contend(k, u, sx, sy, *delta)) return;
+  KnV d = kn_v_norm(sx, sy);
+  for (int r = 0; r < KN_W; r++)
+    if (kn_gradient_contends(k, u + r, sx[r], sy[r], *delta) && d[r] > *delta) { *p = u + r; *delta = d[r]; }
+}
+
+// Two row groups per pass over the columns, so their add chains overlap.
+KN_KERNEL static u32 kn_v_pick_row_sums(Kn* k, u32* p, double* delta) {
   u32 n = k->n, u = 0;
+  for (; u + 2 * KN_W <= n; u += 2 * KN_W) {
+    KnV sx = {0.0}, sy = {0.0}, tx = {0.0}, ty = {0.0};
+    u32 i = 0;
+    for (; i + KN_W <= n; i += KN_W) { kn_v_row_sums_at(k, u, i, &sx, &sy); kn_v_row_sums_at(k, u + KN_W, i, &tx, &ty); }
+    kn_v_row_sums(k, u, i, &sx, &sy); kn_v_row_sums(k, u + KN_W, i, &tx, &ty);
+    kn_v_pick_sums(k, u, sx, sy, p, delta);
+    kn_v_pick_sums(k, u + KN_W, tx, ty, p, delta);
+  }
   for (; u + KN_W <= n; u += KN_W) {
     KnV sx = {0.0}, sy = {0.0};
-    u32 i = 0;
-    for (; i + KN_W <= n; i += KN_W) {
-      KnV bx[KN_W], by[KN_W];
-      for (int r = 0; r < KN_W; r++) { bx[r] = kn_v_load(k->px + KN_AT(k, u + r, i)); by[r] = kn_v_load(k->py + KN_AT(k, u + r, i)); }
-      kn_v_transpose(bx); kn_v_transpose(by);
-      for (int j = 0; j < KN_W; j++) { sx = sx + bx[j]; sy = sy + by[j]; }
-    }
-    for (; i < n; i++) {
-      KnV cx, cy;
-      for (int r = 0; r < KN_W; r++) { cx[r] = k->px[KN_AT(k, u + r, i)]; cy[r] = k->py[KN_AT(k, u + r, i)]; }
-      sx = sx + cx; sy = sy + cy;
-    }
-    if (kn_v_none_contend(k, u, sx, sy, *delta)) continue;
-    KnV d = kn_v_norm(sx, sy);
-    for (int r = 0; r < KN_W; r++)
-      if (kn_gradient_contends(k, u + r, sx[r], sy[r], *delta) && d[r] > *delta) { *p = u + r; *delta = d[r]; }
+    kn_v_row_sums(k, u, 0, &sx, &sy);
+    kn_v_pick_sums(k, u, sx, sy, p, delta);
   }
   return u;
 }
 
-KN_WIDE static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) {
+KN_KERNEL static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) {
   u32 u = 0;
   for (; u + KN_W <= k->n; u += KN_W) {
     KnV x = kn_v_load(k->gx + u) + (kn_v_load(k->cx + u) - kn_v_load(k->qx + u));
@@ -240,8 +285,8 @@ KN_WIDE static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) {
   return u;
 }
 #else
-static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) { return i; }
-static u32 kn_v_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs) { return i; }
+static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, u32 skip, double* sums) { return i; }
+static u32 kn_v_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, u32 skip, double* sums, double* hs) { return i; }
 static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) { return i; }
 static u32 kn_v_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, double* oy) { return i; }
 static u32 kn_v_pick_row_sums(Kn* k, u32* p, double* delta) { return 0; }
@@ -250,9 +295,8 @@ static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) { return 0; }
 
 static void kn_refresh_pair(Kn* k, u32 m, u32 i, double* sums) {
   double x, y, d;
-  size_t at = KN_AT(k, m, i);
   kn_partial(k, m, i, &x, &y, &d);
-  k->px[at] = x; k->py[at] = y; k->pd[at] = d;
+  k->pxy[KN_X(k, m, i)] = x; k->pxy[KN_Y(k, m, i)] = y; k->pd[KN_AT(k, m, i)] = d;
   sums[0] = sums[0] + x; sums[1] = sums[1] + y;
 }
 
@@ -267,14 +311,29 @@ static void kn_hessian_pair(Kn* k, u32 p, u32 i, double* hs) {
   hs[3] = hs[3] + k->ck[h] * (1.0 + (k->cl[h] * (dy * dy - d2)) * inv);
 }
 
+static u32 kn_lane_start(u32 i, u32 end) {
+  u32 lane = i + (KN_W - i % KN_W) % KN_W;
+  return KN_WIDE_OK() && lane < end ? lane : end;
+}
+
 static void kn_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
-  if (KN_WIDE_OK()) i = kn_v_refresh(k, m, i, end, sums);
+  for (u32 lane = kn_lane_start(i, end); i < lane; i++) kn_refresh_pair(k, m, i, sums);
+  if (KN_WIDE_OK()) i = kn_v_refresh(k, m, i, end, end, sums);
   for (; i < end; i++) kn_refresh_pair(k, m, i, sums);
 }
 
-static void kn_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs) {
-  if (KN_WIDE_OK()) i = kn_v_refresh_ahead(k, m, i, end, sums, hs);
-  for (; i < end; i++) { kn_refresh_pair(k, m, i, sums); kn_hessian_pair(k, m, i, hs); }
+// Row p's partials, its gradient (sums in column order, the diagonal adding 0) and, `ahead`, the next Hessian.
+static double kn_refresh_row(Kn* k, u32 p, double* hs, int ahead) {
+  double s[2] = {0.0, 0.0};
+  u32 i = 0;
+  if (KN_WIDE_OK()) i = ahead ? kn_v_refresh_ahead(k, p, 0, k->n, p, s, hs) : kn_v_refresh(k, p, 0, k->n, p, s);
+  for (; i < k->n; i++) {
+    if (i == p) { s[0] = s[0] + 0.0; s[1] = s[1] + 0.0; continue; }
+    kn_refresh_pair(k, p, i, s);
+    if (ahead) kn_hessian_pair(k, p, i, hs);
+  }
+  k->gx[p] = s[0]; k->gy[p] = s[1];
+  return kn_norm(s[0], s[1]);
 }
 
 static void kn_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
@@ -282,32 +341,26 @@ static void kn_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
   for (; i < end; i++) kn_hessian_pair(k, p, i, hs);
 }
 
+static void kn_outgoing_pair(Kn* k, u32 m, u32 i, double* ox, double* oy) {
+  double x = k->pxy[KN_X(k, m, i)], y = k->pxy[KN_Y(k, m, i)], d;
+  ox[i] = -x; oy[i] = -y;
+  if (!(kn_nonzero(x) && kn_nonzero(y))) kn_partial(k, i, m, &ox[i], &oy[i], &d);
+}
+
 static void kn_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, double* oy) {
+  for (u32 lane = kn_lane_start(i, end); i < lane; i++) kn_outgoing_pair(k, m, i, ox, oy);
   if (KN_WIDE_OK()) i = kn_v_outgoing(k, m, i, end, ox, oy);
-  for (; i < end; i++) {
-    double x = k->px[KN_AT(k, m, i)], y = k->py[KN_AT(k, m, i)], d;
-    ox[i] = -x; oy[i] = -y;
-    if (!(kn_nonzero(x) && kn_nonzero(y))) kn_partial(k, i, m, &ox[i], &oy[i], &d);
-  }
+  for (; i < end; i++) kn_outgoing_pair(k, m, i, ox, oy);
 }
 
 static double kn_row(Kn* k, u32 p) {
-  double s[2] = {0.0, 0.0};
-  kn_refresh(k, p, 0, p, s);
-  s[0] = s[0] + 0.0; s[1] = s[1] + 0.0;
-  kn_refresh(k, p, p + 1, k->n, s);
-  k->gx[p] = s[0]; k->gy[p] = s[1];
-  return kn_norm(s[0], s[1]);
+  double unused[4] = {0.0, 0.0, 0.0, 0.0};
+  return kn_refresh_row(k, p, unused, 0);
 }
 
 static double kn_row_ahead(Kn* k, u32 p, double* hs) {
-  double s[2] = {0.0, 0.0};
   hs[0] = 0.0; hs[1] = 0.0; hs[2] = 0.0; hs[3] = 0.0;
-  kn_refresh_ahead(k, p, 0, p, s, hs);
-  s[0] = s[0] + 0.0; s[1] = s[1] + 0.0;
-  kn_refresh_ahead(k, p, p + 1, k->n, s, hs);
-  k->gx[p] = s[0]; k->gy[p] = s[1];
-  return kn_norm(s[0], s[1]);
+  return kn_refresh_row(k, p, hs, 1);
 }
 
 static void kn_hessian_row(Kn* k, u32 p, double* hs) {
@@ -330,7 +383,7 @@ static int kn_cycle(double* hx, double* hy, u32 m) {
   return 0;
 }
 
-static double kn_inner(Kn* k, u32 p, double delta) {
+__attribute__((noinline)) static double kn_inner(Kn* k, u32 p, double delta) {
   double hx[102], hy[102], hs[4];
   kn_hessian_row(k, p, hs);
   for (u32 m = 1;; m++) {
@@ -359,7 +412,7 @@ static void kn_run(Kn* k) {
   double delta = 0.0, last = 0.0;
   for (u32 u = KN_WIDE_OK() ? kn_v_pick_row_sums(k, &p, &delta) : 0; u < n; u++) {
     double sx = 0.0, sy = 0.0;
-    for (u32 i = 0; i < n; i++) { sx = sx + k->px[KN_AT(k, u, i)]; sy = sy + k->py[KN_AT(k, u, i)]; }
+    for (u32 i = 0; i < n; i++) { sx = sx + k->pxy[KN_X(k, u, i)]; sy = sy + k->pxy[KN_Y(k, u, i)]; }
     kn_pick(k, u, sx, sy, &p, &delta);
   }
   for (u32 outer = 1; outer <= 100; outer++) {
@@ -413,15 +466,17 @@ static void kn_layout(Kn* k) {
 static void kn_solve(Kn* k) {
   u32 n = k->n;
   size_t nn = (size_t)n * n + 1;
-  k->px = io_mem(calloc(3 * nn, 8));
-  k->py = k->px + nn; k->pd = k->py + nn;
+  k->xy_row = 2 * (((size_t)n + KN_B - 1) / KN_B * KN_B);
+  size_t xy_bytes = ((size_t)n * k->xy_row * 8 + 64) / 64 * 64;
+  k->pxy = memset(io_mem(aligned_alloc(64, xy_bytes)), 0, xy_bytes);
+  k->pd = io_mem(calloc(nn, 8));
   k->ph = io_mem(calloc(nn, 4));
   k->pck = io_mem(calloc(nn, 8));
   k->gx = io_mem(calloc(9 * (size_t)n + 1, 8));
   k->gy = k->gx + n; k->qx = k->gy + n; k->qy = k->qx + n; k->cl = k->qy + n; k->ck = k->cl + n; k->ckl = k->ck + n;
   k->cx = k->ckl + n; k->cy = k->cx + n;
   kn_layout(k);
-  free(k->px); free(k->ph); free(k->pck); free(k->gx);
+  free(k->pxy); free(k->pd); free(k->ph); free(k->pck); free(k->gx);
 }
 
 static u32 kn_next(const u32a* in, u64 len, u64* at) {
