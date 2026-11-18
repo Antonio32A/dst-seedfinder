@@ -7,6 +7,9 @@
 // the pairs in index order. The matrices are symmetric: the partial of (i, m) is the negated (m, i) one, so row m's
 // mirrors (i, m) are built from row m once its Newton steps end, wait in c*, then go to column m. The hop graph must be
 // undirected (every arc in both directions, as the Bend side builds it).
+// A vector row refresh takes the distances in one pass and the partials in a second (shorter dependency chains per
+// lane group); when the gradient norm before a Newton step is at least 0.25, another step almost always follows, so
+// that step's partials pass also sums the next step's Hessian, whose add chain then overlaps the divisions.
 
 #pragma STDC FP_CONTRACT OFF
 #pragma clang fp contract(off)
@@ -126,14 +129,32 @@ KN_WIDE static inline int kn_v_none_contend(Kn* k, u32 u, KnV x, KnV y, double d
   return __builtin_reduce_and(delta < 0x1p450 ? loose | tight : loose) != 0;
 }
 
-KN_WIDE static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
+KN_WIDE static inline Kn4 kn_v_hessian_add(Kn4 h, KnV dx, KnV dy, KnV d, KnV l, KnV c, KnV cl) {
+  KnV d2 = d * d, inv = 1.0 / (d2 * d);
+  KnV t[4] = {c * (1.0 + (l * (dx * dx - d2)) * inv), ((cl * dx) * dy) * inv, ((cl * dy) * dx) * inv,
+    c * (1.0 + (l * (dy * dy - d2)) * inv)};
+#if KN_W == 4
+  kn_v_transpose(t);
+  for (int j = 0; j < 4; j++) h = h + t[j];
+#else
+  h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 0, 2), __builtin_shufflevector(t[2], t[3], 0, 2), 0, 1, 2, 3);
+  h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 1, 3), __builtin_shufflevector(t[2], t[3], 1, 3), 0, 1, 2, 3);
+#endif
+  return h;
+}
+
+KN_WIDE static inline __attribute__((always_inline)) u32 kn_v_partials(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs, int ahead) {
   size_t row = KN_AT(k, m, 0);
+  double xm = k->x[m], ym = k->y[m];
+  for (u32 j = i; j + KN_W <= end; j += KN_W)
+    kn_v_save(k->pd + row + j, kn_v_norm(xm - kn_v_load(k->x + j), ym - kn_v_load(k->y + j)));
   Kn2 s = {sums[0], sums[1]};
+  Kn4 h = {hs[0], hs[1], hs[2], hs[3]};
   for (; i + KN_W <= end; i += KN_W) {
-    KnV dx = k->x[m] - kn_v_load(k->x + i), dy = k->y[m] - kn_v_load(k->y + i), d = kn_v_norm(dx, dy), l, c, cl;
+    KnV dx = xm - kn_v_load(k->x + i), dy = ym - kn_v_load(k->y + i), d = kn_v_load(k->pd + row + i), l, c, cl;
     kn_v_hop_coefs(k, row + i, &l, &c, &cl);
     KnV r = l / d, x = c * (dx - r * dx), y = c * (dy - r * dy);
-    kn_v_save(k->px + row + i, x); kn_v_save(k->py + row + i, y); kn_v_save(k->pd + row + i, d);
+    kn_v_save(k->px + row + i, x); kn_v_save(k->py + row + i, y);
 #if KN_W == 4
     KnV lo = __builtin_shufflevector(x, y, 0, 4, 2, 6), hi = __builtin_shufflevector(x, y, 1, 5, 3, 7);
     s = s + __builtin_shufflevector(lo, lo, 0, 1); s = s + __builtin_shufflevector(hi, hi, 0, 1);
@@ -141,9 +162,20 @@ KN_WIDE static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
 #else
     s = s + __builtin_shufflevector(x, y, 0, 2); s = s + __builtin_shufflevector(x, y, 1, 3);
 #endif
+    if (ahead) h = kn_v_hessian_add(h, dx, dy, d, l, c, cl);
   }
   sums[0] = s[0]; sums[1] = s[1];
+  hs[0] = h[0]; hs[1] = h[1]; hs[2] = h[2]; hs[3] = h[3];
   return i;
+}
+
+KN_WIDE static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
+  double unused[4] = {0.0, 0.0, 0.0, 0.0};
+  return kn_v_partials(k, m, i, end, sums, unused, 0);
+}
+
+KN_WIDE static u32 kn_v_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs) {
+  return kn_v_partials(k, m, i, end, sums, hs, 1);
 }
 
 KN_WIDE static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
@@ -152,16 +184,7 @@ KN_WIDE static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
   for (; i + KN_W <= end; i += KN_W) {
     KnV dx = k->x[p] - kn_v_load(k->x + i), dy = k->y[p] - kn_v_load(k->y + i), d = kn_v_load(k->pd + row + i), l, c, cl;
     kn_v_hop_coefs(k, row + i, &l, &c, &cl);
-    KnV d2 = d * d, inv = 1.0 / (d2 * d);
-    KnV t[4] = {c * (1.0 + (l * (dx * dx - d2)) * inv), ((cl * dx) * dy) * inv, ((cl * dy) * dx) * inv,
-      c * (1.0 + (l * (dy * dy - d2)) * inv)};
-#if KN_W == 4
-    kn_v_transpose(t);
-    for (int j = 0; j < 4; j++) h = h + t[j];
-#else
-    h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 0, 2), __builtin_shufflevector(t[2], t[3], 0, 2), 0, 1, 2, 3);
-    h = h + __builtin_shufflevector(__builtin_shufflevector(t[0], t[1], 1, 3), __builtin_shufflevector(t[2], t[3], 1, 3), 0, 1, 2, 3);
-#endif
+    h = kn_v_hessian_add(h, dx, dy, d, l, c, cl);
   }
   hs[0] = h[0]; hs[1] = h[1]; hs[2] = h[2]; hs[3] = h[3];
   return i;
@@ -218,37 +241,45 @@ KN_WIDE static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) {
 }
 #else
 static u32 kn_v_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) { return i; }
+static u32 kn_v_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs) { return i; }
 static u32 kn_v_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) { return i; }
 static u32 kn_v_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, double* oy) { return i; }
 static u32 kn_v_pick_row_sums(Kn* k, u32* p, double* delta) { return 0; }
 static u32 kn_v_pick_moved(Kn* k, u32* p, double* delta) { return 0; }
 #endif
 
+static void kn_refresh_pair(Kn* k, u32 m, u32 i, double* sums) {
+  double x, y, d;
+  size_t at = KN_AT(k, m, i);
+  kn_partial(k, m, i, &x, &y, &d);
+  k->px[at] = x; k->py[at] = y; k->pd[at] = d;
+  sums[0] = sums[0] + x; sums[1] = sums[1] + y;
+}
+
+static void kn_hessian_pair(Kn* k, u32 p, u32 i, double* hs) {
+  double dx = k->x[p] - k->x[i], dy = k->y[p] - k->y[i];
+  double d = k->pd[KN_AT(k, p, i)];
+  u32 h = k->ph[KN_AT(k, p, i)];
+  double d2 = d * d, inv = 1.0 / (d2 * d);
+  hs[0] = hs[0] + k->ck[h] * (1.0 + (k->cl[h] * (dx * dx - d2)) * inv);
+  hs[1] = hs[1] + ((k->ckl[h] * dx) * dy) * inv;
+  hs[2] = hs[2] + ((k->ckl[h] * dy) * dx) * inv;
+  hs[3] = hs[3] + k->ck[h] * (1.0 + (k->cl[h] * (dy * dy - d2)) * inv);
+}
+
 static void kn_refresh(Kn* k, u32 m, u32 i, u32 end, double* sums) {
   if (KN_WIDE_OK()) i = kn_v_refresh(k, m, i, end, sums);
-  double sx = sums[0], sy = sums[1];
-  for (; i < end; i++) {
-    double x, y, d;
-    size_t at = KN_AT(k, m, i);
-    kn_partial(k, m, i, &x, &y, &d);
-    k->px[at] = x; k->py[at] = y; k->pd[at] = d;
-    sx = sx + x; sy = sy + y;
-  }
-  sums[0] = sx; sums[1] = sy;
+  for (; i < end; i++) kn_refresh_pair(k, m, i, sums);
+}
+
+static void kn_refresh_ahead(Kn* k, u32 m, u32 i, u32 end, double* sums, double* hs) {
+  if (KN_WIDE_OK()) i = kn_v_refresh_ahead(k, m, i, end, sums, hs);
+  for (; i < end; i++) { kn_refresh_pair(k, m, i, sums); kn_hessian_pair(k, m, i, hs); }
 }
 
 static void kn_hessian(Kn* k, u32 p, u32 i, u32 end, double* hs) {
   if (KN_WIDE_OK()) i = kn_v_hessian(k, p, i, end, hs);
-  for (; i < end; i++) {
-    double dx = k->x[p] - k->x[i], dy = k->y[p] - k->y[i];
-    double d = k->pd[KN_AT(k, p, i)];
-    u32 h = k->ph[KN_AT(k, p, i)];
-    double d2 = d * d, inv = 1.0 / (d2 * d);
-    hs[0] = hs[0] + k->ck[h] * (1.0 + (k->cl[h] * (dx * dx - d2)) * inv);
-    hs[1] = hs[1] + ((k->ckl[h] * dx) * dy) * inv;
-    hs[2] = hs[2] + ((k->ckl[h] * dy) * dx) * inv;
-    hs[3] = hs[3] + k->ck[h] * (1.0 + (k->cl[h] * (dy * dy - d2)) * inv);
-  }
+  for (; i < end; i++) kn_hessian_pair(k, p, i, hs);
 }
 
 static void kn_outgoing(Kn* k, u32 m, u32 i, u32 end, double* ox, double* oy) {
@@ -269,16 +300,28 @@ static double kn_row(Kn* k, u32 p) {
   return kn_norm(s[0], s[1]);
 }
 
-static double kn_newton(Kn* k, u32 p) {
-  double hs[4] = {0.0, 0.0, 0.0, 0.0};
+static double kn_row_ahead(Kn* k, u32 p, double* hs) {
+  double s[2] = {0.0, 0.0};
+  hs[0] = 0.0; hs[1] = 0.0; hs[2] = 0.0; hs[3] = 0.0;
+  kn_refresh_ahead(k, p, 0, p, s, hs);
+  s[0] = s[0] + 0.0; s[1] = s[1] + 0.0;
+  kn_refresh_ahead(k, p, p + 1, k->n, s, hs);
+  k->gx[p] = s[0]; k->gy[p] = s[1];
+  return kn_norm(s[0], s[1]);
+}
+
+static void kn_hessian_row(Kn* k, u32 p, double* hs) {
+  hs[0] = 0.0; hs[1] = 0.0; hs[2] = 0.0; hs[3] = 0.0;
   kn_hessian(k, p, 0, p, hs);
   kn_hessian(k, p, p + 1, k->n, hs);
+}
+
+static void kn_newton(Kn* k, u32 p, const double* hs) {
   double h00 = hs[0], h01 = hs[1], h10 = hs[2], h11 = hs[3];
   double gx = k->gx[p], gy = k->gy[p];
   double den = h00 * h11 - h10 * h01;
   k->x[p] = k->x[p] + -((gx * h11 - gy * h01) / den);
   k->y[p] = k->y[p] + -((h00 * gy - h10 * gx) / den);
-  return kn_row(k, p);
 }
 
 static int kn_cycle(double* hx, double* hy, u32 m) {
@@ -287,10 +330,13 @@ static int kn_cycle(double* hx, double* hy, u32 m) {
   return 0;
 }
 
-static double kn_inner(Kn* k, u32 p) {
-  double hx[102], hy[102], delta = 0.0;
+static double kn_inner(Kn* k, u32 p, double delta) {
+  double hx[102], hy[102], hs[4];
+  kn_hessian_row(k, p, hs);
   for (u32 m = 1;; m++) {
-    delta = kn_newton(k, p);
+    int ahead = !(delta < 0.25);
+    kn_newton(k, p, hs);
+    delta = ahead ? kn_row_ahead(k, p, hs) : kn_row(k, p);
     hx[m] = k->x[p]; hy[m] = k->y[p];
     if (m > 100 || delta < 0.001) break;
     u32 j = (u32)kn_cycle(hx, hy, m);
@@ -300,6 +346,7 @@ static double kn_inner(Kn* k, u32 p) {
       delta = kn_row(k, p);
       break;
     }
+    if (!ahead) kn_hessian_row(k, p, hs);
   }
   kn_outgoing(k, p, 0, k->n, k->cx, k->cy);
   k->cx[p] = 0.0; k->cy[p] = 0.0;
@@ -322,7 +369,7 @@ static void kn_run(Kn* k) {
     if (diff < 0.001) return;
     kn_outgoing(k, p, 0, n, k->qx, k->qy);
     k->qx[p] = 0.0; k->qy[p] = 0.0;
-    delta = kn_inner(k, p);
+    delta = kn_inner(k, p, delta);
     for (u32 u = KN_WIDE_OK() ? kn_v_pick_moved(k, &p, &delta) : 0; u < n; u++) kn_pick(k, u, k->gx[u] + (k->cx[u] - k->qx[u]), k->gy[u] + (k->cy[u] - k->qy[u]), &p, &delta);
   }
 }
