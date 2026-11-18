@@ -187,7 +187,8 @@ def flag_build(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Builds.B
     +shard : U32 <- shard_flag(flag_value(args, "--shard"))
     build_for(flag, U32.is_eq(shard, 2))
 
-# The --kk flag: the KK engine, native (the C KK, the default) or bend (kk.bend, for validation).
+# The --kk flag: the KK engine and the Voronoi builds after it, native (the C ports, the default) or bend (kk.bend and
+# worldsim/voronoi, for validation).
 def kk_flag(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, Bool>:
   match m:
     case None{}:

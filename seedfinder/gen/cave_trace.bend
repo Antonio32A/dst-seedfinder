@@ -569,8 +569,8 @@ def enter(+build: Builds.Build, job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&
       (GenJob.advance(build, GenJob.JSecond{c, a, s, k, first}), Nil{})
     case GenJob.JCommit{+c, +a, +s, +k, +second}:
       (GenJob.advance(build, GenJob.JCommit{c, a, s, k, second}), commit_lines(build, st, c, a, s, k, second))
-    case GenJob.JTiles{+c, +a, +s, +k, +size, +sites}:
-      (GenJob.advance(build, GenJob.JTiles{c, a, s, k, size, sites}), tiles_lines(build, st, c, a, s, k, size, sites))
+    case GenJob.JTiles{+c, +a, +s, +k, +size, +sites, +ahead}:
+      (GenJob.advance(build, GenJob.JTiles{c, a, s, k, size, sites, ahead}), tiles_lines(build, st, c, a, s, k, size, sites))
     case GenJob.JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
       (GenJob.advance(build, GenJob.JLand{c, a, s, k, w, world, lists, sites}), forced_lines(rc_of(st, a, s), world, Pcg.counter(tr_seed(st), Generate.rng_after_tiles(s, w))))
     case GenJob.JTiled{+c, +a, +s, +k, +w, grid, +rng, placed, +sites}:

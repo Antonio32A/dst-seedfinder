@@ -255,7 +255,7 @@ def drive(+build: Builds.Build, fuel: Nat, st: Stepped, +seed: U32, +o: Options,
             next : Stepped <- stepped(build, GenJob.stage(job), seed, o, at, since, now, start)
             drive(build, f, next, seed, o, start)
 
-# Generates one seed and prints its lines (KK passes from GenLayout.solve: native or kk.bend).
+# Generates one seed and prints its lines (KK passes from GenLayout.answer: native or kk.bend).
 def seed(+build: Builds.Build, +seed: U32, +o: Options) -> IO(Unit):
   do IO<Unit>:
     +start : Nat <- IO.now()

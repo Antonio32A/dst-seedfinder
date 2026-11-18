@@ -130,15 +130,22 @@ def valid_cells(l: List<&2, NodeCheck>) -> Bool:
 type Committed is Type:
   Committed{size: U32, sites: List<&2, VoronoiPolygon.SiteIn>, twice: Bool, cells: VoronoiPolygon.Cells}
 
-def committed(+c: Centred, +windows: Bool, +size: U32) -> Committed:
-  match c:
-    case Centred{+sites, +still}:
+# Commit's square size and the sites ScaleAndCenter(1, 1) moved into it.
+type Sized is Data:
+  Sized{size: U32, centred: Centred}
+
+def sized(+w: U32, +h: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Sized:
+  +size = commit_size(sites, w, h)
+  Sized{size, scale_and_center(sites, 1.0, 1.0, size, size)}
+
+def committed(+sz: Sized, +windows: Bool) -> Committed:
+  match sz:
+    case Sized{+size, Centred{+sites, +still}}:
       Committed{size, sites, still, VoronoiPolygon.build_voronoi(windows, size, size, sites)}
 
 # BoostMap::Commit for sites laid out in a w x h world: SetSize(s, s) and ScaleAndCenter(1, 1).
 def commit(+windows: Bool, +w: U32, +h: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Committed:
-  +size = commit_size(sites, w, h)
-  committed(scale_and_center(sites, 1.0, 1.0, size, size), windows, size)
+  committed(sized(w, h, sites), windows)
 
 # ConvertToTileMap's resize: size = max(min_size, w, h) as float, SetSize(size, size), then
 # ScaleAndCenter(size / w0, size / h0). Returns the new size and the centred sites.

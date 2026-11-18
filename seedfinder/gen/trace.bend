@@ -322,8 +322,8 @@ def entered(+build: Builds.Build, job: GenJob.Job, +st: Tr) -> GenJob.Job & List
       (GenJob.JSecond{c, a, s, k, first}, first_lines(build, st, s, k, a, first))
     case GenJob.JCommit{+c, +a, +s, +k, +second}:
       (GenJob.JCommit{c, a, s, k, second}, second_lines(build, st, c, s, k, a, second))
-    case GenJob.JTiles{+c, +a, +s, +k, +size, +sites}:
-      (GenJob.JTiles{c, a, s, k, size, sites}, tiles_stage_lines(build, st, c, s, k, a, size, sites))
+    case GenJob.JTiles{+c, +a, +s, +k, +size, +sites, +ahead}:
+      (GenJob.JTiles{c, a, s, k, size, sites, ahead}, tiles_stage_lines(build, st, c, s, k, a, size, sites))
     case GenJob.JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
       (GenJob.JLand{c, a, s, k, w, world, lists, sites}, land_lines(build, st, c, s, k, a, w, world, lists, sites))
     case GenJob.JOcean{+c, +a, landed}:

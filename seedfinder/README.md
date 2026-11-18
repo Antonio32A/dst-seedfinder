@@ -80,7 +80,8 @@ build/seedfinder world dump 123456 --platform linux --build 757748 -o 123456.dst
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them. A `bridges` rule needs
   the dumps' topology (their `GRPH` section) and a `setpieces` rule or group with `placed` names their level plan (their
   `PLAN` section); a dump without the one it needs counts as missing.
-- `--kk native|bend`: the layout engine, `bend` is the slow reference port (also on `gen`).
+- `--kk native|bend`: the layout engine and the Voronoi builds that follow each pass (native C in `native/`), `bend`
+  is the slow reference port of both (also on `gen`).
 - `--verbose-timings`: adds a `timings {json}` line to stderr with the time each option (world filter) takes
   ([docs/config.md](../docs/config.md) section 8). It slows the search down: only for finding out what makes one slow.
 

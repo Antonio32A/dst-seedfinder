@@ -4,7 +4,6 @@ import ../cli/files.bend as Files
 import ../filters/dump.bend as FilterDump
 import ../filters/par.bend as Par
 import ../trace/canon.bend as Canon
-import ../worldsim/layout/space.bend as LayoutSpace
 import ./job.bend as GenJob
 import ./layout.bend as GenLayout
 import ./savedata.bend as SaveData
@@ -21,14 +20,14 @@ import ../data/builds.bend as Builds
 # header; a crashed seed has none, and the exit status is 1 after the other seeds when a seed crashed or a dump could
 # not be written.
 
-# A slot: free, a seed with CPU work, at a KK pass, waiting for its pass's positions, given them, or finished (outcome
-# 0 world, 1 gave up, 2 crashed; count: the entities of its dump). `since`: when its generation started (ms).
+# A slot: free, a seed with CPU work, at a KK pass, waiting for its pass's answer, given it, or finished (outcome 0
+# world, 1 gave up, 2 crashed; count: the entities of its dump). `since`: when its generation started (ms).
 type Slot is Type:
   Free{}
   Busy{seed: U32, job: GenJob.Job, since: Nat}
   Laying{seed: U32, job: GenJob.Job, layout: GenLayout.Layout, since: Nat}
-  Waiting{seed: U32, job: GenJob.Job, laid: Chan(List<&2, LayoutSpace.Vec>), since: Nat}
-  Laid{seed: U32, job: GenJob.Job, ps: List<&2, LayoutSpace.Vec>, since: Nat}
+  Waiting{seed: U32, job: GenJob.Job, laid: Chan(GenLayout.Answer), since: Nat}
+  Laid{seed: U32, job: GenJob.Job, answer: GenLayout.Answer, since: Nat}
   Finished{seed: U32, outcome: U32, count: U32, bytes: List<&2, U32>, since: Nat}
 
 type Slots is Type:
@@ -113,20 +112,12 @@ def parked(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +seed: U32, +si
     case GenJob.Where{+stage, _}:
       settled_slot(build, GenJob.settled(stage), job, seed, since, ctx)
 
-def stepped_unless_laying(+build: Builds.Build, got: GenJob.Job & Maybe<&2, GenLayout.Layout>) -> GenJob.Job:
-  (job, pass) = got
-  match pass:
-    case Some{_}:
-      job
-    case None{}:
-      GenJob.step(build, job)
-
 def moved_at(+build: Builds.Build, settled: Bool, native: Bool, job: GenJob.Job) -> GenJob.Job:
   match settled native:
     case True{} _:
       job
     case False{} True{}:
-      stepped_unless_laying(build, GenJob.layout(job))
+      GenJob.step(build, job)
     case False{} False{}:
       GenJob.advance(build, job)
 
@@ -151,8 +142,8 @@ def work(+build: Builds.Build, slot: Slot, +ctx: Ctx) -> Slot:
   match slot:
     case Busy{+seed, job, +since}:
       rushed(build, rush_steps(), job, seed, since, ctx)
-    case Laid{+seed, job, +ps, +since}:
-      rushed(build, rush_steps(), GenJob.laid(build, job, ps), seed, since, ctx)
+    case Laid{+seed, job, answer, +since}:
+      rushed(build, rush_steps(), GenJob.laid(build, job, answer), seed, since, ctx)
     case other:
       other
 
@@ -221,7 +212,7 @@ def launched(xs: List<&1, Slot>, +ctx: Ctx, acc: List<&1, Slot>) -> IO(List<&1, 
       match x:
         case Laying{+seed, job, +l, +since}:
           do IO<List<&1, Slot>>:
-            laid : Chan(List<&2, LayoutSpace.Vec>) <- IO.fork(List<&2, LayoutSpace.Vec>, GenLayout.solve(native_of(ctx), l))
+            laid : Chan(GenLayout.Answer) <- IO.fork(GenLayout.Answer, GenLayout.answer(GenLayout.ready(native_of(ctx), l)))
             launched(rest, ctx, Waiting{seed, job, laid, since} <> acc)
         case other:
           launched(rest, ctx, other <> acc)
@@ -234,8 +225,8 @@ def joined(+build: Builds.Build, xs: List<&1, Slot>, acc: List<&1, Slot>) -> IO(
       match x:
         case Waiting{+seed, job, laid, +since}:
           do IO<List<&1, Slot>>:
-            +ps : List<&2, LayoutSpace.Vec> <- IO.join(List<&2, LayoutSpace.Vec>, laid)
-            joined(build, rest, Laid{seed, job, ps, since} <> acc)
+            answer : GenLayout.Answer <- IO.join(GenLayout.Answer, laid)
+            joined(build, rest, Laid{seed, job, answer, since} <> acc)
         case other:
           joined(build, rest, other <> acc)
 

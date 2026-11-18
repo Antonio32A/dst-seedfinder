@@ -11,6 +11,14 @@ def native_kk(words: Array<U32>) -> IO(Array<U32>):
   import "./kk.c"
   import "./kk.js"
 
+# The pass with its BuildVoronoi (voronoi.c, which runs this KK first on the same helper thread): the input words of
+# `words` and NativeVoronoi.plan in, both consumed; a new array out: the word count, the output words of native_kk, the
+# last-pass flag, the pass's polygons, then after the last pass Commit's polygons, ConvertToTileMap's polygons, the
+# cell count and the cells (NativeVoronoi.answer).
+def native_layout(words: Array<U32>, plan: Array<U32>) -> IO(Array<U32>):
+  import "./voronoi.c"
+  import "./voronoi.js"
+
 def arcs_into(arcs: List<&2, LayoutHops.Arc>, +at: U32, ws: Array<U32>) -> Array<U32>:
   match arcs:
     case Nil{}:

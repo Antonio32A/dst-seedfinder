@@ -25,6 +25,7 @@ import ../filters/dump.bend as FilterDump
 import ./graph.bend as GenGraph
 import ./generate.bend as Generate
 import ./layout.bend as GenLayout
+import ../native/voronoi.bend as NativeVoronoi
 import ./cave_custom.bend as CaveCustom
 import ./cave_maze.bend as CaveMaze
 import ./maze_pieces.bend as MazePieces
@@ -35,9 +36,10 @@ import ../data/builds.bend as Builds
 
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
 # rounds: `step` does one bounded stage transition; at a KK pass the job waits for a layout engine (gen/layout.bend):
-# `layout` hands over the pass, `laid` resumes with its positions, `advance` runs the pass on this thread (trace) and
-# `advance_io` through GenLayout.solve (gen). At land_done the ocean stage (ocean/ocean.bend) decides whether the
-# attempt is the world.
+# `layout` hands over the pass, `laid` resumes with its answer, `advance` runs the pass on this thread (trace) and
+# `advance_io` through GenLayout.answer (gen). A native answer also brings the pass's BuildVoronoi, and after the last
+# pass Commit's and ConvertToTileMap's, which JCommit and JTiles then use. At land_done the ocean stage
+# (ocean/ocean.bend) decides whether the attempt is the world.
 
 # What the ocean stage starts from at land_done (Ocean.run's input): the tile grid, the RNG, the land entities (newest
 # first), the finished story (required prefabs, topology), the map size, the land's placed layouts (when recorded),
@@ -74,7 +76,7 @@ type Job is Type:
   JFirst{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei}
   JSecond{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, first: Generate.Pass}
   JCommit{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, second: Generate.Pass}
-  JTiles{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, size: U32, sites: List<&2, VoronoiPolygon.SiteIn>}
+  JTiles{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, size: U32, sites: List<&2, VoronoiPolygon.SiteIn>, ahead: Maybe<&2, NativeVoronoi.Ahead>}
   JLand{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, world: TileWorld.World, lists: List<&2, List<&2, U32>>, sites: Points.Sites}
   JOcean{c: Generate.Seed, a: U32, landed: Landed}
   JTiled{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, grid: Grid.Grid, rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, sites: Points.Sites}
@@ -119,14 +121,19 @@ def started(+build: Builds.Build, crashed: Bool, +c: Generate.Seed, +a: U32, +rn
       +s = Generate.first_story(build, c, rng)
       JFirst{c, a, s, GenGraph.klei(s)}
 
-# The KK pass the job waits for, if any.
+def voronoi_of(+c: Generate.Seed, +last: Bool, +s: StoryGraph.St, +k: GenGraph.Klei, +before: List<&2, VoronoiPolygon.Poly>) -> GenLayout.Voronoi:
+  GenLayout.Voronoi{Generate.windows_of(c), Generate.world_size(), last, Generate.unplaced_sites(s, k, before)}
+
+# The KK pass the job waits for, if any (the caves' first pass is their last, the forest's second).
 def layout(job: Job) -> Job & Maybe<&2, GenLayout.Layout>:
   match job:
     case JFirst{+c, +a, +s, +k}:
-      (JFirst{c, a, s, k}, Some{GenLayout.Layout{0, GenGraph.count_of(k), GenGraph.arcs(k), (Generate.first_runs() - 1 : U32), Nil{}}})
+      +voronoi = voronoi_of(c, Generate.is_caves(c), s, k, Nil{})
+      (JFirst{c, a, s, k}, Some{GenLayout.Layout{0, GenGraph.count_of(k), GenGraph.arcs(k), (Generate.first_runs() - 1 : U32), Nil{}, voronoi}})
     case JSecond{+c, +a, +s, +k, +first}:
       +prior = Generate.pass_positions(first)
-      (JSecond{c, a, s, k, first}, Some{GenLayout.Layout{U32.from_nat(List.length(&2, LayoutSpace.Vec, prior)), GenGraph.count_of(k), GenGraph.arcs(k), (Generate.second_runs() - 1 : U32), prior}})
+      +voronoi = voronoi_of(c, True{}, s, k, Generate.pass_polys(first))
+      (JSecond{c, a, s, k, first}, Some{GenLayout.Layout{U32.from_nat(List.length(&2, LayoutSpace.Vec, prior)), GenGraph.count_of(k), GenGraph.arcs(k), (Generate.second_runs() - 1 : U32), prior, voronoi}})
     case other:
       (other, None{})
 
@@ -139,39 +146,60 @@ def second_by(caves: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +first
 
 # The story after pass 1 (Story:AddRegionsToMainland): the forest adds the moon island and waits for its KK pass 2; the
 # caves have no regions, so their Commit follows pass 1.
-def second_of(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, LayoutSpace.Vec>) -> Job:
-  +first = Generate.pass_of(c, s, k, ps, Nil{})
+def second_of(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +first: Generate.Pass) -> Job:
   second_by(Generate.is_caves(c), c, a, Generate.second_story(build, c, s, k, Generate.pass_site_list(first)), first)
 
-# The waiting job resumed with its pass's positions (VoronoiPass's BuildVoronoi, and after pass 1 the story up to
-# pass 2); any other job as it is.
-def laid(+build: Builds.Build, job: Job, +ps: List<&2, LayoutSpace.Vec>) -> Job:
+# A pass ended by its answer: the native engine's builds, or the positions of kk.bend with VoronoiPass's BuildVoronoi
+# here.
+def passed(+c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +before: List<&2, VoronoiPolygon.Poly>, answer: GenLayout.Answer) -> Generate.Pass:
+  match answer:
+    case GenLayout.Answered{ws}:
+      Generate.pass_answered(s, k, before, NativeVoronoi.answer(ws))
+    case GenLayout.Positioned{+ps}:
+      Generate.pass_of(c, s, k, ps, before)
+
+# The waiting job resumed with its pass's answer (VoronoiPass's BuildVoronoi, and after pass 1 the story up to pass 2);
+# any other job as it is.
+def laid(+build: Builds.Build, job: Job, answer: GenLayout.Answer) -> Job:
   match job:
     case JFirst{+c, +a, +s, +k}:
-      second_of(build, c, a, s, k, ps)
+      second_of(build, c, a, s, k, passed(c, s, k, Nil{}, answer))
     case JSecond{+c, +a, +s, +k, +first}:
-      JCommit{c, a, s, k, Generate.pass_of(c, s, k, ps, Generate.pass_polys(first))}
+      JCommit{c, a, s, k, passed(c, s, k, Generate.pass_polys(first), answer)}
     case other:
       other
 
-def commit_checked(ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Job:
+def commit_checked(ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +ahead: Maybe<&2, NativeVoronoi.Ahead>) -> Job:
   match ok:
     case True{}:
-      JTiles{c, a, s, k, size, sites}
+      JTiles{c, a, s, k, size, sites, ahead}
     case False{}:
       retry(Generate.carried(c, s), a, StoryGraph.rng_of(s))
 
-def committed_polys(+size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei) -> Job:
-  commit_checked(Generate.valid_cells(s, k, polys), c, a, s, k, size, Generate.with_centroids(sites, polys))
+def committed_polys(+size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +ahead: Maybe<&2, NativeVoronoi.Ahead>) -> Job:
+  commit_checked(Generate.valid_cells(s, k, polys), c, a, s, k, size, Generate.with_centroids(sites, polys), ahead)
 
 def committed(cm: Commit.Committed, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei) -> Job:
   match cm:
     case Commit.Committed{+size, +sites, _, cells}:
-      committed_polys(size, sites, Generate.cells_polys(cells), c, a, s, k)
+      committed_polys(size, sites, Generate.cells_polys(cells), c, a, s, k, None{})
 
-# WorldGen_Commit and CheckForValidCells; a failure retries from the RNG at Commit.
+def committed_ahead(+sz: Commit.Sized, +built: NativeVoronoi.Ahead, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei) -> Job:
+  match sz built:
+    case Commit.Sized{+size, Commit.Centred{+sites, _}} NativeVoronoi.Ahead{+polys, +tile, +cells}:
+      committed_polys(size, sites, polys, c, a, s, k, Some{NativeVoronoi.Ahead{polys, tile, cells}})
+
+def committed_by(ahead: Maybe<&2, NativeVoronoi.Ahead>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +second: Generate.Pass) -> Job:
+  match ahead:
+    case Some{+built}:
+      committed_ahead(Generate.commit_sized(second), built, c, a, s, k)
+    case None{}:
+      committed(Generate.commit(c, second), c, a, s, k)
+
+# WorldGen_Commit (built ahead by a native answer, or here) and CheckForValidCells; a failure retries from the RNG at
+# Commit.
 def commit(+c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +second: Generate.Pass) -> Job:
-  committed(Generate.commit(c, second), c, a, s, k)
+  committed_by(Generate.pass_ahead(second), c, a, s, k, second)
 
 def areas_checked(+build: Builds.Build, ok: Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +world: TileWorld.World, +lists: List<&2, List<&2, U32>>, +sites: Points.Sites) -> Job:
   match ok:
@@ -193,11 +221,19 @@ def tiled(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +
   +sites = Points.sized_sites(world, lists, TileConvert.sizes_of(counted))
   crash_checked(build, Generate.custom_crashes(build, c, s, k, sites), c, a, s, k, w, world, lists, sites)
 
-# ConvertToTileMap's build and the GetSiteArea < 8 check; a failure retries from the RNG after ConvertToTileMap (the
-# caves: after their custom tile pass, which crashes the game first when Generate.custom_crashes).
-def tiles(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> Job:
+def tile_world_by(ahead: Maybe<&2, NativeVoronoi.Ahead>, +build: Builds.Build, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>) -> TileWorld.World:
+  match ahead:
+    case Some{NativeVoronoi.Ahead{_, +polys, +cells}}:
+      Generate.tile_world_of(build, s, k, w, Generate.tile_centred(size, sites), polys, cells)
+    case None{}:
+      Generate.tile_world(build, s, k, w, Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites))
+
+# ConvertToTileMap's build (built ahead by a native answer, or here) and the GetSiteArea < 8 check; a failure retries
+# from the RNG after ConvertToTileMap (the caves: after their custom tile pass, which crashes the game first when
+# Generate.custom_crashes).
+def tiles(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +size: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +ahead: Maybe<&2, NativeVoronoi.Ahead>) -> Job:
   +w = Generate.tile_size(size)
-  tiled(build, c, a, s, k, w, Generate.tile_world(build, s, k, w, Generate.tile_centred(size, sites), Generate.tile_build(c, size, sites)))
+  tiled(build, c, a, s, k, w, tile_world_by(ahead, build, c, s, k, w, size, sites))
 
 def landed_of(+build: Builds.Build, l: PopulateState.Land, +roads: List<&2, List<&2, TileWorld.Point>>, +s: StoryGraph.St, +w: U32, +graph: FilterDump.Graph, +plan: StoryPlan.Plan) -> Landed:
   match l:
@@ -365,8 +401,8 @@ def step(+build: Builds.Build, job: Job) -> Job:
       started(build, Generate.crashed(c), c, a, rng)
     case JCommit{+c, +a, +s, +k, +second}:
       commit(c, a, s, k, second)
-    case JTiles{+c, +a, +s, +k, +size, +sites}:
-      tiles(build, c, a, s, k, size, sites)
+    case JTiles{+c, +a, +s, +k, +size, +sites, +ahead}:
+      tiles(build, c, a, s, k, size, sites, ahead)
     case JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
       land(build, c, a, s, k, w, world, lists, sites)
     case JOcean{+c, +a, landed}:
@@ -384,7 +420,7 @@ def advanced(+build: Builds.Build, got: Job & Maybe<&2, GenLayout.Layout>) -> Jo
   (job, pass) = got
   match pass:
     case Some{+l}:
-      laid(build, job, GenLayout.local(l))
+      laid(build, job, GenLayout.Positioned{GenLayout.local(l)})
     case None{}:
       step(build, job)
 
@@ -397,12 +433,12 @@ def solved(+build: Builds.Build, got: Job & Maybe<&2, GenLayout.Layout>, +native
   match pass:
     case Some{+l}:
       do IO<Job>:
-        +ps : List<&2, LayoutSpace.Vec> <- GenLayout.solve(native, l)
-        return laid(build, job, ps)
+        answer : GenLayout.Answer <- GenLayout.answer(GenLayout.ready(native, l))
+        return laid(build, job, answer)
     case None{}:
       IO.pure(Job, step(build, job))
 
-# One step, a waiting job's KK pass from GenLayout.solve included.
+# One step, a waiting job's KK pass from GenLayout.answer included.
 def advance_io(+build: Builds.Build, +native: Bool, job: Job) -> IO(Job):
   solved(build, layout(job), native)
 
@@ -420,8 +456,8 @@ def stage(job: Job) -> Job & Where:
       (JSecond{c, a, s, k, first}, Where{2, a})
     case JCommit{+c, +a, +s, +k, +second}:
       (JCommit{c, a, s, k, second}, Where{3, a})
-    case JTiles{+c, +a, +s, +k, +size, +sites}:
-      (JTiles{c, a, s, k, size, sites}, Where{4, a})
+    case JTiles{+c, +a, +s, +k, +size, +sites, +ahead}:
+      (JTiles{c, a, s, k, size, sites, ahead}, Where{4, a})
     case JLand{+c, +a, +s, +k, +w, +world, +lists, +sites}:
       (JLand{c, a, s, k, w, world, lists, sites}, Where{5, a})
     case JOcean{+c, +a, landed}:

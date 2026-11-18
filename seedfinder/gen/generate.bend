@@ -9,6 +9,7 @@ import ../storygen/graph.bend as StoryGraph
 import ../storygen/story.bend as Story
 import ../storygen/plan.bend as StoryPlan
 import ../worldsim/layout/space.bend as LayoutSpace
+import ../native/voronoi.bend as NativeVoronoi
 import ../worldsim/voronoi/diagram.bend as VoronoiDiagram
 import ../worldsim/voronoi/builder.bend as VoronoiBuilder
 import ../worldsim/voronoi/polygon.bend as VoronoiPolygon
@@ -188,6 +189,17 @@ def sites_loop(vs: List<&2, U32>, ps: List<&2, LayoutSpace.Vec>, cs: List<&2, Vo
 def pass_sites(+s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, LayoutSpace.Vec>, +before: List<&2, VoronoiPolygon.Poly>) -> List<&2, VoronoiPolygon.SiteIn>:
   sites_loop(GenGraph.vertices_of(k), ps, centroids(before), s)
 
+def unplaced(vs: List<&2, U32>) -> List<&2, LayoutSpace.Vec>:
+  match vs:
+    case Nil{}:
+      Nil{}
+    case Con{_, rest}:
+      LayoutSpace.Vec{F64Repr.zero(), F64Repr.zero()} <> unplaced(rest)
+
+# The sites of the pass a job waits for, before the KK places them (at (0, 0)).
+def unplaced_sites(+s: StoryGraph.St, +k: GenGraph.Klei, +before: List<&2, VoronoiPolygon.Poly>) -> List<&2, VoronoiPolygon.SiteIn>:
+  pass_sites(s, k, unplaced(GenGraph.vertices_of(k)), before)
+
 # The BuildVoronoi at the end of a VoronoiPass.
 def pass_build(+c: Seed, +sites: List<&2, VoronoiPolygon.SiteIn>) -> VoronoiPolygon.Cells:
   VoronoiPolygon.build_voronoi(windows_of(c), world_size(), world_size(), sites)
@@ -285,37 +297,60 @@ def with_centroids(ss: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, Voronoi
     case _ _:
       ss
 
-# A finished VoronoiPass: the KK positions (vertex order), the sites BuildVoronoi got and its polygons.
+# A finished VoronoiPass: the KK positions (vertex order), the sites BuildVoronoi got, its polygons, and the builds a
+# native answer made ahead after the last pass.
 type Pass is Data:
-  Pass{ps: List<&2, LayoutSpace.Vec>, sites: List<&2, VoronoiPolygon.SiteIn>, polys: List<&2, VoronoiPolygon.Poly>}
+  Pass{ps: List<&2, LayoutSpace.Vec>, sites: List<&2, VoronoiPolygon.SiteIn>, polys: List<&2, VoronoiPolygon.Poly>, ahead: Maybe<&2, NativeVoronoi.Ahead>}
 
 def pass_positions(+p: Pass) -> List<&2, LayoutSpace.Vec>:
   match p:
-    case Pass{+ps, _, _}:
+    case Pass{+ps, _, _, _}:
       ps
 
 def pass_site_list(+p: Pass) -> List<&2, VoronoiPolygon.SiteIn>:
   match p:
-    case Pass{_, +sites, _}:
+    case Pass{_, +sites, _, _}:
       sites
 
 def pass_polys(+p: Pass) -> List<&2, VoronoiPolygon.Poly>:
   match p:
-    case Pass{_, _, +polys}:
+    case Pass{_, _, +polys, _}:
       polys
+
+def pass_ahead(+p: Pass) -> Maybe<&2, NativeVoronoi.Ahead>:
+  match p:
+    case Pass{_, _, _, +ahead}:
+      ahead
 
 # The positions, sites and polygons of a pass that has ended (`before`: the polygons of the pass before, if any).
 def pass_of(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +ps: List<&2, LayoutSpace.Vec>, +before: List<&2, VoronoiPolygon.Poly>) -> Pass:
   +sites = pass_sites(s, k, ps, before)
-  Pass{ps, sites, cells_polys(pass_build(c, sites))}
+  Pass{ps, sites, cells_polys(pass_build(c, sites)), None{}}
+
+# A pass that has ended with a native answer: its builds come with the answer.
+def pass_answered(+s: StoryGraph.St, +k: GenGraph.Klei, +before: List<&2, VoronoiPolygon.Poly>, +a: NativeVoronoi.Answer) -> Pass:
+  match a:
+    case NativeVoronoi.Answer{+ps, +polys, +ahead}:
+      Pass{ps, pass_sites(s, k, ps, before), polys, ahead}
+
+def commit_sites(+p: Pass) -> List<&2, VoronoiPolygon.SiteIn>:
+  with_centroids(pass_site_list(p), pass_polys(p))
 
 # WorldGen_Commit from VoronoiPass(50): the sites carry that build's centroids.
 def commit(+c: Seed, +p: Pass) -> Commit.Committed:
-  Commit.commit(windows_of(c), world_size(), world_size(), with_centroids(pass_site_list(p), pass_polys(p)))
+  Commit.commit(windows_of(c), world_size(), world_size(), commit_sites(p))
+
+# WorldGen_Commit's size and centred sites, without its BuildVoronoi.
+def commit_sized(+p: Pass) -> Commit.Sized:
+  Commit.sized(world_size(), world_size(), commit_sites(p))
+
+# The TileWorld.World of ConvertToTileMap's build from its polygons and cells.
+def tile_world_of(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, +cs: List<&2, TileWorld.Cell>) -> TileWorld.World:
+  GenWorld.world(w, sites, polys, GenWorld.nodes(build, s, k), cs, poisoned_edges(build, s, k))
 
 def tile_world_cells(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, +polys: List<&2, VoronoiPolygon.Poly>, got: VoronoiDiagram.Diagram & List<&2, TileWorld.Cell>) -> TileWorld.World:
   (_, +cs) = got
-  GenWorld.world(w, sites, polys, GenWorld.nodes(build, s, k), cs, poisoned_edges(build, s, k))
+  tile_world_of(build, s, k, w, sites, polys, cs)
 
 def tile_world_built(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: List<&2, VoronoiPolygon.SiteIn>, built: VoronoiBuilder.Built, +polys: List<&2, VoronoiPolygon.Poly>) -> TileWorld.World:
   match built:

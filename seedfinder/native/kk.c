@@ -363,8 +363,7 @@ static void kn_layout(Kn* k) {
   for (u32 r = 0; r <= k->left; r++) kn_run(k);
 }
 
-static void native_kk_call(IoWork* w) {
-  Kn* k = (Kn*)w->data;
+static void kn_solve(Kn* k) {
   u32 n = k->n;
   size_t nn = (size_t)n * n + 1;
   k->px = io_mem(calloc(3 * nn, 8));
@@ -378,35 +377,12 @@ static void native_kk_call(IoWork* w) {
   free(k->px); free(k->ph); free(k->pck); free(k->gx);
 }
 
-static Term native_kk_pack(Env e, IoWork* w) {
-  Kn* k = (Kn*)w->data;
-  u32 cls = 1;
-  while ((1ull << cls) < 1 + 4ull * k->n) cls++;
-  u64 l = heap_alloc(e, blk_wcls(false, cls));
-  if (err_seen(e.mem)) {
-    free(k->x); free(k->arc); free(k);
-    return term_blk(false, 0, l);
-  }
-  u32a* out = blk_ptr(e.mem, l, 0);
-  memset((void*)out, 0, 4ull << cls);
-  out[0] = k->n;
-  for (u32 v = 0; v < k->n; v++) {
-    uint64_t bx = kn_bits(k->x[v]), by = kn_bits(k->y[v]);
-    out[1 + 4 * v] = (u32)(bx >> 32); out[2 + 4 * v] = (u32)bx;
-    out[3 + 4 * v] = (u32)(by >> 32); out[4 + 4 * v] = (u32)by;
-  }
-  free(k->x); free(k->arc); free(k);
-  return term_blk(false, cls, l);
-}
-
 static u32 kn_next(const u32a* in, u64 len, u64* at) {
   return *at < len ? in[(*at)++] : 0;
 }
 
-Term native_kk_run(Env e, Term* f, IoWork* w) {
-  Term a = f[0];
-  const u32a* in = blk_ptr(e.mem, blk_loc(e.mem, a), 0);
-  u64 len = 1ull << blk_cls(a), at = 0;
+static Kn* kn_read(const u32a* in, u64 len) {
+  u64 at = 0;
   Kn* k = io_mem(calloc(1, sizeof(Kn)));
   k->n = kn_next(in, len, &at); k->left = kn_next(in, len, &at); k->arcs = kn_next(in, len, &at);
   k->arc = io_mem(malloc(((size_t)k->arcs * 2 + 1) * 4));
@@ -417,8 +393,56 @@ Term native_kk_run(Env e, Term* f, IoWork* w) {
     uint64_t xh = kn_next(in, len, &at), xl = kn_next(in, len, &at), yh = kn_next(in, len, &at), yl = kn_next(in, len, &at);
     k->x[v] = kn_dbl(xh << 32 | xl); k->y[v] = kn_dbl(yh << 32 | yl);
   }
+  return k;
+}
+
+static void kn_put(const Kn* k, u32a* out) {
+  out[0] = k->n;
+  for (u32 v = 0; v < k->n; v++) {
+    uint64_t bx = kn_bits(k->x[v]), by = kn_bits(k->y[v]);
+    out[1 + 4 * v] = (u32)(bx >> 32); out[2 + 4 * v] = (u32)bx;
+    out[3 + 4 * v] = (u32)(by >> 32); out[4 + 4 * v] = (u32)by;
+  }
+}
+
+static void kn_free(Kn* k) {
+  free(k->x); free(k->arc); free(k);
+}
+
+// The output words of a pass from its input words, on the caller's thread (voronoi.c's effect runs it first).
+static u32* native_kk_solve(const u32* in, u64 len) {
+  Kn* k = kn_read(in, len);
+  kn_solve(k);
+  u32* out = io_mem(malloc((1 + 4 * (size_t)k->n) * 4));
+  kn_put(k, out);
+  kn_free(k);
+  return out;
+}
+
+static void native_kk_call(IoWork* w) {
+  kn_solve((Kn*)w->data);
+}
+
+static Term native_kk_pack(Env e, IoWork* w) {
+  Kn* k = (Kn*)w->data;
+  u32 cls = 1;
+  while ((1ull << cls) < 1 + 4ull * k->n) cls++;
+  u64 l = heap_alloc(e, blk_wcls(false, cls));
+  if (err_seen(e.mem)) {
+    kn_free(k);
+    return term_blk(false, 0, l);
+  }
+  u32a* out = blk_ptr(e.mem, l, 0);
+  memset((void*)out, 0, 4ull << cls);
+  kn_put(k, out);
+  kn_free(k);
+  return term_blk(false, cls, l);
+}
+
+Term native_kk_run(Env e, Term* f, IoWork* w) {
+  Term a = f[0];
+  w->data = (char*)kn_read(blk_ptr(e.mem, blk_loc(e.mem, a), 0), 1ull << blk_cls(a));
   blk_free(e, a);
-  w->data = (char*)k;
   return io_work(w, native_kk_call, native_kk_pack);
 }
 

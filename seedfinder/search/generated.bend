@@ -280,8 +280,10 @@ def world_verdict(+build: Builds.Build, job: GenJob.Job, +config: ShardSearch.Se
 # The estimated ms of a job's next CPU stage (see GenJob.Job; `gen --times` names a stage line after the stage left).
 def stage_cost(+caves: Bool, +stage: U32) -> U32:
   match stage:
+    case 3:
+      1
     case 4:
-      Bool.pick(U32, caves, 20, 18)
+      Bool.pick(U32, caves, 12, 10)
     case 5:
       Bool.pick(U32, caves, 16, 57)
     case 6:
@@ -295,11 +297,12 @@ def stage_cost(+caves: Bool, +stage: U32) -> U32:
     case _:
       8
 
-# The estimated ms of resuming after a KK pass: Voronoi, and the story up to pass 2 after the forest's pass 1.
+# The estimated ms of resuming after a native KK pass: its answer's builds, and the story up to pass 2 after the
+# forest's pass 1.
 def pass_cost(+caves: Bool, +l: GenLayout.Layout) -> U32:
   match l:
-    case GenLayout.Layout{+first, _, _, _, _}:
-      Bool.pick(U32, caves, 10, Bool.pick(U32, U32.is_zero(first), 8, 5))
+    case GenLayout.Layout{+first, _, _, _, _, _}:
+      Bool.pick(U32, caves, 4, Bool.pick(U32, U32.is_zero(first), 4, 2))
 
 def asked(got: GenJob.Job & Maybe<&2, GenLayout.Layout>, +seed: U32, +stage: U32, +caves: Bool, +native: Bool) -> Slot:
   (job, pass) = got
@@ -345,20 +348,12 @@ def parked(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +config: ShardS
     case GenJob.Where{+stage, _}:
       settled_at(build, GenJob.settled(stage), job, stage, config, native, timed, seed)
 
-def moved_on(+build: Builds.Build, got: GenJob.Job & Maybe<&2, GenLayout.Layout>) -> GenJob.Job:
-  (job, pass) = got
-  match pass:
-    case Some{_}:
-      job
-    case None{}:
-      GenJob.step(build, job)
-
 def moved_at(+build: Builds.Build, settled: Bool, job: GenJob.Job) -> GenJob.Job:
   match settled:
     case True{}:
       job
     case False{}:
-      moved_on(build, GenJob.layout(job))
+      GenJob.step(build, job)
 
 # A stage transition; decided jobs and jobs at a KK pass stay.
 def moved(+build: Builds.Build, got: GenJob.Job & GenJob.Where) -> GenJob.Job:
@@ -377,7 +372,7 @@ def rushed(+build: Builds.Build, budget: Nat, job: GenJob.Job, +config: ShardSea
 def resumed(+build: Builds.Build, back: Bool, job: GenJob.Job, answer: GenLayout.Answer) -> GenJob.Job:
   match back:
     case True{}:
-      GenJob.laid(build, job, GenLayout.positions(answer))
+      GenJob.laid(build, job, answer)
     case False{}:
       job
 
@@ -400,7 +395,7 @@ def work(+build: Builds.Build, slot: Slot, +config: ShardSearch.Search, +native:
     case Cpu{+seed, job, _}:
       parked(build, GenJob.stage(GenJob.step(build, job)), config, native, timed, seed)
     case Back{+seed, job, answer, _}:
-      parked(build, GenJob.stage(GenJob.laid(build, job, GenLayout.positions(answer))), config, native, timed, seed)
+      parked(build, GenJob.stage(GenJob.laid(build, job, answer)), config, native, timed, seed)
     case Rush{+seed, job, answer, back}:
       rushed(build, rush_steps(), resumed(build, back, job, answer), config, native, timed, seed)
     case other:

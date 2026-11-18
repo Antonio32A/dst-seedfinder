@@ -3,15 +3,23 @@ import ../worldsim/layout/space.bend as LayoutSpace
 import ../worldsim/layout/hops.bend as LayoutHops
 import ../worldsim/layout/kk.bend as KK
 import ../native/kk.bend as NativeKK
+import ../native/voronoi.bend as NativeVoronoi
+import ../worldsim/voronoi/polygon.bend as VoronoiPolygon
 
 # The seam between the job machine (gen/job.bend) and a KK engine: a job at a KK pass hands over a Layout, and the
-# engine answers the pass's positions (vertex order). Engines: `local` (kk.bend, pure, this thread) and `solve` (the
-# engine switch used by `gen` and the search).
+# engine answers the pass's positions (vertex order). Engines: `local` (kk.bend, pure, this thread; the job then builds
+# the pass's Voronoi in Bend) and `answer` (the engine switch used by `gen`, `world dump` and the search, whose native
+# engine also builds the pass's Voronoi, and after the last pass Commit's and ConvertToTileMap's).
 
 # A KamadaKawaiPass: the graph's n vertices and its arcs; vertices `first`.. are new (the constant minstd table
-# places them), vertices 0..first-1 start at `prior`; `left` runs follow the first.
+# places them), vertices 0..first-1 start at `prior`; `left` runs follow the first. `voronoi` is what the native
+# engine needs for the pass's BuildVoronoi (VoronoiPass): the platform, the world size, whether it is the last pass,
+# and the sites without their positions.
 type Layout is Data:
-  Layout{first: U32, n: U32, arcs: List<&2, LayoutHops.Arc>, left: U32, prior: List<&2, LayoutSpace.Vec>}
+  Layout{first: U32, n: U32, arcs: List<&2, LayoutHops.Arc>, left: U32, prior: List<&2, LayoutSpace.Vec>, voronoi: Voronoi}
+
+type Voronoi is Data:
+  Voronoi{windows: Bool, world: U32, last: Bool, sites: List<&2, VoronoiPolygon.SiteIn>}
 
 def placed(ps: List<&2, LayoutSpace.Vec>, +v: U32, ws: Array<U32>) -> Array<U32>:
   match ps:
@@ -32,49 +40,42 @@ def positions_of(job: KK.Job) -> List<&2, LayoutSpace.Vec>:
 # The whole pass with kk.bend on this thread (a fresh 8 MB workspace).
 def local(+l: Layout) -> List<&2, LayoutSpace.Vec>:
   match l:
-    case Layout{+first, +n, +arcs, +left, +prior}:
+    case Layout{+first, +n, +arcs, +left, +prior, _}:
       +fuel = Nat.mul(KK.run_fuel(), U32.to_nat((left + 1 : U32)))
       positions_of(KK.advance(fuel, KK.pass_job(placed(prior, 0, LayoutSpace.new_workspace()), first, n, arcs, left)))
 
-# A pass prepared for its engine by the thread that reached it: the native KK's input words, or the Layout for kk.bend.
+# A pass prepared for its engine by the thread that reached it: the native KK's input words with the native Voronoi's
+# plan, or the Layout for kk.bend.
 type Ready is Type:
-  Native{words: Array<U32>}
+  Native{words: Array<U32>, plan: Array<U32>}
   Local{layout: Layout}
 
-# A pass's answer: the native KK's output words, or kk.bend's positions.
+# A pass's answer: the native Voronoi's output words (NativeVoronoi.answer), or kk.bend's positions.
 type Answer is Type:
   Answered{words: Array<U32>}
   Positioned{ps: List<&2, LayoutSpace.Vec>}
+
+def plan_of(+v: Voronoi) -> Array<U32>:
+  match v:
+    case Voronoi{+windows, +world, +last, +sites}:
+      NativeVoronoi.plan(windows, world, last, sites)
 
 def ready(+native: Bool, +l: Layout) -> Ready:
   match native:
     case True{}:
       match l:
-        case Layout{+first, +n, +arcs, +left, +prior}:
-          Native{NativeKK.words(first, n, arcs, left, prior)}
+        case Layout{+first, +n, +arcs, +left, +prior, +voronoi}:
+          Native{NativeKK.words(first, n, arcs, left, prior), plan_of(voronoi)}
     case False{}:
       Local{l}
 
-# The pass on its engine: native (the C KK, on the runtime's IO helper threads) or kk.bend (this thread).
+# The pass on its engine: native (the C KK and the C Voronoi, on the runtime's IO helper threads) or kk.bend (this
+# thread).
 def answer(r: Ready) -> IO(Answer):
   match r:
-    case Native{ws}:
+    case Native{ws, plan}:
       do IO<Answer>:
-        out : Array<U32> <- NativeKK.native_kk(ws)
-        return Answered{out}
+        built : Array<U32> <- NativeKK.native_layout(ws, plan)
+        return Answered{built}
     case Local{+l}:
       IO.pure(Answer, Positioned{local(l)})
-
-# The positions of vertices 0..n-1 after the pass.
-def positions(a: Answer) -> List<&2, LayoutSpace.Vec>:
-  match a:
-    case Answered{ws}:
-      NativeKK.vecs(ws)
-    case Positioned{+ps}:
-      ps
-
-# The pass's positions from the chosen engine: native (the C KK, on the runtime's IO helper threads) or kk.bend.
-def solve(+native: Bool, +l: Layout) -> IO(List<&2, LayoutSpace.Vec>):
-  do IO<List<&2, LayoutSpace.Vec>>:
-    a : Answer <- answer(ready(native, l))
-    return positions(a)

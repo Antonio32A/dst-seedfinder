@@ -4,6 +4,11 @@ import ../worldsim/voronoi/ctypes.bend as VoronoiTypes
 import ../worldsim/voronoi/predicates.bend as VoronoiPredicates
 import ../worldsim/voronoi/exact.bend as VoronoiExact
 import ../worldsim/voronoi/lazy.bend as VoronoiLazy
+import ../worldsim/voronoi/polygon.bend as VoronoiPolygon
+import ../worldsim/layout/space.bend as LayoutSpace
+import ../worldsim/tiles/world.bend as TileWorld
+import ../stl/heap.bend as Heap
+import ../native/voronoi.bend as NativeVoronoi
 
 # Golden values: Boost 1.52.
 
@@ -63,4 +68,41 @@ law voronoi_ppp_lazy:
     == Some{VoronoiPredicates.Circle{F64Repr.F64{1073741824, 0}, F64Repr.F64{1073217536, 0}, F64Repr.F64{1074921472, 0}}} : Maybe<&2, VoronoiPredicates.Circle>}
 
 def voronoi_ppp_lazy():
+  {==}
+
+def array_words(a: Array<U32>, +acc: List<&2, U32>) -> List<&2, U32>:
+  match a:
+    case ALeaf{+x}:
+      x <> acc
+    case ANode{xs, ys}:
+      array_words(xs, array_words(ys, acc))
+
+# The native Voronoi's plan words: windows, the world size, the last-pass flag, then each site's kind and centroid
+# (positions come from the KK pass), padded with zeros to a power of two.
+law native_voronoi_plan:
+  {array_words(NativeVoronoi.plan(True{}, 425, False{}, [VoronoiPolygon.SiteIn{1, 2, 3, 4, 5}, VoronoiPolygon.SiteIn{6, 7, 8, 9, 10}]), Nil{})
+    == [1, 425, 0, 3, 4, 5, 8, 9, 10, 0, 0, 0, 0, 0, 0, 0] : List<&2, U32>}
+
+def native_voronoi_plan():
+  {==}
+
+def one() -> F64Repr.F64:
+  F64Repr.F64{1072693248, 0}
+
+def two() -> F64Repr.F64:
+  F64Repr.F64{1073741824, 0}
+
+# A last pass's answer of one site: the word count (43), the KK words, the last-pass flag, the pass's polygon, Commit's
+# polygon, then ConvertToTileMap's polygon and its one cell with one half-edge (vertex 0 only, one drawn point). The
+# words past the count are ignored.
+def native_answer_words() -> Array<U32>:
+  Heap.from_list(6n, [43, 1, 1072693248, 0, 1073741824, 0, 1, 0, 11, 12, 0, 5, 1, 13, 14, 15, 16, 1, 4294967295, 4, 0,
+    21, 22, 0, 1, 1, 0, 1, 7, 1, 1072693248, 0, 1073741824, 0, 0, 0, 0, 0, 1, 1072693248, 0, 1072693248, 0, 9, 9])
+
+law native_voronoi_answer:
+  {NativeVoronoi.answer(native_answer_words()) == NativeVoronoi.Answer{[LayoutSpace.Vec{one(), two()}], [VoronoiPolygon.Poly{[], 11, 12, [], 5}],
+    Some{NativeVoronoi.Ahead{[VoronoiPolygon.Poly{[VoronoiPolygon.P32{13, 14}], 15, 16, [4294967295], 4}], [VoronoiPolygon.Poly{[], 21, 22, [], 1}],
+      [TileWorld.Cell{0, [TileWorld.VEdge{7, Some{TileWorld.DPoint{one(), two()}}, None{}, [TileWorld.DPoint{one(), one()}]}]}]}}} : NativeVoronoi.Answer}
+
+def native_voronoi_answer():
   {==}
