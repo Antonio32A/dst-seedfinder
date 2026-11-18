@@ -504,3 +504,27 @@ def sorted_needs(+n: Needs) -> Needs:
 # What the world rules of these filters read from a world.
 def needs(+build: Builds.Build, laters: List<&2, Later>) -> Needs:
   sorted_needs(laters_reading(build, laters, Needs{Nil{}, False{}, False{}, False{}, False{}, False{}}))
+
+def id_in(ids: List<&2, U32>, +id: U32) -> Bool:
+  match ids:
+    case Nil{}:
+      False{}
+    case Con{+x, rest}:
+      U32.is_eq(x, id) || id_in(rest, id)
+
+def none_late(ids: List<&2, U32>, +late: List<&2, U32>) -> Bool:
+  match ids:
+    case Nil{}:
+      True{}
+    case Con{+id, rest}:
+      Bool.not(id_in(late, id)) && none_late(rest, late)
+
+# When a caves world can check a rule that reads `n` (its Needs) right after ConvertGround, from the instances the
+# world has then: 0 not then (a prefab of data/gen_tags.bend cave_late_prefabs, whose instances can still change, or
+# the tiles, the topology or the level plan, which the early world leaves out), 1 from the instances and their links,
+# 2 walking the land too (final then: no later step writes a tile).
+def early_tier(+build: Builds.Build, +n: Needs) -> U32:
+  match n:
+    case Needs{+prefabs, _, +tiles, +land, +graph, +plan}:
+      +early = none_late(prefabs, GenTagsData.cave_late_prefabs(build)) && Bool.not(tiles || graph || plan)
+      Bool.pick(U32, early, Bool.pick(U32, land, 2, 1), 0)

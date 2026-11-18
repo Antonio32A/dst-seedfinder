@@ -364,21 +364,30 @@ does on one. The exit status is 0 with at least one hit, 1 with none, and 2 on a
 stderr carries progress and isn't part of the contract, apart from two lines the website reads:
 
 - `speed 30s: P/G/T full: P/G/T`, about once a second and once at the end: seeds whose level table was checked
-  (prefiltering), worlds generated (generation) and seeds decided (total), per second over the last 30 s and over
-  the whole run. A rate below 100 has one decimal.
+  (prefiltering), candidates decided on their worlds (generation; a caves candidate can be decided before its world
+  is complete, see below) and seeds decided (total), per second over the last 30 s and over the whole run. A rate
+  below 100 has one decimal.
 - `timings {json}` with `--verbose-timings`, next to the speed line: where the search spent its time, per option
   (filter, in order). Each world rule is checked on a round's worlds at once between two clock reads, so the search is
   slower with it.
 
 ```
 timings {"elapsed_ms": E, "seeds": S, "prefilter_ms": P, "generation_ms": G, "hits_ms": H,
-         "options": [{"worlds": W, "rules": [{"section": "distances", "index": 0, "ms": M}]}]}
+         "options": [{"worlds": W, "rules": [{"section": "distances", "index": 0, "ms": M}]}],
+         "early": {"worlds": W, "misses": X, "options": [{"worlds": W, "rules": [...]}]}}
 ```
 
 `seeds` is how many seeds the prefilter (the level table of `generation`) went over, `prefilter_ms` its ms,
 `generation_ms` the ms of generating the worlds (0 in a level-table search) and `hits_ms` of the witnesses and level
 tables of the hits (on the worlds). Per option, `worlds` is the worlds its rules were checked on (those that no
 earlier option matched) and `rules` the ms of each rule, in witness order.
+
+`early` is the early check of a caves search: when every filter has a count or distance rule whose prefabs are final
+once the land is laid out (no room contents, bunch items or prefabs the post steps relabel by chance), a world is
+checked on those rules as soon as its layouts and mazes are placed and its required prefabs are there, and a world
+that fails one of them in every filter is decided as no hit right away. `worlds` is the worlds checked that way,
+`misses` how many were decided so, and per option `worlds` and `rules` as above for those rules (`index` as in the
+witnesses). Without an early check (a forest search, or a filter without such a rule) it stays at zero worlds.
 
 **Line mode.** Every hit prints as `<seed> {json}` on stdout, in scan order. Each is printed once it and every
 earlier seed are decided. The last line is `done {json}`:

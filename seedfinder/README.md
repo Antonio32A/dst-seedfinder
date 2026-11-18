@@ -106,12 +106,15 @@ Both read the format of [docs/world-dump.md](../docs/world-dump.md) (version 3, 
 both reject a dump of another game build than the config's (`world dump is build X, the config is build Y`; a dump
 whose build word is 0 is accepted).
 
-`world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] -o PATH`
+`world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] [--early] -o PATH`
 generates worlds and writes their dumps, with the build in the header:
 `PATH` is the dump of `SEED`, or with `TO` an existing folder that gets `PATH/<seed>.dstw` for every seed, ready for
 `world find --worlds PATH`. It prints one line per seed (`dump seed=S platform=P outcome=world|gaveup|crashed ents=N
 ms=T`). A seed whose world generation gave up gets the 24-byte gave-up dump, and a crashed one gets none (the exit
-status is then 1). The platform defaults to windows, like `gen`.
+status is then 1). The platform defaults to windows, like `gen`. `--early` (caves, native KK) is for checking the caves
+search's early check: an attempt whose early world passes the required prefab check is dumped as that early world (the
+attempt once ConvertGround and DetectDisconnect are done, with the post steps but without PopulateVoronoi and the bunch
+spawner); `scripts/groundtruth/compare_caves_early.py` compares those with the worlds.
 
 - `--time-limit` stops the search, `--start-seed` with the printed `next_seed` continues it.
 - Pass `+RTS --threads N -RTS` in a container, the runtime's default is the host's CPU count, not the quota.
@@ -130,11 +133,12 @@ about 6), so read them as ratios. Seeds 1 to 200, `--platform linux`:
 | `world find` with a filter that never matches | 83 M seeds/s (level search) | 21 M seeds/s (level table search) |
 
 The caves' ms include the retried attempts (331 attempts for the 240 seeds of the real dumps, 1.4 per world).
-A `gen --times` stage line names the stage it leaves. `gen 1 30 --shard caves --times` on one thread (230 ms per seed,
-1.27 attempts) spends per attempt 53 ms in `kk1` (the caves' one KK pass and the Voronoi build after it), 37 ms in
-`mazed` (the land population), 27 ms in `post` (the post steps up to the required prefab check), 20 ms in `tiles`
-(ConvertToTileMap and the site tiles), 16 ms in `land` (the custom tile pass), 12 ms in `tiled` (the mazes) and 8 ms
-each in `start` (the story) and `commit`.
+A `gen --times` stage line names the stage it leaves. `gen 1 30 --shard caves --times` on one thread (245 ms per seed,
+1.57 attempts) spends per attempt 48 ms in `kk1` (the caves' one KK pass and the Voronoi build after it), 26 ms in
+`ground` (PopulateVoronoi), 22 ms in `post` (the post steps up to the required prefab check), 16 ms in `land` (the
+custom tile pass), 13 ms in `tiles` (ConvertToTileMap and the site tiles), 12 ms in `mazed` (ConvertGround to
+DetectDisconnect), 10 ms in `tiled` (the mazes), 8 ms in `start` (the story) and 1 ms in `commit`. A caves search
+with an early check (docs/config.md section 8) decides most candidates after `mazed`, before `ground` and `post`.
 
 `world find` on the caves presets of the website (the Ancient Guardian within 75 walked tiles, the Atrium Gateway at
 spawn) decides about 15 to 17 seeds/s at `--threads 8` (about 20.5 at `--threads 16`) and 3.4 to 3.9 seeds/s at
@@ -218,6 +222,11 @@ by the VC9 `random_shuffle` over `rand()` with RAND_MAX 0x7fff and MSVCR90's `po
    build's, which the website uses for every build.
 4. `scripts/groundtruth/run_worldgen.sh` with `DST_GAME` on the new install, into `build/groundtruth/<build>/`; then
    the compare scripts with `--build <build>`, and `world dump --build <build>` against its dumps.
+   `scripts/groundtruth/compare_caves_early.py build/seedfinder 1-1500 --build <build>` (and `--platform linux`) checks
+   the caves search's early check: every early world must be its seed's world with the same tiles, pillar links and
+   instances of every prefab outside the generated late set (data/gen_tags.bend `cave_late_prefabs`, from the rooms'
+   contents, map tags, bunches and post-populate proxies). A prefab it reports as not late but different is placed
+   after ConvertGround by something the generator (`scripts/gen/gen_gen.py` `cave_late`) does not know yet.
 5. `scripts/proof.sh -j 3`. When its worlds differ from the previous build's, add a golden law pinned to the build.
 6. When the catalog changed, regenerate it with the catalog scripts' `--build <build>` (`scripts/catalog/README.md`)
    and point the registry's `catalog` at it.

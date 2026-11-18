@@ -95,6 +95,27 @@ def put(g: Grid, +i: U32, +v: U32) -> Grid:
       cells[i] <- v
       Grid{cells, width, height}
 
+def copy_loop(n: Nat, got: Array<U32> & U32, +i: U32, to: Array<U32>) -> Array<U32> & Array<U32>:
+  match n:
+    case 0n:
+      (cells, _) = got
+      (cells, to)
+    case 1n+p:
+      (cells, +v) = got
+      to[i] <- v
+      copy_loop(p, cells[(i + 1 : U32)], (i + 1 : U32), to)
+
+def copied_of(got: Array<U32> & Array<U32>, +width: U32, +height: U32) -> Grid & Grid:
+  (cells, copy) = got
+  (Grid{cells, width, height}, Grid{copy, width, height})
+
+# The grid and a copy of it.
+def copied(g: Grid) -> Grid & Grid:
+  match g:
+    case Grid{cells, +width, +height}:
+      +n = (width * height : U32)
+      copied_of(copy_loop(U32.to_nat(n), cells[0], 0, alloc(depth_for(24n, n, 0n, 1), 0)), width, height)
+
 def size(g: Grid) -> Grid & U32:
   match g:
     case Grid{cells, +width, +height}:

@@ -27,12 +27,16 @@ import ../data/builds.bend as Builds
 #   the next candidates in scan order.
 # A seed is decided on its world as `world find --worlds` does (the first filter whose parts B-E hold; a seed without
 # a world never matches), and decided seeds are released in scan order, so the hits are those of a
-# sequential scan whatever the slot or thread count.
+# sequential scan whatever the slot or thread count. A caves search with an early check (ShardSearch.Early) decides a
+# seed as a miss already when an attempt reaches JGround, passes the required prefab check as it stands (the
+# attempt is then the world: later steps only add entities) and fails an early job of every filter (whose inputs
+# are final then); every other seed goes on as before.
 
 # A slot: free, a seed with a CPU stage to run, waiting for its KK pass, with its pass's answer back, one of the
 # oldest seeds rushed this round (after its pass's answer when `back`), asking for a pass prepared for its engine (after
 # its CPU work), decided, with its world built and its verdict left for the timed checks (--verbose-timings) or
-# waiting for them, or held out while its CPU work runs. `cost` estimates the next CPU work (ms).
+# waiting for them, at JGround with its early world built (None when the early required prefab check failed) and its
+# early check left for the timed checks, or held out while its CPU work runs. `cost` estimates the next CPU work (ms).
 type Slot is Type:
   Free{}
   Cpu{seed: U32, job: GenJob.Job, cost: U32}
@@ -43,6 +47,7 @@ type Slot is Type:
   Decided{seed: U32, verdict: SearchWorlds.Verdict}
   Built{seed: U32, world: Maybe<&2, FilterWorld.World>}
   Unjudged{seed: U32}
+  Grounded{seed: U32, job: GenJob.Job, world: Maybe<&2, FilterWorld.World>}
   Held{}
 
 # Nat.min by one native comparison. Base's Nat.min recurses once per unit (8 bytes of a worker's 2 GB machine stack),
@@ -291,9 +296,11 @@ def stage_cost(+caves: Bool, +stage: U32) -> U32:
     case 10:
       10
     case 11:
-      35
+      12
     case 12:
       27
+    case 13:
+      26
     case _:
       8
 
@@ -340,13 +347,95 @@ def settled_at(+build: Builds.Build, settled: Bool, job: GenJob.Job, +stage: U32
     case False{}:
       asked(GenJob.layout(job), seed, stage, ShardSearch.caves(config), native)
 
-# Where a job stands after its CPU work: decided, asking for a KK pass (prepared for its engine), or its next stage for
-# the next round; with `timed` a decided job only has its world built.
-def parked(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +config: ShardSearch.Search, +native: Bool, +timed: Bool, +seed: U32) -> Slot:
+# Where a job stands: decided, asking for a KK pass (prepared for its engine), or its next stage for the next round;
+# with `timed` a decided job only has its world built.
+def placed(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +config: ShardSearch.Search, +native: Bool, +timed: Bool, +seed: U32) -> Slot:
   (job, +at) = got
   match at:
     case GenJob.Where{+stage, _}:
       settled_at(build, GenJob.settled(stage), job, stage, config, native, timed, seed)
+
+# Whether `alive`, or some filter's early jobs all hold on the early world (checked up to the first such filter).
+def early_alive(+build: Builds.Build, +world: FilterWorld.World, jobs: List<&2, List<&2, Evaluate.Job>>, alive: Bool) -> Bool:
+  match jobs alive:
+    case _ True{}:
+      True{}
+    case Nil{} False{}:
+      False{}
+    case Con{+js, rest} False{}:
+      early_alive(build, world, rest, Evaluate.all_hold(build, world, js, True{}))
+
+def early_world(+build: Builds.Build, found: Maybe<&1, GenJob.Final>, +needs: Rules.Needs, +config: ShardSearch.Search, +seed: U32) -> Maybe<&2, FilterWorld.World>:
+  match found:
+    case Some{final}:
+      Some{SaveData.cave_world_for(build, seed, ShardSearch.windows(config), needs, final)}
+    case None{}:
+      None{}
+
+def early_alive_on(+build: Builds.Build, +jobs: List<&2, List<&2, Evaluate.Job>>, +world: Maybe<&2, FilterWorld.World>) -> Bool:
+  match world:
+    case Some{+w}:
+      early_alive(build, w, jobs, False{})
+    case None{}:
+      True{}
+
+# A job at JGround after its early check: on (alive) or a miss.
+def ground_slot(alive: Bool, job: GenJob.Job, +seed: U32) -> Slot:
+  match alive:
+    case True{}:
+      Cpu{seed, job, stage_cost(True{}, 13)}
+    case False{}:
+      Decided{seed, SearchWorlds.Miss{}}
+
+def early_judged_on(+build: Builds.Build, timed: Bool, job: GenJob.Job, +world: Maybe<&2, FilterWorld.World>, +jobs: List<&2, List<&2, Evaluate.Job>>, +seed: U32) -> Slot:
+  match timed:
+    case True{}:
+      Grounded{seed, job, world}
+    case False{}:
+      ground_slot(early_alive_on(build, jobs, world), job, seed)
+
+def early_judged(+build: Builds.Build, +timed: Bool, got: GenJob.Job & Maybe<&1, GenJob.Final>, +early: ShardSearch.Early, +config: ShardSearch.Search, +seed: U32) -> Slot:
+  (job, found) = got
+  match early:
+    case ShardSearch.Early{+jobs, +needs, _}:
+      early_judged_on(build, timed, job, early_world(build, found, needs, config, seed), jobs, seed)
+
+def early_needs_land(+early: ShardSearch.Early) -> Bool:
+  match early:
+    case ShardSearch.Early{_, Rules.Needs{_, _, _, +land, _, _}, _}:
+      land
+
+def early_sids(+early: ShardSearch.Early) -> List<&2, U32>:
+  match early:
+    case ShardSearch.Early{_, _, +sids}:
+      sids
+
+# A job that has just reached JGround: its early check, when the search has one (with `timed` only its early world
+# built, see Grounded).
+def grounded(+build: Builds.Build, +check: Maybe<&2, ShardSearch.Early>, job: GenJob.Job, +config: ShardSearch.Search, +timed: Bool, +seed: U32) -> Slot:
+  match check:
+    case Some{+early}:
+      early_judged(build, timed, GenJob.early(build, job, Some{early_sids(early)}, early_needs_land(early)), early, config, seed)
+    case None{}:
+      Cpu{seed, job, stage_cost(True{}, 13)}
+
+def parked_at(+build: Builds.Build, ground: Bool, job: GenJob.Job, +at: GenJob.Where, +config: ShardSearch.Search, +native: Bool, +timed: Bool, +seed: U32) -> Slot:
+  match ground:
+    case True{}:
+      grounded(build, ShardSearch.early(config), job, config, timed, seed)
+    case False{}:
+      placed(build, (job, at), config, native, timed, seed)
+
+def is_ground(+at: GenJob.Where) -> Bool:
+  match at:
+    case GenJob.Where{+stage, _}:
+      U32.is_eq(stage, 13)
+
+# Where a job stands after a stage transition: as `placed` puts it, after its early check when it has just reached
+# JGround.
+def parked(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +config: ShardSearch.Search, +native: Bool, +timed: Bool, +seed: U32) -> Slot:
+  (job, +at) = got
+  parked_at(build, is_ground(at), job, at, config, native, timed, seed)
 
 def moved_at(+build: Builds.Build, settled: Bool, job: GenJob.Job) -> GenJob.Job:
   match settled:
@@ -362,12 +451,27 @@ def moved(+build: Builds.Build, got: GenJob.Job & GenJob.Where) -> GenJob.Job:
     case GenJob.Where{+stage, _}:
       moved_at(build, GenJob.settled(stage), job)
 
-def rushed(+build: Builds.Build, budget: Nat, job: GenJob.Job, +config: ShardSearch.Search, +native: Bool, +timed: Bool, +seed: U32) -> Slot:
-  match budget:
-    case 0n:
-      parked(build, GenJob.stage(job), config, native, timed, seed)
-    case 1n+b:
-      rushed(build, b, moved(build, GenJob.stage(job)), config, native, timed, seed)
+def rush_parked(+build: Builds.Build, ground: Bool, job: GenJob.Job, +config: ShardSearch.Search, +timed: Bool, +seed: U32) -> Slot:
+  match ground:
+    case True{}:
+      grounded(build, ShardSearch.early(config), job, config, timed, seed)
+    case False{}:
+      Cpu{seed, job, 0}
+
+# A rushed job after a stage transition: on in the rush, unless its early check on reaching JGround decided it (or
+# left it to the timed checks).
+def rush_moved(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +config: ShardSearch.Search, +timed: Bool, +seed: U32) -> Slot:
+  (job, +at) = got
+  rush_parked(build, is_ground(at), job, config, timed, seed)
+
+def rushed(+build: Builds.Build, budget: Nat, slot: Slot, +config: ShardSearch.Search, +native: Bool, +timed: Bool) -> Slot:
+  match budget slot:
+    case 0n Cpu{+seed, job, _}:
+      placed(build, GenJob.stage(job), config, native, timed, seed)
+    case 1n+b Cpu{+seed, job, _}:
+      rushed(build, b, rush_moved(build, GenJob.stage(moved(build, GenJob.stage(job))), config, timed, seed), config, native, timed)
+    case _ other:
+      other
 
 def resumed(+build: Builds.Build, back: Bool, job: GenJob.Job, answer: GenLayout.Answer) -> GenJob.Job:
   match back:
@@ -376,7 +480,7 @@ def resumed(+build: Builds.Build, back: Bool, job: GenJob.Job, answer: GenLayout
     case False{}:
       job
 
-# Stage transitions of a rushed seed: to its next KK pass or its verdict (six CPU stages at most in between).
+# Stage transitions of a rushed seed: to its next KK pass or its verdict (seven CPU stages at most in between).
 def rush_steps() -> Nat:
   8n
 
@@ -397,7 +501,7 @@ def work(+build: Builds.Build, slot: Slot, +config: ShardSearch.Search, +native:
     case Back{+seed, job, answer, _}:
       parked(build, GenJob.stage(GenJob.laid(build, job, answer)), config, native, timed, seed)
     case Rush{+seed, job, answer, back}:
-      rushed(build, rush_steps(), resumed(build, back, job, answer), config, native, timed, seed)
+      rushed(build, rush_steps(), Cpu{seed, resumed(build, back, job, answer), 0}, config, native, timed)
     case other:
       other
 
@@ -1002,20 +1106,44 @@ def hosted(+build: Builds.Build, m: Merged, +b: Book, got: Taken, +t0: Nat, +t1:
       with_queue(late_or(build, Nat.is_ge(elapsed(ctx, t2), time_ms_of(ctx)), kept, slots, laid, t2, ctx), asked)
 
 # The worlds built this round with their verdicts left out (Unjudged), what --verbose-timings checks on them and their
-# seeds.
+# seeds, and the early worlds of the jobs at JGround (left out of their Grounded slots).
 type Split is Type:
-  Split{slots: List<&1, Slot>, opens: List<&2, Timings.Open>, seeds: List<&2, U32>}
+  Split{slots: List<&1, Slot>, opens: List<&2, Timings.Open>, seeds: List<&2, U32>, grounds: List<&2, Maybe<&2, FilterWorld.World>>}
 
-def split(xs: List<&1, Slot>, +config: ShardSearch.Search, acc: List<&1, Slot>, +opens: List<&2, Timings.Open>, +seeds: List<&2, U32>) -> Split:
+def split(xs: List<&1, Slot>, +config: ShardSearch.Search, acc: List<&1, Slot>, +opens: List<&2, Timings.Open>, +seeds: List<&2, U32>, +grounds: List<&2, Maybe<&2, FilterWorld.World>>) -> Split:
   match xs:
     case Nil{}:
-      Split{List.reverse(&1, Slot, acc), List.reverse(&2, Timings.Open, opens), List.reverse(&2, U32, seeds)}
+      Split{List.reverse(&1, Slot, acc), List.reverse(&2, Timings.Open, opens), List.reverse(&2, U32, seeds), List.reverse(&2, Maybe<&2, FilterWorld.World>, grounds)}
     case Con{x, rest}:
       match x:
         case Built{+seed, +world}:
-          split(rest, config, Unjudged{seed} <> acc, Timings.Open{world, None{}} <> opens, seed <> seeds)
+          split(rest, config, Unjudged{seed} <> acc, Timings.Open{world, None{}} <> opens, seed <> seeds, grounds)
+        case Grounded{+seed, job, +world}:
+          split(rest, config, Grounded{seed, job, None{}} <> acc, opens, seeds, world <> grounds)
         case other:
-          split(rest, config, other <> acc, opens, seeds)
+          split(rest, config, other <> acc, opens, seeds, grounds)
+
+# The jobs at JGround after their timed early checks (`on`: whether each goes on).
+def ground_slots(xs: List<&1, Slot>, +on: List<&2, Bool>, acc: List<&1, Slot>) -> List<&1, Slot>:
+  match xs:
+    case Nil{}:
+      List.reverse(&1, Slot, acc)
+    case Con{x, rest}:
+      match x:
+        case Grounded{+seed, job, _}:
+          ground_slots(rest, List.drop(&2, Bool, on, 1n), ground_slot(Maybe.default(&2, Bool, List.head(&2, Bool, on), True{}), job, seed) <> acc)
+        case other:
+          ground_slots(rest, on, other <> acc)
+
+def checked_jobs(+check: Maybe<&2, ShardSearch.Early>) -> List<&2, List<&2, Evaluate.Job>>:
+  match check:
+    case Some{ShardSearch.Early{+jobs, _, _}}:
+      jobs
+    case None{}:
+      Nil{}
+
+def early_jobs_of(+config: ShardSearch.Search) -> List<&2, List<&2, Evaluate.Job>>:
+  checked_jobs(ShardSearch.early(config))
 
 def matches_of(+seeds: List<&2, U32>, +opens: List<&2, Timings.Open>) -> List<&2, SearchWorlds.Matched>:
   match seeds opens:
@@ -1071,18 +1199,29 @@ def judged_timings(+j: Timings.Judged) -> Timings.Timings:
 type Judging is Type:
   Judging{merged: Merged, book: Book}
 
+def checked_timings(+c: Timings.Checked) -> Timings.Timings:
+  match c:
+    case Timings.Checked{+t, _}:
+      t
+
+def checked_on(+c: Timings.Checked) -> List<&2, Bool>:
+  match c:
+    case Timings.Checked{_, +on}:
+      on
+
 def judging(+build: Builds.Build, sp: Split, asked: List<&1, Request>, +count: U32, +b: Book, +ms: Nat, +ctx: Ctx) -> IO(Judging):
   match sp:
-    case Split{slots, +opens, +seeds}:
+    case Split{slots, +opens, +seeds, +grounds}:
       +sc = book_scan(b)
       do IO<Judging>:
         +refilled : Refilled <- timed_refilled(build, 64n, short(sc, round_seeds(), U32.to_nat(slots_of(ctx))), sc, round_seeds(), ctx,
           Timings.with_generation(stats_timings(book_stats(b)), ms))
         +j : Timings.Judged <- Timings.judged(build, refilled_timings(refilled), ShardSearch.laters(config_of(ctx)), opens)
+        +e : Timings.Checked <- Timings.early_judged(build, judged_timings(j), early_jobs_of(config_of(ctx)), grounds)
         +t0 : Nat <- IO.now()
         +verdicts : List<&2, SearchWorlds.Judged> = SearchWorlds.matched_verdicts(config_of(ctx), matches_of(seeds, judged_opens(j)))
         +t1 : Nat <- IO.now()
-        return Judging{Merged{judged_slots(slots, verdicts, Nil{}), asked, count}, with_judged(b, refilled_scan(refilled), Timings.with_hits(judged_timings(j), Nat.sub(t1, t0)))}
+        return Judging{Merged{judged_slots(ground_slots(slots, checked_on(e), Nil{}), verdicts, Nil{}), asked, count}, with_judged(b, refilled_scan(refilled), Timings.with_hits(checked_timings(e), Nat.sub(t1, t0)))}
 
 # With --verbose-timings, the round's generation (`ms`) is counted, the part-A scan refilled and the worlds built this
 # round decided, all timed per option; the host half then finds the scan refilled and the slots decided.
@@ -1093,7 +1232,7 @@ def judged_round(+build: Builds.Build, timed: Bool, m: Merged, +b: Book, +ms: Na
     case True{}:
       match m:
         case Merged{slots, asked, +count}:
-          judging(build, split(slots, config_of(ctx), Nil{}, Nil{}, Nil{}), asked, count, b, ms, ctx)
+          judging(build, split(slots, config_of(ctx), Nil{}, Nil{}, Nil{}, Nil{}), asked, count, b, ms, ctx)
 
 def judged_hosted(+build: Builds.Build, j: Judging, got: Taken, +t0: Nat, +t1: Nat, +t2: Nat, +ctx: Ctx) -> State:
   match j:
@@ -1181,7 +1320,7 @@ def report(host: Host, +code: U32, +ctx: Ctx) -> IO(Unit):
       +position = SearchReport.position_json(start, decided, code)
       do IO<Unit>:
         +now : Nat <- IO.now()
-        IO.print_err("search: " ++ U32.show(made) ++ " candidate worlds generated")
+        IO.print_err("search: " ++ U32.show(made) ++ " candidates decided")
         IO.print_err(stats_line(stats))
         IO.print_err(Speed.line(Speed.ticked(stats_speed(stats), Speed.Point{Nat.sub(now, started), Nat.sub(total, scan_left(sc)), U32.to_nat(made), decided})))
         Timings.print_if(timings, stats_timings(stats), Nat.sub(now, started))
@@ -1232,7 +1371,7 @@ def slots_for(+threads: U32) -> U32:
 def started(+ctx: Ctx) -> State:
   match ctx:
     case Ctx{+start, +total, _, _, _, +config, +now, +slots, _, _, _}:
-      +stats = {Stats{0n, 0n, 0n, 0n, now, Speed.started(), Timings.started(ShardSearch.laters(config))} : Stats}
+      +stats = {Stats{0n, 0n, 0n, 0n, now, Speed.started(), Timings.with_early_jobs(Timings.started(ShardSearch.laters(config)), early_jobs_of(config))} : Stats}
       +book = {Book{Scan{start, total, min_chunk(), Nil{}}, 0, Nil{}, Tally{0, Nil{}, Nil{}, 0n, 0, 0n}, 0, 0, 0, stats} : Book}
       State{Host{book, free_slots(U32.to_nat(slots)), Nil{}}, False{}, 0n, Out{Nil{}, 0, "search: " ++ U32.show(slots) ++ " slots"}}
 

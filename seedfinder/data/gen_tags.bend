@@ -161,6 +161,20 @@ def vocab_rabbitkinghorn_container(+build: Builds.Build) -> U32:
     case Builds.Build{+number}:
       vocab_rabbitkinghorn_container_of_number(number)
 
+def cave_late_prefabs_of_number(+number: U32) -> List<&2, U32>:
+  match number:
+    case 756039:
+      B756039GenTags.cave_late_prefabs()
+    case 757748:
+      B757748GenTags.cave_late_prefabs()
+    case _:
+      B762172GenTags.cave_late_prefabs()
+
+def cave_late_prefabs(+build: Builds.Build) -> List<&2, U32>:
+  match build:
+    case Builds.Build{+number}:
+      cave_late_prefabs_of_number(number)
+
 def vocab_tentacle_pillar_of_number(+number: U32) -> U32:
   match number:
     case 756039:

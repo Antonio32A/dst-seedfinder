@@ -17,11 +17,16 @@ type Rule is Data:
 type Option is Data:
   Option{worlds: Nat, rules: List<&2, Rule>}
 
+# The early check of a caves search (search/generated.bend): the early worlds it checked, how many of them were misses,
+# and per option the worlds its early jobs were checked on and their ms.
+type Early is Data:
+  Early{worlds: Nat, misses: Nat, options: List<&2, Option>}
+
 # The seeds the prefilter went over, the ms of the prefilter (the level table of `generation`), of the world generation
-# (the CPU stages and the waits for KK passes) and of the hits' witnesses and level tables, and the options in filter
-# order.
+# (the CPU stages and the waits for KK passes) and of the hits' witnesses and level tables, the options in filter
+# order, and the early check.
 type Timings is Data:
-  Timings{seeds: Nat, prefilter_ms: Nat, generation_ms: Nat, hits_ms: Nat, options: List<&2, Option>}
+  Timings{seeds: Nat, prefilter_ms: Nat, generation_ms: Nat, hits_ms: Nat, options: List<&2, Option>, early: Early}
 
 def job_rule(+job: Evaluate.Job) -> Rule:
   match job:
@@ -45,32 +50,45 @@ def job_rules(jobs: List<&2, Evaluate.Job>) -> List<&2, Rule>:
     case Con{+job, rest}:
       job_rule(job) <> job_rules(rest)
 
-def started_options(laters: List<&2, Rules.Later>) -> List<&2, Option>:
+def laters_jobs(laters: List<&2, Rules.Later>) -> List<&2, List<&2, Evaluate.Job>>:
   match laters:
     case Nil{}:
       Nil{}
     case Con{+later, rest}:
-      Option{0n, job_rules(Evaluate.jobs_of(later))} <> started_options(rest)
+      Evaluate.jobs_of(later) <> laters_jobs(rest)
+
+def started_options(jobs: List<&2, List<&2, Evaluate.Job>>) -> List<&2, Option>:
+  match jobs:
+    case Nil{}:
+      Nil{}
+    case Con{+js, rest}:
+      Option{0n, job_rules(js)} <> started_options(rest)
 
 # Nothing timed yet, for the options with parts B-E `laters`.
 def started(+laters: List<&2, Rules.Later>) -> Timings:
-  Timings{0n, 0n, 0n, 0n, started_options(laters)}
+  Timings{0n, 0n, 0n, 0n, started_options(laters_jobs(laters)), Early{0n, 0n, Nil{}}}
+
+# Nothing timed yet, with an early check of these early jobs per option.
+def with_early_jobs(+t: Timings, +jobs: List<&2, List<&2, Evaluate.Job>>) -> Timings:
+  match t:
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, _}:
+      Timings{seeds, prefilter_ms, generation_ms, hits_ms, options, Early{0n, 0n, started_options(jobs)}}
 
 # After the prefilter went over `len` more seeds in `ms`.
 def with_prefilter(+t: Timings, +len: Nat, +ms: Nat) -> Timings:
   match t:
-    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
-      Timings{Nat.add(seeds, len), Nat.add(prefilter_ms, ms), generation_ms, hits_ms, options}
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, +early}:
+      Timings{Nat.add(seeds, len), Nat.add(prefilter_ms, ms), generation_ms, hits_ms, options, early}
 
 def with_generation(+t: Timings, +ms: Nat) -> Timings:
   match t:
-    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
-      Timings{seeds, prefilter_ms, Nat.add(generation_ms, ms), hits_ms, options}
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, +early}:
+      Timings{seeds, prefilter_ms, Nat.add(generation_ms, ms), hits_ms, options, early}
 
 def with_hits(+t: Timings, +ms: Nat) -> Timings:
   match t:
-    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
-      Timings{seeds, prefilter_ms, generation_ms, Nat.add(hits_ms, ms), options}
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, +early}:
+      Timings{seeds, prefilter_ms, generation_ms, Nat.add(hits_ms, ms), options, early}
 
 # A world being decided: the world (None when there is nothing to check) and the option that matched it.
 type Open is Data:
@@ -199,15 +217,15 @@ def option_before(+o: Option, +got: Decided) -> Decided:
     case Decided{+options, +opens}:
       Decided{o <> options, opens}
 
-# The options one after the other on the worlds no earlier option matched: the timed options, and the worlds with the
-# option that matched each.
-def judged_options(+build: Builds.Build, laters: List<&2, Rules.Later>, options: List<&2, Option>, +index: U32, +opens: List<&2, Open>) -> IO(Decided):
-  match laters options:
-    case Con{+later, ls} Con{Option{+worlds, +rules}, os}:
+# The options (the jobs of each) one after the other on the worlds no earlier option matched: the timed options, and
+# the worlds with the option that matched each.
+def judged_options(+build: Builds.Build, jobs: List<&2, List<&2, Evaluate.Job>>, options: List<&2, Option>, +index: U32, +opens: List<&2, Open>) -> IO(Decided):
+  match jobs options:
+    case Con{+js, rest} Con{Option{+worlds, +rules}, os}:
       +checked = checked_worlds(opens)
       do IO<Decided>:
-        +got : Ran <- timed_rules(build, Evaluate.jobs_of(later), rules, checked, all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
-        +after : Decided <- judged_options(build, ls, os, (index + 1 : U32), stepped(opens, checked, held_of(got), index))
+        +got : Ran <- timed_rules(build, js, rules, checked, all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
+        +after : Decided <- judged_options(build, rest, os, (index + 1 : U32), stepped(opens, checked, held_of(got), index))
         return option_before(Option{Nat.add(worlds, checks(checked)), rules_of(got)}, after)
     case _ _:
       IO.pure(Decided, Decided{Nil{}, opens})
@@ -216,18 +234,74 @@ def judged_options(+build: Builds.Build, laters: List<&2, Rules.Later>, options:
 type Judged is Data:
   Judged{timings: Timings, opens: List<&2, Open>}
 
-def timed_with(+seeds: Nat, +prefilter_ms: Nat, +generation_ms: Nat, +hits_ms: Nat, +got: Decided) -> Judged:
+def timed_with(+seeds: Nat, +prefilter_ms: Nat, +generation_ms: Nat, +hits_ms: Nat, +early: Early, +got: Decided) -> Judged:
   match got:
     case Decided{+options, +opens}:
-      Judged{Timings{seeds, prefilter_ms, generation_ms, hits_ms, options}, opens}
+      Judged{Timings{seeds, prefilter_ms, generation_ms, hits_ms, options, early}, opens}
 
 # The worlds decided option by option, every rule timed (the worlds keep their order).
 def judged(+build: Builds.Build, +t: Timings, +laters: List<&2, Rules.Later>, +opens: List<&2, Open>) -> IO(Judged):
   match t:
-    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, +early}:
       do IO<Judged>:
-        +got : Decided <- judged_options(build, laters, options, 0, opens)
-        return timed_with(seeds, prefilter_ms, generation_ms, hits_ms, got)
+        +got : Decided <- judged_options(build, laters_jobs(laters), options, 0, opens)
+        return timed_with(seeds, prefilter_ms, generation_ms, hits_ms, early, got)
+
+def opens_of(worlds: List<&2, Maybe<&2, FilterWorld.World>>) -> List<&2, Open>:
+  match worlds:
+    case Nil{}:
+      Nil{}
+    case Con{+world, rest}:
+      Open{world, None{}} <> opens_of(rest)
+
+def found_some(+found: Maybe<&2, U32>) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{_}:
+      True{}
+
+# Whether an early world goes on: none was built, or some option's early jobs held on it.
+def goes_on(+o: Open) -> Bool:
+  match o:
+    case Open{+world, +found}:
+      Bool.not(is_some(world)) || found_some(found)
+
+def goes_on_each(opens: List<&2, Open>) -> List<&2, Bool>:
+  match opens:
+    case Nil{}:
+      Nil{}
+    case Con{+o, rest}:
+      goes_on(o) <> goes_on_each(rest)
+
+def stopped_count(gone: List<&2, Bool>) -> Nat:
+  match gone:
+    case Nil{}:
+      0n
+    case Con{+on, rest}:
+      Nat.add(Bool.pick(Nat, on, 0n, 1n), stopped_count(rest))
+
+# The timings after an early check, and per early world whether it goes on.
+type Checked is Data:
+  Checked{timings: Timings, on: List<&2, Bool>}
+
+def checked_with(+t: Timings, +worlds: Nat, +got: Decided) -> Checked:
+  match t got:
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, Early{+checked, +missed, _}} Decided{+early_options, +opens}:
+      +on = goes_on_each(opens)
+      Checked{Timings{seeds, prefilter_ms, generation_ms, hits_ms, options, Early{Nat.add(checked, worlds), Nat.add(missed, stopped_count(on)), early_options}}, on}
+
+# The early worlds of a round (None for an attempt that failed the early required prefab check) checked as `judged`
+# checks worlds, with each filter's early jobs, every job timed.
+def early_options(+t: Timings) -> List<&2, Option>:
+  match t:
+    case Timings{_, _, _, _, _, Early{_, _, +options}}:
+      options
+
+def early_judged(+build: Builds.Build, +t: Timings, +jobs: List<&2, List<&2, Evaluate.Job>>, +worlds: List<&2, Maybe<&2, FilterWorld.World>>) -> IO(Checked):
+  do IO<Checked>:
+    +got : Decided <- judged_options(build, jobs, early_options(t), 0, opens_of(worlds))
+    return checked_with(t, checks(worlds), got)
 
 def rule_json(+r: Rule) -> String:
   match r:
@@ -253,12 +327,17 @@ def options_json(options: List<&2, Option>) -> List<&2, String>:
     case Con{+o, rest}:
       option_json(o) <> options_json(rest)
 
+def early_json(+e: Early) -> String:
+  match e:
+    case Early{+worlds, +misses, +options}:
+      "{\"worlds\":" ++ Nat.show(worlds) ++ ",\"misses\":" ++ Nat.show(misses) ++ ",\"options\":[" ++ String.join(options_json(options), ",") ++ "]}"
+
 # `timings {...}`, `elapsed_ms` into the run.
 def line(+t: Timings, +elapsed_ms: Nat) -> String:
   match t:
-    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options}:
+    case Timings{+seeds, +prefilter_ms, +generation_ms, +hits_ms, +options, +early}:
       "timings {\"elapsed_ms\":" ++ Nat.show(elapsed_ms) ++ ",\"seeds\":" ++ Nat.show(seeds) ++ ",\"prefilter_ms\":" ++ Nat.show(prefilter_ms) ++ ",\"generation_ms\":" ++ Nat.show(generation_ms) ++ ",\"hits_ms\":" ++ Nat.show(hits_ms)
-        ++ ",\"options\":[" ++ String.join(options_json(options), ",") ++ "]}"
+        ++ ",\"options\":[" ++ String.join(options_json(options), ",") ++ "],\"early\":" ++ early_json(early) ++ "}"
 
 def print_if(on: Bool, +t: Timings, +elapsed_ms: Nat) -> IO(Unit):
   match on:

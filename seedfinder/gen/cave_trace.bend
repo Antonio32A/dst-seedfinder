@@ -580,6 +580,8 @@ def enter(+build: Builds.Build, job: GenJob.Job, +st: Tr) -> GenJob.Job & List<&
       mazed_lines(build, land, st, c, a, s, k, w, sites)
     case GenJob.JPost{+c, +a, +s, +w, land, +graph}:
       post_lines(build, c, w, land, rc_of(st, a, s), graph)
+    case GenJob.JGround{+c, +a, +s, +k, +w, land, +sites}:
+      (GenJob.advance(build, GenJob.JGround{c, a, s, k, w, land, sites}), Nil{})
     case GenJob.JWorld{+c, +a, world}:
       (stopped(c, a), world_lines(world, tr_seed(st), a))
     case GenJob.JDone{+c, +a, +o}:

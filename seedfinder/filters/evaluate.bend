@@ -251,3 +251,65 @@ def results_json(+outcomes: List<&2, Outcome>, +later_only: Bool) -> String:
 # Whether every outcome holds.
 def holds(+outcomes: List<&2, Outcome>) -> Bool:
   all_ok(outcomes)
+
+# A job's rule as the one rule of a filter.
+def job_later(+job: Job) -> Rules.Later:
+  match job:
+    case JPlaced{+rule}:
+      Rules.Later{[rule], Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
+    case JCount{_, +rule}:
+      Rules.Later{Nil{}, [rule], Nil{}, Nil{}, Nil{}, Nil{}}
+    case JTiles{_, +rule}:
+      Rules.Later{Nil{}, Nil{}, Nil{}, [rule], Nil{}, Nil{}}
+    case JDistance{_, +rule}:
+      Rules.Later{Nil{}, Nil{}, [rule], Nil{}, Nil{}, Nil{}}
+    case JBridge{_, +rule}:
+      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, [rule], Nil{}}
+    case JRoute{_, +rule}:
+      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, [rule]}
+
+def job_laters(jobs: List<&2, Job>) -> List<&2, Rules.Later>:
+  match jobs:
+    case Nil{}:
+      Nil{}
+    case Con{+job, rest}:
+      job_later(job) <> job_laters(rest)
+
+def is_count_or_distance(+job: Job) -> Bool:
+  match job:
+    case JCount{_, _}:
+      True{}
+    case JDistance{_, _}:
+      True{}
+    case _:
+      False{}
+
+# The early tier of a job (Rules.early_tier of what it reads): counts and distances only, the routes are left to the
+# whole world.
+def early_tier(+build: Builds.Build, +job: Job) -> U32:
+  Bool.pick(U32, is_count_or_distance(job), Rules.early_tier(build, Rules.needs(build, [job_later(job)])), 0)
+
+def tiered(+build: Builds.Build, jobs: List<&2, Job>, +tier: U32) -> List<&2, Job>:
+  match jobs:
+    case Nil{}:
+      Nil{}
+    case Con{+job, rest}:
+      +tail = tiered(build, rest, tier)
+      Bool.pick(List<&2, Job>, U32.is_eq(early_tier(build, job), tier), job <> tail, tail)
+
+# The jobs of a filter's world rules that a caves world checks right after ConvertGround: its counts and distances of
+# early tier 1, or of tier 2 (walks) when it has none of tier 1.
+def early_jobs(+build: Builds.Build, +later: Rules.Later) -> List<&2, Job>:
+  +jobs = jobs_of(later)
+  +straight = tiered(build, jobs, 1)
+  Bool.pick(List<&2, Job>, List.is_empty(&2, Job, straight), tiered(build, jobs, 2), straight)
+
+# Whether `ok` and every job holds, checked one after the other up to the first that fails.
+def all_hold(+build: Builds.Build, +world: FilterWorld.World, jobs: List<&2, Job>, ok: Bool) -> Bool:
+  match jobs ok:
+    case _ False{}:
+      False{}
+    case Nil{} True{}:
+      True{}
+    case Con{+job, rest} True{}:
+      all_hold(build, world, rest, job_holds(build, world, job))

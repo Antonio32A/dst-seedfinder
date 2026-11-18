@@ -18,6 +18,7 @@ import ../ocean/state.bend as OceanState
 import ../ocean/ents.bend as OceanEnts
 import ../ocean/required.bend as OceanRequired
 import ../ocean/ocean.bend as Ocean
+import ../ocean/post.bend as OceanPost
 import ../post/atrium.bend as Atrium
 import ../post/finish.bend as Finish
 import ../populate/land.bend as PopulateLand
@@ -32,6 +33,7 @@ import ./maze_pieces.bend as MazePieces
 import ./cave_names.bend as CaveNames
 import ./cave_required.bend as CaveRequired
 import ./topology.bend as Topology
+import ../data/gen_tags.bend as GenTagsData
 import ../data/builds.bend as Builds
 
 # A resumable per-seed generator (forest_map.Generate's attempts, as worldgen_main retries them), for bounded search
@@ -69,8 +71,9 @@ type Outcome is Data:
 # check passed (the tile world of ConvertToTileMap, its site tile lists and point sites); the tile stages and the land
 # population next. 6 JOcean: land_done, the ocean stage next. 7 JWorld: the attempt is the world. 8 JDone: no world.
 # The caves: 10 JTiled: after the custom tile pass (the tile map right before the mazes run). 11 JMazed: after the mazes,
-# with the entities so far. 12 JPost: after the land population (ConvertGround to PopulateVoronoi, DetectDisconnect passed),
-# with the savedata topology, the post-populate steps and the required prefab check next.
+# with the entities so far. 13 JGround: after ConvertGround, ReplaceSingleNonLandTiles and a passed DetectDisconnect (the
+# tile map final, every layout and maze placed), Graph:PopulateVoronoi next. 12 JPost: after the land population, with
+# the savedata topology, the post-populate steps and the required prefab check next.
 type Job is Type:
   JStart{c: Generate.Seed, a: U32, rng: Pcg.Rng}
   JFirst{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei}
@@ -82,6 +85,7 @@ type Job is Type:
   JTiled{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, grid: Grid.Grid, rng: Pcg.Rng, placed: List<&2, CaveCustom.Placed>, sites: Points.Sites}
   JMazed{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, land: PopulateState.Land, sites: Points.Sites}
   JPost{c: Generate.Seed, a: U32, s: StoryGraph.St, w: U32, land: PopulateState.Land, graph: FilterDump.Graph}
+  JGround{c: Generate.Seed, a: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, land: PopulateState.Land, sites: Points.Sites}
   JWorld{c: Generate.Seed, a: U32, world: Final}
   JDone{c: Generate.Seed, a: U32, outcome: Outcome}
 
@@ -349,13 +353,25 @@ def sites_graph(+build: Builds.Build, +s: StoryGraph.St, +k: GenGraph.Klei, +sit
     case Points.Sites{_, _, +world}:
       Topology.graph(build, s, k, world)
 
-def cave_land_of(+build: Builds.Build, start: U32 & U32, land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
-  (+sx, +sy) = start
-  cave_populated(PopulateLand.land_caves(build, Generate.land_context(c, s, k, sites, w, False{}), sx, sy, land), c, a, s, w, sites_graph(build, s, k, sites))
+def cave_grounded(got: PopulateState.Land & Bool, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
+  (land, +ok) = got
+  match ok:
+    case True{}:
+      JGround{c, a, s, k, w, land, sites}
+    case False{}:
+      cave_failed(land, c, a, s)
 
-# ConvertGround to PopulateVoronoi; a failed DetectDisconnect retries from the RNG then.
+def cave_ground_of(+build: Builds.Build, start: U32 & U32, land: PopulateState.Land, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job:
+  (+sx, +sy) = start
+  cave_grounded(PopulateLand.ground_caves(build, Generate.land_context(c, s, k, sites, w, False{}), sx, sy, land), c, a, s, k, w, sites)
+
+# ConvertGround to DetectDisconnect; a failed DetectDisconnect retries from the RNG then.
 def populate_caves(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, land: PopulateState.Land, +sites: Points.Sites) -> Job:
-  cave_land_of(build, Generate.cave_start(s, k, sites), land, c, a, s, k, w, sites)
+  cave_ground_of(build, Generate.cave_start(s, k, sites), land, c, a, s, k, w, sites)
+
+# Graph:PopulateVoronoi, and the savedata topology.
+def voronoi_caves(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, land: PopulateState.Land, +sites: Points.Sites) -> Job:
+  JPost{c, a, s, w, PopulateLand.voronoi_caves(build, Generate.land_context(c, s, k, sites, w, False{}), land), sites_graph(build, s, k, sites)}
 
 # The layouts and mazes the land placed, when the job records them.
 def cave_pieces(recording: Bool, +events: List<&2, PopulateState.Ev>) -> List<&2, PopulateSetpiece.Piece>:
@@ -394,6 +410,134 @@ def post_caves(+build: Builds.Build, +c: Generate.Seed, +a: U32, +s: StoryGraph.
       +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
       cave_posted(Finish.run(build, ctx, cave_shard(build), CaveRequired.required(build, s), atriumed(build, OceanState.ents_of(sea_of(Landed{g, rng, ents, s, w, cave_pieces(Generate.pieces_of(c), events), Nil{}, graph, Nil{}})))), c, a, s, w, graph)
 
+def flag_if(fits: Bool, a: Array<U32>, +sid: U32) -> Array<U32>:
+  match fits:
+    case True{}:
+      a[sid] <- 1
+      a
+    case False{}:
+      a
+
+def flagged(sids: List<&2, U32>, +slots: U32, a: Array<U32>) -> Array<U32>:
+  match sids:
+    case Nil{}:
+      a
+    case Con{+sid, rest}:
+      flagged(rest, slots, flag_if((sid < slots : U32), a, sid))
+
+def kept_if(keep: Bool, +e: Entities.Ent, +acc: List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
+  match keep:
+    case True{}:
+      e <> acc
+    case False{}:
+      acc
+
+def kept_step(got: Array<U32> & U32, +e: Entities.Ent, +acc: List<&2, Entities.Ent>) -> Array<U32> & List<&2, Entities.Ent>:
+  (flags, +flag) = got
+  (flags, kept_if(U32.is_ne(flag, 0), e, acc))
+
+def kept_loop(ents: List<&2, Entities.Ent>, got: Array<U32> & List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
+  match ents:
+    case Nil{}:
+      (_, +acc) = got
+      List.reverse(&2, Entities.Ent, acc)
+    case Con{Entities.Ent{+prefab, +tx, +ty, +x, +z, +xk, +zk, +rng}, rest}:
+      (flags, +acc) = got
+      kept_loop(rest, kept_step(flags[prefab], Entities.Ent{prefab, tx, ty, x, z, xk, zk, rng}, acc))
+
+# The entities of these string ids, in order (all of them for None).
+def kept_ents(+build: Builds.Build, +keep: Maybe<&2, List<&2, U32>>, +ents: List<&2, Entities.Ent>) -> List<&2, Entities.Ent>:
+  match keep:
+    case None{}:
+      ents
+    case Some{+sids}:
+      +depth = GenTagsData.cave_sid_depth(build)
+      kept_loop(ents, (flagged(sids, U32.pow(2, depth), Array.new(U32, depth, 0)), Nil{}))
+
+def sids_wanted(+build: Builds.Build, +keep: Maybe<&2, List<&2, U32>>, +reqs: List<&2, OceanPost.Req>) -> Maybe<&2, List<&2, U32>>:
+  match keep:
+    case None{}:
+      None{}
+    case Some{+sids}:
+      Some{Finish.early_sids(build, cave_shard(build), reqs, sids)}
+
+def encoded_copy(got: Grid.Grid & Grid.Grid) -> Grid.Grid & Grid.Grid:
+  (g, copy) = got
+  (g, Points.replace_single_non_land(copy))
+
+def early_grid(tiled: Bool, g: Grid.Grid) -> Grid.Grid & Grid.Grid:
+  match tiled:
+    case True{}:
+      encoded_copy(Grid.copied(g))
+    case False{}:
+      (g, Grid.new(0, 0, 0))
+
+def early_graph(+build: Builds.Build, +every: Bool, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites) -> FilterDump.Graph:
+  match every:
+    case True{}:
+      sites_graph(build, s, k, sites)
+    case False{}:
+      FilterDump.Graph{Nil{}, Nil{}}
+
+def early_final(got: Grid.Grid & Grid.Grid, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +w: U32, +events: List<&2, OceanState.Ev>, +graph: FilterDump.Graph) -> Grid.Grid & Maybe<&1, Final>:
+  (g, copy) = got
+  (g, Some{Final{copy, rng, ents, w, OceanState.pieces(events), Nil{}, 0, graph, Nil{}}})
+
+def early_world(ok: Bool, g: Grid.Grid, +tiled: Bool, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +w: U32, +events: List<&2, OceanState.Ev>, +graph: FilterDump.Graph) -> Grid.Grid & Maybe<&1, Final>:
+  match ok:
+    case True{}:
+      early_final(early_grid(tiled, g), rng, ents, w, events, graph)
+    case False{}:
+      (g, None{})
+
+def land_back(got: Grid.Grid & Maybe<&1, Final>, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>) -> PopulateState.Land & Maybe<&1, Final>:
+  (g, found) = got
+  (PopulateState.Land{g, rng, ents, events}, found)
+
+def early_land_done(got: OceanState.Sea & Bool, +tiled: Bool, +w: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, PopulateState.Ev>, +graph: FilterDump.Graph) -> PopulateState.Land & Maybe<&1, Final>:
+  (sea, +ok) = got
+  match sea:
+    case OceanState.Sea{g, _, +after, +kept, _, +noted}:
+      land_back(early_world(ok, g, tiled, after, kept, w, noted, graph), rng, ents, events)
+
+# `early` on the land of an attempt at JGround (story s, map size w), with the topology `graph`; the land comes back
+# as it was.
+def early_land(+build: Builds.Build, +c: Generate.Seed, +s: StoryGraph.St, +w: U32, land: PopulateState.Land, +keep: Maybe<&2, List<&2, U32>>, +tiled: Bool, +graph: FilterDump.Graph) -> PopulateState.Land & Maybe<&1, Final>:
+  match land:
+    case PopulateState.Land{g, +rng, +ents, +events}:
+      +ctx = {OceanState.Ctx{Generate.windows_of(c), Generate.swaps_of(c), w, w, False{}, Generate.pieces_of(c)} : OceanState.Ctx}
+      +reqs = CaveRequired.required(build, s)
+      +kept = kept_ents(build, sids_wanted(build, keep, reqs), ents)
+      sea = {Landed{g, rng, kept, s, w, cave_pieces(Generate.pieces_of(c), events), Nil{}, FilterDump.Graph{Nil{}, Nil{}}, Nil{}} : Landed}
+      early_land_done(Finish.early(build, ctx, cave_shard(build), reqs, atriumed(build, OceanState.ents_of(sea_of(sea)))), tiled, w, rng, ents, events, graph)
+
+def ground_job(got: PopulateState.Land & Maybe<&1, Final>, +c: Generate.Seed, +a: U32, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, +sites: Points.Sites) -> Job & Maybe<&1, Final>:
+  (land, found) = got
+  (JGround{c, a, s, k, w, land, sites}, found)
+
+# The world an attempt at JGround ends as if Graph:PopulateVoronoi and BunchSpawnerRun add nothing, when that passes the
+# required prefab check (later steps only add entities, so the attempt is then the world): the entities of the string
+# ids `keep` and of those the post-populate steps and the check read (every entity, and the topology, for None), with
+# a copy of the tile map when `tiled` (else an empty one). The job comes back as it was: the steps draw from a copy of
+# its RNG and only read its tile map.
+def early(+build: Builds.Build, job: Job, +keep: Maybe<&2, List<&2, U32>>, +tiled: Bool) -> Job & Maybe<&1, Final>:
+  match job:
+    case JGround{+c, +a, +s, +k, +w, land, +sites}:
+      ground_job(early_land(build, c, s, w, land, keep, tiled, early_graph(build, Maybe.is_none(&2, List<&2, U32>, keep), s, k, sites)), c, a, s, k, w, sites)
+    case other:
+      (other, None{})
+
+def ended_as(job: Job, found: Maybe<&1, Final>) -> Job:
+  match job found:
+    case JGround{+c, +a, _, _, _, _, _} Some{final}:
+      JWorld{c, a, final}
+    case other _:
+      other
+
+def early_taken(got: Job & Maybe<&1, Final>) -> Job:
+  (job, found) = got
+  ended_as(job, found)
+
 # One stage transition. JFirst and JSecond wait (see layout), JWorld and JDone stay as they are.
 def step(+build: Builds.Build, job: Job) -> Job:
   match job:
@@ -413,8 +557,19 @@ def step(+build: Builds.Build, job: Job) -> Job:
       populate_caves(build, c, a, s, k, w, land, sites)
     case JPost{+c, +a, +s, +w, land, +graph}:
       post_caves(build, c, a, s, w, land, graph)
+    case JGround{+c, +a, +s, +k, +w, land, +sites}:
+      voronoi_caves(build, c, a, s, k, w, land, sites)
     case other:
       other
+
+# With `early`, an attempt at JGround whose early world (every entity, `early`) passes the required prefab check ends
+# as that world, a view for comparing it with the world (world dump --early); every other job takes its next stage.
+def step_early(+build: Builds.Build, early_on: Bool, job: Job) -> Job:
+  match early_on:
+    case True{}:
+      step(build, early_taken(early(build, job, None{}, True{})))
+    case False{}:
+      step(build, job)
 
 def advanced(+build: Builds.Build, got: Job & Maybe<&2, GenLayout.Layout>) -> Job:
   (job, pass) = got
@@ -472,6 +627,8 @@ def stage(job: Job) -> Job & Where:
       (JMazed{c, a, s, k, w, land, sites}, Where{11, a})
     case JPost{+c, +a, +s, +w, land, +graph}:
       (JPost{c, a, s, w, land, graph}, Where{12, a})
+    case JGround{+c, +a, +s, +k, +w, land, +sites}:
+      (JGround{c, a, s, k, w, land, sites}, Where{13, a})
 
 # Whether the job is decided (a world, or no world).
 def settled(+stage: U32) -> Bool:

@@ -44,6 +44,11 @@ def vocab_shadow_container() -> U32:
 def vocab_rabbitkinghorn_container() -> U32:
   242
 
+# Vocabulary ids (ascending) of the caves' prefabs whose instances can change after ConvertGround: added by
+# PopulateVoronoi or the bunch spawner, relabelled or picked by draws, or moved from such a prefab.
+def cave_late_prefabs() -> List<&2, U32>:
+  [28, 30, 36, 58, 83, 93, 98, 100, 101, 102, 112, 113, 115, 116, 117, 126, 146, 147, 189, 233, 234, 245, 247, 253, 256, 259, 264, 286, 306, 321, 337, 339, 346, 366, 368, 369, 371, 373, 374, 375, 376, 377, 378, 379, 381, 382, 383, 384, 385, 386, 387, 388, 390, 391, 392, 393, 394, 397, 398, 399, 400, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 413, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 425, 432, 433, 434, 435, 436, 437, 438, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 458, 459, 461, 462]
+
 # Vocabulary ids of the tentacle pillars, whose teleporters are the caves' links.
 def vocab_tentacle_pillar() -> U32:
   456

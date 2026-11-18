@@ -338,6 +338,8 @@ def entered(+build: Builds.Build, job: GenJob.Job, +st: Tr) -> GenJob.Job & List
       (GenJob.JMazed{c, a, s, k, w, land, sites}, Nil{})
     case GenJob.JPost{+c, +a, +s, +w, land, +graph}:
       (GenJob.JPost{c, a, s, w, land, graph}, Nil{})
+    case GenJob.JGround{+c, +a, +s, +k, +w, land, +sites}:
+      (GenJob.JGround{c, a, s, k, w, land, sites}, Nil{})
 
 def start_counter(+stage: U32, +seed: U32, +ctr: U32, +rng: Pcg.Rng) -> U32:
   Bool.pick(U32, U32.is_zero(stage), Pcg.counter(seed, rng), ctr)

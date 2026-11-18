@@ -50,22 +50,27 @@ type Ctx is Data:
 
 def windows_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, +windows, _, _, _, _, _}, _}:
+    case Ctx{Args.Dump{_, _, +windows, _, _, _, _, _, _}, _}:
       windows
 
 def native_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, +native, _, _, _, _}, _}:
+    case Ctx{Args.Dump{_, _, _, +native, _, _, _, _, _}, _}:
       native
 
 def caves_of(+ctx: Ctx) -> Bool:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, _, _, _, +caves, _}, _}:
+    case Ctx{Args.Dump{_, _, _, _, _, _, +caves, _, _}, _}:
       caves
+
+def early_of(+ctx: Ctx) -> Bool:
+  match ctx:
+    case Ctx{Args.Dump{_, _, _, _, _, _, _, _, +early}, _}:
+      early
 
 def path_of(+ctx: Ctx, +seed: U32) -> String:
   match ctx:
-    case Ctx{Args.Dump{_, _, _, _, +out, +folder, _, _}, _}:
+    case Ctx{Args.Dump{_, _, _, _, +out, +folder, _, _, _}, _}:
       Bool.pick(String, folder, out ++ "/" ++ U32.show(seed) ++ ".dstw", out)
 
 def world_finished(encoded: List<&2, U32> & U32, +seed: U32, +since: Nat) -> Slot:
@@ -112,21 +117,22 @@ def parked(+build: Builds.Build, got: GenJob.Job & GenJob.Where, +seed: U32, +si
     case GenJob.Where{+stage, _}:
       settled_slot(build, GenJob.settled(stage), job, seed, since, ctx)
 
-def moved_at(+build: Builds.Build, settled: Bool, native: Bool, job: GenJob.Job) -> GenJob.Job:
+def moved_at(+build: Builds.Build, settled: Bool, native: Bool, +early: Bool, job: GenJob.Job) -> GenJob.Job:
   match settled native:
     case True{} _:
       job
     case False{} True{}:
-      GenJob.step(build, job)
+      GenJob.step_early(build, early, job)
     case False{} False{}:
       GenJob.advance(build, job)
 
-# A stage transition, or with kk.bend a whole KK pass; a job at a native KK pass, or decided, stays.
-def moved(+build: Builds.Build, +native: Bool, got: GenJob.Job & GenJob.Where) -> GenJob.Job:
+# A stage transition, or with kk.bend a whole KK pass; a job at a native KK pass, or decided, stays. With --early a
+# job at JGround ends as its early world when that passes the required prefab check (GenJob.step_early).
+def moved(+build: Builds.Build, +native: Bool, +early: Bool, got: GenJob.Job & GenJob.Where) -> GenJob.Job:
   (job, +at) = got
   match at:
     case GenJob.Where{+stage, _}:
-      moved_at(build, GenJob.settled(stage), native, job)
+      moved_at(build, GenJob.settled(stage), native, early && U32.is_eq(stage, 13), job)
 
 def rush_steps() -> Nat:
   64n
@@ -136,7 +142,7 @@ def rushed(+build: Builds.Build, fuel: Nat, job: GenJob.Job, +seed: U32, +since:
     case 0n:
       parked(build, GenJob.stage(job), seed, since, ctx)
     case 1n+f:
-      rushed(build, f, moved(build, native_of(ctx), GenJob.stage(job)), seed, since, ctx)
+      rushed(build, f, moved(build, native_of(ctx), early_of(ctx), GenJob.stage(job)), seed, since, ctx)
 
 def work(+build: Builds.Build, slot: Slot, +ctx: Ctx) -> Slot:
   match slot:
@@ -360,8 +366,8 @@ def slots_for(+threads: U32, +total: Nat) -> Nat:
 
 def started(+q: Args.Dump, +threads: U32) -> IO(Unit):
   match q:
-    case Args.Dump{+from, +total, +windows, +native, +out, +folder, +caves, +build}:
-      +ctx = {Ctx{Args.Dump{from, total, windows, native, out, folder, caves, build}, slots_for(threads, total)} : Ctx}
+    case Args.Dump{+from, +total, +windows, +native, +out, +folder, +caves, +build, +early}:
+      +ctx = {Ctx{Args.Dump{from, total, windows, native, out, folder, caves, build, early}, slots_for(threads, total)} : Ctx}
       do IO<Unit>:
         first : Fed <- written(build, free_slots(slots_for(threads, total)), Feed{from, total, 0, 0}, ctx, Nil{})
         rounds(build, round_limit(), first, ctx)

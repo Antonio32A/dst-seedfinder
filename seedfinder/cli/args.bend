@@ -53,7 +53,7 @@ def is_inline_flag(flags: List<&2, String>, +arg: String) -> Bool:
 
 def arg_kind(+arg: String) -> U32:
   Bool.pick(U32, Config.is_member(value_flags(), arg), 2,
-    Bool.pick(U32, String.eq(arg, "--json") || String.eq(arg, "--verbose-timings") || is_inline_flag(value_flags(), arg), 1,
+    Bool.pick(U32, String.eq(arg, "--json") || String.eq(arg, "--verbose-timings") || String.eq(arg, "--early") || is_inline_flag(value_flags(), arg), 1,
       Bool.pick(U32, String.starts_with(arg, "--"), 3, 0)))
 
 def with_positional(+kind: U32, +arg: String, +prefix: String, rest: Result<&1, &1, U32 & String, List<&2, String>>) -> Result<&1, &1, U32 & String, List<&2, String>>:
@@ -243,12 +243,12 @@ def query_timings(+q: Query) -> Bool:
 
 # A world dump query: seeds from..from + total - 1, the platform, the KK engine (kk_flag) and the output path, a
 # folder of <seed>.dstw dumps when `folder` (TO was given), else the dump file of the one seed, the caves shard when
-# `caves`, and the game build (build_for).
+# `caves`, the game build (build_for), and with `early` (--early, caves) the early worlds of the search's early check.
 type Dump is Data:
-  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool, caves: Bool, build: Builds.Build}
+  Dump{from: U32, total: Nat, windows: Bool, native: Bool, out: String, folder: Bool, caves: Bool, build: Builds.Build, early: Bool}
 
 def dump_usage() -> String:
-  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] -o PATH"
+  "usage: seedfinder world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER] [--kk native|bend] [--early] -o PATH"
 
 def dump_out(m: Maybe<&2, String>) -> Result<&1, &1, U32 & String, String>:
   match m:
@@ -277,7 +277,7 @@ def dump_total(rest: List<&2, String>, +from: U32) -> Result<&1, &1, U32 & Strin
       Fail{(2, dump_usage())}
 
 # The world dump query of `world dump SEED [TO] [--platform windows|linux] [--shard forest|caves] [--build NUMBER]
-# [--kk native|bend] -o PATH` (args start with "dump"; the platform defaults to windows).
+# [--kk native|bend] [--early] -o PATH` (args start with "dump"; the platform defaults to windows).
 def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
   do Result<&1, &1, U32 & String, Dump>:
     +given : List<&2, String> <- positionals(List.drop(&2, String, args, 1n), False{}, "dump: ")
@@ -288,4 +288,4 @@ def dump_of(+args: List<&2, String>) -> Result<&1, &1, U32 & String, Dump>:
     +out : String <- dump_out(flag_value(args, "-o"))
     +shard : U32 <- shard_flag(flag_value(args, "--shard"))
     +build : Builds.Build <- flag_build(args)
-    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n), U32.is_eq(shard, 2), build}
+    return Dump{from, total, U32.is_ne(platform, 2), native, out, Nat.is_gt(List.length(&2, String, given), 1n), U32.is_eq(shard, 2), build, Config.is_member(args, "--early")}
