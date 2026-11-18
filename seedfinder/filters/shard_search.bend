@@ -12,48 +12,53 @@ type Levels is Data:
   CaveLevels{criteria: List<&2, CaveConfig.Criteria>}
 
 # A compiled search config of either shard as the world search sees it: the platform, the game build, the shard, the part A criteria
-# of `generation` that pick the candidates, and the parts B-E of every filter.
+# of `generation` that pick the candidates, the parts B-E of every filter, and what those read from a world.
 type Search is Data:
-  Search{windows: Bool, build: Builds.Build, caves: Bool, level: Levels, laters: List<&2, Rules.Later>, names: List<&2, String>}
+  Search{windows: Bool, build: Builds.Build, caves: Bool, level: Levels, laters: List<&2, Rules.Later>, names: List<&2, String>, needs: Rules.Needs}
 
 def of_forest(+config: Config.Config) -> Search:
   match config:
     case Config.Config{+windows, +build, +level, +laters, _, +names}:
-      Search{windows, build, False{}, ForestLevels{[level]}, laters, names}
+      Search{windows, build, False{}, ForestLevels{[level]}, laters, names, Rules.needs(build, laters)}
 
 def of_caves(+config: CaveConfig.Config) -> Search:
   match config:
     case CaveConfig.Config{+windows, +build, +level, +laters, +names}:
-      Search{windows, build, True{}, CaveLevels{[level]}, laters, names}
+      Search{windows, build, True{}, CaveLevels{[level]}, laters, names, Rules.needs(build, laters)}
 
 def windows(+search: Search) -> Bool:
   match search:
-    case Search{+windows, _, _, _, _, _}:
+    case Search{+windows, _, _, _, _, _, _}:
       windows
 
 def build(+search: Search) -> Builds.Build:
   match search:
-    case Search{_, +build, _, _, _, _}:
+    case Search{_, +build, _, _, _, _, _}:
       build
 
 def caves(+search: Search) -> Bool:
   match search:
-    case Search{_, _, +caves, _, _, _}:
+    case Search{_, _, +caves, _, _, _, _}:
       caves
 
 def laters(+search: Search) -> List<&2, Rules.Later>:
   match search:
-    case Search{_, _, _, _, +laters, _}:
+    case Search{_, _, _, _, +laters, _, _}:
       laters
 
 def names(+search: Search) -> List<&2, String>:
   match search:
-    case Search{_, _, _, _, _, +names}:
+    case Search{_, _, _, _, _, +names, _}:
       names
+
+def needs(+search: Search) -> Rules.Needs:
+  match search:
+    case Search{_, _, _, _, _, _, +needs}:
+      needs
 
 def level(+search: Search) -> Levels:
   match search:
-    case Search{_, _, _, +level, _, _}:
+    case Search{_, _, _, +level, _, _, _}:
       level
 
 # The level table of `seed` as JSON, as `world show` prints it.

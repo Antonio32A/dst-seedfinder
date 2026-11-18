@@ -7,6 +7,7 @@ import ./parse.bend as Parse
 import ./level_checks.bend as LevelChecks
 import ../data/search_vocab.bend as SearchVocab
 import ../data/search_vocab_types.bend as SearchVocabTypes
+import ../data/gen_tags.bend as GenTagsData
 import ../data/builds.bend as Builds
 
 # The world rules of a filter (docs/config.md section 4): the `placed` names of `generation`'s setpieces rules and the
@@ -428,3 +429,78 @@ def later_of(+build: Builds.Build, +fields: List<&2, Json.Json>, +path: String, 
     route_items : List<&2, Json.Json> <- section_items(fields, path, "routes")
     routes : List<&2, Route> <- routes_of(build, route_items, path ++ ".routes", 0, caves)
     return Later{setpieces, counts, distances, tiles, bridges, routes}
+
+# What the world rules of a config read from a world: the vocabulary prefab ids whose instances they take (ascending,
+# without duplicates), and whether some rule follows the teleporter links (the prefabs the links join are then among
+# the ids), reads the tiles (tiles rules), walks the land (the walk metric), reads the topology (bridges) or the level
+# plan (setpieces rules with `placed` names).
+type Needs is Data:
+  Needs{prefabs: List<&2, U32>, links: Bool, tiles: Bool, land: Bool, graph: Bool, plan: Bool}
+
+# The prefabs whose instances the teleporter links join: the wormholes of the forest, the tentacle pillars of the caves.
+def linked_prefabs(+build: Builds.Build, +caves: Bool) -> List<&2, U32>:
+  Bool.pick(List<&2, U32>, caves, [GenTagsData.vocab_tentacle_pillar(build), GenTagsData.vocab_tentacle_pillar_atrium(build)], [GenTagsData.vocab_wormhole(build)])
+
+def reading(+n: Needs, +ids: List<&2, U32>) -> Needs:
+  match n:
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
+      Needs{List.append(&2, U32, prefabs, ids), links, tiles, land, graph, plan}
+
+def metric_reading(+build: Builds.Build, +metric: Metric, +n: Needs) -> Needs:
+  match metric n:
+    case Metric{+walk, +wormholes, +caves} Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
+      Needs{List.append(&2, U32, prefabs, Bool.pick(List<&2, U32>, wormholes, linked_prefabs(build, caves), Nil{})), links || wormholes, tiles, land || walk, graph, plan}
+
+def near_reading(+build: Builds.Build, near: Maybe<&2, Near>, +n: Needs) -> Needs:
+  match near:
+    case None{}:
+      n
+    case Some{Near{+prefabs, _, +metric}}:
+      metric_reading(build, metric, reading(n, prefabs))
+
+def counts_reading(+build: Builds.Build, counts: List<&2, Count>, +n: Needs) -> Needs:
+  match counts:
+    case Nil{}:
+      n
+    case Con{Count{+prefabs, _, _, near}, rest}:
+      counts_reading(build, rest, near_reading(build, near, reading(n, prefabs)))
+
+def distances_reading(+build: Builds.Build, distances: List<&2, Distance>, +n: Needs) -> Needs:
+  match distances:
+    case Nil{}:
+      n
+    case Con{Distance{+from, +to, _, _, +metric}, rest}:
+      distances_reading(build, rest, metric_reading(build, metric, reading(reading(n, from), to)))
+
+def routes_reading(+build: Builds.Build, routes: List<&2, Route>, +n: Needs) -> Needs:
+  match routes:
+    case Nil{}:
+      n
+    case Con{Route{+from, +visit, +to, _, _, +metric}, rest}:
+      +stops = List.append(&2, U32, List.concat(&2, U32, visit), Maybe.default(&2, List<&2, U32>, to, Nil{}))
+      routes_reading(build, rest, metric_reading(build, metric, reading(reading(n, from), stops)))
+
+def sections_reading(+n: Needs, +setpieces: List<&2, Placed>, +tile_rules: List<&2, Tiles>, +bridges: List<&2, Bridge>) -> Needs:
+  match n:
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
+      Needs{prefabs, links, tiles || Bool.not(List.is_empty(&2, Tiles, tile_rules)), land, graph || Bool.not(List.is_empty(&2, Bridge, bridges)),
+        plan || Bool.not(List.is_empty(&2, Placed, setpieces))}
+
+def laters_reading(+build: Builds.Build, laters: List<&2, Later>, +n: Needs) -> Needs:
+  match laters:
+    case Nil{}:
+      n
+    case Con{Later{+setpieces, +counts, +distances, +tile_rules, +bridges, +routes}, rest}:
+      laters_reading(build, rest, routes_reading(build, routes, distances_reading(build, distances, counts_reading(build, counts, sections_reading(n, setpieces, tile_rules, bridges)))))
+
+def id_le(a: U32, b: U32) -> Bool:
+  (a <= b : U32)
+
+def sorted_needs(+n: Needs) -> Needs:
+  match n:
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
+      Needs{List.sort(~U32, ~id_le, Parse.distinct(prefabs)), links, tiles, land, graph, plan}
+
+# What the world rules of these filters read from a world.
+def needs(+build: Builds.Build, laters: List<&2, Later>) -> Needs:
+  sorted_needs(laters_reading(build, laters, Needs{Nil{}, False{}, False{}, False{}, False{}, False{}}))

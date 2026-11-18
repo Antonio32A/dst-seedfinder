@@ -11,6 +11,7 @@ import ../populate/setpiece.bend as PopulateSetpiece
 import ../populate/planned.bend as PopulatePlanned
 import ../filters/world.bend as FilterWorld
 import ../filters/dump.bend as FilterDump
+import ../filters/rules.bend as Rules
 import ../data/gen_tags.bend as GenTagsData
 import ../data/search_vocab.bend as SearchVocab
 import ../data/strings.bend as Strings
@@ -556,3 +557,177 @@ def cave_world(+build: Builds.Build, +seed: U32, +windows: Bool, final: GenJob.F
       +groups = groups_by_sid(build, sids, sid_buckets(ents, Array.new(List<&2, OceanEnts.Ent>, GenTagsData.cave_sid_depth(build), Nil{})), windows)
       +pils = List.append(&2, Pil, pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar(build)), pillar_pils(ents, sids, GenTagsData.vocab_tentacle_pillar_atrium(build)))
       cave_world_of(build, seed, w, groups, cave_links(pillar_links(pils, pils), groups), packed_land(g, (w * w : U32)), graph)
+
+# The string ids of the ascending vocabulary ids, from vocabulary id v on.
+def needed_sids(sids: List<&2, U32>, ids: List<&2, U32>, +v: U32) -> List<&2, U32>:
+  match sids ids:
+    case Con{+sid, rest} Con{+id, +more}:
+      +hit = U32.is_eq(id, v)
+      +tail = needed_sids(rest, Bool.pick(List<&2, U32>, hit, more, id <> more), (v + 1 : U32))
+      Bool.pick(List<&2, U32>, hit, sid <> tail, tail)
+    case _ _:
+      Nil{}
+
+def flags_of(sids: List<&2, U32>, +slots: U32, a: Array<U32>) -> Array<U32>:
+  match sids:
+    case Nil{}:
+      a
+    case Con{+sid, rest}:
+      flags_of(rest, slots, slot_set((sid < slots : U32), a, sid, 1))
+
+def flagged_add(keep: Bool, a: Array<List<&2, OceanEnts.Ent>>, +sid: U32, +e: OceanEnts.Ent) -> Array<List<&2, OceanEnts.Ent>>:
+  match keep:
+    case True{}:
+      sid_bucket_add(Array.swap(List<&2, OceanEnts.Ent>, a, sid, Nil{}), sid, e)
+    case False{}:
+      a
+
+def flagged_step(got: Array<U32> & U32, a: Array<List<&2, OceanEnts.Ent>>, +sid: U32, +e: OceanEnts.Ent) -> Array<U32> & Array<List<&2, OceanEnts.Ent>>:
+  (flags, +flag) = got
+  (flags, flagged_add(U32.is_ne(flag, 0), a, sid, e))
+
+# sid_buckets of the entities whose string id is flagged.
+def flagged_buckets(ents: List<&2, OceanEnts.Ent>, got: Array<U32> & Array<List<&2, OceanEnts.Ent>>) -> Array<U32> & Array<List<&2, OceanEnts.Ent>>:
+  match ents:
+    case Nil{}:
+      got
+    case Con{+e, rest}:
+      (flags, a) = got
+      +sid = OceanEnts.prefab_of(e)
+      flagged_buckets(rest, flagged_step(flags[sid], a, sid, e))
+
+def buckets_only(got: Array<U32> & Array<List<&2, OceanEnts.Ent>>) -> Array<List<&2, OceanEnts.Ent>>:
+  (_, a) = got
+  a
+
+def taken_head(a: Array<List<&2, OceanEnts.Ent>>, sids: List<&2, U32>, +slots: U32) -> Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>:
+  match sids:
+    case Nil{}:
+      (a, Nil{})
+    case Con{+sid, _}:
+      taken((sid < slots : U32), a, sid)
+
+def found_loop(sids: List<&2, U32>, got: Array<List<&2, OceanEnts.Ent>> & List<&2, OceanEnts.Ent>, +slots: U32) -> List<&2, List<&2, OceanEnts.Ent>>:
+  match sids:
+    case Nil{}:
+      Nil{}
+    case Con{_, +rest}:
+      (a, +ents) = got
+      ents <> found_loop(rest, taken_head(a, rest, slots), slots)
+
+# The entities of each of these string ids (none for one past 2^depth), oldest first; the entity list is not walked when
+# there are none.
+def found_ents(+sids: List<&2, U32>, ents: List<&2, OceanEnts.Ent>, +depth: Nat) -> List<&2, List<&2, OceanEnts.Ent>>:
+  match sids:
+    case Nil{}:
+      Nil{}
+    case Con{_, _}:
+      +slots = U32.pow(2, depth)
+      found_loop(sids, taken_head(buckets_only(flagged_buckets(ents, (flags_of(sids, slots, Array.new(U32, depth, 0)), Array.new(List<&2, OceanEnts.Ent>, depth, Nil{})))), sids, slots), slots)
+
+def empty_groups(n: Nat, +tail: List<&2, List<&2, FilterWorld.Inst>>) -> List<&2, List<&2, FilterWorld.Inst>>:
+  match n:
+    case 0n:
+      tail
+    case 1n+p:
+      empty_groups(p, Nil{} <> tail)
+
+# The groups of the ascending vocabulary ids from their entities, from vocabulary id v up to the last of them, the
+# groups between them empty.
+def needed_groups(+build: Builds.Build, ids: List<&2, U32>, found: List<&2, List<&2, OceanEnts.Ent>>, +v: U32, +windows: Bool) -> List<&2, List<&2, FilterWorld.Inst>>:
+  match ids found:
+    case Con{+id, more} Con{+ents, rest}:
+      empty_groups(U32.to_nat((id - v : U32)), group_of(build, ents, id, windows) <> needed_groups(build, more, rest, (id + 1 : U32), windows))
+    case _ _:
+      Nil{}
+
+def found_of(ids: List<&2, U32>, found: List<&2, List<&2, OceanEnts.Ent>>, +v: U32) -> List<&2, OceanEnts.Ent>:
+  match ids found:
+    case Con{+id, more} Con{+ents, rest}:
+      Bool.pick(List<&2, OceanEnts.Ent>, U32.is_eq(id, v), ents, found_of(more, rest, v))
+    case _ _:
+      Nil{}
+
+# The land bits from cell c down to cell 0, as packed_loop makes them.
+def land_loop(n: Nat, got: Grid.Grid & U32, +c: U32, +bits: U32, land: List<&2, U32>) -> List<&2, U32>:
+  match n:
+    case 0n:
+      land
+    case 1n+p:
+      (g, +cell) = got
+      +flush = U32.is_zero((c .&. 31 : U32))
+      +word = (bits .|. (FilterWorld.land_flag(Grid.tile_of(cell)) << U32.to_nat((c .&. 31 : U32))) : U32)
+      land_loop(p, Grid.get(g, (c - 1 : U32)), (c - 1 : U32), Bool.pick(U32, flush, 0, word), prepended_if(flush, word, land))
+
+def land_for(walk: Bool, g: Grid.Grid, +n: U32) -> List<&2, U32>:
+  match walk:
+    case True{}:
+      land_loop(U32.to_nat(n), Grid.get(g, (n - 1 : U32)), (n - 1 : U32), 0, Nil{})
+    case False{}:
+      Nil{}
+
+def land_kept(walk: Bool, +packed: Packed) -> Packed:
+  match walk packed:
+    case True{} _:
+      packed
+    case False{} Packed{+tiles, _}:
+      Packed{tiles, Nil{}}
+
+# packed_land with the tile pairs and the land bits each left out (Nil) unless needed.
+def packed_for(tiles: Bool, +walk: Bool, g: Grid.Grid, +n: U32) -> Packed:
+  match tiles:
+    case True{}:
+      land_kept(walk, packed_land(g, n))
+    case False{}:
+      Packed{Nil{}, land_for(walk, g, n)}
+
+def plan_for(needed: Bool, +build: Builds.Build, plan: List<&2, PopulatePlanned.Planned>) -> Maybe<&2, List<&2, FilterDump.Planned>>:
+  match needed:
+    case True{}:
+      Some{plan_of(build, plan)}
+    case False{}:
+      None{}
+
+def wormhole_links_for(follow: Bool, +build: Builds.Build, +ids: List<&2, U32>, +found: List<&2, List<&2, OceanEnts.Ent>>, +groups: List<&2, List<&2, FilterWorld.Inst>>) -> List<&2, FilterWorld.Link>:
+  match follow:
+    case True{}:
+      FilterWorld.links_of(links(found_of(ids, found, GenTagsData.vocab_wormhole(build))), groups, GenTagsData.vocab_wormhole(build))
+    case False{}:
+      Nil{}
+
+def found_pils(+ids: List<&2, U32>, +found: List<&2, List<&2, OceanEnts.Ent>>, +v: U32) -> List<&2, Pil>:
+  pillars_of_prefab(found_of(ids, found, v), v, 0)
+
+def pillar_links_for(follow: Bool, +build: Builds.Build, +ids: List<&2, U32>, +found: List<&2, List<&2, OceanEnts.Ent>>, +groups: List<&2, List<&2, FilterWorld.Inst>>) -> List<&2, FilterWorld.Link>:
+  match follow:
+    case True{}:
+      +pils = List.append(&2, Pil, found_pils(ids, found, GenTagsData.vocab_tentacle_pillar(build)), found_pils(ids, found, GenTagsData.vocab_tentacle_pillar_atrium(build)))
+      cave_links(pillar_links(pils, pils), groups)
+    case False{}:
+      Nil{}
+
+def search_world_of(+build: Builds.Build, +seed: U32, +w: U32, +groups: List<&2, List<&2, FilterWorld.Inst>>, +links: List<&2, FilterWorld.Link>, +tiles: Bool, +packed: Packed, +graph: Maybe<&2, FilterDump.Graph>, +plan: Maybe<&2, List<&2, FilterDump.Planned>>) -> FilterWorld.World:
+  match packed:
+    case Packed{+pairs, +land}:
+      FilterWorld.World{seed, w, w, Bool.pick(List<&2, U32>, tiles, GenTagsData.vocab_tile_ids(build), Nil{}), groups, links, pairs, graph, plan, land}
+
+# The filters' world of a generated world as a search with these needs reads it (Rules.Needs): the world of `world`
+# with the groups of the needed prefabs up to the last of them (the others empty), and the links, tile ids and pairs,
+# land bits, topology and level plan only when needed. Without needed prefabs the entities are not walked.
+def world_for(+build: Builds.Build, +seed: U32, +windows: Bool, +needs: Rules.Needs, final: GenJob.Final) -> FilterWorld.World:
+  match needs final:
+    case Rules.Needs{+ids, +links, +tiles, +land, +graph, +plan} GenJob.Final{g, _, +ents, +w, _, _, _, +topology, +planned}:
+      +found = found_ents(needed_sids(GenTagsData.vocab_prefab_sids(build), ids, 0), ents, GenTagsData.sid_depth(build))
+      +groups = needed_groups(build, ids, found, 0, windows)
+      search_world_of(build, seed, w, groups, wormhole_links_for(links, build, ids, found, groups), tiles, packed_for(tiles, land, g, (w * w : U32)),
+        Bool.pick(Maybe<&2, FilterDump.Graph>, graph, Some{topology}, None{}), plan_for(plan, build, planned))
+
+# cave_world as a search with these needs reads it, as world_for restricts world (the pillar links when needed).
+def cave_world_for(+build: Builds.Build, +seed: U32, +windows: Bool, +needs: Rules.Needs, final: GenJob.Final) -> FilterWorld.World:
+  match needs final:
+    case Rules.Needs{+ids, +links, +tiles, +land, +graph, _} GenJob.Final{g, _, +ents, +w, _, _, _, +topology, _}:
+      +sids = needed_sids(List.append(&2, U32, GenTagsData.vocab_prefab_sids(build), GenTagsData.cave_vocab_prefab_sids(build)), ids, 0)
+      +found = found_ents(sids, ents, GenTagsData.cave_sid_depth(build))
+      +groups = needed_groups(build, ids, found, 0, windows)
+      search_world_of(build, seed, w, groups, pillar_links_for(links, build, ids, found, groups), tiles, packed_for(tiles, land, g, (w * w : U32)),
+        Bool.pick(Maybe<&2, FilterDump.Graph>, graph, Some{topology}, None{}), None{})

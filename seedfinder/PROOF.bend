@@ -25,6 +25,7 @@ import ./laws/placed_rules.bend as LawsPlacedRules
 import ./laws/powf_glibc.bend as LawsPowfGlibc
 import ./laws/powf_msvcr90.bend as LawsPowfMsvcr90
 import ./laws/powf_msvcr90_vm.bend as LawsPowfMsvcr90Vm
+import ./laws/search_world.bend as LawsSearchWorld
 import ./laws/voronoi.bend as LawsVoronoi
 import ./laws/world_dump.bend as LawsWorldDump
 import ./laws/world_generation.bend as LawsWorldGeneration

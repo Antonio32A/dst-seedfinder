@@ -260,15 +260,15 @@ def laid_of(+ctx: Ctx) -> Chan(Note):
     case Ctx{_, _, _, _, _, _, _, _, _, +laid, _}:
       laid
 
-def generated_in(+build: Builds.Build, caves: Bool, +windows: Bool, +seed: U32, final: GenJob.Final) -> Result<&1, &1, U32 & String, FilterWorld.Loaded>:
+def generated_in(+build: Builds.Build, caves: Bool, +windows: Bool, +needs: Rules.Needs, +seed: U32, final: GenJob.Final) -> Result<&1, &1, U32 & String, FilterWorld.Loaded>:
   match caves:
     case True{}:
-      Done{FilterWorld.Generated{SaveData.cave_world(build, seed, windows, final), 0}}
+      Done{FilterWorld.Generated{SaveData.cave_world_for(build, seed, windows, needs, final), 0}}
     case False{}:
-      Done{FilterWorld.Generated{SaveData.world(build, seed, windows, final), 0}}
+      Done{FilterWorld.Generated{SaveData.world_for(build, seed, windows, needs, final), 0}}
 
 def generated_world(+build: Builds.Build, +config: ShardSearch.Search, +seed: U32, final: GenJob.Final) -> Result<&1, &1, U32 & String, FilterWorld.Loaded>:
-  generated_in(build, ShardSearch.caves(config), ShardSearch.windows(config), seed, final)
+  generated_in(build, ShardSearch.caves(config), ShardSearch.windows(config), ShardSearch.needs(config), seed, final)
 
 def world_verdict(+build: Builds.Build, job: GenJob.Job, +config: ShardSearch.Search, +seed: U32) -> SearchWorlds.Verdict:
   match job:
