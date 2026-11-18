@@ -203,66 +203,120 @@ def drawn(+build: Builds.Build, got: U32 & Pcg.Rng, g: Grid.Grid, +c: OceanState
     case Dist{+tile, +threshold, +units}:
       below(build, (r < threshold : U32), g, c, Dist{tile, threshold, units}, x, y, ids, rng, ents, topo, events)
 
-def keep_cell(hit: Bool, +p: U32, acc: List<&2, U32>) -> List<&2, U32>:
-  match hit:
+def lo_after(cand: Bool, +lo: U32) -> U32:
+  match cand:
     case True{}:
-      p <> acc
+      Pcg.step_lo(lo)
     case False{}:
-      acc
+      lo
 
-def cand_cols(n: Nat, got: Array<U32> & U32, +i: U32, +x: U32, +y: U32, +tile: U32, acc: List<&2, U32>) -> Array<U32> & List<&2, U32>:
+def hi_after(cand: Bool, +hi: U32, +lo: U32) -> U32:
+  match cand:
+    case True{}:
+      Pcg.step_hi(hi, lo)
+    case False{}:
+      hi
+
+def below_threshold(cand: Bool, +hi: U32, +lo: U32, +threshold: U32) -> Bool:
+  match cand:
+    case True{}:
+      (Pcg.output(hi, lo) < threshold : U32)
+    case False{}:
+      False{}
+
+# Where a row scan stopped: the next cell to scan and the cells left in the row, the RNG words, and whether it
+# stopped at a hit (the cell before `at`) rather than the row's end.
+type Seek is Data:
+  Seek{at: U32, left: U32, hi: U32, lo: U32, hit: Bool}
+
+# The row scan from cell `at` (got holds its value) over `n` cells: each cell holding `tile` takes one draw, and the
+# scan stops after the first draw below the threshold (`hit`).
+def seek_cols(n: Nat, +hit: Bool, got: Array<U32> & U32, +at: U32, +hi: U32, +lo: U32, +tile: U32, +threshold: U32) -> Array<U32> & Seek:
   match n:
     case 0n:
       (cells, _) = got
-      (cells, acc)
+      (cells, Seek{at, 0, hi, lo, hit})
     case 1n+p:
-      (cells, +v) = got
-      +next = keep_cell(U32.is_eq(Grid.tile_of(v), tile), (x .|. (y << 16n) : U32), acc)
-      cand_cols(p, cells[(i + 1 : U32)], (i + 1 : U32), (x + 1 : U32), y, tile, next)
+      match hit:
+        case True{}:
+          (cells, _) = got
+          (cells, Seek{at, (U32.from_nat(p) + 1 : U32), hi, lo, True{}})
+        case False{}:
+          (cells, +v) = got
+          +cand = U32.is_eq(Grid.tile_of(v), tile)
+          seek_cols(p, below_threshold(cand, hi, lo, threshold), cells[(at + 1 : U32)], (at + 1 : U32), hi_after(cand, hi, lo), lo_after(cand, lo), tile, threshold)
 
-def cand_rows(n: Nat, got: Array<U32> & List<&2, U32>, +cols: Nat, +w: U32, +edge: U32, +y: U32, +tile: U32) -> Array<U32> & List<&2, U32>:
-  match n:
-    case 0n:
-      got
-    case 1n+p:
-      (cells, acc) = got
-      +start = (y * w + edge : U32)
-      cand_rows(p, cand_cols(cols, cells[start], start, edge, y, tile, acc), cols, w, edge, (y + 1 : U32), tile)
+# The distribute scan's position: the row y, the next cell and the cells left in that row, and whether the window
+# is done.
+type Scan is Data:
+  Scan{y: U32, at: U32, left: U32, done: Bool}
 
-def candidates_done(got: Array<U32> & List<&2, U32>, +w: U32, +h: U32) -> Grid.Grid & List<&2, U32>:
-  (cells, acc) = got
-  (Grid.Grid{cells, w, h}, List.reverse(&2, U32, acc))
+# The window's columns and last row.
+type DistWindow is Data:
+  DistWindow{edge: U32, cols: U32, last: U32}
 
-# The tiles of the distribute window (edge .. size - edge - 1) holding `tile`, row-major, packed x | y << 16.
-def candidates(g: Grid.Grid, +edge: U32, +tile: U32) -> Grid.Grid & List<&2, U32>:
+def row_start(+y: U32, +w: U32, +win: DistWindow) -> Scan:
+  match win:
+    case DistWindow{+edge, +cols, +last}:
+      Scan{y, (y * w + edge : U32), cols, (y > last : U32)}
+
+def sought(+build: Builds.Build, got: Array<U32> & Seek, +w: U32, +h: U32, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>, +c: OceanState.Ctx, +d: Dist, +y: U32, +win: DistWindow) -> OceanState.Sea & Scan:
+  (cells, sk) = got
+  match sk:
+    case Seek{+at, +left, +hi, +lo, +hit}:
+      match hit:
+        case True{}:
+          +x = ((at - 1 : U32) - y * w : U32)
+          (below(build, True{}, Grid.Grid{cells, w, h}, c, d, x, y, ids, Pcg.Rng{hi, lo}, ents, topo, events), Scan{y, at, left, False{}})
+        case False{}:
+          (OceanState.Sea{Grid.Grid{cells, w, h}, ids, Pcg.Rng{hi, lo}, ents, topo, events}, row_start((y + 1 : U32), w, win))
+
+def dist_cells(+build: Builds.Build, g: Grid.Grid, ids: Grid.Grid, +hi: U32, +lo: U32, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>, +sc: Scan, +c: OceanState.Ctx, +d: Dist, +win: DistWindow) -> OceanState.Sea & Scan:
   match g:
     case Grid.Grid{cells, +w, +h}:
-      +cols = U32.to_nat((w - 2 * edge : U32))
-      candidates_done(cand_rows(U32.to_nat((h - 2 * edge : U32)), (cells, Nil{}), cols, w, edge, edge, tile), w, h)
+      match sc:
+        case Scan{+y, +at, +left, _}:
+          match d:
+            case Dist{+tile, +threshold, +units}:
+              sought(build, seek_cols(U32.to_nat(left), False{}, cells[at], at, hi, lo, tile, threshold), w, h, ids, ents, topo, events, c, Dist{tile, threshold, units}, y, win)
 
-def dist_at(+build: Builds.Build, +c: OceanState.Ctx, +d: Dist, +p: U32, s: OceanState.Sea) -> OceanState.Sea:
+def dist_step(+build: Builds.Build, s: OceanState.Sea, +sc: Scan, +c: OceanState.Ctx, +d: Dist, +win: DistWindow) -> OceanState.Sea & Scan:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      drawn(build, Pcg.draw(rng), g, c, d, (p .&. 65535 : U32), (p >> 16n : U32), ids, ents, topo, events)
+      match rng:
+        case Pcg.Rng{+hi, +lo}:
+          dist_cells(build, g, ids, hi, lo, ents, topo, events, sc, c, d, win)
 
-def dist_list(+build: Builds.Build, ps: List<&2, U32>, s: OceanState.Sea, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
-  match ps:
-    case Nil{}:
+def dist_loop(+build: Builds.Build, n: Nat, got: OceanState.Sea & Scan, +c: OceanState.Ctx, +d: Dist, +win: DistWindow) -> OceanState.Sea:
+  match n:
+    case 0n:
+      (s, _) = got
       s
-    case Con{+p, rest}:
-      dist_list(build, rest, dist_at(build, c, d, p, s), c, d)
+    case 1n+p:
+      (s, +sc) = got
+      match sc:
+        case Scan{+y, +at, +left, +done}:
+          match done:
+            case True{}:
+              s
+            case False{}:
+              dist_loop(build, p, dist_step(build, s, Scan{y, at, left, done}, c, d, win), c, d, win)
 
-def dist_found(+build: Builds.Build, got: Grid.Grid & List<&2, U32>, ids: Grid.Grid, +rng: Pcg.Rng, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
-  (g, +ps) = got
-  dist_list(build, ps, OceanState.Sea{g, ids, rng, ents, topo, events}, c, d)
+def dist_start(+build: Builds.Build, +w: U32, +h: U32, s: OceanState.Sea, +c: OceanState.Ctx, +d: Dist) -> OceanState.Sea:
+  +edge = OceanPostData.ocean_population_edge_dist(build)
+  +cols = (w - 2 * edge : U32)
+  +rows = (h - 2 * edge : U32)
+  +win = {DistWindow{edge, cols, (h - edge - 1 : U32)} : DistWindow}
+  dist_loop(build, U32.to_nat((rows * (cols + 1) + 1 : U32)), (s, Scan{edge, (edge * w + edge : U32), cols, U32.is_zero(rows)}), c, d, win)
 
-# The distribute scan: y = edge .. height - edge - 1, x = edge .. width - edge - 1, row-major; ReserveTile does not
-# change tiles, so the tiles to draw for are found first.
+# The distribute scan: y = edge .. height - edge - 1, x = edge .. width - edge - 1, row-major, one draw per tile
+# holding the room's tile; ReserveTile does not change tiles, so the scan reads the map the draws update.
 def distribute(+build: Builds.Build, +c: OceanState.Ctx, +d: Dist, s: OceanState.Sea) -> OceanState.Sea:
-  match d s:
-    case Dist{+tile, +threshold, +units} OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      found = candidates(g, OceanPostData.ocean_population_edge_dist(build), tile)
-      dist_found(build, found, ids, rng, ents, topo, events, c, Dist{tile, threshold, units})
+  match s:
+    case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+      match g:
+        case Grid.Grid{cells, +w, +h}:
+          dist_start(build, w, h, OceanState.Sea{Grid.Grid{cells, w, h}, ids, rng, ents, topo, events}, c, d)
 
 def distribute_if(+build: Builds.Build, on: Bool, +c: OceanState.Ctx, +d: Dist, s: OceanState.Sea) -> OceanState.Sea:
   match on:

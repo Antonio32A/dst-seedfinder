@@ -42,6 +42,40 @@ def filter_loop(ents: List<&2, Ent>, +prefab: U32, acc: List<&2, Ent>) -> List<&
 def of_prefab(+ents: List<&2, Ent>, +prefab: U32) -> List<&2, Ent>:
   filter_loop(ents, prefab, Nil{})
 
+def has_loop(ents: List<&2, Ent>, +found: Bool, +prefab: U32) -> Bool:
+  match ents:
+    case Nil{}:
+      found
+    case Con{+e, rest}:
+      match found:
+        case True{}:
+          True{}
+        case False{}:
+          has_loop(rest, U32.is_eq(prefab_of(e), prefab), prefab)
+
+# Whether savedata.ents[prefab] has an entry (the walk stops at the first).
+def has(+ents: List<&2, Ent>, +prefab: U32) -> Bool:
+  has_loop(ents, False{}, prefab)
+
+def is_member(xs: List<&2, U32>, +v: U32, +found: Bool) -> Bool:
+  match xs:
+    case Nil{}:
+      found
+    case Con{+x, rest}:
+      is_member(rest, v, found || U32.is_eq(x, v))
+
+def any_loop(ents: List<&2, Ent>, +prefabs: List<&2, U32>, acc: List<&2, Ent>) -> List<&2, Ent>:
+  match ents:
+    case Nil{}:
+      List.reverse(&2, Ent, acc)
+    case Con{+e, rest}:
+      any_loop(rest, prefabs, keep_if(is_member(prefabs, prefab_of(e), False{}), e, acc))
+
+# The entities whose prefab is one of `prefabs`, in list order (newest first), in one walk: of_prefab of the result
+# gives of_prefab of the list for each of them.
+def of_any(+ents: List<&2, Ent>, +prefabs: List<&2, U32>) -> List<&2, Ent>:
+  any_loop(ents, prefabs, Nil{})
+
 def count_loop(ents: List<&2, Ent>, +prefab: U32, +n: U32) -> U32:
   match ents:
     case Nil{}:

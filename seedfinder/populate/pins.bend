@@ -160,8 +160,15 @@ def layout_areas() -> List<&2, Pin>:
     Pin{138, 3760957056}
   ]
 
+# ocean/bunches.bend: the bunch prefab closure of bunches.lua (24), whose results extract_ocean.lua lists for the data and
+# for gen_ocean.py's spawner check.
+def bunch_prefabs() -> List<&2, Pin>:
+  [
+    Pin{24, 3510559995}
+  ]
+
 def ported() -> List<&2, Pin>:
-  List.append(&2, Pin, room_counts(), layout_areas())
+  List.concat(&2, Pin, [room_counts(), layout_areas(), bunch_prefabs()])
 
 def every_ported_closure_is_pinned(+build: Builds.Build) -> Bool:
   all_pinned(build, U32.to_nat(Closures.closure_count(build)), ported(), 0)

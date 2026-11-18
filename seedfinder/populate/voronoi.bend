@@ -324,7 +324,7 @@ def populate_points(+build: Builds.Build, p: Points.Picked, +c: PopulateState.Ct
       +alive = Bool.not(List.is_empty(&2, Points.Pt, kept))
       +on = PopulateNodes.has_distribute_percent(build, s, node) && PopulateNodes.has_distribute(build, s, node)
       +noted = points_noted(PopulateState.tracing_of(c), PopulateState.EPoints{node, n, before, rng, shuffled, kept}, events)
-      distribute(build, on, place_extras(PopulateNodes.extra_prefabs(build, s, node), counted(build, PopulateNodes.has_countprefabs(build, s, node),
+      distribute(build, on, place_extras(PopulateNodes.extra_prefabs(build, s, PopulateState.slots_of(c), node), counted(build, PopulateNodes.has_countprefabs(build, s, node),
         Walk{PopulateState.Land{g, rng, ents, noted}, kept, alive}, c, node), c), c, node)
 
 def populate_body(+build: Builds.Build, skip: Bool, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32) -> PopulateState.Land:
@@ -334,7 +334,7 @@ def populate_body(+build: Builds.Build, skip: Bool, l: PopulateState.Land, +c: P
     case False{}:
       match l:
         case PopulateState.Land{g, +rng, +ents, +events}:
-          populate_points(build, Points.points_for_site(PopulateState.windows_of(c), PopulateState.sites_of(c), PopulateState.site_of(c, node), g, rng), c, node, rng, ents, events)
+          populate_points(build, Points.points_for_site(PopulateState.windows_of(c), PopulateState.tracing_of(c), PopulateState.sites_of(c), PopulateState.site_of(c, node), g, rng), c, node, rng, ents, events)
 
 def contentless(+build: Builds.Build, +s: StoryGraph.St, +node: U32) -> Bool:
   +none = Bool.not(PopulateNodes.has_countprefabs(build, s, node)) && Bool.not(PopulateNodes.has_distribute(build, s, node))

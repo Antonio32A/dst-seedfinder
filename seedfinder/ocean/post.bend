@@ -37,13 +37,20 @@ def swapped_done(+build: Builds.Build, got: List<&2, OceanEnts.Ent> & List<&2, O
 def swap_wormholes(+build: Builds.Build, +wormhole: U32, +ents: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent>:
   swapped_done(build, OceanEnts.split(ents, OceanPostData.wormhole_marker(build)), wormhole)
 
+def moved_if(present: Bool, +ents: List<&2, OceanEnts.Ent>, +from: U32, +to: U32) -> List<&2, OceanEnts.Ent>:
+  match present:
+    case True{}:
+      OceanEnts.moved(ents, from, to)
+    case False{}:
+      ents
+
 def customization_loop(+build: Builds.Build, n: Nat, +ents: List<&2, OceanEnts.Ent>, +i: U32) -> List<&2, OceanEnts.Ent>:
   match n:
     case 0n:
       ents
     case 1n+p:
       +row = OceanPostData.customization_proxies(build, i)
-      customization_loop(build, p, OceanEnts.moved(ents, Blob.at(row, 0), Blob.at(row, 1)), (i + 1 : U32))
+      customization_loop(build, p, moved_if(OceanEnts.has(ents, Blob.at(row, 0)), ents, Blob.at(row, 0), Blob.at(row, 1)), (i + 1 : U32))
 
 def chosen(got: U32 & Pcg.Rng, +row: List<&2, U32>, +e: OceanEnts.Ent, +acc: List<&2, OceanEnts.Ent>) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
   (+k, rng) = got
@@ -61,6 +68,13 @@ def randomized(got: List<&2, OceanEnts.Ent> & List<&2, OceanEnts.Ent>, +row: Lis
   (kept, proxies) = got
   random_loop(proxies, row, (kept, rng))
 
+def randomized_if(present: Bool, +ents: List<&2, OceanEnts.Ent>, +row: List<&2, U32>, rng: Pcg.Rng) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
+  match present:
+    case True{}:
+      randomized(OceanEnts.split(ents, Blob.at(row, 0)), row, rng)
+    case False{}:
+      (ents, rng)
+
 def randomization_loop(+build: Builds.Build, n: Nat, got: List<&2, OceanEnts.Ent> & Pcg.Rng, +i: U32) -> List<&2, OceanEnts.Ent> & Pcg.Rng:
   match n:
     case 0n:
@@ -68,12 +82,19 @@ def randomization_loop(+build: Builds.Build, n: Nat, got: List<&2, OceanEnts.Ent
     case 1n+p:
       (+ents, rng) = got
       +row = OceanPostData.randomization_proxies(build, i)
-      randomization_loop(build, p, randomized(OceanEnts.split(ents, Blob.at(row, 0)), row, rng), (i + 1 : U32))
+      randomization_loop(build, p, randomized_if(OceanEnts.has(ents, Blob.at(row, 0)), ents, row, rng), (i + 1 : U32))
+
+def wormholes_if(on: Bool, +ents: List<&2, OceanEnts.Ent>, +wormhole: U32) -> List<&2, OceanEnts.Ent>:
+  match on:
+    case True{}:
+      OceanEnts.of_prefab(ents, wormhole)
+    case False{}:
+      Nil{}
 
 def post_done(got: List<&2, OceanEnts.Ent> & Pcg.Rng, +c: OceanState.Ctx, +wormhole: U32, g: Grid.Grid, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   (+ents, rng) = got
   s = {OceanState.Sea{g, ids, rng, ents, topo, events} : OceanState.Sea}
-  OceanState.noted(c, OceanState.digest(c, s, 8), OceanState.EWormholes{OceanEnts.of_prefab(ents, wormhole)})
+  OceanState.noted(c, OceanState.digest(c, s, 8), OceanState.EWormholes{wormholes_if(OceanState.tracing_of(c), ents, wormhole)})
 
 # Graph:GlobalPostPopulate(entities, width, height) for a level whose wormhole_prefab is `wormhole`.
 def post_populate(+build: Builds.Build, +c: OceanState.Ctx, +wormhole: U32, s: OceanState.Sea) -> OceanState.Sea:

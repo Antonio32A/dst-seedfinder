@@ -153,7 +153,7 @@ def picked_translated(+build: Builds.Build, picked: Points.Picked, placed: List<
 def automaton_ran(+build: Builds.Build, ran: CaveAutomaton.Painted, +windows: Bool, +sites: Points.Sites, +vertex: U32, placed: List<&2, Placed>, +room: U32, +site: TileWorld.Site) -> Ca:
   match ran:
     case CaveAutomaton.Painted{g, rng}:
-      picked_translated(build, Points.points_for_site(windows, sites, vertex, g, rng), placed, room, site)
+      picked_translated(build, Points.points_for_site(windows, False{}, sites, vertex, g, rng), placed, room, site)
 
 # RUNCA.GeneratorFunction on one node: WorldSim:RunCA, GetPointsForSite (one more shuffle of the site's points) and the
 # translate loop over what it returns, then the centroid layer.

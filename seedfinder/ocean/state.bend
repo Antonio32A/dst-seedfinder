@@ -84,6 +84,17 @@ def flags_digest(g: Grid.Grid) -> Grid.Grid & Grid.Hash:
     case Grid.Grid{cells, +w, +h}:
       flags_done(flags_loop(U32.to_nat((w * h : U32)), cells[0], 0, Grid.header(w, h)), w, h)
 
+def length_if(on: Bool, +ents: List<&2, OceanEnts.Ent>) -> U32:
+  match on:
+    case True{}:
+      U32.from_nat(List.length(&2, OceanEnts.Ent, ents))
+    case False{}:
+      0
+
+# The entity count an event records, counted only when tracing.
+def traced_count(+c: Ctx, +ents: List<&2, OceanEnts.Ent>) -> U32:
+  length_if(tracing_of(c), ents)
+
 def noted_if(on: Bool, s: Sea, +ev: Ev) -> Sea:
   match on:
     case False{}:

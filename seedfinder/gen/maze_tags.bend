@@ -60,25 +60,40 @@ def nodes_loop(+build: Builds.Build, n: Nat, +s: StoryGraph.St, +tag: String, +g
 def nodes(+build: Builds.Build, +s: StoryGraph.St, +tag: String, +g: U32) -> List<&2, U32>:
   nodes_loop(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_globals())), s, tag, g, 0, Nil{})
 
-def link_add(hit: Bool, +a: U32, +b: U32, +acc: List<&2, Link>) -> List<&2, Link>:
+def link_kept(hit: Bool, +l: Link, +acc: List<&2, Link>) -> List<&2, Link>:
   match hit:
     case True{}:
-      Link{a, b} <> acc
+      l <> acc
     case False{}:
       acc
 
-def edges_loop(n: Nat, +s: StoryGraph.St, +node: U32, +e: U32, +acc: List<&2, Link>) -> List<&2, Link>:
+def links_loop(n: Nat, +s: StoryGraph.St, +e: U32, +acc: List<&2, Link>) -> List<&2, Link>:
   match n:
     case 0n:
-      List.reverse(&2, Link, acc)
+      acc
     case 1n+p:
-      +a = StoryGraph.get(s, (StoryGraph.edge_base() + (e * 2 : U32) : U32))
-      +b = StoryGraph.get(s, ((StoryGraph.edge_base() + (e * 2 : U32) : U32) + 1 : U32))
-      edges_loop(p, s, node, (e + 1 : U32), link_add(U32.is_eq(a, node) || U32.is_eq(b, node), a, b, acc))
+      +slot = (StoryGraph.edge_base() + (e * 2 : U32) : U32)
+      links_loop(p, s, (e + 1 : U32), Link{StoryGraph.get(s, slot), StoryGraph.get(s, (slot + 1 : U32))} <> acc)
 
-# pairs(node.edges): the edges touching the node in creation order.
-def edges(+s: StoryGraph.St, +node: U32) -> List<&2, Link>:
-  edges_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_edges())), s, node, 0, Nil{})
+# Every edge of the story, newest first.
+def links(+s: StoryGraph.St) -> List<&2, Link>:
+  links_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_edges())), s, 0, Nil{})
+
+def touches(+l: Link, +node: U32) -> Bool:
+  match l:
+    case Link{+a, +b}:
+      U32.is_eq(a, node) || U32.is_eq(b, node)
+
+def edges_loop(links: List<&2, Link>, +node: U32, +acc: List<&2, Link>) -> List<&2, Link>:
+  match links:
+    case Nil{}:
+      acc
+    case Con{+l, rest}:
+      edges_loop(rest, node, link_kept(touches(l, node), l, acc))
+
+# pairs(node.edges): the edges touching the node in creation order, picked from the story's `links` (newest first).
+def edges(links: List<&2, Link>, +node: U32) -> List<&2, Link>:
+  edges_loop(links, node, Nil{})
 
 # node.data.type ~= NODE_TYPE.Blank
 def solid(+s: StoryGraph.St, +node: U32) -> Bool:

@@ -22,6 +22,10 @@ def snake(name):
 
 def main():
     d = blob.sidecar("ocean.json")
+    spawners = {b["name"] for b in d["bunches"]}
+    items = {b["prefab"] for b in d["bunches"] if b.get("prefab")} | {r for b in d["bunches"] for r in b.get("prefab_results") or []}
+    assert not spawners & items, (f"bunch items {sorted(spawners & items)} are spawner prefabs: ocean/bunches.bend collects "
+                                  "every kind's spawners in one walk before any kind places its items")
     m = blob.Module("ocean", "scripts/gen/gen_ocean.py", "Bunch spawners, ocean gen config, noise tile functions.")
     bunches = []
     for b in d["bunches"]:

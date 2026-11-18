@@ -54,30 +54,44 @@ def is_forest_start(+s: StoryGraph.St, +n: U32) -> Bool:
 def tile(+s: StoryGraph.St, +n: U32) -> U32:
   StoryGraph.nf(s, n, StoryGraph.f_value())
 
-def extra_kind(mine: Bool, +s: StoryGraph.St, +slot: U32, +tail: List<&2, U32>) -> List<&2, U32>:
-  match mine:
-    case True{}:
-      StoryGraph.get(s, (slot + 2 : U32)) <> tail
-    case False{}:
-      tail
+# A set piece slot (owner node, name, layout) or an extra slot (owner node, kind, value) of the story.
+type Slot is Data:
+  Slot{owner: U32, a: U32, b: U32}
 
-def extra_owned(owned: Bool, +s: StoryGraph.St, +slot: U32, +kind: U32, +tail: List<&2, U32>) -> List<&2, U32>:
-  match owned:
-    case True{}:
-      extra_kind(U32.is_eq(StoryGraph.get(s, (slot + 1 : U32)), kind), s, slot, tail)
-    case False{}:
-      tail
+# The story's set piece and extra slots, read once for the land population.
+type Slots is Data:
+  Slots{pieces: List<&2, Slot>, extras: List<&2, Slot>}
 
-def extras_loop(n: Nat, +s: StoryGraph.St, +node: U32, +kind: U32, +k: U32) -> List<&2, U32>:
+def slot_list(n: Nat, +s: StoryGraph.St, +base: U32, +k: U32) -> List<&2, Slot>:
   match n:
     case 0n:
       Nil{}
     case 1n+p:
-      +slot = (StoryGraph.extra_base() + (k * 3 : U32) : U32)
-      extra_owned(U32.is_eq(StoryGraph.get(s, slot), node), s, slot, kind, extras_loop(p, s, node, kind, (k + 1 : U32)))
+      +slot = (base + (k * 3 : U32) : U32)
+      Slot{StoryGraph.get(s, slot), StoryGraph.get(s, (slot + 1 : U32)), StoryGraph.get(s, (slot + 2 : U32))} <> slot_list(p, s, base, (k + 1 : U32))
 
-def extras(+s: StoryGraph.St, +node: U32, +kind: U32) -> List<&2, U32>:
-  extras_loop(U32.to_nat(StoryGraph.get(s, StoryGraph.s_extras())), s, node, kind, 0)
+def slots(+s: StoryGraph.St) -> Slots:
+  Slots{slot_list(U32.to_nat(StoryGraph.get(s, StoryGraph.s_pieces())), s, StoryGraph.piece_base(), 0),
+    slot_list(U32.to_nat(StoryGraph.get(s, StoryGraph.s_extras())), s, StoryGraph.extra_base(), 0)}
+
+def extra_slot(mine: Bool, +value: U32, +tail: List<&2, U32>) -> List<&2, U32>:
+  match mine:
+    case True{}:
+      value <> tail
+    case False{}:
+      tail
+
+def extras_in(xs: List<&2, Slot>, +node: U32, +kind: U32) -> List<&2, U32>:
+  match xs:
+    case Nil{}:
+      Nil{}
+    case Con{Slot{+owner, +k, +value}, rest}:
+      extra_slot(U32.is_eq(owner, node) && U32.is_eq(k, kind), value, extras_in(rest, node, kind))
+
+def extras(+sl: Slots, +node: U32, +kind: U32) -> List<&2, U32>:
+  match sl:
+    case Slots{_, +xs}:
+      extras_in(xs, node, kind)
 
 def cave_tag_prefabs(+build: Builds.Build, tags: List<&2, U32>) -> List<&2, U32>:
   match tags:
@@ -95,12 +109,12 @@ def tag_items(+build: Builds.Build, caves: Bool, items: List<&2, U32>) -> List<&
 
 # terrain_contents_extra.prefabs (ipairs order): prefab string ids (a caves story records the map tag, whose item is the
 # tag's value).
-def extra_prefabs(+build: Builds.Build, +s: StoryGraph.St, +node: U32) -> List<&2, U32>:
-  tag_items(build, is_caves(s, node), extras(s, node, 3))
+def extra_prefabs(+build: Builds.Build, +s: StoryGraph.St, +sl: Slots, +node: U32) -> List<&2, U32>:
+  tag_items(build, is_caves(s, node), extras(sl, node, 3))
 
 # terrain_contents_extra.static_layouts (insertion order): layout indices.
-def extra_layouts(+s: StoryGraph.St, +node: U32) -> List<&2, U32>:
-  extras(s, node, 4)
+def extra_layouts(+sl: Slots, +node: U32) -> List<&2, U32>:
+  extras(sl, node, 4)
 
 # One countstaticlayouts entry: key string id, value kind (0 integer, 1 closure) and value, layout index.
 type Static is Data:
@@ -134,24 +148,25 @@ def piece_static(+build: Builds.Build, resolved: Bool, +name: U32, +layout: U32)
     case False{}:
       named_layout(build, cave_layout_scan(build, U32.to_nat(Layouts.layout_count(build)), 0, CaveCatalog.key_hash(build, name)))
 
-def piece_owned(+build: Builds.Build, owned: Bool, +s: StoryGraph.St, +slot: U32, +tail: List<&2, Static>) -> List<&2, Static>:
+def piece_slot(+build: Builds.Build, owned: Bool, +name: U32, +layout: U32, +tail: List<&2, Static>) -> List<&2, Static>:
   match owned:
     case True{}:
-      piece_static(build, U32.is_ne(StoryGraph.get(s, (slot + 2 : U32)), StorySetpieces.cave_layout_unresolved()), StoryGraph.get(s, (slot + 1 : U32)), StoryGraph.get(s, (slot + 2 : U32))) <> tail
+      piece_static(build, U32.is_ne(layout, StorySetpieces.cave_layout_unresolved()), name, layout) <> tail
     case False{}:
       tail
 
-def pieces_loop(+build: Builds.Build, n: Nat, +s: StoryGraph.St, +node: U32, +k: U32) -> List<&2, Static>:
-  match n:
-    case 0n:
+def pieces_in(+build: Builds.Build, xs: List<&2, Slot>, +node: U32) -> List<&2, Static>:
+  match xs:
+    case Nil{}:
       Nil{}
-    case 1n+p:
-      +slot = (StoryGraph.piece_base() + (k * 3 : U32) : U32)
-      piece_owned(build, U32.is_eq(StoryGraph.get(s, slot), node), s, slot, pieces_loop(build, p, s, node, (k + 1 : U32)))
+    case Con{Slot{+owner, +name, +layout}, rest}:
+      piece_slot(build, U32.is_eq(owner, node), name, layout, pieces_in(build, rest, node))
 
 # The set pieces InsertAdditionalSetPieces put into the node's countstaticlayouts, in insertion order.
-def pieces(+build: Builds.Build, +s: StoryGraph.St, +node: U32) -> List<&2, Static>:
-  pieces_loop(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_pieces())), s, node, 0)
+def pieces(+build: Builds.Build, +sl: Slots, +node: U32) -> List<&2, Static>:
+  match sl:
+    case Slots{+xs, _}:
+      pieces_in(build, xs, node)
 
 def key_index(xs: List<&2, Static>, found: Bool, +key: U32, +i: U32) -> U32:
   match xs:
@@ -249,8 +264,8 @@ def statics_of_node(+build: Builds.Build, start: Bool, +s: StoryGraph.St, +node:
       plain_or_pieces(build, List.is_empty(&2, Static, ps), base_statics(build, row(build, s, node)), ps, row(build, s, node))
 
 # pairs(terrain_contents.countstaticlayouts) of a node with contents (AddStartingSetPiece's fresh table on START).
-def statics(+build: Builds.Build, +s: StoryGraph.St, +node: U32) -> List<&2, Static>:
-  statics_of_node(build, is_start(s, node), s, node, pieces(build, s, node))
+def statics(+build: Builds.Build, +s: StoryGraph.St, +sl: Slots, +node: U32) -> List<&2, Static>:
+  statics_of_node(build, is_start(s, node), s, node, pieces(build, sl, node))
 
 # One countprefabs / prefabdata entry: key string id, value kind and value.
 type Count is Data:

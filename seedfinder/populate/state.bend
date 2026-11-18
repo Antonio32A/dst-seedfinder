@@ -7,6 +7,7 @@ import ../storygen/graph.bend as StoryGraph
 import ./entities.bend as Entities
 import ./setpiece.bend as PopulateSetpiece
 import ../f64/repr.bend as F64Repr
+import ./nodes.bend as PopulateNodes
 
 # The land population state of one attempt (ConvertGround to the end of PopulateVoronoi) and what it runs on.
 
@@ -14,7 +15,7 @@ import ../f64/repr.bend as F64Repr
 # when it has none) and the map size; `tracing` records the grid digests for the trace stage, `pieces` the layouts
 # placed (EPiece).
 type Ctx is Data:
-  Ctx{windows: Bool, swaps: U32, sites: Points.Sites, story: StoryGraph.St, site_of: TileTable.Tree<U32>, width: U32, height: U32, tracing: Bool, tiles_rng: Pcg.Rng, pieces: Bool}
+  Ctx{windows: Bool, swaps: U32, sites: Points.Sites, story: StoryGraph.St, site_of: TileTable.Tree<U32>, width: U32, height: U32, tracing: Bool, tiles_rng: Pcg.Rng, pieces: Bool, slots: PopulateNodes.Slots}
 
 # A layout object as the trace reports it: prefab string id, x, y.
 type Obj is Data:
@@ -40,37 +41,37 @@ type Land is Type:
 
 def site_of(+c: Ctx, +node: U32) -> U32:
   match c:
-    case Ctx{_, _, _, _, +site_of, _, _, _, _, _}:
+    case Ctx{_, _, _, _, +site_of, _, _, _, _, _, _}:
       TileTable.at(~U32, site_of, node)
 
 def story_of(+c: Ctx) -> StoryGraph.St:
   match c:
-    case Ctx{_, _, _, +story, _, _, _, _, _, _}:
+    case Ctx{_, _, _, +story, _, _, _, _, _, _, _}:
       story
 
 def sites_of(+c: Ctx) -> Points.Sites:
   match c:
-    case Ctx{_, _, +sites, _, _, _, _, _, _, _}:
+    case Ctx{_, _, +sites, _, _, _, _, _, _, _, _}:
       sites
 
 def windows_of(+c: Ctx) -> Bool:
   match c:
-    case Ctx{+windows, _, _, _, _, _, _, _, _, _}:
+    case Ctx{+windows, _, _, _, _, _, _, _, _, _, _}:
       windows
 
 def swaps_of(+c: Ctx) -> U32:
   match c:
-    case Ctx{_, +swaps, _, _, _, _, _, _, _, _}:
+    case Ctx{_, +swaps, _, _, _, _, _, _, _, _, _}:
       swaps
 
 def width_of(+c: Ctx) -> U32:
   match c:
-    case Ctx{_, _, _, _, _, +width, _, _, _, _}:
+    case Ctx{_, _, _, _, _, +width, _, _, _, _, _}:
       width
 
 def height_of(+c: Ctx) -> U32:
   match c:
-    case Ctx{_, _, _, _, _, _, +height, _, _, _}:
+    case Ctx{_, _, _, _, _, _, +height, _, _, _, _}:
       height
 
 def rng_of(l: Land) -> Land & Pcg.Rng:
@@ -90,12 +91,17 @@ def added(l: Land, +e: Entities.Ent) -> Land:
 
 def pieces_of(+c: Ctx) -> Bool:
   match c:
-    case Ctx{_, _, _, _, _, _, _, _, _, +pieces}:
+    case Ctx{_, _, _, _, _, _, _, _, _, +pieces, _}:
       pieces
+
+def slots_of(+c: Ctx) -> PopulateNodes.Slots:
+  match c:
+    case Ctx{_, _, _, _, _, _, _, _, _, _, +slots}:
+      slots
 
 def tracing_of(+c: Ctx) -> Bool:
   match c:
-    case Ctx{_, _, _, _, _, _, _, +tracing, _, _}:
+    case Ctx{_, _, _, _, _, _, _, +tracing, _, _, _}:
       tracing
 
 def entity_events(tracing: Bool, +e: Entities.Ent, +events: List<&2, Ev>) -> List<&2, Ev>:
@@ -129,7 +135,7 @@ def digest_of(got: Grid.Grid & Grid.Hash, +tiles: Grid.Hash, +at: U32, +rng: Pcg
 def digest_tiles(got: Grid.Grid & Grid.Hash, +c: Ctx, +at: U32, +rng: Pcg.Rng, +ents: List<&2, Entities.Ent>, +events: List<&2, Ev>) -> Land:
   (g, +tiles) = got
   match c:
-    case Ctx{_, _, _, _, _, _, _, _, +tiles_rng, _}:
+    case Ctx{_, _, _, _, _, _, _, _, +tiles_rng, _, _}:
       digest_of(Grid.flags_digest(g, tiles_rng), tiles, at, rng, ents, events)
 
 def digest_if(on: Bool, l: Land, +c: Ctx, +at: U32) -> Land:
@@ -145,14 +151,14 @@ def digest_if(on: Bool, l: Land, +c: Ctx, +at: U32) -> Land:
 # when tracing.
 def digest(l: Land, +c: Ctx, +at: U32) -> Land:
   match c:
-    case Ctx{_, _, _, _, _, _, _, +tracing, _, _}:
+    case Ctx{_, _, _, _, _, _, _, +tracing, _, _, _}:
       digest_if(tracing, l, c, at)
 
 # The same context without the grid digests (production).
 def untraced(+c: Ctx) -> Ctx:
   match c:
-    case Ctx{+windows, +swaps, +sites, +story, +site_of, +width, +height, _, +tiles_rng, +pieces}:
-      Ctx{windows, swaps, sites, story, site_of, width, height, False{}, tiles_rng, pieces}
+    case Ctx{+windows, +swaps, +sites, +story, +site_of, +width, +height, _, +tiles_rng, +pieces, +slots}:
+      Ctx{windows, swaps, sites, story, site_of, width, height, False{}, tiles_rng, pieces, slots}
 
 def pieces_loop(evs: List<&2, Ev>, +acc: List<&2, PopulateSetpiece.Piece>) -> List<&2, PopulateSetpiece.Piece>:
   match evs:

@@ -76,6 +76,15 @@ def draw(s: Rng) -> U32 & Rng:
     case Rng{+hi, +lo}:
       (output(hi, lo), affine(hi, lo, multiplier_hi(), multiplier_lo(), increment_hi(), increment_lo()))
 
+# The state words after one draw (step's record, word by word).
+def step_lo(+lo: U32) -> U32:
+  (lo * multiplier_lo() + increment_lo() : U32)
+
+def step_hi(+hi: U32, +lo: U32) -> U32:
+  +product_lo = (lo * multiplier_lo() : U32)
+  +sum_lo = (product_lo + increment_lo() : U32)
+  (mul_hi(lo, multiplier_lo()) + lo * multiplier_hi() + hi * multiplier_lo() + increment_hi() + carry(sum_lo, product_lo) : U32)
+
 def step(+hi: U32, +lo: U32) -> Rng:
   affine(hi, lo, multiplier_hi(), multiplier_lo(), increment_hi(), increment_lo())
 

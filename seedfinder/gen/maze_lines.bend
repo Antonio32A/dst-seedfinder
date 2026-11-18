@@ -56,7 +56,7 @@ def boundary(nodes: List<&2, U32>, g: Grid.Grid, +e: MazeEnv.Env, +members: List
     case Nil{}:
       g
     case Con{+n, rest}:
-      boundary(rest, boundary_links(MazeTags.edges(MazeEnv.story_of(e), n), g, e, members, pen), e, members, pen)
+      boundary(rest, boundary_links(MazeTags.edges(MazeEnv.links_of(e), n), g, e, members, pen), e, members, pen)
 
 def solid_link(g: Grid.Grid, +e: MazeEnv.Env, +pen: TileLines.Pen, +l: MazeTags.Link) -> Grid.Grid:
   cell_line_if(MazeTags.is_solid(MazeEnv.story_of(e), l), g, e, l, pen)
@@ -70,7 +70,7 @@ def solid_links(links: List<&2, MazeTags.Link>, g: Grid.Grid, +e: MazeEnv.Env, +
 
 # Every edge of the node, drawn when neither end is Blank.
 def solid_edges(g: Grid.Grid, +e: MazeEnv.Env, +node: U32, +pen: TileLines.Pen) -> Grid.Grid:
-  solid_links(MazeTags.edges(MazeEnv.story_of(e), node), g, e, pen)
+  solid_links(MazeTags.edges(MazeEnv.links_of(e), node), g, e, pen)
 
 def entrance_edges(nodes: List<&2, U32>, g: Grid.Grid, +e: MazeEnv.Env, +pen: TileLines.Pen) -> Grid.Grid:
   match nodes:
@@ -112,7 +112,7 @@ def bridge(+build: Builds.Build, entrances: List<&2, U32>, g: Grid.Grid, +e: Maz
     case Nil{}:
       g
     case Con{+n, rest}:
-      bridge(build, rest, bridge_links(build, MazeTags.edges(MazeEnv.story_of(e), n), g, e, n, tile), e, tile)
+      bridge(build, rest, bridge_links(build, MazeTags.edges(MazeEnv.links_of(e), n), g, e, n, tile), e, tile)
 
 # DrawGroundLine(x0, y0, x1, y1, tile, true, true) from tile coordinates.
 def ground_line(g: Grid.Grid, +x0: F64Repr.F64, +y0: F64Repr.F64, +x1: F64Repr.F64, +y1: F64Repr.F64, +tile: U32) -> Grid.Grid:

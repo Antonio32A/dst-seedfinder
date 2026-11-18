@@ -10,6 +10,7 @@ import ./cave_custom.bend as CaveCustom
 import ./maze_env.bend as MazeEnv
 import ./maze_labyrinth.bend as MazeLabyrinth
 import ./maze_meta.bend as MazeMeta
+import ./maze_tags.bend as MazeTags
 import ../data/builds.bend as Builds
 
 # The caves' maze passes of forest_map.Generate, between the custom tile pass and Graph:GlobalPrePopulate: the Labyrinth
@@ -38,7 +39,7 @@ def unmarked(m: Marked) -> Mazed:
       mazed
 
 def run_marked(+build: Builds.Build, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, +placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> Marked:
-  +e = {MazeEnv.Env{Generate.windows_of(c), Generate.swaps_of(c), s, k, w, CaveCustom.world_of(sites)} : MazeEnv.Env}
+  +e = {MazeEnv.Env{Generate.windows_of(c), Generate.swaps_of(c), s, MazeTags.links(s), k, w, CaveCustom.world_of(sites)} : MazeEnv.Env}
   finished(MazeMeta.run(build, e, MazeLabyrinth.run(build, e, MazeEnv.Pass{g, rng, Nil{}, Nil{}})))
 
 def run(+build: Builds.Build, +c: Generate.Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +w: U32, g: Grid.Grid, +rng: Pcg.Rng, +placed: List<&2, CaveCustom.Placed>, +sites: Points.Sites) -> Mazed:

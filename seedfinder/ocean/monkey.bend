@@ -706,7 +706,7 @@ def centers_loop(+build: Builds.Build, cs: List<&2, OceanEnts.Ent>, +dirs: List<
 def docks_done(d: Dock, +c: OceanState.Ctx, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>, +before: Pcg.Rng, +count: U32) -> OceanState.Sea:
   match d:
     case Dock{g, _, _, +rng, +ents}:
-      +added = (U32.from_nat(List.length(&2, OceanEnts.Ent, ents)) - count : U32)
+      +added = (OceanState.traced_count(c, ents) - count : U32)
       OceanState.noted(c, OceanState.Sea{g, ids, rng, ents, topo, events}, OceanState.EDocks{before, rng, ents, added})
 
 # MonkeyIsland_GenerateDocks(WorldSim, entities, width, height).
@@ -716,8 +716,9 @@ def docks(+build: Builds.Build, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanS
       +w = OceanState.width_of(c)
       +h = OceanState.height_of(c)
       +a = {Area{F64Repr.zero(), F64Repr.zero(), F64Repr.zero(), F64Repr.zero(), w, h, 0} : Area}
-      +cs = OceanEnts.of_prefab(ents, OceanPostData.dock_center_prefab(build))
-      +dirs = OceanEnts.of_prefab(ents, OceanPostData.dock_direction_prefab(build))
-      +safes = OceanEnts.of_prefab(ents, OceanPostData.dock_safety_prefab(build))
+      +marks = OceanEnts.of_any(ents, [OceanPostData.dock_center_prefab(build), OceanPostData.dock_direction_prefab(build), OceanPostData.dock_safety_prefab(build)])
+      +cs = OceanEnts.of_prefab(marks, OceanPostData.dock_center_prefab(build))
+      +dirs = OceanEnts.of_prefab(marks, OceanPostData.dock_direction_prefab(build))
+      +safes = OceanEnts.of_prefab(marks, OceanPostData.dock_safety_prefab(build))
       d = centers_loop(build, cs, dirs, safes, Dock{g, Grid.new(w, h, 0), LuaTable.new(0, 0), rng, ents}, a)
-      docks_done(d, c, ids, topo, events, rng, U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
+      docks_done(d, c, ids, topo, events, rng, OceanState.traced_count(c, ents))

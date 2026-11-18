@@ -56,9 +56,9 @@ def is_piece(pieces: List<&2, PopulateNodes.Static>, +key: U32) -> Bool:
     case Con{PopulateNodes.Static{+k, _, _, _}, rest}:
       U32.is_eq(k, key) || is_piece(rest, key)
 
-def source_of(+build: Builds.Build, +s: StoryGraph.St, +node: U32, +key: U32) -> U32:
+def source_of(+build: Builds.Build, +s: StoryGraph.St, +sl: PopulateNodes.Slots, +node: U32, +key: U32) -> U32:
   +start = PopulateNodes.is_start(s, node) && U32.is_eq(key, PopulateNodes.start_key(build, s, node))
-  Bool.pick(U32, start, PopulateSetpiece.start(), Bool.pick(U32, is_piece(PopulateNodes.pieces(build, s, node), key), PopulateSetpiece.task(), PopulateSetpiece.room()))
+  Bool.pick(U32, start, PopulateSetpiece.start(), Bool.pick(U32, is_piece(PopulateNodes.pieces(build, sl, node), key), PopulateSetpiece.task(), PopulateSetpiece.room()))
 
 # Where a countstaticlayouts entry comes from, when the context records the placed layouts.
 def static_source(+build: Builds.Build, on: Bool, +c: PopulateState.Ctx, +node: U32, +key: U32) -> U32:
@@ -66,7 +66,7 @@ def static_source(+build: Builds.Build, on: Bool, +c: PopulateState.Ctx, +node: 
     case False{}:
       PopulateSetpiece.room()
     case True{}:
-      source_of(build, PopulateState.story_of(c), node, key)
+      source_of(build, PopulateState.story_of(c), PopulateState.slots_of(c), node, key)
 
 def statics_loop(+build: Builds.Build, xs: List<&2, PopulateNodes.Static>, l: PopulateState.Land, +c: PopulateState.Ctx, +node: U32, +area: U32) -> PopulateState.Land:
   match xs:
@@ -93,7 +93,7 @@ def ground_body(+build: Builds.Build, on: Bool, l: PopulateState.Land, +c: Popul
     case True{}:
       +s = PopulateState.story_of(c)
       +area = Points.site_area(PopulateState.sites_of(c), PopulateState.site_of(c, node))
-      extras_loop(build, PopulateNodes.extra_layouts(s, node), statics_loop(build, PopulateNodes.statics(build, s, node), l, c, node, area), c, node)
+      extras_loop(build, PopulateNodes.extra_layouts(PopulateState.slots_of(c), node), statics_loop(build, PopulateNodes.statics(build, s, PopulateState.slots_of(c), node), l, c, node, area), c, node)
 
 def noted_node(got: PopulateState.Land & Pcg.Rng, +node: U32, +before: Pcg.Rng) -> PopulateState.Land:
   (l, +after) = got

@@ -171,10 +171,51 @@ def filtered(g: Grid.Grid, got: (List<&2, U32> & Pcg.Rng) & U32) -> Picked:
       (+order, rng) = sh
       picked_of(filter_loop(order, (Grid.Grid{cells, w, h}, 0), 0, 0, False{}, w, h, Nil{}), rng, n, order)
 
+def keep_one(got: Grid.Grid & U32, +x: U32, +y: U32, acc: List<&2, Pt>) -> Grid.Grid & List<&2, Pt>:
+  (g, +cell) = got
+  (g, keep_point(usable(cell), x, y, cell, acc))
+
+# The shuffled points from the last back to the first, each kept point put in front, so the kept list comes out in
+# shuffled order.
+def keep_back(n: Nat, got: Array<U32> & U32, ga: Grid.Grid & List<&2, Pt>, +k: U32, +w: U32, +h: U32) -> Grid.Grid & List<&2, Pt>:
+  match n:
+    case 0n:
+      ga
+    case 1n+p:
+      (items, +v) = got
+      (g, acc) = ga
+      +vx = shuffled_x(v)
+      +vy = shuffled_y(v)
+      keep_back(p, items[(k - 1 : U32)], keep_one(point_at(in_bounds(vx, vy, w, h), g, vx, vy, w), vx, vy, acc), (k - 1 : U32), w, h)
+
+def order_if(on: Bool, items: Array<U32>, +n: U32) -> Array<U32> & List<&2, U32>:
+  match on:
+    case True{}:
+      collect_loop(U32.to_nat(n), items[(n - 1 : U32)], (n - 1 : U32), Nil{})
+    case False{}:
+      (items, Nil{})
+
+def kept_from(got: Array<U32> & List<&2, U32>, g: Grid.Grid, rng: Pcg.Rng, +n: U32) -> Picked:
+  (items, +order) = got
+  match g:
+    case Grid.Grid{cells, +w, +h}:
+      picked_of(keep_back(U32.to_nat(n), items[(n - 1 : U32)], (Grid.Grid{cells, w, h}, Nil{}), (n - 1 : U32), w, h), rng, n, order)
+
+def picked_from(+ordered: Bool, g: Grid.Grid, got: CRand.Shuffled & U32) -> Picked:
+  (sh, +n) = got
+  match sh:
+    case CRand.Shuffled{items, rng}:
+      kept_from(order_if(ordered, items, n), g, rng, n)
+
+def shuffle_counted(+windows: Bool, got: Array<U32> & U32, rng: Pcg.Rng) -> CRand.Shuffled & U32:
+  (items, +n) = got
+  (CRand.random_shuffle(windows, items, n, rng), n)
+
 # GetPointsForSite: the site's points shuffled (n - 1 rand() calls), then those inside the map, not reserved and
-# not IMPASSABLE/INVALID, typed by their tile (the barren tile when reserved or disconnected).
-def points_for_site(+windows: Bool, +s: Sites, +site: U32, g: Grid.Grid, rng: Pcg.Rng) -> Picked:
-  filtered(g, shuffled_filled(windows, fill_counted(site_list(s, site), scratch(), 0), rng))
+# not IMPASSABLE/INVALID, typed by their tile (the barren tile when reserved or disconnected). The shuffled list is
+# kept only when `ordered` (else Nil).
+def points_for_site(+windows: Bool, +ordered: Bool, +s: Sites, +site: U32, g: Grid.Grid, rng: Pcg.Rng) -> Picked:
+  picked_from(ordered, g, shuffle_counted(windows, fill_counted(site_list(s, site), scratch(), 0), rng))
 
 # (int)x for a Lua number (lua_tointeger: truncation toward zero), as two's complement.
 def lua_int(+x: F64Repr.F64) -> U32:

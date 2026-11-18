@@ -24,6 +24,37 @@ law seed_1_first_inspected_draw:
 def seed_1_first_inspected_draw():
   {==}
 
+# The ocean distribute scan carries the PCG state as two words: step_hi and step_lo are Pcg.step word by word.
+law pcg_step_words_zero:
+  {Pcg.Rng{Pcg.step_hi(0, 0), Pcg.step_lo(0)} == Pcg.step(0, 0) : Pcg.Rng}
+
+def pcg_step_words_zero():
+  {==}
+
+law pcg_step_words_ones:
+  {Pcg.Rng{Pcg.step_hi(4294967295, 4294967295), Pcg.step_lo(4294967295)} == Pcg.step(4294967295, 4294967295) : Pcg.Rng}
+
+def pcg_step_words_ones():
+  {==}
+
+law pcg_step_words_carry:
+  {Pcg.Rng{Pcg.step_hi(1, 4294967295), Pcg.step_lo(4294967295)} == Pcg.step(1, 4294967295) : Pcg.Rng}
+
+def pcg_step_words_carry():
+  {==}
+
+law pcg_step_words_mixed:
+  {Pcg.Rng{Pcg.step_hi(305419896, 2596069104), Pcg.step_lo(2596069104)} == Pcg.step(305419896, 2596069104) : Pcg.Rng}
+
+def pcg_step_words_mixed():
+  {==}
+
+law pcg_step_words_high:
+  {Pcg.Rng{Pcg.step_hi(2147483648, 3735928559), Pcg.step_lo(3735928559)} == Pcg.step(2147483648, 3735928559) : Pcg.Rng}
+
+def pcg_step_words_high():
+  {==}
+
 # math.random() can return exactly 1.0, making math.random(n) return n + 1.
 law top_output_rolls_past_range:
   {LuaRandom.scale(4294967295, 13) == 13 : U32}

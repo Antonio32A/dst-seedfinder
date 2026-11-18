@@ -169,7 +169,7 @@ def ca_painted(+build: Builds.Build, ran: CaveAutomaton.Painted, placed: List<&2
       +line = Canon.record("cca", [Canon.number("a", attempt_of(rc)), Canon.number("k", k), Canon.field("id", id),
         Canon.number("iterations", CaveStory.room_ca_iterations(build, room)), Canon.number("mode", CaveStory.room_ca_seed_mode(build, room)),
         Canon.number("points", CaveStory.room_ca_random_points(build, room)), Canon.number("before", counter(rc, before)), Canon.number("after", counter(rc, rng))])
-      ca_picked(build, Points.points_for_site(windows, sites, vertex, g, rng), placed, room, site, rc, vertex, sites, id, rng, line <> lines, k)
+      ca_picked(build, Points.points_for_site(windows, True{}, sites, vertex, g, rng), placed, room, site, rc, vertex, sites, id, rng, line <> lines, k)
 
 def ca_node(+build: Builds.Build, t: CaTr, +rc: Rc, +windows: Bool, +sites: Points.Sites, +world: TileWorld.World, +kl: GenGraph.Klei, +n: U32) -> CaTr:
   match t:
@@ -449,7 +449,8 @@ def ca_mazes(+build: Builds.Build, t: CaTr, +rc: Rc, +e: MazeEnv.Env) -> List<&2
 
 # The custom tile pass's engine calls and the mazes' that follow them.
 def cave_lines(+build: Builds.Build, +rc: Rc, +c: Generate.Seed, +kl: GenGraph.Klei, +sites: Points.Sites, +w: U32) -> List<&2, String>:
-  ca_mazes(build, ca_traced(build, rc, Generate.windows_of(c), kl, sites, w), rc, MazeEnv.Env{Generate.windows_of(c), Generate.swaps_of(c), rc_story(rc), kl, w, CaveCustom.world_of(sites)})
+  +story = rc_story(rc)
+  ca_mazes(build, ca_traced(build, rc, Generate.windows_of(c), kl, sites, w), rc, MazeEnv.Env{Generate.windows_of(c), Generate.swaps_of(c), story, MazeTags.links(story), kl, w, CaveCustom.world_of(sites)})
 
 def verdict_line(+a: U32, +result: String, +ctr: U32) -> String:
   Canon.record("cverdict", [Canon.number("a", a), Canon.field("result", Canon.quoted(result)), Canon.number("ctr", ctr)])

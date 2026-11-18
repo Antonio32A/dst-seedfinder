@@ -18,6 +18,7 @@ import ../storygen/story.bend as Story
 import ../storygen/trace.bend as StoryTrace
 import ./entities.bend as Entities
 import ./state.bend as PopulateState
+import ./nodes.bend as PopulateNodes
 import ./voronoi.bend as PopulateVoronoi
 import ./land.bend as Land
 import ../data/builds.bend as Builds
@@ -278,7 +279,7 @@ def context_of(+build: Builds.Build, +seed: U32, +windows: Bool, +a: String, +w:
       +nodes = TileInput.of_attempt("tnode", a, lines)
       +site_of = TileTable.from_list(~U32, node_sites(build, U32.to_nat(StoryGraph.get(s, StoryGraph.s_nodes())), s, nodes, 0), TileWorld.none())
       +tiles_rng = Pcg.at_counter(seed, TileInput.num("before", TileInput.first_fields(TileInput.of_attempt("tmap", a, lines))))
-      PopulateState.Ctx{windows, swaps_of(LevelSummary.summary(build, seed)), Points.sites(w, lists), s, site_of, width, height, True{}, tiles_rng, False{}}
+      PopulateState.Ctx{windows, swaps_of(LevelSummary.summary(build, seed)), Points.sites(w, lists), s, site_of, width, height, True{}, tiles_rng, False{}, PopulateNodes.slots(s)}
 
 def grid_at(+a: String, +at: String, +w: U32, +h: U32, +lines: List<&2, String>) -> Grid.Grid:
   rows_loop(grid_rows(a, at, lines), Grid.new(w, h, 0), w)

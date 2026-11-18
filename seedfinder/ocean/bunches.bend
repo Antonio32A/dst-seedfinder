@@ -228,21 +228,26 @@ def spawner_prefab(+sp: Spawner) -> U32:
     case Spawner{+spawner, _, _, _, _, _, _}:
       spawner
 
-def kinds_loop(+build: Builds.Build, n: Nat, +c: OceanState.Ctx, +i: U32, b: Bun) -> Bun:
+def kinds_loop(+build: Builds.Build, n: Nat, +c: OceanState.Ctx, +i: U32, +spawners: List<&2, OceanEnts.Ent>, b: Bun) -> Bun:
   match n:
     case 0n:
       b
     case 1n+p:
-      match b:
-        case Bun{g, +rng, +ents}:
-          +sp = spawner_of(OceanData.bunches(i))
-          +found = OceanEnts.of_prefab(ents, spawner_prefab(sp))
-          kinds_loop(build, p, c, (i + 1 : U32), spawners_loop(build, found, c, sp, Bun{g, rng, ents}))
+      +sp = spawner_of(OceanData.bunches(i))
+      +found = OceanEnts.of_prefab(spawners, spawner_prefab(sp))
+      kinds_loop(build, p, c, (i + 1 : U32), spawners, spawners_loop(build, found, c, sp, b))
+
+def spawner_prefabs(n: Nat, +i: U32) -> List<&2, U32>:
+  match n:
+    case 0n:
+      Nil{}
+    case 1n+p:
+      Blob.at(OceanData.bunches(i), 0) <> spawner_prefabs(p, (i + 1 : U32))
 
 def bunches_done(b: Bun, +c: OceanState.Ctx, ids: Grid.Grid, +topo: U32, +events: List<&2, OceanState.Ev>, +before: Pcg.Rng, +count: U32) -> OceanState.Sea:
   match b:
     case Bun{g, +rng, +ents}:
-      +added = (U32.from_nat(List.length(&2, OceanEnts.Ent, ents)) - count : U32)
+      +added = (OceanState.traced_count(c, ents) - count : U32)
       noted = OceanState.noted(c, OceanState.Sea{g, ids, rng, ents, topo, events}, OceanState.EBunches{before, rng, ents, added})
       OceanState.digest(c, OceanState.noted(c, noted, OceanState.EFinal{ents}), 9)
 
@@ -250,5 +255,6 @@ def bunches_done(b: Bun, +c: OceanState.Ctx, ids: Grid.Grid, +topo: U32, +events
 def bunches(+build: Builds.Build, +c: OceanState.Ctx, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      b = kinds_loop(build, U32.to_nat(OceanData.bunches_count()), c, 0, Bun{g, rng, ents})
-      bunches_done(b, c, ids, topo, events, rng, U32.from_nat(List.length(&2, OceanEnts.Ent, ents)))
+      +spawners = OceanEnts.of_any(ents, spawner_prefabs(U32.to_nat(OceanData.bunches_count()), 0))
+      b = kinds_loop(build, U32.to_nat(OceanData.bunches_count()), c, 0, spawners, Bun{g, rng, ents})
+      bunches_done(b, c, ids, topo, events, rng, OceanState.traced_count(c, ents))

@@ -48,18 +48,39 @@ def picks_loop(n: Nat, p: Picks) -> Picks:
         case Picks{+pool, +taken, rng}:
           picks_loop(m, pick_from(List.is_empty(&2, OceanEnts.Ent, pool), pool, taken, rng))
 
-def finished(p: Picks, +dispenser: U32, +temporary: U32, g: Grid.Grid, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
+def stripped(none: Bool, +ents: List<&2, OceanEnts.Ent>, +taken: List<&2, OceanEnts.Ent>, +dispenser: U32, +temporary: U32) -> List<&2, OceanEnts.Ent>:
+  match none:
+    case True{}:
+      ents
+    case False{}:
+      OceanEnts.appended(OceanEnts.without(ents, temporary), List.reverse(&2, OceanEnts.Ent, taken), dispenser)
+
+# Without temporary dispensers nothing is taken and nothing removed, so the list stays as it is.
+def finished(p: Picks, +none: Bool, +dispenser: U32, +temporary: U32, g: Grid.Grid, ids: Grid.Grid, +ents: List<&2, OceanEnts.Ent>, +topo: U32, +events: List<&2, OceanState.Ev>) -> OceanState.Sea:
   match p:
     case Picks{_, +taken, rng}:
-      OceanState.Sea{g, ids, rng, OceanEnts.appended(OceanEnts.without(ents, temporary), List.reverse(&2, OceanEnts.Ent, taken), dispenser), topo, events}
+      OceanState.Sea{g, ids, rng, stripped(none, ents, taken, dispenser, temporary), topo, events}
 
 def picks_needed(+dispensers: List<&2, OceanEnts.Ent>) -> Nat:
   +short = (U32.from_nat(List.length(&2, OceanEnts.Ent, dispensers)) < 3 : U32)
   Bool.pick(Nat, short && Bool.not(List.is_empty(&2, OceanEnts.Ent, dispensers)), 3n, 0n)
 
-# AncientArchivePass on savedata.ents: `dispenser` is archive_lockbox_dispencer, `temporary` its _temp prefab.
-def run(+dispenser: U32, +temporary: U32, s: OceanState.Sea) -> OceanState.Sea:
+def pass_of(+pool: List<&2, OceanEnts.Ent>, +dispenser: U32, +temporary: U32, s: OceanState.Sea) -> OceanState.Sea:
   match s:
     case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
-      finished(picks_loop(picks_needed(OceanEnts.of_prefab(ents, dispenser)), Picks{OceanEnts.of_prefab(ents, temporary), Nil{}, rng}),
-        dispenser, temporary, g, ids, ents, topo, events)
+      finished(picks_loop(picks_needed(OceanEnts.of_prefab(ents, dispenser)), Picks{pool, Nil{}, rng}),
+        List.is_empty(&2, OceanEnts.Ent, pool), dispenser, temporary, g, ids, ents, topo, events)
+
+def pass_if(none: Bool, +dispenser: U32, +temporary: U32, s: OceanState.Sea) -> OceanState.Sea:
+  match none:
+    case True{}:
+      s
+    case False{}:
+      match s:
+        case OceanState.Sea{g, ids, +rng, +ents, +topo, +events}:
+          pass_of(OceanEnts.of_prefab(ents, temporary), dispenser, temporary, OceanState.Sea{g, ids, rng, ents, topo, events})
+
+# AncientArchivePass on savedata.ents: `dispenser` is archive_lockbox_dispencer, `temporary` its _temp prefab (the
+# forest has no archive: both are 4294967295, and the pass changes nothing).
+def run(+dispenser: U32, +temporary: U32, s: OceanState.Sea) -> OceanState.Sea:
+  pass_if(U32.is_eq(dispenser, 4294967295) && U32.is_eq(temporary, 4294967295), dispenser, temporary, s)

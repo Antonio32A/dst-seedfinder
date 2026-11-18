@@ -6,14 +6,16 @@ import ../worldsim/tiles/world.bend as TileWorld
 import ../populate/entities.bend as Entities
 import ../populate/names.bend as PopulateNames
 import ./graph.bend as GenGraph
+import ./maze_tags.bend as MazeTags
 import ../data/builds.bend as Builds
 
-# What the caves' maze passes run on: the attempt's platform and prefab swap state, its story and graph, the map size and
-# the tile world, and the state they thread through (the tile map, the PCG32 stream, the entities added to `entities`
-# newest first, and the stream just before and just after each maze engine call, newest first).
+# What the caves' maze passes run on: the attempt's platform and prefab swap state, its story with the story's edges
+# (newest first) and graph, the map size and the tile world, and the state they thread through (the tile map, the PCG32
+# stream, the entities added to `entities` newest first, and the stream just before and just after each maze engine
+# call, newest first).
 
 type Env is Data:
-  Env{windows: Bool, swaps: U32, s: StoryGraph.St, k: GenGraph.Klei, w: U32, world: TileWorld.World}
+  Env{windows: Bool, swaps: U32, s: StoryGraph.St, links: List<&2, MazeTags.Link>, k: GenGraph.Klei, w: U32, world: TileWorld.World}
 
 type Pass is Type:
   Pass{grid: Grid.Grid, rng: Pcg.Rng, ents: List<&2, Entities.Ent>, marks: List<&2, Pcg.Rng>}
@@ -39,32 +41,37 @@ def prefab(+build: Builds.Build, +name: String) -> U32:
 
 def windows_of(+e: Env) -> Bool:
   match e:
-    case Env{+windows, _, _, _, _, _}:
+    case Env{+windows, _, _, _, _, _, _}:
       windows
 
 def swaps_of(+e: Env) -> U32:
   match e:
-    case Env{_, +swaps, _, _, _, _}:
+    case Env{_, +swaps, _, _, _, _, _}:
       swaps
 
 def story_of(+e: Env) -> StoryGraph.St:
   match e:
-    case Env{_, _, +s, _, _, _}:
+    case Env{_, _, +s, _, _, _, _}:
       s
+
+def links_of(+e: Env) -> List<&2, MazeTags.Link>:
+  match e:
+    case Env{_, _, _, +links, _, _, _}:
+      links
 
 def klei_of(+e: Env) -> GenGraph.Klei:
   match e:
-    case Env{_, _, _, +k, _, _}:
+    case Env{_, _, _, _, +k, _, _}:
       k
 
 def width_of(+e: Env) -> U32:
   match e:
-    case Env{_, _, _, _, +w, _}:
+    case Env{_, _, _, _, _, +w, _}:
       w
 
 def world_of(+e: Env) -> TileWorld.World:
   match e:
-    case Env{_, _, _, _, _, +world}:
+    case Env{_, _, _, _, _, _, +world}:
       world
 
 def site_cons(none: Bool, +world: TileWorld.World, +v: U32, sites: List<&2, TileWorld.Site>) -> List<&2, TileWorld.Site>:

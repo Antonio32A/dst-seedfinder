@@ -24,6 +24,7 @@ import ../worldsim/tiles/connect.bend as TileConnect
 import ../worldsim/tiles/roads.bend as TileRoads
 import ../populate/entities.bend as Entities
 import ../populate/state.bend as PopulateState
+import ../populate/nodes.bend as PopulateNodes
 import ../populate/land.bend as Land
 import ./graph.bend as GenGraph
 import ./tags.bend as GenTags
@@ -446,7 +447,7 @@ def tile_grid(+windows: Bool, +w: TileWorld.World, +lists: List<&2, List<&2, U32
 
 # The land context: the RNG at ConvertToTileMap is the story's RNG at Commit (the flag digests replay its variant draws).
 def land_context(+c: Seed, +s: StoryGraph.St, +k: GenGraph.Klei, +sites: Points.Sites, +w: U32, +tracing: Bool) -> PopulateState.Ctx:
-  PopulateState.Ctx{windows_of(c), swaps_of(c), sites, s, GenGraph.vertex_table(k), w, w, tracing, StoryGraph.rng_of(s), pieces_of(c)}
+  PopulateState.Ctx{windows_of(c), swaps_of(c), sites, s, GenGraph.vertex_table(k), w, w, tracing, StoryGraph.rng_of(s), pieces_of(c), PopulateNodes.slots(s)}
 
 # Graph:ConvertGround to the end of Graph:PopulateVoronoi, from the grid after DrawRoads.
 def land(+build: Builds.Build, +ctx: PopulateState.Ctx, g: Grid.Grid, +w: U32) -> PopulateState.Land:
