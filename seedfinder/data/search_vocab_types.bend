@@ -4,3 +4,7 @@ import Base
 
 type Tile is Data:
   Tile{name: String, land: Bool}
+
+# A vocabulary prefab: its name, its vocabulary id and whether the forest's and the cave catalog have it.
+type Named is Data:
+  Named{name: String, id: U32, forest: Bool, caves: Bool}

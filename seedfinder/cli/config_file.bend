@@ -10,8 +10,12 @@ type Loaded is Data:
   Forest{config: Config.Config}
   Caves{config: CaveConfig.Config}
 
-def shard_of(+flag: U32, +text: String) -> U32:
-  Bool.pick(U32, U32.is_zero(flag), Bool.pick(U32, U32.is_eq(Config.shard_named(text), 2), 2, 1), flag)
+def shard_of(unflagged: Bool, +flag: U32, +text: String) -> U32:
+  match unflagged:
+    case True{}:
+      Bool.pick(U32, U32.is_eq(Config.shard_named(text), 2), 2, 1)
+    case False{}:
+      flag
 
 def forest_loaded(compiled: Result<&1, &1, U32 & String, Config.Config>) -> Result<&1, &1, U32 & String, Loaded>:
   match compiled:
@@ -46,7 +50,7 @@ def compiled(+flag: U32, +build: Maybe<&2, Builds.Build>, text: Result<&1, &1, U
     case Fail{failure}:
       Fail{failure}
     case Done{+json}:
-      compiled_for(U32.is_eq(shard_of(flag, json), 2), json, build)
+      compiled_for(U32.is_eq(shard_of(U32.is_zero(flag), flag, json), 2), json, build)
 
 # The config that matches every seed of a build.
 def matching_all(built: Result<&1, &1, U32 & String, Builds.Build>) -> Result<&1, &1, U32 & String, String>:

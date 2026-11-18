@@ -18,24 +18,45 @@ def indexed(+path: String, +index: U32) -> String:
 def quoted(+name: String) -> String:
   Json.quote(False{}, name)
 
-def field(fields: List<&2, Json.Json>, +key: String) -> Maybe<&2, Json.Json>:
-  match fields:
-    case Nil{}:
+def field_after(fields: List<&2, Json.Json>, found: Maybe<&2, Json.Json>, +key: String) -> Maybe<&2, Json.Json>:
+  match fields found:
+    case _ Some{value}:
+      Some{value}
+    case Nil{} None{}:
       None{}
-    case Con{Json.JField{+name, value}, rest}:
-      Bool.pick(Maybe<&2, Json.Json>, String.eq(name, key), Some{value}, field(rest, key))
-    case Con{_, rest}:
-      field(rest, key)
+    case Con{Json.JField{+name, value}, rest} None{}:
+      field_after(rest, Bool.pick(Maybe<&2, Json.Json>, String.eq(name, key), Some{value}, None{}), key)
+    case Con{_, rest} None{}:
+      field_after(rest, None{}, key)
 
-def is_member(names: List<&2, String>, +name: String) -> Bool:
+def field(fields: List<&2, Json.Json>, +key: String) -> Maybe<&2, Json.Json>:
+  field_after(fields, None{}, key)
+
+def index_after(names: List<&2, String>, found: Bool, +name: String, +at: U32) -> Maybe<&2, U32>:
+  match names found:
+    case _ True{}:
+      Some{at}
+    case Nil{} False{}:
+      None{}
+    case Con{+entry, rest} False{}:
+      index_after(rest, String.eq(entry, name), name, (at + 1 : U32))
+
+def index_of(names: List<&2, String>, +name: String, +i: U32) -> Maybe<&2, U32>:
   match names:
     case Nil{}:
-      False{}
-    case Con{+head, rest}:
-      String.eq(head, name) || is_member(rest, name)
+      None{}
+    case Con{+entry, rest}:
+      index_after(rest, String.eq(entry, name), name, i)
 
-def check_key(+allowed: List<&2, String>, +path: String, +key: String) -> Result<&1, &1, U32 & String, Unit>:
-  Bool.pick(Result<&1, &1, U32 & String, Unit>, is_member(allowed, key), Done{Unit{}}, Fail{failure("unknown key " ++ quoted(key) ++ " in " ++ path)})
+def is_member(names: List<&2, String>, +name: String) -> Bool:
+  Maybe.is_some(&2, U32, index_of(names, name, 0))
+
+def check_key(known: Bool, +path: String, +key: String) -> Result<&1, &1, U32 & String, Unit>:
+  match known:
+    case True{}:
+      Done{Unit{}}
+    case False{}:
+      Fail{failure("unknown key " ++ quoted(key) ++ " in " ++ path)}
 
 def check_keys(fields: List<&2, Json.Json>, +allowed: List<&2, String>, +path: String) -> Result<&1, &1, U32 & String, Unit>:
   match fields:
@@ -43,7 +64,7 @@ def check_keys(fields: List<&2, Json.Json>, +allowed: List<&2, String>, +path: S
       Done{Unit{}}
     case Con{Json.JField{+key, _}, rest}:
       do Result<&1, &1, U32 & String, Unit>:
-        ok : Unit <- check_key(allowed, path, key)
+        ok : Unit <- check_key(is_member(allowed, key), path, key)
         check_keys(rest, allowed, path)
     case Con{_, rest}:
       check_keys(rest, allowed, path)
@@ -107,25 +128,40 @@ def length_of(items: List<&2, Json.Json>) -> U32:
     case Con{_, rest}:
       (1 + length_of(rest) : U32)
 
+def capped_count(within: Bool, +items: List<&2, Json.Json>, +count: U32, +cap: U32, +noun: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
+  match within:
+    case True{}:
+      Done{items}
+    case False{}:
+      Fail{failure(path ++ " has " ++ U32.show(count) ++ " " ++ noun ++ " (at most " ++ U32.show(cap) ++ ")")}
+
 def capped(+items: List<&2, Json.Json>, +cap: U32, +noun: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
   +count = length_of(items)
-  Bool.pick(Result<&1, &1, U32 & String, List<&2, Json.Json>>, (count <= cap : U32), Done{items},
-    Fail{failure(path ++ " has " ++ U32.show(count) ++ " " ++ noun ++ " (at most " ++ U32.show(cap) ++ ")")})
+  capped_count((count <= cap : U32), items, count, cap, noun, path)
+
+def text_within(within: Bool, +text: String, +count: Nat, +cap: U32, +noun: String, +path: String) -> Result<&1, &1, U32 & String, String>:
+  match within:
+    case True{}:
+      Done{text}
+    case False{}:
+      Fail{failure(path ++ " has " ++ Nat.show(count) ++ " " ++ noun ++ " (at most " ++ U32.show(cap) ++ ")")}
 
 # Text of at most cap characters ("<path> has <n> <noun> (at most <cap>)").
 def capped_text(+text: String, +cap: U32, +noun: String, +path: String) -> Result<&1, &1, U32 & String, String>:
   +count = String.length(text)
-  Bool.pick(Result<&1, &1, U32 & String, String>, Nat.is_le(count, U32.to_nat(cap)), Done{text},
-    Fail{failure(path ++ " has " ++ Nat.show(count) ++ " " ++ noun ++ " (at most " ++ U32.show(cap) ++ ")")})
+  text_within(Nat.is_le(count, U32.to_nat(cap)), text, count, cap, noun, path)
 
-def not_empty(+items: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
-  Bool.pick(Result<&1, &1, U32 & String, List<&2, Json.Json>>, List.is_empty(&2, Json.Json, items),
-    Fail{failure(path ++ " must not be empty")}, Done{items})
+def not_empty(empty: Bool, +items: List<&2, Json.Json>, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
+  match empty:
+    case True{}:
+      Fail{failure(path ++ " must not be empty")}
+    case False{}:
+      Done{items}
 
 # A list of 1..cap items ("must not be empty", "<path> has <n> <noun> (at most <cap>)").
 def nonempty_capped(+items: List<&2, Json.Json>, +cap: U32, +noun: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
   do Result<&1, &1, U32 & String, List<&2, Json.Json>>:
-    some : List<&2, Json.Json> <- not_empty(items, path)
+    some : List<&2, Json.Json> <- not_empty(List.is_empty(&2, Json.Json, items), items, path)
     capped(some, cap, noun, path)
 
 def string_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, String>:
@@ -174,11 +210,15 @@ def in_distance_range(+p: Decimal.Parsed) -> Bool:
     case Decimal.Parsed{+finite, +value}:
       finite && F64Cmp.le(F64Repr.zero(), value) && F64Cmp.le(value, million())
 
+def distance_in_range(in_range: Bool, +p: Decimal.Parsed, +path: String) -> Result<&1, &1, U32 & String, F64Repr.F64>:
+  match in_range p:
+    case True{} Decimal.Parsed{_, value}:
+      Done{value}
+    case False{} _:
+      Fail{failure(path ++ " must be a number in 0..1000000")}
+
 def distance_value(+p: Decimal.Parsed, +path: String) -> Result<&1, &1, U32 & String, F64Repr.F64>:
-  match p:
-    case Decimal.Parsed{_, +value}:
-      Bool.pick(Result<&1, &1, U32 & String, F64Repr.F64>, in_distance_range(p), Done{value},
-        Fail{failure(path ++ " must be a number in 0..1000000")})
+  distance_in_range(in_distance_range(p), p, path)
 
 # A distance: a JSON number in 0..1000000 as its double ("<path> must be a number in 0..1000000").
 def distance(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, F64Repr.F64>:
@@ -220,21 +260,20 @@ def is_text(json: Json.Json, +text: String) -> Bool:
     case _:
       False{}
 
+def choice_of(known: Bool, json: Json.Json, +first: String, +second: String, +path: String) -> Result<&1, &1, U32 & String, Bool>:
+  match known:
+    case True{}:
+      Done{is_text(json, second)}
+    case False{}:
+      Fail{failure(path ++ " must be " ++ quoted(first) ++ " or " ++ quoted(second))}
+
 # True for the second of two choices, False for the first ('<path> must be "a" or "b"'); absent is the first.
 def binary_choice(m: Maybe<&2, Json.Json>, +first: String, +second: String, +path: String) -> Result<&1, &1, U32 & String, Bool>:
   match m:
     case None{}:
       Done{False{}}
     case Some{+json}:
-      Bool.pick(Result<&1, &1, U32 & String, Bool>, is_text(json, first) || is_text(json, second), Done{is_text(json, second)},
-        Fail{failure(path ++ " must be " ++ quoted(first) ++ " or " ++ quoted(second))})
-
-def index_of(names: List<&2, String>, +name: String, +i: U32) -> Maybe<&2, U32>:
-  match names:
-    case Nil{}:
-      None{}
-    case Con{+entry, rest}:
-      Bool.pick(Maybe<&2, U32>, String.eq(entry, name), Some{i}, index_of(rest, name, (i + 1 : U32)))
+      choice_of(is_text(json, first) || is_text(json, second), json, first, second, path)
 
 def contains_id(ids: List<&2, U32>, +id: U32) -> Bool:
   match ids:

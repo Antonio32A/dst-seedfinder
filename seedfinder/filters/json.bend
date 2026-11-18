@@ -258,8 +258,12 @@ def number_value(+text: String) -> Json:
   Bool.pick(Json, String.eq(text, "-0"), JNum{0},
     Bool.pick(Json, is_integer_text(text), as_number(whole_digits(text, 0, True{}), text), JReal{text}))
 
-def number_token(+text: String, +rest: String) -> Lexed:
-  Bool.pick(Lexed, is_number_end(number_state(text, 0)), Lexed{TValue{number_value(text)}, rest}, bad("invalid number " ++ text, rest))
+def number_token(valid: Bool, +text: String, +rest: String) -> Lexed:
+  match valid:
+    case True{}:
+      Lexed{TValue{number_value(text)}, rest}
+    case False{}:
+      bad("invalid number " ++ text, rest)
 
 type Peek is Data:
   PDigit{code: U32, rest: String}
@@ -282,19 +286,35 @@ def read_number(fuel: Nat, p: Peek, acc: String) -> Lexed:
     case 1n+f PDigit{+code, rest}:
       read_number(f, peek_number(rest), SCon{Chr{code}, acc})
     case 1n+f PStop{rest}:
-      number_token(String.reverse(acc), rest)
+      +text = String.reverse(acc)
+      number_token(is_number_end(number_state(text, 0)), text, rest)
 
-def word(+expected: String, +value: Json, +rest: String) -> Lexed:
-  +matched = String.starts_with(rest, expected)
-  Bool.pick(Lexed, matched, Lexed{TValue{value}, String.drop(rest, String.length(expected))}, bad("unexpected text", rest))
+def word_token(matched: Bool, +expected: String, value: Json, +rest: String) -> Lexed:
+  match matched:
+    case True{}:
+      Lexed{TValue{value}, String.drop(rest, String.length(expected))}
+    case False{}:
+      bad("unexpected text", rest)
+
+def word(+expected: String, value: Json, +rest: String) -> Lexed:
+  word_token(String.starts_with(rest, expected), expected, value, rest)
 
 def is_space(+code: U32) -> Bool:
   U32.is_eq(code, 32) || U32.is_eq(code, 9) || U32.is_eq(code, 10) || U32.is_eq(code, 13)
 
-def lex_other(+code: U32, +rest: String) -> Lexed:
-  Bool.pick(Lexed, is_space(code), Lexed{TSkip{}, rest},
-    Bool.pick(Lexed, is_digit(code) || U32.is_eq(code, 45), read_number(16777216n, peek_number(rest), SCon{Chr{code}, SNil{}}),
-      bad("unexpected character " ++ String.from_list([Chr{code}]), rest)))
+def lex_number(numeric: Bool, +code: U32, +rest: String) -> Lexed:
+  match numeric:
+    case True{}:
+      read_number(16777216n, peek_number(rest), SCon{Chr{code}, SNil{}})
+    case False{}:
+      bad("unexpected character " ++ String.from_list([Chr{code}]), rest)
+
+def lex_other(space: Bool, +code: U32, +rest: String) -> Lexed:
+  match space:
+    case True{}:
+      Lexed{TSkip{}, rest}
+    case False{}:
+      lex_number(is_digit(code) || U32.is_eq(code, 45), code, rest)
 
 def lex(s: String) -> Lexed:
   match s:
@@ -323,7 +343,7 @@ def lex(s: String) -> Lexed:
         case 110:
           word("ull", JNull{}, rest)
         case _:
-          lex_other(code, rest)
+          lex_other(is_space(code), code, rest)
 
 def malformed(+detail: String) -> U32 & String:
   (2, "config: malformed JSON: " ++ detail)
@@ -339,15 +359,17 @@ def attach(frames: List<&2, Frame>, value: Json) -> Result<&1, &1, U32 & String,
     case _:
       Fail{malformed("unexpected structure")}
 
-def closed(frames: List<&2, Frame>, +object: Bool) -> Result<&1, &1, U32 & String, Parser>:
-  match frames:
-    case Con{FArr{items}, rest}:
-      Bool.pick(Result<&1, &1, U32 & String, Parser>, object, Fail{malformed("mismatched brackets")},
-        attach(rest, JArr{List.reverse(&2, Json, items)}))
-    case Con{FObj{fields}, rest}:
-      Bool.pick(Result<&1, &1, U32 & String, Parser>, object, attach(rest, JObj{List.reverse(&2, Json, fields)}),
-        Fail{malformed("mismatched brackets")})
-    case _:
+def closed(frames: List<&2, Frame>, object: Bool) -> Result<&1, &1, U32 & String, Parser>:
+  match frames object:
+    case Con{FArr{items}, rest} False{}:
+      attach(rest, JArr{List.reverse(&2, Json, items)})
+    case Con{FObj{fields}, rest} True{}:
+      attach(rest, JObj{List.reverse(&2, Json, fields)})
+    case Con{FArr{_}, _} True{}:
+      Fail{malformed("mismatched brackets")}
+    case Con{FObj{_}, _} False{}:
+      Fail{malformed("mismatched brackets")}
+    case _ _:
       Fail{malformed("unexpected closing bracket")}
 
 def opened(+object: Bool, frames: List<&2, Frame>) -> Result<&1, &1, U32 & String, Parser>:

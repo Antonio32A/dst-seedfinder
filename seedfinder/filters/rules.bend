@@ -104,10 +104,17 @@ def prefab_id(+build: Builds.Build, found: Maybe<&2, U32>, +name: String, +path:
     case Some{id}:
       Done{id}
 
+def named_after(entries: List<&2, SearchVocabTypes.Named>, matched: Bool, +matched_id: Maybe<&2, U32>, +name: String, +caves: Bool) -> Maybe<&2, U32>:
+  match entries matched:
+    case _ True{}:
+      matched_id
+    case Nil{} False{}:
+      None{}
+    case Con{SearchVocabTypes.Named{entry, id, forest, in_caves}, rest} False{}:
+      named_after(rest, String.eq(entry, name), Bool.pick(Maybe<&2, U32>, Bool.pick(Bool, caves, in_caves, forest), Some{id}, None{}), name, caves)
+
 def known_prefab(+build: Builds.Build, +name: String, +caves: Bool) -> Maybe<&2, U32>:
-  Bool.pick(Maybe<&2, U32>, caves,
-    Bool.pick(Maybe<&2, U32>, Parse.is_member(SearchVocab.cave_prefabs(build), name), Parse.index_of(SearchVocab.all_prefabs(build), name, 0), None{}),
-    Parse.index_of(SearchVocab.prefabs(build), name, 0))
+  named_after(SearchVocab.named(build, Char.to_u32(Maybe.default(&2, Char, String.get(name, 0n), Chr{0}))), False{}, None{}, name, caves)
 
 def prefab_ids(+build: Builds.Build, items: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) -> Result<&1, &1, U32 & String, List<&2, U32>>:
   match items:

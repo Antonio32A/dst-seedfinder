@@ -55,18 +55,6 @@ def cave_only(+build: Builds.Build) -> List<&2, String>:
     case Builds.Build{+number}:
       cave_only_of_number(number)
 
-def cave_prefabs_of_number(+number: U32) -> List<&2, String>:
-  match number:
-    case 756039:
-      B756039SearchVocab.cave_prefabs()
-    case _:
-      B757748SearchVocab.cave_prefabs()
-
-def cave_prefabs(+build: Builds.Build) -> List<&2, String>:
-  match build:
-    case Builds.Build{+number}:
-      cave_prefabs_of_number(number)
-
 def cave_groups_of_number(+number: U32) -> List<&2, String>:
   match number:
     case 756039:
@@ -102,6 +90,18 @@ def all_prefabs(+build: Builds.Build) -> List<&2, String>:
   match build:
     case Builds.Build{+number}:
       all_prefabs_of_number(number)
+
+def named_of_number(+number: U32, +code: U32) -> List<&2, SearchVocabTypes.Named>:
+  match number:
+    case 756039:
+      B756039SearchVocab.named(code)
+    case _:
+      B757748SearchVocab.named(code)
+
+def named(+build: Builds.Build, +code: U32) -> List<&2, SearchVocabTypes.Named>:
+  match build:
+    case Builds.Build{+number}:
+      named_of_number(number, code)
 
 def tiles_of_number(+number: U32) -> List<&2, SearchVocabTypes.Tile>:
   match number:
