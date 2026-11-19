@@ -4,13 +4,14 @@ import ./par.bend as Par
 import ./rules.bend as Rules
 import ./checks.bend as Checks
 import ./bridges.bend as Bridges
+import ./islands.bend as Islands
 import ./level_checks.bend as LevelChecks
 import ../level/summary.bend as LevelSummary
 import ../data/builds.bend as Builds
 
 # One config evaluated on one world (evaluate.py): per filter the results of `generation`'s sections in the order
 # tasks, prefab_swaps, setpieces, then the filter's world rules: the setpieces rules' `placed` names, counts, tiles, distances,
-# bridges, routes; the world rules run in parallel.
+# bridges, routes, islands; the world rules run in parallel.
 
 type Job is Data:
   JPlaced{rule: Rules.Placed}
@@ -19,6 +20,7 @@ type Job is Data:
   JDistance{index: U32, rule: Rules.Distance}
   JBridge{index: U32, rule: Rules.Bridge}
   JRoute{index: U32, rule: Rules.Route}
+  JIsland{index: U32, rule: Rules.Island}
 
 # A world with the game build it was generated for: the context the parallel rule checks share.
 type BuildWorld is Data:
@@ -50,6 +52,8 @@ def run_job(+build: Builds.Build, +world: FilterWorld.World, job: Job) -> Outcom
       checked("bridges", i, Bridges.check(world, rule))
     case JRoute{+i, rule}:
       checked("routes", i, Checks.route(build, world, rule))
+    case JIsland{+i, rule}:
+      checked("islands", i, Islands.check(build, world, rule))
 
 def job_outcome(on: BuildWorld, job: Job) -> Outcome:
   match on:
@@ -63,12 +67,14 @@ def is_route(+job: Job) -> Bool:
     case _:
       False{}
 
-def only(jobs: List<&2, Job>, +routes: Bool, +acc: List<&2, Job>) -> List<&2, Job>:
-  match jobs:
-    case Nil{}:
-      List.reverse(&2, Job, acc)
-    case Con{+job, rest}:
-      only(rest, routes, Bool.pick(List<&2, Job>, Bool.xor(is_route(job), Bool.not(routes)), job <> acc, acc))
+# The items of the route jobs (`routes`) or of the other jobs, from a list in job order.
+def only(-A: Data, jobs: List<&2, Job>, items: List<&2, A>, +routes: Bool) -> List<&2, A>:
+  match jobs items:
+    case Con{+job, js} Con{+item, rest}:
+      +tail = only(A, js, rest, routes)
+      Bool.pick(List<&2, A>, Bool.xor(is_route(job), Bool.not(routes)), item <> tail, tail)
+    case _ _:
+      Nil{}
 
 def run_each(+build: Builds.Build, jobs: List<&2, Job>, +world: FilterWorld.World) -> List<&2, Outcome>:
   match jobs:
@@ -77,11 +83,20 @@ def run_each(+build: Builds.Build, jobs: List<&2, Job>, +world: FilterWorld.Worl
     case Con{job, rest}:
       run_job(build, world, job) <> run_each(build, rest, world)
 
-# The outcomes of the jobs in order (the routes come last): the other rules spread over one balanced fork tree, the
-# routes one after the other, since each forks its own Held-Karp stages and a fork inside a forked task would stay
-# on that task's thread.
+# The items of the route jobs and of the other jobs (as `only` splits them) merged back into job order.
+def in_job_order(-A: Data, jobs: List<&2, Job>, +others: List<&2, A>, +routes: List<&2, A>) -> List<&2, A>:
+  match jobs others routes:
+    case Con{JRoute{_, _}, js} _ Con{+r, rs}:
+      r <> in_job_order(A, js, others, rs)
+    case Con{_, js} Con{+o, os} _:
+      o <> in_job_order(A, js, os, routes)
+    case _ _ _:
+      Nil{}
+
+# The outcomes of the jobs in order: the routes one after the other, since each forks its own Held-Karp stages and a
+# fork inside a forked task would stay on that task's thread, and the other rules spread over one balanced fork tree.
 def parallel_jobs(+build: Builds.Build, +world: FilterWorld.World, +jobs: List<&2, Job>) -> List<&2, Outcome>:
-  List.append(&2, Outcome, Par.map(~Job, ~Outcome, ~BuildWorld, ~job_outcome, BuildWorld{build, world}, only(jobs, False{}, Nil{})), run_each(build, only(jobs, True{}, Nil{}), world))
+  in_job_order(Outcome, jobs, Par.map(~Job, ~Outcome, ~BuildWorld, ~job_outcome, BuildWorld{build, world}, only(Job, jobs, jobs, False{})), run_each(build, only(Job, jobs, jobs, True{}), world))
 
 def check_ok(+c: Checks.Check) -> Bool:
   match c:
@@ -102,6 +117,8 @@ def job_holds(+build: Builds.Build, +world: FilterWorld.World, job: Job) -> Bool
       Bridges.holds(world, rule)
     case JRoute{_, rule}:
       Checks.route_holds(world, rule)
+    case JIsland{_, rule}:
+      Islands.holds(world, rule)
 
 def job_verdict(on: BuildWorld, job: Job) -> Bool:
   match on:
@@ -124,7 +141,7 @@ def routes_hold(+build: Builds.Build, jobs: List<&2, Job>, go: Bool, +world: Fil
 
 # holds(parallel_jobs(world, jobs)), from the verdicts alone.
 def parallel_holds(+build: Builds.Build, +world: FilterWorld.World, +jobs: List<&2, Job>) -> Bool:
-  routes_hold(build, only(jobs, True{}, Nil{}), all_true(Par.map(~Job, ~Bool, ~BuildWorld, ~job_verdict, BuildWorld{build, world}, only(jobs, False{}, Nil{}))), world)
+  routes_hold(build, only(Job, jobs, jobs, True{}), all_true(Par.map(~Job, ~Bool, ~BuildWorld, ~job_verdict, BuildWorld{build, world}, only(Job, jobs, jobs, False{}))), world)
 
 def placed_jobs(rules: List<&2, Rules.Placed>) -> List<&2, Job>:
   match rules:
@@ -168,11 +185,19 @@ def route_jobs(rules: List<&2, Rules.Route>, +i: U32) -> List<&2, Job>:
     case Con{rule, rest}:
       JRoute{i, rule} <> route_jobs(rest, (i + 1 : U32))
 
-# The jobs of the world rules in result order: setpieces, counts, tiles, distances, bridges, routes.
+def island_jobs(rules: List<&2, Rules.Island>, +i: U32) -> List<&2, Job>:
+  match rules:
+    case Nil{}:
+      Nil{}
+    case Con{rule, rest}:
+      JIsland{i, rule} <> island_jobs(rest, (i + 1 : U32))
+
+# The jobs of the world rules in result order: setpieces, counts, tiles, distances, bridges, routes, islands.
 def jobs_of(later: Rules.Later) -> List<&2, Job>:
   match later:
-    case Rules.Later{setpieces, counts, distances, tiles, bridges, routes}:
-      List.concat(&2, Job, [placed_jobs(setpieces), count_jobs(counts, 0), tile_jobs(tiles, 0), distance_jobs(distances, 0), bridge_jobs(bridges, 0), route_jobs(routes, 0)])
+    case Rules.Later{setpieces, counts, distances, tiles, bridges, routes, islands}:
+      List.concat(&2, Job, [placed_jobs(setpieces), count_jobs(counts, 0), tile_jobs(tiles, 0), distance_jobs(distances, 0), bridge_jobs(bridges, 0), route_jobs(routes, 0),
+        island_jobs(islands, 0)])
 
 def pair_outcome(+section: String, +index: U32, got: Bool & String) -> Outcome:
   (+ok, +fields) = got
@@ -256,17 +281,19 @@ def holds(+outcomes: List<&2, Outcome>) -> Bool:
 def job_later(+job: Job) -> Rules.Later:
   match job:
     case JPlaced{+rule}:
-      Rules.Later{[rule], Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
+      Rules.Later{[rule], Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
     case JCount{_, +rule}:
-      Rules.Later{Nil{}, [rule], Nil{}, Nil{}, Nil{}, Nil{}}
+      Rules.Later{Nil{}, [rule], Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
     case JTiles{_, +rule}:
-      Rules.Later{Nil{}, Nil{}, Nil{}, [rule], Nil{}, Nil{}}
+      Rules.Later{Nil{}, Nil{}, Nil{}, [rule], Nil{}, Nil{}, Nil{}}
     case JDistance{_, +rule}:
-      Rules.Later{Nil{}, Nil{}, [rule], Nil{}, Nil{}, Nil{}}
+      Rules.Later{Nil{}, Nil{}, [rule], Nil{}, Nil{}, Nil{}, Nil{}}
     case JBridge{_, +rule}:
-      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, [rule], Nil{}}
+      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, [rule], Nil{}, Nil{}}
     case JRoute{_, +rule}:
-      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, [rule]}
+      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, [rule], Nil{}}
+    case JIsland{_, +rule}:
+      Rules.Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, [rule]}
 
 def job_laters(jobs: List<&2, Job>) -> List<&2, Rules.Later>:
   match jobs:

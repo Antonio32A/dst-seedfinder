@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { WitnessInstance } from "@/lib/jobs/job-result";
-import { witnessShape, witnessShapes } from "@/lib/world-map/search/witness-overlay";
+import type { IslandsWitness, WitnessInstance } from "@/lib/jobs/job-result";
+import { landmassTiles, witnessShape, witnessShapes } from "@/lib/world-map/search/witness-overlay";
 
 const at = (prefab: string, x: number, z: number, index = 0): WitnessInstance => ({ prefab, index, x, z });
+
+const NO_TILES = { width: 0, height: 0, tiles: new Uint16Array(0), tileNames: new Map<number, string>() };
 
 const PORTAL = at("multiplayer_portal", 40, 400);
 const PIGKING = at("pigking", -500, -120);
@@ -125,6 +127,7 @@ describe("a witness on the map", () => {
 
     it("marks every instance of a plain count's prefabs, from the world", () => {
         const world = {
+            ...NO_TILES,
             prefabs: [
                 { name: "rook", positions: Int32Array.from([100, 200, -300, 450]) },
                 { name: "pigking", positions: Int32Array.from([0, 0]) },
@@ -157,5 +160,103 @@ describe("a witness on the map", () => {
             { prefab: "knight", at: { x: 10, z: 0.5 }, ok: true }
         ]);
         expect(near.marks.map(({ prefab }) => prefab)).toEqual(["rook", "knight"]);
+    });
+});
+
+describe("an island on the map", () => {
+    const TILE_IDS: Record<string, number> = { ".": 1, R: 2, G: 6, "~": 201 };
+    const TILE_NAMES = new Map([[1, "IMPASSABLE"], [2, "ROAD"], [6, "GRASS"], [201, "OCEAN_COASTAL"]]);
+    const ROWS = [
+        "GG....",
+        "G...R.",
+        ".GG.R.",
+        "..G..~",
+        "G....G"
+    ];
+    const world = {
+        prefabs: [],
+        width: 6,
+        height: 5,
+        tileNames: TILE_NAMES,
+        tiles: Uint16Array.from(ROWS.join(""), (cell) => TILE_IDS[cell])
+    };
+    const tile = (tx: number, ty: number) => ty * world.width + tx;
+    const PORTAL_AT = at("multiplayer_portal", -12, -10);
+    const witness = (landmasses: IslandsWitness["landmasses"]): IslandsWitness => ({
+        section: "islands",
+        index: 0,
+        ok: true,
+        area: landmasses.reduce((sum, { area }) => sum + area, 0),
+        at: PORTAL_AT,
+        tile: { tx: 0, ty: 0, x: -12, z: -10 },
+        landmasses,
+        bounds: { tx0: 0, ty0: 0, tx1: 1, ty1: 1 }
+    });
+    const ends = (segments: { from: { x: number; z: number }; to: { x: number; z: number } }[]) =>
+        segments.map(({ from, to }) => [from.x, from.z, to.x, to.z]);
+
+    it("floods a landmass up, down, left and right over land", () => {
+        expect(landmassTiles(world, [{ tx: 0, ty: 0 }])).toEqual([tile(0, 0), tile(1, 0), tile(0, 1)]);
+        expect(landmassTiles(world, [{ tx: 4, ty: 2 }])).toEqual([tile(4, 1), tile(4, 2)]);
+    });
+
+    it("doesn't join land that only touches at a corner", () => {
+        expect(landmassTiles(world, [{ tx: 1, ty: 2 }])).toEqual([tile(1, 2), tile(2, 2), tile(2, 3)]);
+        expect(landmassTiles(world, [{ tx: 5, ty: 4 }])).toEqual([tile(5, 4)]);
+    });
+
+    it("floods several landmasses at once, each tile once", () => {
+        expect(landmassTiles(world, [{ tx: 0, ty: 0 }, { tx: 4, ty: 1 }, { tx: 1, ty: 0 }, { tx: 0, ty: 4 }]))
+            .toEqual([tile(0, 0), tile(1, 0), tile(0, 1), tile(4, 1), tile(4, 2), tile(0, 4)]);
+    });
+
+    it("starts nowhere from water, an impassable tile or off the map", () => {
+        const water = { tx: 5, ty: 3 };
+        const impassable = { tx: 3, ty: 0 };
+        expect(landmassTiles(world, [water, impassable, { tx: 6, ty: 0 }, { tx: 0, ty: 5 }])).toEqual([]);
+    });
+
+    it("outlines its landmass and marks the instance it was measured from", () => {
+        const [shape] = witnessShapes([witness([{ tx: 0, ty: 0, area: 3 }])], undefined, world);
+        expect(ends(shape.segments)).toEqual([
+            [-14, -12, -6, -12],
+            [-10, -8, -6, -8],
+            [-14, -4, -10, -4],
+            [-14, -12, -14, -4],
+            [-10, -8, -10, -4],
+            [-6, -12, -6, -8]
+        ]);
+        expect(shape.segments.every(({ ok, jump }) => ok && !jump)).toBe(true);
+        expect(shape.marks).toEqual([{ prefab: "multiplayer_portal", at: { x: -12, z: -10 }, ok: true }]);
+        expect(shape.focus).toEqual({ x: -12, z: -10 });
+    });
+
+    it("outlines every landmass the links reached", () => {
+        const reached = witness([{ tx: 0, ty: 0, area: 3 }, { tx: 4, ty: 2, area: 2 }]);
+        const [shape] = witnessShapes([reached], undefined, world);
+        expect(ends(shape.segments)).toEqual([
+            [-14, -12, -6, -12],
+            [-10, -8, -6, -8],
+            [2, -8, 6, -8],
+            [-14, -4, -10, -4],
+            [2, 0, 6, 0],
+            [-14, -12, -14, -4],
+            [-10, -8, -10, -4],
+            [-6, -12, -6, -8],
+            [2, -8, 2, 0],
+            [6, -8, 6, 0]
+        ]);
+    });
+
+    it("draws the box around its landmasses where the world has no land to flood", () => {
+        const box = [[-14, -12, -6, -12], [-6, -12, -6, -4], [-6, -4, -14, -4], [-14, -4, -14, -12]];
+        expect(ends(witnessShape(witness([{ tx: 0, ty: 0, area: 3 }])).segments)).toEqual(box);
+        expect(ends(witnessShapes([witness([{ tx: 3, ty: 0, area: 3 }])], undefined, world)[0].segments)).toEqual(box);
+    });
+
+    it("draws nothing without an instance", () => {
+        const none: IslandsWitness = { section: "islands", index: 0, ok: false, area: null, landmasses: [] };
+        expect(witnessShapes([none], undefined, world)).toEqual([{ marks: [], segments: [], focus: null }]);
+        expect(witnessShape(none)).toEqual({ marks: [], segments: [], focus: null });
     });
 });

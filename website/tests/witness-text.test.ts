@@ -50,4 +50,43 @@ describe("a witness described", () => {
             .toBe("Turf bridge rule 1: BGVentsRoom (CentipedeCaveTask) -> VentsRoom (CentipedeCaveTask): 1,241.8 units (310.4 tiles)");
         expect(describeWitness(none)).toBe("Turf bridge rule 2: no bridge");
     });
+
+    it("says how much land an island rule's instance can walk to, and how many landmasses the links join", () => {
+        const portal = at("multiplayer_portal", -310, 522);
+        const tile = { tx: 135, ty: 343, x: -310, z: 522 };
+        const [alone, joined, none] = parseWitnesses([
+            {
+                section: "islands", index: 0, ok: true, area: 412, at: portal, tile,
+                landmasses: [{ tx: 135, ty: 343, area: 412 }],
+                bounds: { tx0: 120, ty0: 330, tx1: 150, ty1: 360 }
+            },
+            {
+                section: "islands", index: 1, ok: false, area: 46200, at: portal, tile,
+                landmasses: [
+                    { tx: 135, ty: 343, area: 412 },
+                    { tx: 200, ty: 200, area: 43000 },
+                    { tx: 60, ty: 380, area: 2788 }
+                ],
+                bounds: { tx0: 12, ty0: 20, tx1: 410, ty1: 400 }
+            },
+            { section: "islands", index: 2, ok: false, area: null }
+        ]);
+        expect(alone).toMatchObject({
+            at: portal,
+            tile,
+            landmasses: [{ tx: 135, ty: 343, area: 412 }],
+            bounds: { tx0: 120, ty1: 360 }
+        });
+        expect(describeWitness(alone)).toBe("Island rule 1: multiplayer_portal on a landmass of 412 tiles");
+        expect(describeWitness(joined))
+            .toBe("Island rule 2: multiplayer_portal on 3 landmasses of 46,200 tiles in all, joined by wormholes");
+        expect(describeWitness(joined, "caves"))
+            .toBe("Island rule 2: multiplayer_portal on 3 landmasses of 46,200 tiles in all, joined by tentacle pillars");
+        expect(none).toEqual({ section: "islands", index: 2, ok: false, area: null, landmasses: [] });
+        expect(describeWitness(none)).toBe("Island rule 3: no instance");
+    });
+
+    it("drops an island witness without its area", () => {
+        expect(parseWitnesses([{ section: "islands", index: 0, ok: true, landmasses: [] }])).toEqual([]);
+    });
 });

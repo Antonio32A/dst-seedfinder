@@ -49,7 +49,7 @@ function WitnessChecks({ evaluation, filter, world, map }: WitnessChecksProps) {
                                     <button type="button" className="map__check" disabled={focus === null}
                                             onClick={() => focus && map?.centre(focus)}>
                                         <span className={witness.ok ? "witness__ok" : "witness__failed"}>{witness.ok ? "ok" : "failed"}</span>{" "}
-                                        {describeWitness(witness)}
+                                        {describeWitness(witness, world.shard)}
                                     </button>
                                 </li>
                         );

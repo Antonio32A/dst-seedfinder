@@ -1,3 +1,4 @@
+import { DEFAULT_SHARD, type Shard } from "@/lib/config/seedfinder-config";
 import type {
     DistancesWitness,
     GroupRuleResult,
@@ -19,7 +20,8 @@ const WITNESS_LABELS: Record<WitnessSection, string> = {
     distances: "Distance",
     tiles: "Tiles",
     bridges: "Turf bridge",
-    routes: "Route"
+    routes: "Route",
+    islands: "Island"
 };
 
 /** A world rule as the timings name it, e.g. "Distance rule 2". */
@@ -45,6 +47,8 @@ const jumps = (witness: DistancesWitness) => {
     return witness.wormholes.length > 0 ? `, ${plural(witness.wormholes.length, noun)}` : "";
 };
 
+const LINK_NAMES: Record<Shard, string> = { forest: "wormholes", caves: "tentacle pillars" };
+
 const placedText = ({ name, planned, placed }: PlacedPiece) => `${name} ${WHOLE.format(placed)} of ${WHOLE.format(planned)} placed`;
 
 const groupRuleText = ({ counts, pieces }: GroupRuleResult) => [
@@ -54,7 +58,7 @@ const groupRuleText = ({ counts, pieces }: GroupRuleResult) => [
         .map(([name, count]) => `${name} ${WHOLE.format(count)} planned`)
 ].join(", ");
 
-type WitnessFigures = { [S in WitnessSection]: (witness: Extract<Witness, { section: S }>) => string };
+type WitnessFigures = { [S in WitnessSection]: (witness: Extract<Witness, { section: S }>, shard: Shard) => string };
 
 const WITNESS_FIGURES: WitnessFigures = {
     setpieces: (witness) => {
@@ -72,9 +76,18 @@ const WITNESS_FIGURES: WitnessFigures = {
             : `${chain([witness.from, witness.to])}: ${distance(witness.distance)}${jumps(witness)}`,
     bridges: (witness) =>
         witness.length === null ? "no bridge" : `${roomName(witness.from)} -> ${roomName(witness.to)}: ${distance(witness.length)}`,
-    routes: (witness) => `${chain(witness.stops)}: ${distance(witness.length)}`
+    routes: (witness) => `${chain(witness.stops)}: ${distance(witness.length)}`,
+    islands: ({ area, at, landmasses }, shard) => {
+        if (area === null) return "no instance";
+        const land = landmasses.length > 1
+            ? `${plural(landmasses.length, "landmass", "landmasses")} of ${plural(area, "tile")} in all, joined by ${LINK_NAMES[shard]}`
+            : `a landmass of ${plural(area, "tile")}`;
+        return `${at?.prefab ?? "?"} on ${land}`;
+    }
 };
 
-/** A world check as a search hit lists it: its rule, then what the world has for it. */
-export const describeWitness = (witness: Witness) =>
-    `${WITNESS_LABELS[witness.section]} rule ${witness.index + 1}: ${(WITNESS_FIGURES[witness.section] as (witness: Witness) => string)(witness)}`;
+/** A world check of the shard's world as a search hit lists it: its rule, then what the world has for it. */
+export const describeWitness = (witness: Witness, shard: Shard = DEFAULT_SHARD) => {
+    const figures = WITNESS_FIGURES[witness.section] as (witness: Witness, shard: Shard) => string;
+    return `${WITNESS_LABELS[witness.section]} rule ${witness.index + 1}: ${figures(witness, shard)}`;
+};

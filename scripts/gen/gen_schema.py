@@ -151,6 +151,10 @@ def definitions(catalog):
                              "to": ref("prefabs"), "max": ref("distance"),
                              "order": {"enum": list(ORDERS), "default": "any"}, **metric_fields()},
                             ("from", "visit", "max")),
+        "islandRule": closed({"at": ref("prefabs"), "min": ref("uint32"), "max": ref("uint32"),
+                              "wormholes": {"type": "boolean", "default": False}}, ("at",),
+                             description="The smallest landmass (in tiles, 4-neighbour) an instance of `at` stands on, "
+                                         "with `wormholes` together with every landmass the wormholes lead to."),
         "filterName": {"type": "string", "maxLength": CAPS["characters"],
                        "description": "Labels the filter and the hits it matches (their `name`)."},
         "generation": closed({"tasks": ref("tasks"), "prefab_swaps": ref("prefabSwaps"),
@@ -159,7 +163,7 @@ def definitions(catalog):
                                          "(AND)."),
         "filter": closed({"name": ref("filterName"), "counts": rules("countRule"),
                           "distances": rules("distanceRule"), "tiles": rules("tileRule"),
-                          "bridges": rules("bridgeRule"), "routes": rules("routeRule")},
+                          "bridges": rules("bridgeRule"), "routes": rules("routeRule"), "islands": rules("islandRule")},
                          description="World rules: all sections and all rules must hold (AND)."),
     }
 
@@ -198,16 +202,22 @@ def cave_definitions(number):
                                  "to": ref("cavePrefabs"), "max": ref("distance"),
                                  "order": {"enum": list(ORDERS), "default": "any"}, **metric_fields("pillars")},
                                 ("from", "visit", "max")),
+        "caveIslandRule": closed({"at": ref("cavePrefabs"), "min": ref("uint32"), "max": ref("uint32"),
+                                  "pillars": {"type": "boolean", "default": False}}, ("at",),
+                                 description="The smallest landmass (in tiles, 4-neighbour) an instance of `at` stands "
+                                             "on, with `pillars` together with every landmass the tentacle pillars "
+                                             "lead to."),
         "caveGeneration": closed({"tasks": ref("caveTasks"), "prefab_swaps": ref("cavePrefabSwaps"),
                                   "setpieces": setpiece_items("caveSetPieceRule", "caveSetPieceGroup")},
                                  description="The caves' level table: a seed is a candidate when all its sections and "
                                              "rules hold (AND)."),
         "caveFilter": closed({"name": ref("filterName"), "counts": rules("caveCountRule"),
                               "distances": rules("caveDistanceRule"), "tiles": rules("tileRule"),
-                              "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule")},
-                             description="World rules: all sections and all rules must hold (AND). Counts, distances "
-                                         "and routes use the caves' prefabs, and `pillars` lets a distance use the "
-                                         "tentacle pillar links."),
+                              "bridges": rules("bridgeRule"), "routes": rules("caveRouteRule"),
+                              "islands": rules("caveIslandRule")},
+                             description="World rules: all sections and all rules must hold (AND). Counts, distances, "
+                                         "routes and islands use the caves' prefabs, and `pillars` lets a distance use "
+                                         "the tentacle pillar links."),
     }
 
 
@@ -301,8 +311,8 @@ def schema():
                                            "caves. The caves shard's sections use its own tasks, set pieces and prefabs.",
                             "enum": list(SHARDS), "default": DEFAULT_SHARD},
                   "platform": {"description": "The OS hosting the world. The level table (tasks, prefab_swaps, "
-                                              "setpieces) is the same on both; counts, distances, tiles, bridges "
-                                              "and routes are evaluated on this platform's world.",
+                                              "setpieces) is the same on both; counts, distances, tiles, bridges, "
+                                              "routes and islands are evaluated on this platform's world.",
                                "enum": list(PLATFORMS), "default": DEFAULT_PLATFORM},
                   "settings": {"description": "Reserved: only default settings.", "type": "object",
                                "additionalProperties": {"const": "default"}},

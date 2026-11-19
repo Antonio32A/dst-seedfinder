@@ -322,7 +322,7 @@ def placed_rules(items: List<&2, Json.Json>, +index: U32) -> List<&2, Rules.Plac
       placed_rules(rest, (index + 1 : U32))
 
 def later_parts() -> List<&2, String>:
-  ["counts", "distances", "tiles", "bridges", "routes"]
+  ["counts", "distances", "tiles", "bridges", "routes", "islands"]
 
 def placed_message(+placed: List<&2, Rules.Placed>) -> Maybe<&2, String>:
   match placed:
@@ -421,7 +421,7 @@ def filter_list(+build: Builds.Build, items: List<&2, Json.Json>, +placed: List<
 def or_unfiltered(filters: List<&2, Rules.Later>, +placed: List<&2, Rules.Placed>) -> List<&2, Rules.Later>:
   match filters:
     case Nil{}:
-      [Rules.Later{placed, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}]
+      [Rules.Later{placed, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}]
     case _:
       filters
 
@@ -560,7 +560,7 @@ def config_of(+text: String, flag: Maybe<&2, Builds.Build>) -> Result<&1, &1, U3
     +listed : List<&2, Json.Json> <- Parse.capped(items, 25, "entries", "filters")
     config_from(build, windows, generation, listed)
 
-# A config for a finder that only knows part A: the message when a filter has a counts/distances/tiles/bridges/routes
+# A config for a finder that only knows part A: the message when a filter has a counts/distances/tiles/bridges/routes/islands
 # key or `generation` has `placed` names.
 def level_table_only(+config: Config) -> Result<&1, &1, U32 & String, Config>:
   match config:

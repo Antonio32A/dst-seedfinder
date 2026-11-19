@@ -128,6 +128,16 @@ export interface RouteRule extends TravelFields {
     order?: RouteOrder;
 }
 
+/**
+ * Bounds the land tiles an instance of `at` can walk to (the smallest over its instances), adding the land reached
+ * through the links with `wormholes` in the forest and `pillars` in the caves.
+ */
+export interface IslandRule extends Omit<TravelFields, "metric"> {
+    at: PrefabSet;
+    min?: number;
+    max?: number;
+}
+
 /** The level table: only the worlds of the seeds it accepts are generated. */
 export interface Generation {
     tasks?: TaskFilter;
@@ -144,6 +154,7 @@ export interface Filter {
     tiles?: TileRule[];
     bridges?: BridgeRule[];
     routes?: RouteRule[];
+    islands?: IslandRule[];
 }
 
 /** What a filter is called: its name, or its place among the filters. */

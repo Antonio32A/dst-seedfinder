@@ -16,6 +16,8 @@ import ./laws/distances.bend as LawsDistances
 import ./laws/events_off_762172.bend as LawsEventsOff762172
 import ./laws/f64.bend as LawsF64
 import ./laws/gen_and_search.bend as LawsGenAndSearch
+import ./laws/islands.bend as LawsIslands
+import ./laws/islands_cut_off.bend as LawsIslandsCutOff
 import ./laws/kk.bend as LawsKK
 import ./laws/lua_stl_storygen.bend as LawsLuaStlStorygen
 import ./laws/maze_layout_four_way.bend as LawsMazeLayoutFourWay

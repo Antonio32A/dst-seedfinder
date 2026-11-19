@@ -79,12 +79,13 @@ def evaluate_world(+build: Builds.Build, +config: ShardSearch.Search, +text: Str
   match loaded:
     case FilterWorld.Generated{+world, +platform}:
       match world:
-        case FilterWorld.World{+seed, _, _, _, _, _, _, _, _, _}:
+        case FilterWorld.World{+seed, _, _, _, _, _, _, _, _, _, _}:
           Bool.pick(IO(Unit), platform_mismatch(ShardSearch.windows(config), platform), IO.die(Unit, 2, platform_message(ShardSearch.windows(config))),
             Bool.pick(IO(Unit), graph_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no topology (GRPH section), which bridges rules need; regenerate it"),
               Bool.pick(IO(Unit), plan_missing(config, world), IO.die(Unit, 2, "world: " ++ path ++ ": the dump has no level plan (PLAN section), which setpieces rules with placed names need; regenerate it"),
                 print_outcome(outcome_line(seed, ShardSearch.windows(config),
-                  entries_loop(build, LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, world, ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))))
+                  entries_loop(build, LevelChecks.shown_of(text), ShardSearch.laters(config), False{}, FilterWorld.with_landmasses(world, Rules.reads_masses(ShardSearch.needs(config))),
+                    ShardSearch.caves(config), seed, fast, 0, Evaluated{Nil{}, Nil{}}))))))
     case FilterWorld.GaveUp{+seed}:
       IO.die(Unit, 1, "evaluate: seed " ++ path ++ ": world generation did not finish (seed " ++ U32.show(seed) ++ "); no match")
 

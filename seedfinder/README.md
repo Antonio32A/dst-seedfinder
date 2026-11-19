@@ -75,8 +75,9 @@ build/seedfinder selftest --cases 20000000                                      
   would reject `--shard caves` (`build <n> does not support the caves shard yet`).
 - `--shard forest|caves`: overrides the config's `shard` (default forest); also on `world show`, `world dump`, `gen` and
   `setpiece`. The caves shard has the level table (`world find`, `world show`, `setpiece find|show`) and its whole
-  worldgen (`gen`, `world dump`, see below). A caves config's world sections (`counts`, `distances`, `tiles`, `bridges`, `routes`)
-  are decided on caves worlds generated in memory, or with `--worlds` on caves dumps, and `world eval` reads a caves dump.
+  worldgen (`gen`, `world dump`, see below). A caves config's world sections (`counts`, `distances`, `tiles`, `bridges`, `routes`,
+  `islands`) are decided on caves worlds generated in memory, or with `--worlds` on caves dumps, and `world eval` reads a
+  caves dump.
 - `FROM [TO]`: scan a seed range instead of the whole space (can't be combined with `--start-seed`).
 - `--worlds DIR`: decide seeds on world dumps (`DIR/<seed>.dstw`) instead of generating them. A `bridges` rule needs
   the dumps' topology (their `GRPH` section) and a `setpieces` rule or group with `placed` names their level plan (their

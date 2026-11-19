@@ -6,6 +6,7 @@ import ../gen/centi.bend as Centi
 import ../data/search_vocab.bend as SearchVocab
 import ../data/gen_tags.bend as GenTagsData
 import ./dump.bend as FilterDump
+import ./landmass.bend as Landmass
 import ./parse.bend as Parse
 import ../data/search_vocab_types.bend as SearchVocabTypes
 import ../data/builds.bend as Builds
@@ -24,9 +25,10 @@ type Link is Data:
 # width x height tiles (packed two u16 per word, row-major), the world_tile_map id of every vocabulary tile (65535
 # when absent), the instances of every vocabulary prefab, the wormhole links in savedata order, the topology (none for a
 # dump without a GRPH section) and the level plan's task set pieces with whether they were placed (none for a dump
-# without a PLAN section), and the land bits of the tiles (`land_bits`), which the walk filters fill their land arrays from.
+# without a PLAN section), the land bits of the tiles (`land_bits`), which the walk filters fill their land arrays from,
+# and the landmasses of those land bits, labelled once for every islands rule (none until a search needs them).
 type World is Data:
-  World{seed: U32, width: U32, height: U32, tile_ids: List<&2, U32>, entities: List<&2, List<&2, Inst>>, links: List<&2, Link>, tiles: List<&2, U32>, graph: Maybe<&2, FilterDump.Graph>, plan: Maybe<&2, List<&2, FilterDump.Planned>>, land: List<&2, U32>}
+  World{seed: U32, width: U32, height: U32, tile_ids: List<&2, U32>, entities: List<&2, List<&2, Inst>>, links: List<&2, Link>, tiles: List<&2, U32>, graph: Maybe<&2, FilterDump.Graph>, plan: Maybe<&2, List<&2, FilterDump.Planned>>, land: List<&2, U32>, masses: Maybe<&2, Landmass.Masses>}
 
 # A dump: a generated world with its platform (0 unknown, 1 windows, 2 linux), or the seed of a world whose
 # generation gave up. A dump of the other shard than the one asked for is refused.
@@ -145,11 +147,11 @@ def land_bits(words: List<&2, U32>, +k: Nat, +acc: U32) -> List<&2, U32>:
 
 def forest_loaded(+build: Builds.Build, +seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +links: List<&2, FilterDump.Link>, +graph: Maybe<&2, FilterDump.Graph>, +plan: Maybe<&2, List<&2, FilterDump.Planned>>) -> Loaded:
   +groups = groups_of(SearchVocab.prefabs(build), prefabs, 0)
-  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(build), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole(build)), tiles, graph, plan, land_bits(tiles, 0n, 0)}, platform}
+  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(build), tile_names), groups, links_of(links, groups, GenTagsData.vocab_wormhole(build)), tiles, graph, plan, land_bits(tiles, 0n, 0), None{}}, platform}
 
 def cave_loaded(+build: Builds.Build, +seed: U32, +platform: U32, +width: U32, +height: U32, +tile_names: List<&2, FilterDump.TileName>, +tiles: List<&2, U32>, +prefabs: List<&2, FilterDump.Prefab>, +pillars: List<&2, FilterDump.Pillar>, +graph: Maybe<&2, FilterDump.Graph>) -> Loaded:
   +groups = groups_of(SearchVocab.all_prefabs(build), prefabs, 0)
-  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(build), tile_names), groups, pillar_links_of(build, pillars, prefabs, groups), tiles, graph, None{}, land_bits(tiles, 0n, 0)}, platform}
+  Generated{World{seed, width, height, tile_ids_of(SearchVocab.tiles(build), tile_names), groups, pillar_links_of(build, pillars, prefabs, groups), tiles, graph, None{}, land_bits(tiles, 0n, 0), None{}}, platform}
 
 # The world of a parsed dump of the shard `caves` names; a dump of the other shard is refused.
 def loaded_of(+build: Builds.Build, dump: Result<&1, &1, U32 & String, FilterDump.Dump>, +caves: Bool) -> Result<&1, &1, U32 & String, Loaded>:
@@ -182,24 +184,39 @@ def instance_groups(+groups: List<&2, List<&2, Inst>>, ids: List<&2, U32>) -> Li
 # The instances of a prefab set, prefab by prefab (docs/config.md: the union over the ids, in order).
 def instances(+world: World, ids: List<&2, U32>) -> List<&2, Inst>:
   match world:
-    case World{_, _, _, _, +groups, _, _, _, _, _}:
+    case World{_, _, _, _, +groups, _, _, _, _, _, _}:
       List.concat(&2, Inst, instance_groups(groups, ids))
 
 # Whether the world has its topology (a dump without a GRPH section has none).
 def has_graph(+world: World) -> Bool:
   match world:
-    case World{_, _, _, _, _, _, _, +graph, _, _}:
+    case World{_, _, _, _, _, _, _, +graph, _, _, _}:
       Maybe.is_some(&2, FilterDump.Graph, graph)
 
 # Whether the world has its level plan (a dump without a PLAN section has none).
 def has_plan(+world: World) -> Bool:
   match world:
-    case World{_, _, _, _, _, _, _, _, +plan, _}:
+    case World{_, _, _, _, _, _, _, _, +plan, _, _}:
       Maybe.is_some(&2, List<&2, FilterDump.Planned>, plan)
 
 # The world's level plan (empty when it has none).
 def planned(+world: World) -> List<&2, FilterDump.Planned>:
   match world:
-    case World{_, _, _, _, _, _, _, _, +plan, _}:
+    case World{_, _, _, _, _, _, _, _, +plan, _, _}:
       Maybe.default(&2, List<&2, FilterDump.Planned>, plan, Nil{})
 
+# The world's landmasses (labelled from its land bits when the world has none yet).
+def landmasses(+world: World) -> Landmass.Masses:
+  match world:
+    case World{_, +w, +h, _, _, _, _, _, _, +land, None{}}:
+      Landmass.of_land(land, w, h)
+    case World{_, _, _, _, _, _, _, _, _, _, Some{+masses}}:
+      masses
+
+# The world with its landmasses labelled when `needed` (Rules.Needs) and not yet done.
+def with_landmasses(+world: World, needed: Bool) -> World:
+  match world needed:
+    case World{+seed, +w, +h, +tile_ids, +groups, +links, +tiles, +graph, +plan, +land, None{}} True{}:
+      World{seed, w, h, tile_ids, groups, links, tiles, graph, plan, land, Some{Landmass.of_land(land, w, h)}}
+    case other _:
+      other

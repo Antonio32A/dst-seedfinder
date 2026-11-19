@@ -33,6 +33,21 @@ export interface WitnessRoom {
     z: number;
 }
 
+/** A landmass by one of its tiles, and its number of tiles. */
+export interface WitnessLandmass {
+    tx: number;
+    ty: number;
+    area: number;
+}
+
+/** An inclusive box of tiles. */
+export interface TileBounds {
+    tx0: number;
+    ty0: number;
+    tx1: number;
+    ty1: number;
+}
+
 /** A jump through a teleporter link: a wormhole in the forest, a tentacle pillar in the caves. */
 export interface WormholeJump {
     entry: WitnessInstance;
@@ -113,13 +128,26 @@ export interface RoutesWitness extends WitnessBase {
     legs: RouteLeg[];
 }
 
+export interface IslandsWitness extends WitnessBase {
+    section: "islands";
+    /** The fewest land tiles an instance of `at` can reach, `null` without an instance (or without land). */
+    area: number | null;
+    at?: WitnessInstance;
+    /** The land tile `at` stands on or is nearest. */
+    tile?: WitnessTile;
+    /** The reached landmasses: the one of `tile` first, then the ones the links lead to, in the order reached. */
+    landmasses: WitnessLandmass[];
+    bounds?: TileBounds;
+}
+
 export type Witness =
     | SetPiecesWitness
     | CountsWitness
     | TilesWitness
     | DistancesWitness
     | BridgesWitness
-    | RoutesWitness;
+    | RoutesWitness
+    | IslandsWitness;
 
 export type WitnessSection = Witness["section"];
 
@@ -220,6 +248,8 @@ const jump = shape<WormholeJump>({ entry: instance, exit: instance });
 const jumps = listOf(jump);
 const tile = shape<WitnessTile>({ tx: uint32, ty: uint32, x: finite, z: finite });
 const room = shape<WitnessRoom>({ node: text, type: uint32, x: finite, z: finite });
+const landmass = shape<WitnessLandmass>({ tx: uint32, ty: uint32, area: uint32 });
+const tileBounds = shape<TileBounds>({ tx0: uint32, ty0: uint32, tx1: uint32, ty1: uint32 });
 const witnessBase = { index: withDefault(uint32, 0), ok: withDefault(boolean, true) };
 
 const placedPiece = shape<PlacedPiece>({ name: text, planned: uint32, placed: uint32 });
@@ -261,6 +291,11 @@ const WITNESS_PARSERS: Record<WitnessSection, Parser<Omit<Witness, "section">>> 
         length: finite,
         stops: listOf(instance),
         legs: listOf(shape<RouteLeg>({ from: instance, to: instance, distance: finite, wormholes: jumps }))
+    }),
+    islands: shape({ ...witnessBase, area: nullable(uint32), landmasses: listOf(landmass) }, {
+        at: instance,
+        tile,
+        bounds: tileBounds
     })
 };
 

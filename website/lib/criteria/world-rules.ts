@@ -10,6 +10,7 @@ import {
     DEFAULT_ROUTE_ORDER,
     type DistanceRule,
     type Filter,
+    type IslandRule,
     LINKS_KEY,
     MAX_DISTANCE,
     MAX_PREFAB_IDS,
@@ -32,6 +33,7 @@ import { asArray, asStrings, newKey, nonEmpty } from "./state-helpers";
 
 export type WorldCountMode = "atLeast" | "atMost" | "exactly" | "between" | "none";
 export type DistanceMode = "within" | "atLeast" | "between";
+export type AreaMode = "atMost" | "atLeast" | "between";
 
 export interface Travel {
     metric: Metric;
@@ -82,6 +84,15 @@ export interface RouteStop {
     prefabs: string[];
 }
 
+export interface IslandRow {
+    key: string;
+    at: string[];
+    mode: AreaMode;
+    min: number;
+    max: number;
+    links: boolean;
+}
+
 export interface RouteRow extends Travel {
     key: string;
     from: string[];
@@ -98,6 +109,7 @@ export interface WorldRows {
     tiles: TileRow[];
     bridges: BridgeRow[];
     routes: RouteRow[];
+    islands: IslandRow[];
 }
 
 export type WorldSection = keyof WorldRows;
@@ -125,6 +137,15 @@ export const DISTANCE_MODES: { id: DistanceMode; label: string }[] = [
     { id: "atLeast", label: "At least" },
     { id: "between", label: "Between" }
 ];
+
+export const AREA_MODES: { id: AreaMode; label: string }[] = [
+    { id: "atMost", label: "At most" },
+    { id: "atLeast", label: "At least" },
+    { id: "between", label: "Between" }
+];
+
+/** Fewer land tiles than the forest's mainland (40,000 to 50,000) and more than the Lunar island (2,000 to 4,000). */
+export const OFF_MAINLAND_TILES = 30_000;
 
 const tiles = (count: number) => count * WORLD_UNITS_PER_TILE;
 const DEFAULT_TRAVEL: Travel = { metric: DEFAULT_METRIC, links: DEFAULT_LINKS };
@@ -167,11 +188,20 @@ export const NEW_WORLD_ROW: { [S in WorldSection]: (world: WorldKind) => WorldRo
         roundTrip: true,
         order: DEFAULT_ROUTE_ORDER,
         max: tiles(500)
+    }),
+    islands: (world) => ({
+        key: newKey(),
+        at: [spawnOf(world)],
+        mode: "atMost",
+        min: 0,
+        max: OFF_MAINLAND_TILES,
+        links: DEFAULT_LINKS
     })
 };
 
 export const worldRowCount = (rows: WorldRows): number =>
-    rows.counts.length + rows.distances.length + rows.tiles.length + rows.bridges.length + rows.routes.length;
+    rows.counts.length + rows.distances.length + rows.tiles.length + rows.bridges.length + rows.routes.length
+    + rows.islands.length;
 
 const asSet = (ids: string[]): PrefabSet => (ids.length === 1 ? ids[0] : ids);
 
@@ -190,6 +220,12 @@ const COUNT_BOUNDS: Record<WorldCountMode, (row: CountRow) => { min?: number; ma
 
 const DISTANCE_BOUNDS: Record<DistanceMode, (row: DistanceRow) => { min?: number; max?: number }> = {
     within: (row) => ({ max: row.max }),
+    atLeast: (row) => (row.min > 0 ? { min: row.min } : {}),
+    between: (row) => ({ min: row.min, max: row.max })
+};
+
+const AREA_BOUNDS: Record<AreaMode, (row: IslandRow) => { min?: number; max?: number }> = {
+    atMost: (row) => ({ max: row.max }),
     atLeast: (row) => (row.min > 0 ? { min: row.min } : {}),
     between: (row) => ({ min: row.min, max: row.max })
 };
@@ -246,13 +282,20 @@ const routeRule = (row: RouteRow, shard: Shard): RouteRule[] => {
     ];
 };
 
+const islandRule = (row: IslandRow, shard: Shard): IslandRule[] => (filled(row.at) ? [{
+    at: asSet(row.at),
+    ...AREA_BOUNDS[row.mode](row),
+    ...(row.links === DEFAULT_LINKS ? {} : { [LINKS_KEY[shard]]: row.links })
+}] : []);
+
 export function worldSections(rows: WorldRows, shard: Shard): Filter {
     return {
         counts: nonEmpty(rows.counts.flatMap((row) => countRule(row, shard))),
         distances: nonEmpty(rows.distances.flatMap((row) => distanceRule(row, shard))),
         tiles: nonEmpty(rows.tiles.flatMap((row) => tileRule(row, shard))),
         bridges: nonEmpty(rows.bridges.map(bridgeRule)),
-        routes: nonEmpty(rows.routes.flatMap((row) => routeRule(row, shard)))
+        routes: nonEmpty(rows.routes.flatMap((row) => routeRule(row, shard))),
+        islands: nonEmpty(rows.islands.flatMap((row) => islandRule(row, shard)))
     };
 }
 
@@ -288,6 +331,11 @@ function countModeOf(min: number | undefined, max: number | undefined): WorldCou
 function distanceModeOf(min: number | undefined, max: number | undefined): DistanceMode {
     if (max === undefined) return "atLeast";
     return min === undefined ? "within" : "between";
+}
+
+function areaModeOf(min: number | undefined, max: number | undefined): AreaMode {
+    if (max === undefined) return "atLeast";
+    return min === undefined ? "atMost" : "between";
 }
 
 function nearOf(value: unknown, world: WorldKind): NearRow | null | undefined {
@@ -354,6 +402,21 @@ function routeRowOf(value: unknown, world: WorldKind): RouteRow[] {
     return [{ ...travelOf(record, world), key: newKey(), from, stops, to: roundTrip ? [] : to, roundTrip, order, max }];
 }
 
+function islandRowOf(value: unknown, world: WorldKind): IslandRow[] {
+    const record = asRecord(value);
+    const at = prefabIds(record.at, world);
+    const [min, max] = [uint32Of(record.min), uint32Of(record.max)];
+    if (!filled(at)) return [];
+    return [{
+        key: newKey(),
+        at,
+        mode: areaModeOf(min, max),
+        min: min ?? 0,
+        max: max ?? Math.max(min ?? 0, OFF_MAINLAND_TILES),
+        links: travelOf(record, world).links
+    }];
+}
+
 const rowsOf = <T>(value: unknown, world: WorldKind, parse: (item: unknown, world: WorldKind) => T[]): T[] =>
     asArray(value).slice(0, MAX_RULES_PER_SECTION).flatMap((item) => parse(item, world));
 
@@ -363,7 +426,8 @@ export function worldRowsOf(filter: Record<string, unknown>, world: WorldKind): 
         distances: rowsOf(filter.distances, world, distanceRowOf),
         tiles: rowsOf(filter.tiles, world, tileRowOf),
         bridges: rowsOf(filter.bridges, world, bridgeRowOf),
-        routes: rowsOf(filter.routes, world, routeRowOf)
+        routes: rowsOf(filter.routes, world, routeRowOf),
+        islands: rowsOf(filter.islands, world, islandRowOf)
     };
 }
 
@@ -399,6 +463,11 @@ const BRIDGE_CHECKS: RowCheck<BridgeRow>[] = [
     (row, label) => (row.max !== null && row.min > row.max ? error(`${label}: minimum is above maximum.`) : undefined)
 ];
 
+const ISLAND_CHECKS: RowCheck<IslandRow>[] = [
+    (row, label) => (filled(row.at) ? undefined : error(`${label} needs something to measure from.`)),
+    (row, label) => (row.mode === "between" && row.min > row.max ? error(`${label}: minimum is above maximum.`) : undefined)
+];
+
 const ROUTE_CHECKS: RowCheck<RouteRow>[] = [
     (row, label) => (row.from.length === 0 ? error(`${label} needs a start.`) : undefined),
     (row, label) => (row.stops.some((stop) => stop.prefabs.length === 0) ? error(`${label} has an empty stop.`) : undefined),
@@ -421,7 +490,8 @@ export function worldIssues(rows: WorldRows, world: WorldKind): WorldIssue[] {
         ...checkRows(rows.distances, "distance", DISTANCE_CHECKS, world),
         ...checkRows(rows.tiles, "turf rule", TILE_CHECKS, world),
         ...checkRows(rows.bridges, "turf bridge", BRIDGE_CHECKS, world),
-        ...checkRows(rows.routes, "route", ROUTE_CHECKS, world)
+        ...checkRows(rows.routes, "route", ROUTE_CHECKS, world),
+        ...checkRows(rows.islands, "island", ISLAND_CHECKS, world)
     ];
 }
 
@@ -495,15 +565,17 @@ export function worldRowsFor(rows: WorldRows, from: WorldKind, to: WorldKind): {
         const end = carriedSet(row.to, from, to);
         return required.row ? { row: { ...required.row, to: end.ids }, lost: required.lost + end.lost } : required;
     });
+    const islands = carry(rows.islands, (row) => carryRow(row, [row.at], from, to, ([at]) => ({ ...row, at })));
     return {
         rows: {
             counts: counts.rows,
             distances: distances.rows,
             tiles: rows.tiles,
             bridges: rows.bridges,
-            routes: routes.rows
+            routes: routes.rows,
+            islands: islands.rows
         },
-        dropped: counts.dropped + distances.dropped + routes.dropped
+        dropped: counts.dropped + distances.dropped + routes.dropped + islands.dropped
     };
 }
 

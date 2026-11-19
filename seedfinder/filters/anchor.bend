@@ -52,7 +52,7 @@ def land_bit_cells(words: List<&2, U32>, +i: U32, a: Array<U32>) -> Array<U32>:
 # A cell array with 1 on land tiles and 0 elsewhere (index ty*W + tx), of 2^depth cells.
 def land_array(+world: FilterWorld.World, +depth: Nat) -> Array<U32>:
   match world:
-    case FilterWorld.World{_, _, _, _, _, _, _, _, _, +land}:
+    case FilterWorld.World{_, _, _, _, _, _, _, _, _, +land, _}:
       land_bit_cells(land, 0, [0 : U32^depth])
 
 def is_negative(+v: U32) -> Bool:

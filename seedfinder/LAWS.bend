@@ -134,7 +134,7 @@ def config_parses_every_section():
 # docs/config.md section A: a `placed` name keeps only its minimum in the level table and is bounded on the world, which
 # makes a world rule (one a finder without worlds can't decide).
 law config_reads_placed:
-  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}], []}, [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], []}], Some{"config: generation.setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"tasks\": [\"Badlands\"], \"required\": {\"MooseNest\": [1, 2], \"Chessy_1\": 1}, \"placed\": [\"MooseNest\"]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [Config.Rule{70, 32768, 1, 4294967295}, Config.Rule{3, 32768, 1, 4294967295}], []}, [Rules.Later{[Rules.Placed{0, ["Badlands"], [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}], [], [], [], [], [], []}], Some{"config: generation.setpieces[0].placed is not supported by this binary yet (it needs the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_placed():
   {==}
@@ -183,7 +183,7 @@ def config_reads_group():
 
 # A group with `placed` names in one of its rules is one world rule, at the group's index.
 law config_reads_group_placed:
-  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": [1, 2]}, \"placed\": [\"MooseNest\"]}, {\"required\": {\"Chessy_1\": 1}}]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 1, 4294967295}], [Config.Rule{70, 33554431, 1, 4294967295}]], None{}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 1, None{}}]}, [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"Chessy_1", 1, None{}}]}, []}], None{}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": [1, 2]}, \"placed\": [\"MooseNest\"]}, {\"required\": {\"Chessy_1\": 1}}]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 1, 4294967295}], [Config.Rule{70, 33554431, 1, 4294967295}]], None{}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 1, None{}}]}, [LevelChecks.Bounded{"MooseNest", 1, Some{2}}]}, Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"Chessy_1", 1, None{}}]}, []}], None{}}], [], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_placed():
   {==}
@@ -202,7 +202,7 @@ def config_reads_group_total():
   {==}
 
 law config_reads_group_total_placed:
-  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}, \"placed\": [\"MooseNest\"]}], \"total\": [1, 2]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}]], Some{LevelChecks.Total{1, None{}}}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, [LevelChecks.Bounded{"MooseNest", 0, None{}}]}], Some{LevelChecks.Total{1, Some{2}}}}], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
+  {Config.config_of("{\"version\": 3, \"build\": 756039, \"generation\": {\"setpieces\": [{\"any\": [{\"required\": {\"MooseNest\": 0}, \"placed\": [\"MooseNest\"]}], \"total\": [1, 2]}]}}", None{}) == Done{Config.Config{True{}, Builds.Build{756039}, Config.Criteria{0, 0, 0, 0, [], [Config.Group{[[Config.Rule{3, 33554431, 0, 4294967295}]], Some{LevelChecks.Total{1, None{}}}}]}, [Rules.Later{[Rules.AnyPlaced{0, [Rules.Member{LevelChecks.Pieces{[], [LevelChecks.Bounded{"MooseNest", 0, None{}}]}, [LevelChecks.Bounded{"MooseNest", 0, None{}}]}], Some{LevelChecks.Total{1, Some{2}}}}], [], [], [], [], [], []}], Some{"config: generation.setpieces[0].any has placed names, which this binary doesn't support yet (they need the generated world)"}, []}} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_reads_group_total_placed():
   {==}
@@ -340,6 +340,16 @@ law config_caps_entries:
   {Config.config_of("{\"version\": 3, \"build\": 756039, \"filters\": [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]}", None{}) == Fail{(2, "config: filters has 26 entries (at most 25)")} : Result<&1, &1, U32 & String, Config.Config>}
 
 def config_caps_entries():
+  {==}
+
+# docs/config.md section 6: an `islands` section has at most 16 rules, and an `at` set at most 16 prefab ids.
+law config_caps_islands:
+  {(Config.config_of("{\"version\": 3, \"build\": 762172, \"filters\": [{\"islands\": [{\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}, {\"at\": \"pigking\"}]}]}", None{}),
+    Config.config_of("{\"version\": 3, \"build\": 762172, \"filters\": [{\"islands\": [{\"at\": [\"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\", \"pigking\"]}]}]}", None{}))
+    == (Fail{(2, "config: filters[0].islands has 17 rules (at most 16)")}, Fail{(2, "config: filters[0].islands[0].at has 17 prefab ids (at most 16)")})
+    : Result<&1, &1, U32 & String, Config.Config> & Result<&1, &1, U32 & String, Config.Config>}
+
+def config_caps_islands():
   {==}
 
 # docs/config.md section 1: a filter's `name` labels it and its hits, and has at most 40 characters.

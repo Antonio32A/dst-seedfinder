@@ -62,10 +62,11 @@ export function defaultShown(
     shard: Shard = "forest",
     build: GameBuild = LATEST_BUILD
 ): Set<string> {
-    const named = (search?.filters ?? []).flatMap(({ counts = [], distances = [], routes = [] }) => [
+    const named = (search?.filters ?? []).flatMap(({ counts = [], distances = [], routes = [], islands = [] }) => [
         ...counts.flatMap(({ prefab, near }) => [prefab, near?.prefab]),
         ...distances.flatMap(({ from, to }) => [from, to]),
-        ...routes.flatMap(({ from, visit, to }) => [from, ...visit, to])
+        ...routes.flatMap(({ from, visit, to }) => [from, ...visit, to]),
+        ...islands.map(({ at }) => at)
     ]);
     const drawn = shardCatalog(shard, build).prefabs.filter(({ defaultShown }) => defaultShown).map(({ id }) => id);
     return new Set([...drawn, ...named.flatMap((prefabs) => [prefabs ?? []].flat())]);

@@ -1,10 +1,9 @@
 "use client";
 
 import SegmentedControl from "@/components/ui/SegmentedControl";
-import Toggle from "@/components/ui/Toggle";
-import { shardCatalog } from "@/lib/catalog/shard-catalog";
 import type { Metric, Shard } from "@/lib/config/seedfinder-config";
 import type { Travel } from "@/lib/criteria/world-rules";
+import LinksToggle from "./LinksToggle";
 import { useWorldKind } from "./WorldKind";
 
 const METRIC_OPTIONS: { value: Metric; label: string }[] = [
@@ -29,14 +28,12 @@ interface TravelOptionsProps {
 }
 
 export default function TravelOptions({ travel, onChange }: TravelOptionsProps) {
-    const { shard, build } = useWorldKind();
+    const { shard } = useWorldKind();
     return (
             <div className="travel">
                 <SegmentedControl legend="Measured" options={METRIC_OPTIONS} value={travel.metric}
                                   onChange={(metric) => onChange({ ...travel, metric })}/>
-                <Toggle checked={travel.links} onChange={(links) => onChange({ ...travel, links })} large>
-                    allow {shardCatalog(shard, build).links.plural}
-                </Toggle>
+                <LinksToggle links={travel.links} onChange={(links) => onChange({ ...travel, links })}/>
                 <p className="hint">{METRIC_HINTS[shard][travel.metric]}</p>
             </div>
     );

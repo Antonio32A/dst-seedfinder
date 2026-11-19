@@ -24,7 +24,7 @@ the caves data extracted from its game scripts and the finder's caps (§ 6). Nev
 | `platform` | `"windows"` \| `"linux"` | `"windows"` | The OS of the host that generates the world (the dedicated server). |
 | `settings` | object | `{}` | Reserved. Every value must be `"default"` (any key). |
 | `generation` | object | `{}` | The level table (part A): the optional sections `tasks`, `prefab_swaps` and `setpieces` (§ 4 A). A seed is a **candidate** when it holds. `{}` holds for every seed. |
-| `filters` | list of filters, ≤ 25 | `[]` | Alternatives (**OR**) on the candidates' worlds. A filter is an object with an optional `name` (a string of at most 40 characters that labels it, and the hits it matches, § 8) and the optional sections `counts`, `distances`, `tiles`, `bridges` and `routes` (§ 4 B–F). Missing or `[]` accepts every candidate. |
+| `filters` | list of filters, ≤ 25 | `[]` | Alternatives (**OR**) on the candidates' worlds. A filter is an object with an optional `name` (a string of at most 40 characters that labels it, and the hits it matches, § 8) and the optional sections `counts`, `distances`, `tiles`, `routes`, `bridges` and `islands` (§ 4 B–G). Missing or `[]` accepts every candidate. |
 
 A seed matches when it is a candidate and some filter holds on its world (or there are no filters). A section holds
 when **all** its rules hold (**AND**), and so does a filter or `generation` when all its sections hold; a `setpieces`
@@ -35,8 +35,9 @@ a rule, and no `placed` names (§ 4 A), the search never generates a world.
 
 **Shard.** `shard` picks the world that is searched: `"forest"` (the overworld, the default) or `"caves"`. A cave
 world is a separate `GenerateNewWorld` with its own seed, so a caves search scans cave seeds. The shard decides the
-vocabulary of `tasks`, `prefab_swaps` and `setpieces` (§ 3, § 4 A) and of the prefabs of `counts`, `distances` and
-`routes` (§ 3); the caves also have tentacle pillar links where the forest has wormholes (`pillars` for `wormholes`, § 5).
+vocabulary of `tasks`, `prefab_swaps` and `setpieces` (§ 3, § 4 A) and of the prefabs of `counts`, `distances`,
+`routes` and `islands` (§ 3); the caves also have tentacle pillar links where the forest has wormholes (`pillars` for
+`wormholes`, § 5).
 Every section works on both shards. The finder's `--shard
 forest|caves` flag (on `world find`, `world show`, `world dump`, `gen` and `setpiece`) overrides the config's `shard`,
 the way `--platform` overrides `platform`. An unknown shard is an error, in the config and in the flag.
@@ -55,10 +56,10 @@ the way `--platform` overrides `platform`. An unknown shard is an error, in the 
 generation (`forest_map.Generate`) on: the tile map and every entity position. The level table is the same on both.
 So:
 - part A (`tasks`, `prefab_swaps`, `setpieces`) ignores `platform`: its results are identical on both platforms;
-- parts B–F (`counts`, `distances`, `tiles`, `routes`, `bridges`) and the `placed` names of `setpieces` (§ 4 A) are
-  evaluated on that platform's world, and their verdicts and witnesses hold only for worlds generated on that OS. The
-  caves' Linux worlds are checked against the real game (301 worlds); its Windows worlds are generated the same way
-  but not checked yet.
+- parts B–G (`counts`, `distances`, `tiles`, `routes`, `bridges`, `islands`) and the `placed` names of `setpieces`
+  (§ 4 A) are evaluated on that platform's world, and their verdicts and witnesses hold only for worlds generated on
+  that OS. The caves' Linux worlds are checked against the real game (301 worlds); its Windows worlds are generated
+  the same way but not checked yet.
 
 Windows is the primary platform, hence the default: a config without `platform` is a Windows config. The value is
 case-sensitive, and there is no "any platform" value. A finder that can't generate a platform's worlds rejects a
@@ -227,6 +228,40 @@ vent path across the map that way (§ 9).
 - A world dump without a `GRPH` section can't decide a bridges rule: `world find --worlds` counts it as a missing
   dump, and `world eval` stops with an error.
 
+### G. `islands` (≤ 16 rules)
+
+`{"at": prefab set, "min"?: uint32, "max"?: uint32, "wormholes"?}` (`pillars` in the caves, as in § 5)
+
+How much land an instance can walk to: a spawn stranded on a small piece of land, cut off from the mainland, has a
+small `A`.
+
+- **Landmass.** A maximal set of land tiles (§ 5's land test on the final `map.tiles`) joined through their **4
+  orthogonal neighbours** (up, down, left, right). Two land tiles that touch only at a corner are not joined: a player
+  can't cross there in the game. (The `walk` metric of § 5 cuts corners; this rule doesn't.)
+- **Reach.** An instance's reach is the landmass of its anchor (§ 5: its own land tile, else the land tile whose centre
+  is nearest). With `wormholes: true` (`pillars: true` in the caves) it also holds every landmass the links lead to:
+  a link (directed, entry to exit, § 5) whose entry's anchor is in the reach adds its exit anchor's landmass, any
+  number of times in a row. A link with an end without an anchor is ignored.
+- `area` is the number of tiles in a reach, and `A` the smallest area over the instances of `at` that have an anchor
+  (an instance has none only in a world without land).
+- The rule holds iff `min ≤ A ≤ max`. Without such an instance `A` is null: `max` fails and `min` holds. A rule
+  without bounds always holds.
+- **Typical values.** On the Windows forest worlds of seeds 1–12 (build 762172) the mainland is 42322–50680 tiles
+  (seed 3 has the smallest), the moon island 1899–3944 and the small ocean islands 42–406 (the hermit's is 108).
+  `moon_fissure` also stands on the moon's small islets, so `"at": "moon_fissure"` gives the smallest of those; only
+  the moon island has a `moon_altar_rock_glass`. Seed 149 has a 1920-tile piece of the mainland cut off by the ocean
+  cells that tie the moon island to the mainland (§ 9), the only one in seeds 1–212.
+- **Stranded spawns.** In the Windows forest seeds 1–66583 (build 762172) the same cut strands the spawn 3 times,
+  about once in 22,000 seeds (counted as the spawns that can walk to none of `pigking`, `dragonfly_spawner`,
+  `beequeenhive` and `moonbase`):
+  - 30506: the portal is on 1097 tiles, with no wormhole out (§ 9);
+  - 19672: 14823 tiles, the mainland split in two (the other half is 30359);
+  - 55784: 6046 tiles, on a 483 × 483 map (the rest of the mainland is 36183).
+
+  In 19672 and 55784 a wormhole leads to the rest (45182 and 42229 tiles with `wormholes: true`). A `max` of 30000
+  tells a cut-off spawn from the mainland only approximately, since the halves of a split mainland can come near it
+  (30359 and 36183 above). The search generates a world for every candidate.
+
 ## 5. Distance between two instances
 
 An instance is `(prefab, index)`: the index-th entry of `savedata.ents[prefab]`, at `(x, z)`.
@@ -287,8 +322,8 @@ The finder rejects a config over any cap with a config error.
 | What | Cap |
 |---|---|
 | `filters` (alternatives) | 25 |
-| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`), per filter, and per `setpieces` group (min 1) | 16 |
-| prefab ids per prefab set (`prefab`, `from`, `to`, `near.prefab`, each `visit` stop) | 16 |
+| rules per section (`setpieces`, `counts`, `distances`, `tiles`, `bridges`, `routes`, `islands`), per filter, and per `setpieces` group (min 1) | 16 |
+| prefab ids per prefab set (`prefab`, `from`, `to`, `near.prefab`, each `visit` stop, `at`) | 16 |
 | set piece names per `setpieces[].required` (and per rule of a group) | 16 |
 | task ids per task list (`tasks.required`, `tasks.excluded`, `setpieces[].tasks`) | 25 |
 | `routes[].visit` stops | 6 (min 1) |
@@ -403,8 +438,8 @@ done {"scanned": C, "last_scanned": L, "next_seed": X, "hits": H, "stopped": "li
   `{"prefab_swaps": {"grass": .., "twigs": .., "berries": ..}, "tasks": [{"task", "set_pieces", "random_set_pieces"}, ...]}`.
   Tasks are in chosen order, and pieces in placement order.
 - `results`: one witness per `setpieces` rule or group with `placed` names (of `generation`) and per rule of that
-  filter's `counts`, `tiles`, `distances`, `bridges` and `routes`, in that order. So it's `[]` without `placed` names
-  and filter rules. Level-table facts are in `level`.
+  filter's `counts`, `tiles`, `distances`, `bridges`, `routes` and `islands`, in that order. So it's `[]` without
+  `placed` names and filter rules. Level-table facts are in `level`.
 - Consumers ignore unknown fields.
 - `scanned`: the first C seeds of the scan order are decided. `last_scanned` is the C-th one (`null` if C = 0), and
   `next_seed` the one after it (`null` once all 2^32 seeds are scanned). With `stopped: "limit"`, `last_scanned` is
@@ -421,6 +456,7 @@ hit). Instances are `{"prefab", "index", "x", "z"}`, and distances are world uni
 | distances | `distance`, `from`, `to`, `wormholes: [{"entry", "exit"}]` (jumps in path order; `pillars` in the caves). With `D = ∞` (possible with only `min`), it's just `"distance": null`. |
 | bridges | `length` (`L`), `from` and `to`: the bridge's rooms as `{"node", "type", "x", "z"}` (the topology node's id, its `NODE_TYPE` and its savedata position in whole world units; `from` is the room whose turf the bridge is made of), and `stray`: `"from"` or `"to"`, the room left behind (the one whose nearest other non-Blank linked room is farther away; `"from"` on a tie). With `L` null, it's just `"length": null`. On a tie in `L`, the first link in `GRPH` order. |
 | routes | `length`, `stops` (instances in visiting order, `from` first), `legs: [{"from", "to", "distance", "wormholes"}]` (`pillars` in the caves) |
+| islands | `area` (`A`), `at` (the instance that gives `A`, any one on a tie), `tile` (its anchor tile as `{"tx", "ty", "x", "z"}`, x/z of the tile centre), `landmasses: [{"tx", "ty", "area"}]` (one tile of each landmass of the reach and its tile count: the anchor's landmass at `tile` first, then the others in the order the links reached them, each at its exit anchor tile; one entry without the links flag) and `bounds: {"tx0", "ty0", "tx1", "ty1"}` (the inclusive tile bounding box of the reach). With `A` null, it's just `"area": null`. |
 
 On ties, the witness instances are any optimal choice. Only the values are normative.
 
@@ -512,6 +548,35 @@ from the vents room it links to, and its turf runs back to it. Its witness:
  "from": {"node": "CentipedeCaveTask:BG_89:BGVentsRoom", "type": 2, "x": -668, "z": -358},
  "to": {"node": "CentipedeCaveTask:8:VentsRoom", "type": 0, "x": 338, "z": 370},
  "stray": "from"}
+```
+
+**A stranded spawn** (an `islands` rule): the spawn on a piece of land of at most 30000 tiles, i.e. not on the
+mainland (Windows, build 762172):
+
+```json
+{"filters": [{"name": "stranded spawn", "islands": [{"at": "multiplayer_portal", "max": 30000}]}]}
+```
+
+Seed 30506 matches: the portal is on a 1097-tile island cut off from the 53083-tile mainland, with no wormhole on it.
+Its witness:
+
+```json
+{"section": "islands", "index": 0, "ok": true, "area": 1097,
+ "at": {"prefab": "multiplayer_portal", "index": 0, "x": -462, "z": 82},
+ "tile": {"tx": 97, "ty": 233, "x": -462.0, "z": 82.0},
+ "landmasses": [{"tx": 97, "ty": 233, "area": 1097}],
+ "bounds": {"tx0": 83, "ty0": 212, "tx1": 142, "ty1": 244}}
+```
+
+The same rule at `walrus_camp` holds on seed 149: the ocean cells that tie the moon island to the mainland cut off the
+Forest hunters rooms there, 1920 tiles, from the 48475-tile mainland:
+
+```json
+{"section": "islands", "index": 0, "ok": true, "area": 1920,
+ "at": {"prefab": "walrus_camp", "index": 3, "x": -470.98, "z": 425.53},
+ "tile": {"tx": 95, "ty": 319, "x": -470.0, "z": 426.0},
+ "landmasses": [{"tx": 95, "ty": 319, "area": 1920}],
+ "bounds": {"tx0": 55, "ty0": 281, "tx1": 114, "ty1": 334}}
 ```
 
 **A clockwork group** (a `counts` rule): the UI's "Clockwork" group becomes the id list.

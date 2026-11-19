@@ -42,6 +42,8 @@ def job_rule(+job: Evaluate.Job) -> Rule:
       Rule{"bridges", i, 0n}
     case Evaluate.JRoute{+i, _}:
       Rule{"routes", i, 0n}
+    case Evaluate.JIsland{+i, _}:
+      Rule{"islands", i, 0n}
 
 def job_rules(jobs: List<&2, Evaluate.Job>) -> List<&2, Rule>:
   match jobs:
@@ -133,8 +135,8 @@ def rule_before(+r: Rule, +got: Ran) -> Ran:
     case Ran{+rules, +held}:
       Ran{r <> rules, held}
 
-# The rules over the worlds, each timed (the routes only on the worlds whose earlier rules held, as
-# Evaluate.parallel_holds checks them): the rules with their ms added, and whether each world passed them all.
+# The rules over the worlds, each timed, the routes only on the worlds that passed every rule before them (`passed`
+# included): the rules with their ms added, and whether each world passed them all.
 def timed_rules(+build: Builds.Build, jobs: List<&2, Evaluate.Job>, rules: List<&2, Rule>, +worlds: List<&2, Maybe<&2, FilterWorld.World>>, +passed: List<&2, Bool>) -> IO(Ran):
   match jobs rules:
     case Con{+job, js} Con{Rule{+section, +index, +ms}, rs}:
@@ -217,16 +219,19 @@ def option_before(+o: Option, +got: Decided) -> Decided:
     case Decided{+options, +opens}:
       Decided{o <> options, opens}
 
-# The options (the jobs of each) one after the other on the worlds no earlier option matched: the timed options, and
-# the worlds with the option that matched each.
+# The options (the jobs of each) one after the other on the worlds no earlier option matched, each option's routes
+# after all its other rules as Evaluate.parallel_holds checks them: the timed options, and the worlds with the option
+# that matched each.
 def judged_options(+build: Builds.Build, jobs: List<&2, List<&2, Evaluate.Job>>, options: List<&2, Option>, +index: U32, +opens: List<&2, Open>) -> IO(Decided):
   match jobs options:
     case Con{+js, rest} Con{Option{+worlds, +rules}, os}:
       +checked = checked_worlds(opens)
       do IO<Decided>:
-        +got : Ran <- timed_rules(build, js, rules, checked, all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
-        +after : Decided <- judged_options(build, rest, os, (index + 1 : U32), stepped(opens, checked, held_of(got), index))
-        return option_before(Option{Nat.add(worlds, checks(checked)), rules_of(got)}, after)
+        +others : Ran <- timed_rules(build, Evaluate.only(Evaluate.Job, js, js, False{}), Evaluate.only(Rule, js, rules, False{}), checked,
+          all_true(List.length(&2, Maybe<&2, FilterWorld.World>, checked)))
+        +routes : Ran <- timed_rules(build, Evaluate.only(Evaluate.Job, js, js, True{}), Evaluate.only(Rule, js, rules, True{}), checked, held_of(others))
+        +after : Decided <- judged_options(build, rest, os, (index + 1 : U32), stepped(opens, checked, held_of(routes), index))
+        return option_before(Option{Nat.add(worlds, checks(checked)), Evaluate.in_job_order(Rule, js, rules_of(others), rules_of(routes))}, after)
     case _ _:
       IO.pure(Decided, Decided{Nil{}, opens})
 

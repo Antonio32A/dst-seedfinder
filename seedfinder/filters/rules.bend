@@ -34,6 +34,11 @@ type Route is Data:
 type Bridge is Data:
   Bridge{min: Maybe<&2, F64Repr.F64>, max: Maybe<&2, F64Repr.F64>}
 
+# An islands rule: the bounds of the smallest reach of an `at` instance, and whether the reach follows the teleporter
+# links (`wormholes`, `pillars` in the caves).
+type Island is Data:
+  Island{at: List<&2, U32>, min: Maybe<&2, U32>, max: Maybe<&2, U32>, links: Bool, caves: Bool}
+
 # A rule of a setpieces group: the bounds the level table checks (only the minimum of a `placed` name) and the bounds
 # of its `placed` names, checked against the copies the world placed.
 type Member is Data:
@@ -55,26 +60,26 @@ def placed_index(+rule: Placed) -> U32:
       index
 
 # The world rules of one filter: `generation`'s setpieces rules with `placed` names, then the filter's counts,
-# distances, tiles, bridges and routes rules.
+# distances, tiles, bridges, routes and islands rules.
 type Later is Data:
-  Later{setpieces: List<&2, Placed>, counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, bridges: List<&2, Bridge>, routes: List<&2, Route>}
+  Later{setpieces: List<&2, Placed>, counts: List<&2, Count>, distances: List<&2, Distance>, tiles: List<&2, Tiles>, bridges: List<&2, Bridge>, routes: List<&2, Route>, islands: List<&2, Island>}
 
 def nothing_later() -> Later:
-  Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
+  Later{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}}
 
 # True when the entry has at least one world rule.
 def has_rules(+later: Later) -> Bool:
   match later:
-    case Later{+setpieces, +counts, +distances, +tiles, +bridges, +routes}:
+    case Later{+setpieces, +counts, +distances, +tiles, +bridges, +routes, +islands}:
       Bool.not(List.is_empty(&2, Placed, setpieces) && List.is_empty(&2, Count, counts) && List.is_empty(&2, Distance, distances)
-        && List.is_empty(&2, Tiles, tiles) && List.is_empty(&2, Bridge, bridges) && List.is_empty(&2, Route, routes))
+        && List.is_empty(&2, Tiles, tiles) && List.is_empty(&2, Bridge, bridges) && List.is_empty(&2, Route, routes) && List.is_empty(&2, Island, islands))
 
 # True when some entry has a bridges rule (which needs the world's topology).
 def needs_graph(laters: List<&2, Later>) -> Bool:
   match laters:
     case Nil{}:
       False{}
-    case Con{Later{_, _, _, _, +bridges, _}, rest}:
+    case Con{Later{_, _, _, _, +bridges, _, _}, rest}:
       Bool.not(List.is_empty(&2, Bridge, bridges)) || needs_graph(rest)
 
 # True when some entry has a setpieces rule with `placed` names (which needs the world's level plan).
@@ -82,7 +87,7 @@ def needs_plan(laters: List<&2, Later>) -> Bool:
   match laters:
     case Nil{}:
       False{}
-    case Con{Later{+setpieces, _, _, _, _, _}, rest}:
+    case Con{Later{+setpieces, _, _, _, _, _, _}, rest}:
       Bool.not(List.is_empty(&2, Placed, setpieces)) || needs_plan(rest)
 
 def listed_as_set(json: Json.Json, +kind: String, +path: String) -> Result<&1, &1, U32 & String, List<&2, Json.Json>>:
@@ -253,6 +258,15 @@ def bridge_of(json: Json.Json, +path: String) -> Result<&1, &1, U32 & String, Br
     max : Maybe<&2, F64Repr.F64> <- Parse.optional_distance(Parse.field(fields, "max"), path ++ ".max")
     return Bridge{min, max}
 
+def island_of(+build: Builds.Build, json: Json.Json, +path: String, +caves: Bool) -> Result<&1, &1, U32 & String, Island>:
+  do Result<&1, &1, U32 & String, Island>:
+    +fields : List<&2, Json.Json> <- Parse.keyed_fields(json, ["at", "min", "max", links_key(caves)], path)
+    at : List<&2, U32> <- required_prefab_set(build, fields, path, "at", caves)
+    min : Maybe<&2, U32> <- Parse.optional_integer(Parse.field(fields, "min"), path ++ ".min")
+    max : Maybe<&2, U32> <- Parse.optional_integer(Parse.field(fields, "max"), path ++ ".max")
+    links : Bool <- Parse.optional_flag(Parse.field(fields, links_key(caves)), path ++ "." ++ links_key(caves))
+    return Island{at, min, max, links, caves}
+
 def stop_sets(+build: Builds.Build, stops: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) -> Result<&1, &1, U32 & String, List<&2, List<&2, U32>>>:
   match stops:
     case Nil{}:
@@ -414,8 +428,18 @@ def routes_of(+build: Builds.Build, items: List<&2, Json.Json>, +path: String, +
         others : List<&2, Route> <- routes_of(build, rest, path, (i + 1 : U32), caves)
         return rule <> others
 
-# Parses the counts, distances, tiles, bridges and routes sections of an entry's fields, in that order, next to its
-# setpieces rules with `placed` names.
+def islands_of(+build: Builds.Build, items: List<&2, Json.Json>, +path: String, +i: U32, +caves: Bool) -> Result<&1, &1, U32 & String, List<&2, Island>>:
+  match items:
+    case Nil{}:
+      Done{Nil{}}
+    case Con{item, rest}:
+      do Result<&1, &1, U32 & String, List<&2, Island>>:
+        rule : Island <- island_of(build, item, Parse.indexed(path, i), caves)
+        others : List<&2, Island> <- islands_of(build, rest, path, (i + 1 : U32), caves)
+        return rule <> others
+
+# Parses the counts, distances, tiles, bridges, routes and islands sections of an entry's fields, in that order, next
+# to its setpieces rules with `placed` names.
 def later_of(+build: Builds.Build, +fields: List<&2, Json.Json>, +path: String, +caves: Bool, +setpieces: List<&2, Placed>) -> Result<&1, &1, U32 & String, Later>:
   do Result<&1, &1, U32 & String, Later>:
     count_items : List<&2, Json.Json> <- section_items(fields, path, "counts")
@@ -428,14 +452,16 @@ def later_of(+build: Builds.Build, +fields: List<&2, Json.Json>, +path: String, 
     bridges : List<&2, Bridge> <- bridges_of(bridge_items, path ++ ".bridges", 0)
     route_items : List<&2, Json.Json> <- section_items(fields, path, "routes")
     routes : List<&2, Route> <- routes_of(build, route_items, path ++ ".routes", 0, caves)
-    return Later{setpieces, counts, distances, tiles, bridges, routes}
+    island_items : List<&2, Json.Json> <- section_items(fields, path, "islands")
+    islands : List<&2, Island> <- islands_of(build, island_items, path ++ ".islands", 0, caves)
+    return Later{setpieces, counts, distances, tiles, bridges, routes, islands}
 
 # What the world rules of a config read from a world: the vocabulary prefab ids whose instances they take (ascending,
 # without duplicates), and whether some rule follows the teleporter links (the prefabs the links join are then among
-# the ids), reads the tiles (tiles rules), walks the land (the walk metric), reads the topology (bridges) or the level
-# plan (setpieces rules with `placed` names).
+# the ids), reads the tiles (tiles rules), walks the land (the walk metric), reads the topology (bridges), the level
+# plan (setpieces rules with `placed` names) or the landmasses (islands rules, which walk the land too).
 type Needs is Data:
-  Needs{prefabs: List<&2, U32>, links: Bool, tiles: Bool, land: Bool, graph: Bool, plan: Bool}
+  Needs{prefabs: List<&2, U32>, links: Bool, tiles: Bool, land: Bool, graph: Bool, plan: Bool, masses: Bool}
 
 # The prefabs whose instances the teleporter links join: the wormholes of the forest, the tentacle pillars of the caves.
 def linked_prefabs(+build: Builds.Build, +caves: Bool) -> List<&2, U32>:
@@ -443,13 +469,13 @@ def linked_prefabs(+build: Builds.Build, +caves: Bool) -> List<&2, U32>:
 
 def reading(+n: Needs, +ids: List<&2, U32>) -> Needs:
   match n:
-    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
-      Needs{List.append(&2, U32, prefabs, ids), links, tiles, land, graph, plan}
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan, +masses}:
+      Needs{List.append(&2, U32, prefabs, ids), links, tiles, land, graph, plan, masses}
 
 def metric_reading(+build: Builds.Build, +metric: Metric, +n: Needs) -> Needs:
   match metric n:
-    case Metric{+walk, +wormholes, +caves} Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
-      Needs{List.append(&2, U32, prefabs, Bool.pick(List<&2, U32>, wormholes, linked_prefabs(build, caves), Nil{})), links || wormholes, tiles, land || walk, graph, plan}
+    case Metric{+walk, +wormholes, +caves} Needs{+prefabs, +links, +tiles, +land, +graph, +plan, +masses}:
+      Needs{List.append(&2, U32, prefabs, Bool.pick(List<&2, U32>, wormholes, linked_prefabs(build, caves), Nil{})), links || wormholes, tiles, land || walk, graph, plan, masses}
 
 def near_reading(+build: Builds.Build, near: Maybe<&2, Near>, +n: Needs) -> Needs:
   match near:
@@ -480,30 +506,42 @@ def routes_reading(+build: Builds.Build, routes: List<&2, Route>, +n: Needs) -> 
       +stops = List.append(&2, U32, List.concat(&2, U32, visit), Maybe.default(&2, List<&2, U32>, to, Nil{}))
       routes_reading(build, rest, metric_reading(build, metric, reading(reading(n, from), stops)))
 
+def masses_reading(+n: Needs) -> Needs:
+  match n:
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan, _}:
+      Needs{prefabs, links, tiles, land, graph, plan, True{}}
+
+def islands_reading(+build: Builds.Build, islands: List<&2, Island>, +n: Needs) -> Needs:
+  match islands:
+    case Nil{}:
+      n
+    case Con{Island{+at, _, _, +links, +caves}, rest}:
+      islands_reading(build, rest, masses_reading(metric_reading(build, Metric{True{}, links, caves}, reading(n, at))))
+
 def sections_reading(+n: Needs, +setpieces: List<&2, Placed>, +tile_rules: List<&2, Tiles>, +bridges: List<&2, Bridge>) -> Needs:
   match n:
-    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan, +masses}:
       Needs{prefabs, links, tiles || Bool.not(List.is_empty(&2, Tiles, tile_rules)), land, graph || Bool.not(List.is_empty(&2, Bridge, bridges)),
-        plan || Bool.not(List.is_empty(&2, Placed, setpieces))}
+        plan || Bool.not(List.is_empty(&2, Placed, setpieces)), masses}
 
 def laters_reading(+build: Builds.Build, laters: List<&2, Later>, +n: Needs) -> Needs:
   match laters:
     case Nil{}:
       n
-    case Con{Later{+setpieces, +counts, +distances, +tile_rules, +bridges, +routes}, rest}:
-      laters_reading(build, rest, routes_reading(build, routes, distances_reading(build, distances, counts_reading(build, counts, sections_reading(n, setpieces, tile_rules, bridges)))))
+    case Con{Later{+setpieces, +counts, +distances, +tile_rules, +bridges, +routes, +islands}, rest}:
+      laters_reading(build, rest, islands_reading(build, islands, routes_reading(build, routes, distances_reading(build, distances, counts_reading(build, counts, sections_reading(n, setpieces, tile_rules, bridges))))))
 
 def id_le(a: U32, b: U32) -> Bool:
   (a <= b : U32)
 
 def sorted_needs(+n: Needs) -> Needs:
   match n:
-    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan}:
-      Needs{List.sort(~U32, ~id_le, Parse.distinct(prefabs)), links, tiles, land, graph, plan}
+    case Needs{+prefabs, +links, +tiles, +land, +graph, +plan, +masses}:
+      Needs{List.sort(~U32, ~id_le, Parse.distinct(prefabs)), links, tiles, land, graph, plan, masses}
 
 # What the world rules of these filters read from a world.
 def needs(+build: Builds.Build, laters: List<&2, Later>) -> Needs:
-  sorted_needs(laters_reading(build, laters, Needs{Nil{}, False{}, False{}, False{}, False{}, False{}}))
+  sorted_needs(laters_reading(build, laters, Needs{Nil{}, False{}, False{}, False{}, False{}, False{}, False{}}))
 
 def id_in(ids: List<&2, U32>, +id: U32) -> Bool:
   match ids:
@@ -525,6 +563,12 @@ def none_late(ids: List<&2, U32>, +late: List<&2, U32>) -> Bool:
 # 2 walking the land too (final then: no later step writes a tile).
 def early_tier(+build: Builds.Build, +n: Needs) -> U32:
   match n:
-    case Needs{+prefabs, _, +tiles, +land, +graph, +plan}:
+    case Needs{+prefabs, _, +tiles, +land, +graph, +plan, _}:
       +early = none_late(prefabs, GenTagsData.cave_late_prefabs(build)) && Bool.not(tiles || graph || plan)
       Bool.pick(U32, early, Bool.pick(U32, land, 2, 1), 0)
+
+# Whether the world rules that read `n` read the landmasses (FilterWorld.with_landmasses).
+def reads_masses(+n: Needs) -> Bool:
+  match n:
+    case Needs{_, _, _, _, _, _, +masses}:
+      masses

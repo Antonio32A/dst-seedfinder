@@ -94,11 +94,15 @@ def usable(+config: ShardSearch.Search, +platform: U32, +world: FilterWorld.Worl
   platform_matches(ShardSearch.windows(config), platform) && (FilterWorld.has_graph(world) || Bool.not(Rules.needs_graph(ShardSearch.laters(config))))
     && (FilterWorld.has_plan(world) || Bool.not(Rules.needs_plan(ShardSearch.laters(config))))
 
+# The world with the landmasses labelled once for all the filters' islands rules.
+def prepared(+config: ShardSearch.Search, +world: FilterWorld.World) -> FilterWorld.World:
+  FilterWorld.with_landmasses(world, Rules.reads_masses(ShardSearch.needs(config)))
+
 def world_verdict(+build: Builds.Build, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: ShardSearch.Search, +seed: U32) -> Verdict:
   match loaded:
     case Done{FilterWorld.Generated{+world, +platform}}:
       Bool.pick(Verdict, usable(config, platform, world),
-        first_entry(build, ShardSearch.laters(config), ShardSearch.names(config), False{}, world, seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
+        first_entry(build, ShardSearch.laters(config), ShardSearch.names(config), False{}, prepared(config, world), seed, ShardSearch.caves(config), 0, Nil{}), Absent{})
     case Done{FilterWorld.GaveUp{_}}:
       Miss{}
     case Fail{_}:
@@ -360,7 +364,7 @@ type Loaded is Data:
 def loaded_of(+seed: U32, loaded: Result<&1, &1, U32 & String, FilterWorld.Loaded>, +config: ShardSearch.Search) -> Loaded:
   match loaded:
     case Done{FilterWorld.Generated{+world, +platform}}:
-      Bool.pick(Loaded, usable(config, platform, world), Loaded{seed, Some{world}, Miss{}}, Loaded{seed, None{}, Absent{}})
+      Bool.pick(Loaded, usable(config, platform, world), Loaded{seed, Some{prepared(config, world)}, Miss{}}, Loaded{seed, None{}, Absent{}})
     case Done{FilterWorld.GaveUp{_}}:
       Loaded{seed, None{}, Miss{}}
     case Fail{_}:

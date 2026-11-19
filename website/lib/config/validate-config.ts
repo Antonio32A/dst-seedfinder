@@ -293,7 +293,15 @@ const filterOf = (shard: Shard, build: GameBuild): Parse => {
         ),
         tiles: rules(objectOf({ from: required(tileSet), to: required(tileSet), max: required(uint32) })),
         bridges: rules(objectOf({ min: optional(distance), max: optional(distance) })),
-        routes: rules(routeOf(shard, build))
+        routes: rules(routeOf(shard, build)),
+        islands: rules(
+            objectOf({
+                at: required(prefabSet),
+                min: optional(uint32),
+                max: optional(uint32),
+                [LINKS_KEY[shard]]: optional(flag)
+            })
+        )
     });
 };
 

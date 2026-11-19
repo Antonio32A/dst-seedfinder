@@ -140,7 +140,7 @@ export function emptyGeneration(): GenerationPicks {
 }
 
 export function emptyFilter(): WorldFilter {
-    return { key: newKey(), name: "", counts: [], distances: [], tiles: [], bridges: [], routes: [] };
+    return { key: newKey(), name: "", counts: [], distances: [], tiles: [], bridges: [], routes: [], islands: [] };
 }
 
 export function defaultState(): SearchState {

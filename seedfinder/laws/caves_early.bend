@@ -111,7 +111,7 @@ def posted(+ents: List<&2, Entities.Ent>) -> OceanState.Sea & Bool:
 # A walk with pillars from cave_exit (vocabulary id 372) to atrium_gate (358), and rock2 (254): the early prefabs and
 # the pillars (456, 457), with their links and the land.
 def needs() -> Rules.Needs:
-  Rules.Needs{[254, 358, 372, 456, 457], True{}, False{}, True{}, False{}, False{}}
+  Rules.Needs{[254, 358, 372, 456, 457], True{}, False{}, True{}, False{}, False{}, False{}}
 
 def world_of(got: OceanState.Sea & Bool) -> Maybe<&2, FilterWorld.World>:
   (sea, +ok) = got
@@ -147,10 +147,10 @@ def walked(+from: U32, +to: U32) -> Rules.Distance:
   Rules.Distance{[from], [to], None{}, Some{F64Repr.from_u32(40)}, Rules.Metric{True{}, True{}, True{}}}
 
 def distances(+rules: List<&2, Rules.Distance>) -> Rules.Later:
-  Rules.Later{Nil{}, Nil{}, rules, Nil{}, Nil{}, Nil{}}
+  Rules.Later{Nil{}, Nil{}, rules, Nil{}, Nil{}, Nil{}, Nil{}}
 
 def routed() -> Rules.Later:
-  Rules.Later{Nil{}, Nil{}, [walked(372, 401)], Nil{}, Nil{}, [Rules.Route{[372], [[401]], None{}, F64Repr.from_u32(40), False{}, Rules.Metric{False{}, True{}, True{}}}]}
+  Rules.Later{Nil{}, Nil{}, [walked(372, 401)], Nil{}, Nil{}, [Rules.Route{[372], [[401]], None{}, F64Repr.from_u32(40), False{}, Rules.Metric{False{}, True{}, True{}}}], []}
 
 # A filter checks early its counts and distances on early prefabs (cave_exit, atrium_gate, minotaur_spawner 401; not
 # spiderhole 449), those without a walk when it has some (the first filter), else the walks (the second); never its

@@ -198,7 +198,7 @@ def world_of_groups(+build: Builds.Build, gr: Grouped, +seed: U32, +w: U32, +pac
     case Grouped{+groups, +wormholes}:
       match packed:
         case Packed{+tiles, +land}:
-          FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(build), groups, FilterWorld.links_of(links(wormholes), groups, GenTagsData.vocab_wormhole(build)), tiles, Some{graph}, Some{plan_of(build, plan)}, land}
+          FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(build), groups, FilterWorld.links_of(links(wormholes), groups, GenTagsData.vocab_wormhole(build)), tiles, Some{graph}, Some{plan_of(build, plan)}, land, None{}}
 
 def grouped(+build: Builds.Build, got: Array<U32> & Array<List<&2, OceanEnts.Ent>>, +windows: Bool) -> Grouped:
   (_, a) = got
@@ -547,7 +547,7 @@ def cave_links(pillars: List<&2, FilterDump.Pillar>, +groups: List<&2, List<&2, 
 def cave_world_of(+build: Builds.Build, +seed: U32, +w: U32, +groups: List<&2, List<&2, FilterWorld.Inst>>, +links: List<&2, FilterWorld.Link>, +packed: Packed, +graph: FilterDump.Graph) -> FilterWorld.World:
   match packed:
     case Packed{+tiles, +land}:
-      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(build), groups, links, tiles, Some{graph}, None{}, land}
+      FilterWorld.World{seed, w, w, GenTagsData.vocab_tile_ids(build), groups, links, tiles, Some{graph}, None{}, land, None{}}
 
 # The filters' world of a generated caves world, equal to what FilterWorld.of_bytes_in reads from its dump_caves.
 def cave_world(+build: Builds.Build, +seed: U32, +windows: Bool, final: GenJob.Final) -> FilterWorld.World:
@@ -709,25 +709,26 @@ def pillar_links_for(follow: Bool, +build: Builds.Build, +ids: List<&2, U32>, +f
 def search_world_of(+build: Builds.Build, +seed: U32, +w: U32, +groups: List<&2, List<&2, FilterWorld.Inst>>, +links: List<&2, FilterWorld.Link>, +tiles: Bool, +packed: Packed, +graph: Maybe<&2, FilterDump.Graph>, +plan: Maybe<&2, List<&2, FilterDump.Planned>>) -> FilterWorld.World:
   match packed:
     case Packed{+pairs, +land}:
-      FilterWorld.World{seed, w, w, Bool.pick(List<&2, U32>, tiles, GenTagsData.vocab_tile_ids(build), Nil{}), groups, links, pairs, graph, plan, land}
+      FilterWorld.World{seed, w, w, Bool.pick(List<&2, U32>, tiles, GenTagsData.vocab_tile_ids(build), Nil{}), groups, links, pairs, graph, plan, land, None{}}
 
 # The filters' world of a generated world as a search with these needs reads it (Rules.Needs): the world of `world`
 # with the groups of the needed prefabs up to the last of them (the others empty), and the links, tile ids and pairs,
-# land bits, topology and level plan only when needed. Without needed prefabs the entities are not walked.
+# land bits, topology and level plan only when needed, and the landmasses labelled when needed. Without needed prefabs
+# the entities are not walked.
 def world_for(+build: Builds.Build, +seed: U32, +windows: Bool, +needs: Rules.Needs, final: GenJob.Final) -> FilterWorld.World:
   match needs final:
-    case Rules.Needs{+ids, +links, +tiles, +land, +graph, +plan} GenJob.Final{g, _, +ents, +w, _, _, _, +topology, +planned}:
+    case Rules.Needs{+ids, +links, +tiles, +land, +graph, +plan, +masses} GenJob.Final{g, _, +ents, +w, _, _, _, +topology, +planned}:
       +found = found_ents(needed_sids(GenTagsData.vocab_prefab_sids(build), ids, 0), ents, GenTagsData.sid_depth(build))
       +groups = needed_groups(build, ids, found, 0, windows)
-      search_world_of(build, seed, w, groups, wormhole_links_for(links, build, ids, found, groups), tiles, packed_for(tiles, land, g, (w * w : U32)),
-        Bool.pick(Maybe<&2, FilterDump.Graph>, graph, Some{topology}, None{}), plan_for(plan, build, planned))
+      FilterWorld.with_landmasses(search_world_of(build, seed, w, groups, wormhole_links_for(links, build, ids, found, groups), tiles, packed_for(tiles, land, g, (w * w : U32)),
+        Bool.pick(Maybe<&2, FilterDump.Graph>, graph, Some{topology}, None{}), plan_for(plan, build, planned)), masses)
 
 # cave_world as a search with these needs reads it, as world_for restricts world (the pillar links when needed).
 def cave_world_for(+build: Builds.Build, +seed: U32, +windows: Bool, +needs: Rules.Needs, final: GenJob.Final) -> FilterWorld.World:
   match needs final:
-    case Rules.Needs{+ids, +links, +tiles, +land, +graph, _} GenJob.Final{g, _, +ents, +w, _, _, _, +topology, _}:
+    case Rules.Needs{+ids, +links, +tiles, +land, +graph, _, +masses} GenJob.Final{g, _, +ents, +w, _, _, _, +topology, _}:
       +sids = needed_sids(List.append(&2, U32, GenTagsData.vocab_prefab_sids(build), GenTagsData.cave_vocab_prefab_sids(build)), ids, 0)
       +found = found_ents(sids, ents, GenTagsData.cave_sid_depth(build))
       +groups = needed_groups(build, ids, found, 0, windows)
-      search_world_of(build, seed, w, groups, pillar_links_for(links, build, ids, found, groups), tiles, packed_for(tiles, land, g, (w * w : U32)),
-        Bool.pick(Maybe<&2, FilterDump.Graph>, graph, Some{topology}, None{}), None{})
+      FilterWorld.with_landmasses(search_world_of(build, seed, w, groups, pillar_links_for(links, build, ids, found, groups), tiles, packed_for(tiles, land, g, (w * w : U32)),
+        Bool.pick(Maybe<&2, FilterDump.Graph>, graph, Some{topology}, None{}), None{}), masses)

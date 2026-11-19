@@ -52,7 +52,7 @@ def sids_of(+all: List<&2, U32>, ids: List<&2, U32>) -> List<&2, U32>:
 
 def early_of(+build: Builds.Build, +needs: Rules.Needs, +jobs: List<&2, List<&2, Evaluate.Job>>) -> Early:
   match needs:
-    case Rules.Needs{+ids, _, _, _, _, _}:
+    case Rules.Needs{+ids, _, _, _, _, _, _}:
       Early{jobs, needs, sids_of(List.append(&2, U32, GenTagsData.vocab_prefab_sids(build), GenTagsData.cave_vocab_prefab_sids(build)), ids)}
 
 # The early check of a caves config: none when some filter has no early job or the config reads the level plan (which

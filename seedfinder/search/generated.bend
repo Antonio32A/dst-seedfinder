@@ -402,7 +402,7 @@ def early_judged(+build: Builds.Build, +timed: Bool, got: GenJob.Job & Maybe<&1,
 
 def early_needs_land(+early: ShardSearch.Early) -> Bool:
   match early:
-    case ShardSearch.Early{_, Rules.Needs{_, _, _, +land, _, _}, _}:
+    case ShardSearch.Early{_, Rules.Needs{_, _, _, +land, _, _, _}, _}:
       land
 
 def early_sids(+early: ShardSearch.Early) -> List<&2, U32>:

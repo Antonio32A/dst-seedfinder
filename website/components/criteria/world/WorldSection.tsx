@@ -12,6 +12,7 @@ import {
 import BridgeRuleRow from "./BridgeRuleRow";
 import CountRuleRow from "./CountRuleRow";
 import DistanceRuleRow from "./DistanceRuleRow";
+import IslandRuleRow from "./IslandRuleRow";
 import RouteRuleRow from "./RouteRuleRow";
 import TileRuleRow from "./TileRuleRow";
 import { WorldKindProvider } from "./WorldKind";
@@ -30,7 +31,8 @@ const ROWS: RowComponents = {
     distances: DistanceRuleRow,
     tiles: TileRuleRow,
     bridges: BridgeRuleRow,
-    routes: RouteRuleRow
+    routes: RouteRuleRow,
+    islands: IslandRuleRow
 };
 
 const SECTIONS: { id: WorldSectionKey; title: string; add: string }[] = [
@@ -38,7 +40,8 @@ const SECTIONS: { id: WorldSectionKey; title: string; add: string }[] = [
     { id: "distances", title: "Distances", add: "Add distance" },
     { id: "tiles", title: "Turf", add: "Add turf rule" },
     { id: "bridges", title: "Turf bridges", add: "Add turf bridge" },
-    { id: "routes", title: "Routes", add: "Add route" }
+    { id: "routes", title: "Routes", add: "Add route" },
+    { id: "islands", title: "Islands", add: "Add island rule" }
 ];
 
 interface WorldSectionProps {

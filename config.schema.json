@@ -27,7 +27,7 @@
    "default": "forest"
   },
   "platform": {
-   "description": "The OS hosting the world. The level table (tasks, prefab_swaps, setpieces) is the same on both; counts, distances, tiles, bridges and routes are evaluated on this platform's world.",
+   "description": "The OS hosting the world. The level table (tasks, prefab_swaps, setpieces) is the same on both; counts, distances, tiles, bridges, routes and islands are evaluated on this platform's world.",
    "enum": [
     "windows",
     "linux"
@@ -983,6 +983,29 @@
     "max"
    ]
   },
+  "islandRule": {
+   "description": "The smallest landmass (in tiles, 4-neighbour) an instance of `at` stands on, with `wormholes` together with every landmass the wormholes lead to.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "at": {
+     "$ref": "#/$defs/prefabs"
+    },
+    "min": {
+     "$ref": "#/$defs/uint32"
+    },
+    "max": {
+     "$ref": "#/$defs/uint32"
+    },
+    "wormholes": {
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "at"
+   ]
+  },
   "filterName": {
    "type": "string",
    "maxLength": 40,
@@ -1056,6 +1079,13 @@
      "maxItems": 16,
      "items": {
       "$ref": "#/$defs/routeRule"
+     }
+    },
+    "islands": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/islandRule"
      }
     }
    }
@@ -1668,6 +1698,29 @@
     "max"
    ]
   },
+  "caveIslandRule": {
+   "description": "The smallest landmass (in tiles, 4-neighbour) an instance of `at` stands on, with `pillars` together with every landmass the tentacle pillars lead to.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "at": {
+     "$ref": "#/$defs/cavePrefabs"
+    },
+    "min": {
+     "$ref": "#/$defs/uint32"
+    },
+    "max": {
+     "$ref": "#/$defs/uint32"
+    },
+    "pillars": {
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "at"
+   ]
+  },
   "caveGeneration": {
    "description": "The caves' level table: a seed is a candidate when all its sections and rules hold (AND).",
    "type": "object",
@@ -1696,7 +1749,7 @@
    }
   },
   "caveFilter": {
-   "description": "World rules: all sections and all rules must hold (AND). Counts, distances and routes use the caves' prefabs, and `pillars` lets a distance use the tentacle pillar links.",
+   "description": "World rules: all sections and all rules must hold (AND). Counts, distances, routes and islands use the caves' prefabs, and `pillars` lets a distance use the tentacle pillar links.",
    "type": "object",
    "additionalProperties": false,
    "properties": {
@@ -1736,6 +1789,13 @@
      "maxItems": 16,
      "items": {
       "$ref": "#/$defs/caveRouteRule"
+     }
+    },
+    "islands": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/caveIslandRule"
      }
     }
    }
@@ -1791,7 +1851,7 @@
    ]
   },
   "caveFilter_756039": {
-   "description": "World rules: all sections and all rules must hold (AND). Counts, distances and routes use the caves' prefabs, and `pillars` lets a distance use the tentacle pillar links.",
+   "description": "World rules: all sections and all rules must hold (AND). Counts, distances, routes and islands use the caves' prefabs, and `pillars` lets a distance use the tentacle pillar links.",
    "type": "object",
    "additionalProperties": false,
    "properties": {
@@ -1832,8 +1892,38 @@
      "items": {
       "$ref": "#/$defs/caveRouteRule_756039"
      }
+    },
+    "islands": {
+     "type": "array",
+     "maxItems": 16,
+     "items": {
+      "$ref": "#/$defs/caveIslandRule_756039"
+     }
     }
    }
+  },
+  "caveIslandRule_756039": {
+   "description": "The smallest landmass (in tiles, 4-neighbour) an instance of `at` stands on, with `pillars` together with every landmass the tentacle pillars lead to.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "at": {
+     "$ref": "#/$defs/cavePrefabs_756039"
+    },
+    "min": {
+     "$ref": "#/$defs/uint32"
+    },
+    "max": {
+     "$ref": "#/$defs/uint32"
+    },
+    "pillars": {
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "at"
+   ]
   },
   "caveNear_756039": {
    "type": "object",

@@ -19,6 +19,7 @@ import {
     toSeedfinderConfig,
     validateSearch
 } from "@/lib/criteria/search-state";
+import { type IslandRow, NEW_WORLD_ROW } from "@/lib/criteria/world-rules";
 
 const forest = levelCatalogOf("forest", 756039);
 const caves = levelCatalogOf("caves", 756039);
@@ -288,5 +289,101 @@ describe("the turf bridge rules", () => {
             severity: "error",
             message: "Turf bridge 1: minimum is above maximum."
         });
+    });
+});
+
+describe("the island rules", () => {
+    const islandRow = (patch: Partial<IslandRow> = {}): IslandRow => ({
+        key: "i", at: ["multiplayer_portal"], mode: "atMost", min: 0, max: 30000, links: false, ...patch
+    });
+    const islandSearch = (shard: "forest" | "caves", islands: IslandRow[]) =>
+        ({ build: 756039 as const, shard, platform: "windows" as const, generation: emptyGeneration(), filters: [{ ...emptyFilter(), islands }] });
+
+    it("starts a new rule at the shard's spawn, off the forest's mainland, without the links", () => {
+        expect(NEW_WORLD_ROW.islands({ shard: "forest", build: 756039 }))
+            .toMatchObject({ at: ["multiplayer_portal"], mode: "atMost", max: 30000, links: false });
+        expect(NEW_WORLD_ROW.islands({ shard: "caves", build: 756039 }))
+            .toMatchObject({ at: ["cave_exit"], mode: "atMost", max: 30000, links: false });
+    });
+
+    it("writes its tile bounds as the finder reads them, and its links as `wormholes` in the forest", () => {
+        const rows = [
+            islandRow(),
+            islandRow({ key: "j", at: ["pigking", "moonbase"], mode: "atLeast", min: 2000, links: true }),
+            islandRow({ key: "k", mode: "between", min: 100, max: 4000 }),
+            islandRow({ key: "l", mode: "atLeast", min: 0 })
+        ];
+        const config = toSeedfinderConfig(islandSearch("forest", rows));
+        expect(config.filters?.[0].islands).toEqual([
+            { at: "multiplayer_portal", max: 30000 },
+            { at: ["pigking", "moonbase"], min: 2000, wormholes: true },
+            { at: "multiplayer_portal", min: 100, max: 4000 },
+            { at: "multiplayer_portal" }
+        ]);
+        expect(validateConfig(config).ok).toBe(true);
+        const back = fromSeedfinderConfig(JSON.parse(JSON.stringify(config)));
+        expect(back.filters[0].islands.map(({ key: _, ...row }) => row)).toEqual(rows.map(({ key: _, ...row }) => row));
+        expect(toSeedfinderConfig(back)).toEqual(config);
+        expect(toSeedfinderConfig(fromSeedfinderConfig(decodeShareParam(encodeShareParam(config))))).toEqual(config);
+    });
+
+    it("writes the caves' links as `pillars`", () => {
+        const config = toSeedfinderConfig(islandSearch("caves", [islandRow({ at: ["cave_exit"], links: true })]));
+        expect(config.filters?.[0].islands).toEqual([{ at: "cave_exit", max: 30000, pillars: true }]);
+        expect(validateConfig(config).ok).toBe(true);
+        expect(fromSeedfinderConfig(config).filters[0].islands[0]).toMatchObject({ at: ["cave_exit"], links: true });
+    });
+
+    it("leaves out a rule with nothing to measure from", () => {
+        expect(toSeedfinderConfig(islandSearch("forest", [islandRow({ at: [] })])).filters).toBeUndefined();
+    });
+
+    it("moves the rules to the other shard, the spawn becoming its spawn", () => {
+        const rows = [islandRow({ links: true }), islandRow({ key: "j", at: ["pigking"] })];
+        const moved = switchShard(islandSearch("forest", rows), "caves");
+        expect(moved.state.filters[0].islands).toEqual([{ ...rows[0], at: ["cave_exit"] }]);
+        expect(moved.dropped).toBe(1);
+    });
+
+    it("rejects what the finder rejects", () => {
+        const error = (shard: "forest" | "caves", rule: unknown) => {
+            const result = validateConfig({ version: 3, build: 756039, shard, filters: [{ islands: [rule] }] });
+            return result.ok ? null : result.error;
+        };
+        expect(error("forest", { max: 30000 })).toBe("config: filters[0].islands[0].at is required");
+        expect(error("forest", { at: "multiplayer_portal", min: -1 }))
+            .toBe("config: filters[0].islands[0].min must be an integer in 0..4294967295");
+        expect(error("forest", { at: "multiplayer_portal", max: 3.5 }))
+            .toBe("config: filters[0].islands[0].max must be an integer in 0..4294967295");
+        expect(error("forest", { at: "cave_exit" })).toBe("config: unknown prefab \"cave_exit\" in filters[0].islands[0].at");
+        expect(error("forest", { at: "multiplayer_portal", pillars: true }))
+            .toBe("config: unknown key \"pillars\" in filters[0].islands[0]");
+        expect(error("caves", { at: "cave_exit", wormholes: true }))
+            .toBe("config: unknown key \"wormholes\" in filters[0].islands[0]");
+        expect(error("forest", { at: "multiplayer_portal", metric: "walk" }))
+            .toBe("config: unknown key \"metric\" in filters[0].islands[0]");
+        expect(error("forest", { at: "multiplayer_portal", wormholes: 1 }))
+            .toBe("config: filters[0].islands[0].wormholes must be true or false");
+        expect(error("caves", { at: "cave_exit", pillars: false })).toBeNull();
+        expect(error("forest", { at: ["multiplayer_portal", "pigking"] })).toBeNull();
+    });
+
+    it("allows at most 16 rules", () => {
+        const islands = (count: number) => Array.from({ length: count }, () => ({ at: "multiplayer_portal", max: 30000 }));
+        expect(validateConfig({ version: 3, build: 756039, filters: [{ islands: islands(16) }] }).ok).toBe(true);
+        expect(validateConfig({ version: 3, build: 756039, filters: [{ islands: islands(17) }] })).toEqual({
+            ok: false,
+            error: "config: filters[0].islands has 17 rules (at most 16)"
+        });
+    });
+
+    it("says what can't match", () => {
+        const issues = validateSearch(islandSearch("forest", [
+            islandRow({ at: [] }),
+            islandRow({ key: "j", mode: "between", min: 5000, max: 4000 })
+        ]));
+        expect(issues).toContainEqual({ severity: "error", message: "Island 1 needs something to measure from." });
+        expect(issues).toContainEqual({ severity: "error", message: "Island 2: minimum is above maximum." });
+        expect(validateSearch(islandSearch("forest", [islandRow()])).filter(({ severity }) => severity === "error")).toEqual([]);
     });
 });

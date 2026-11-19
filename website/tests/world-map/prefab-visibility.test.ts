@@ -41,7 +41,8 @@ const SEARCH: SeedfinderConfig = {
                 visit: ["walrus_camp", ["spiderden", "sapling"]],
                 to: "cave_entrance",
                 max: 5000
-            }]
+            }],
+            islands: [{ at: "moon_fissure", max: 30000 }]
         }
     ]
 };
@@ -103,8 +104,8 @@ describe("the prefabs a map shows", () => {
         expect([...shown].filter((prefab) => !PREFAB_BY_ID.get(prefab)?.icon)).toEqual([]);
     });
 
-    it("also shows every prefab the search's counts, near filters, distances and routes name, in every option", () => {
-        const named = ["beefalo", "evergreen", "flower", "grass", "knight", "moonbase", "pigking", "rook", "sapling", "spiderden", "walrus_camp"];
+    it("also shows every prefab the search's counts, near filters, distances, routes and islands name, in every option", () => {
+        const named = ["beefalo", "evergreen", "flower", "grass", "knight", "moon_fissure", "moonbase", "pigking", "rook", "sapling", "spiderden", "walrus_camp"];
         expect(named.filter((prefab) => !defaultShown(SEARCH).has(prefab))).toEqual([]);
     });
 

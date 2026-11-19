@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { memo, useId, useMemo, useState } from "react";
 import { type LevelCatalog, levelCatalogOf } from "@/lib/catalog/level-catalog";
-import { DEFAULT_PLATFORM, optionName, type Platform, type SeedfinderConfig } from "@/lib/config/seedfinder-config";
+import {
+    DEFAULT_PLATFORM,
+    optionName,
+    type Platform,
+    type SeedfinderConfig,
+    type Shard
+} from "@/lib/config/seedfinder-config";
 import type { JobView } from "@/lib/jobs/job-events";
 import {
     type LevelTable,
@@ -82,13 +88,13 @@ function PieceList({ level, catalog }: { level: LevelTable; catalog: LevelCatalo
     );
 }
 
-function WitnessList({ results }: { results: Witness[] }) {
+function WitnessList({ results, shard }: { results: Witness[]; shard: Shard }) {
     return (
             <ul className="world__list">
                 {results.map((witness) => (
                         <li key={`${witness.section}-${witness.index}`}>
                             <span className={witness.ok ? "witness__ok" : "witness__failed"}>{witness.ok ? "ok" : "failed"}</span>{" "}
-                            {describeWitness(witness)}
+                            {describeWitness(witness, shard)}
                         </li>
                 ))}
             </ul>
@@ -121,7 +127,7 @@ function WorldSummary({ hit: { level, results }, id, catalog }: { hit: SearchHit
                         <>
                             <dt>Checks</dt>
                             <dd>
-                                <WitnessList results={results}/>
+                                <WitnessList results={results} shard={catalog.shard}/>
                             </dd>
                         </>
                 )}
